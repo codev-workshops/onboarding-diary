@@ -1,0 +1,26 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: report-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlite:data/reports.db}
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+jwt:
+  secret: ${JWT_SECRET:onboarding-diary-secret-key-change-in-production-minimum-256-bits}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+diary-service:
+  url: ${DIARY_SERVICE_URL:http://localhost:8082}
+auth-service:
+  url: ${AUTH_SERVICE_URL:http://localhost:8081}
