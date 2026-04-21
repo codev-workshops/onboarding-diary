@@ -25,4 +25,6 @@ public class CreateNoteRequest {
     private String content;
 
     private List<String> tags;
+
+    private String folder;
 }

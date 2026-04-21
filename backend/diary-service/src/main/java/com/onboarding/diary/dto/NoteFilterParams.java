@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class NoteFilterParams {
     private String tag;
+    private String folder;
     private String dateFrom;
     private String dateTo;
 }

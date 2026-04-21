@@ -36,6 +36,8 @@ public class NoteEntry {
 
     private String tags;
 
+    private String folder;
+
     @Column(nullable = false)
     private boolean deleted;
 

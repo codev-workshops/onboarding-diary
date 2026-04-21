@@ -44,10 +44,12 @@ public class NoteController {
     public ResponseEntity<PageResponse<NoteResponse>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String tag) {
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String folder) {
         String userId = SecurityUtils.getCurrentUserId();
         NoteFilterParams filters = NoteFilterParams.builder()
                 .tag(tag)
+                .folder(folder)
                 .build();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(noteService.list(userId, filters, pageable));
@@ -80,18 +82,26 @@ public class NoteController {
         return ResponseEntity.ok(noteService.getUserTags(userId));
     }
 
+    @GetMapping("/folders")
+    public ResponseEntity<List<String>> getUserFolders() {
+        String userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(noteService.getUserFolders(userId));
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<PageResponse<NoteResponse>> listForUser(
             @PathVariable String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String tag) {
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String folder) {
         String role = SecurityUtils.getCurrentUserRole();
         if (!"MANAGER".equals(role) && !"ADMIN".equals(role)) {
             throw new AccessDeniedException("Only managers and admins can view other users' notes");
         }
         NoteFilterParams filters = NoteFilterParams.builder()
                 .tag(tag)
+                .folder(folder)
                 .build();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(noteService.listForUser(userId, filters, pageable));

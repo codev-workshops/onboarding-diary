@@ -39,6 +39,7 @@ public class NoteService {
                 .title(request.getTitle())
                 .content(request.getContent())
                 .tags(tagsToString(request.getTags()))
+                .folder(request.getFolder() != null && request.getFolder().isEmpty() ? null : request.getFolder())
                 .deleted(false)
                 .createdAt(now)
                 .updatedAt(now)
@@ -59,9 +60,23 @@ public class NoteService {
 
     public PageResponse<NoteResponse> list(String userId, NoteFilterParams filters, Pageable pageable) {
         Page<NoteEntry> page;
-        if (filters.getTag() != null && !filters.getTag().isEmpty()) {
+        boolean hasTag = filters.getTag() != null && !filters.getTag().isEmpty();
+        boolean hasFolder = filters.getFolder() != null && !filters.getFolder().isEmpty();
+        boolean isUncategorized = "__uncategorized__".equals(filters.getFolder());
+
+        if (hasTag && isUncategorized) {
+            page = noteEntryRepository.findByUserIdAndTagContainingAndFolderIsNullAndDeletedFalse(
+                    userId, filters.getTag(), pageable);
+        } else if (hasTag && hasFolder) {
+            page = noteEntryRepository.findByUserIdAndTagContainingAndFolderAndDeletedFalse(
+                    userId, filters.getTag(), filters.getFolder(), pageable);
+        } else if (hasTag) {
             page = noteEntryRepository.findByUserIdAndTagContainingAndDeletedFalse(
                     userId, filters.getTag(), pageable);
+        } else if (isUncategorized) {
+            page = noteEntryRepository.findByUserIdAndFolderIsNullAndDeletedFalse(userId, pageable);
+        } else if (hasFolder) {
+            page = noteEntryRepository.findByUserIdAndFolderAndDeletedFalse(userId, filters.getFolder(), pageable);
         } else {
             page = noteEntryRepository.findByUserIdAndDeletedFalse(userId, pageable);
         }
@@ -83,6 +98,9 @@ public class NoteService {
         if (request.getTitle() != null) entry.setTitle(request.getTitle());
         if (request.getContent() != null) entry.setContent(request.getContent());
         if (request.getTags() != null) entry.setTags(tagsToString(request.getTags()));
+        if (request.getFolder() != null) {
+            entry.setFolder(request.getFolder().isEmpty() ? null : request.getFolder());
+        }
         entry.setUpdatedAt(Instant.now().toString());
         noteEntryRepository.save(entry);
         return toResponse(entry);
@@ -107,6 +125,10 @@ public class NoteService {
 
     public long countByUserId(String userId) {
         return noteEntryRepository.countByUserIdAndDeletedFalse(userId);
+    }
+
+    public List<String> getUserFolders(String userId) {
+        return noteEntryRepository.findDistinctFoldersByUserId(userId);
     }
 
     public List<String> getUserTags(String userId) {
@@ -148,6 +170,7 @@ public class NoteService {
                 .title(entry.getTitle())
                 .content(entry.getContent())
                 .tags(stringToTags(entry.getTags()))
+                .folder(entry.getFolder())
                 .createdAt(entry.getCreatedAt())
                 .updatedAt(entry.getUpdatedAt())
                 .build();

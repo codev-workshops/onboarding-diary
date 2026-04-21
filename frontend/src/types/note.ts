@@ -5,6 +5,7 @@ export interface NoteEntry {
   title: string;
   content: string;
   tags?: string;
+  folder?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -14,6 +15,7 @@ export interface CreateNoteRequest {
   title: string;
   content: string;
   tags?: string;
+  folder?: string;
 }
 
 export interface UpdateNoteRequest extends CreateNoteRequest {}

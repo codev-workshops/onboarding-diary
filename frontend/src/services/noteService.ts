@@ -6,7 +6,7 @@ export const noteService = {
   create: (data: CreateNoteRequest) =>
     api.post<NoteEntry>('/notes', data).then((res) => res.data),
 
-  list: (params?: { tag?: string; search?: string; page?: number; size?: number }) =>
+  list: (params?: { tag?: string; folder?: string; search?: string; page?: number; size?: number }) =>
     api.get<PageResponse<NoteEntry>>('/notes', { params }).then((res) => res.data),
 
   getById: (id: string) =>
@@ -20,4 +20,7 @@ export const noteService = {
 
   getTags: () =>
     api.get<string[]>('/notes/tags').then((res) => res.data),
+
+  getFolders: () =>
+    api.get<string[]>('/notes/folders').then((res) => res.data),
 };

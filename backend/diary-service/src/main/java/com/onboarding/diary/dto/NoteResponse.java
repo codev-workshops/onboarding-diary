@@ -17,6 +17,7 @@ public class NoteResponse {
     private String title;
     private String content;
     private List<String> tags;
+    private String folder;
     private String createdAt;
     private String updatedAt;
 }
