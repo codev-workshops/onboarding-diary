@@ -6,9 +6,10 @@ interface SummaryCardProps {
   value: number;
   label: string;
   gradient: string;
+  onClick?: () => void;
 }
 
-export default function SummaryCard({ icon, value, label, gradient }: SummaryCardProps) {
+export default function SummaryCard({ icon, value, label, gradient, onClick }: SummaryCardProps) {
   return (
     <Card
       sx={{
@@ -16,7 +17,9 @@ export default function SummaryCard({ icon, value, label, gradient }: SummaryCar
         color: '#fff',
         transition: 'transform 0.2s, box-shadow 0.2s',
         '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' },
+        cursor: onClick ? 'pointer' : 'default',
       }}
+      onClick={onClick}
     >
       <CardContent>
         <Box display="flex" alignItems="center" justifyContent="space-between">

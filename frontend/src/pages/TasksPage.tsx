@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -46,13 +47,14 @@ const emptyForm: CreateTaskRequest = {
 };
 
 export default function TasksPage() {
+  const [searchParams] = useSearchParams();
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
+  const [filterCategory, setFilterCategory] = useState(searchParams.get('category') || '');
   const [filterPriority, setFilterPriority] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');

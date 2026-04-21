@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -49,12 +50,13 @@ const emptyForm: CreateFeedbackRequest = {
 };
 
 export default function FeedbackPage() {
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState<FeedbackEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [filterType, setFilterType] = useState('');
+  const [filterType, setFilterType] = useState(searchParams.get('type') || '');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<FeedbackEntry | null>(null);
   const [form, setForm] = useState<CreateFeedbackRequest>(emptyForm);

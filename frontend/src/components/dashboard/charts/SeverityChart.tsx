@@ -10,11 +10,13 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 interface SeverityChartProps {
   data: Record<string, number>;
+  onBarClick?: (severity: string) => void;
 }
 
-export default function SeverityChart({ data }: SeverityChartProps) {
+export default function SeverityChart({ data, onBarClick }: SeverityChartProps) {
   const chartData = Object.entries(data).map(([name, value]) => ({
     name,
+    originalName: name,
     value,
     fill: SEVERITY_COLORS[name] || '#9E9E9E',
   }));
@@ -31,7 +33,12 @@ export default function SeverityChart({ data }: SeverityChartProps) {
             <XAxis dataKey="name" />
             <YAxis allowDecimals={false} />
             <Tooltip />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            <Bar
+              dataKey="value"
+              radius={[4, 4, 0, 0]}
+              onClick={(data: any) => onBarClick?.(data.originalName)}
+              style={{ cursor: onBarClick ? 'pointer' : 'default' }}
+            >
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}

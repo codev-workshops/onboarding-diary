@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Grid, Box, Typography, LinearProgress, Card, CardContent } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import BugReportIcon from '@mui/icons-material/BugReport';
@@ -13,6 +14,7 @@ import { dashboardService } from '@/services/dashboardService';
 import { DashboardResponse } from '@/types/common';
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,6 +57,7 @@ export default function DashboardPage() {
             value={data.completedTasks}
             label={`of ${data.totalTasks} Tasks Completed`}
             gradient="linear-gradient(135deg, #3F51B5, #7986CB)"
+            onClick={() => navigate('/tasks?status=COMPLETED')}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -63,6 +66,7 @@ export default function DashboardPage() {
             value={data.openIssues}
             label="Open Issues"
             gradient="linear-gradient(135deg, #F44336, #EF5350)"
+            onClick={() => navigate('/issues?status=OPEN')}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -71,6 +75,7 @@ export default function DashboardPage() {
             value={data.feedbackCount}
             label="Feedback Given"
             gradient="linear-gradient(135deg, #009688, #4DB6AC)"
+            onClick={() => navigate('/feedback')}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -79,6 +84,7 @@ export default function DashboardPage() {
             value={data.notesCount}
             label="Notes Created"
             gradient="linear-gradient(135deg, #FF9800, #FFB74D)"
+            onClick={() => navigate('/notes')}
           />
         </Grid>
       </Grid>
@@ -101,13 +107,13 @@ export default function DashboardPage() {
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
-          <CategoryPieChart data={data.tasksByCategory} />
+          <CategoryPieChart data={data.tasksByCategory} onSliceClick={(cat) => navigate(`/tasks?category=${cat}`)} />
         </Grid>
         <Grid item xs={12} md={4}>
-          <StatusBarChart data={data.tasksByStatus} />
+          <StatusBarChart data={data.tasksByStatus} onBarClick={(status) => navigate(`/tasks?status=${status}`)} />
         </Grid>
         <Grid item xs={12} md={4}>
-          <SeverityChart data={data.issuesBySeverity} />
+          <SeverityChart data={data.issuesBySeverity} onBarClick={(sev) => navigate(`/issues?severity=${sev}`)} />
         </Grid>
       </Grid>
     </Box>

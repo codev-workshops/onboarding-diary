@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -44,13 +45,14 @@ const emptyForm: CreateIssueRequest = {
 };
 
 export default function IssuesPage() {
+  const [searchParams] = useSearchParams();
   const [issues, setIssues] = useState<IssueEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterSeverity, setFilterSeverity] = useState('');
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
+  const [filterSeverity, setFilterSeverity] = useState(searchParams.get('severity') || '');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<IssueEntry | null>(null);
   const [form, setForm] = useState<CreateIssueRequest>(emptyForm);

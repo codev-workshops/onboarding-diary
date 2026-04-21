@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -30,13 +31,14 @@ import { noteService } from '@/services/noteService';
 import { NoteEntry, CreateNoteRequest } from '@/types/note';
 
 export default function NotesPage() {
+  const [searchParams] = useSearchParams();
   const [notes, setNotes] = useState<NoteEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState('');
-  const [selectedTag, setSelectedTag] = useState('');
+  const [selectedTag, setSelectedTag] = useState(searchParams.get('tag') || '');
   const [allTags, setAllTags] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<NoteEntry | null>(null);

@@ -10,11 +10,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface StatusBarChartProps {
   data: Record<string, number>;
+  onBarClick?: (status: string) => void;
 }
 
-export default function StatusBarChart({ data }: StatusBarChartProps) {
+export default function StatusBarChart({ data, onBarClick }: StatusBarChartProps) {
   const chartData = Object.entries(data).map(([name, value]) => ({
     name: name.replace(/_/g, ' '),
+    originalName: name,
     value,
     fill: STATUS_COLORS[name] || '#9E9E9E',
   }));
@@ -31,7 +33,12 @@ export default function StatusBarChart({ data }: StatusBarChartProps) {
             <XAxis dataKey="name" />
             <YAxis allowDecimals={false} />
             <Tooltip />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            <Bar
+              dataKey="value"
+              radius={[4, 4, 0, 0]}
+              onClick={(data: any) => onBarClick?.(data.originalName)}
+              style={{ cursor: onBarClick ? 'pointer' : 'default' }}
+            >
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
