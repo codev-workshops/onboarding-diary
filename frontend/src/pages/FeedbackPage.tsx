@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -30,10 +31,21 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
 import { feedbackService } from '@/services/feedbackService';
-import { FeedbackEntry, CreateFeedbackRequest, FeedbackType } from '@/types/feedback';
+import { FeedbackEntry, CreateFeedbackRequest, FeedbackType, FeedbackSource } from '@/types/feedback';
 import { TablePagination } from '@mui/material';
 
 const TYPES: FeedbackType[] = ['POSITIVE', 'SUGGESTION', 'CONCERN'];
+
+const SOURCES: FeedbackSource[] = ['MEETING', 'EMAIL', 'SLACK', 'ONE_ON_ONE', 'SURVEY', 'OTHER'];
+
+const SOURCE_COLORS: Record<string, string> = {
+  MEETING: '#3F51B5',
+  EMAIL: '#009688',
+  SLACK: '#E91E63',
+  ONE_ON_ONE: '#FF5722',
+  SURVEY: '#795548',
+  OTHER: '#607D8B',
+};
 
 const TYPE_COLORS: Record<string, string> = {
   POSITIVE: '#4CAF50',
@@ -46,6 +58,7 @@ const emptyForm: CreateFeedbackRequest = {
   subject: '',
   type: 'POSITIVE',
   details: '',
+  source: 'OTHER',
 };
 
 export default function FeedbackPage() {
@@ -54,7 +67,9 @@ export default function FeedbackPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [filterType, setFilterType] = useState('');
+  const [searchParams] = useSearchParams();
+  const [filterType, setFilterType] = useState(searchParams.get('type') || '');
+  const [filterSource, setFilterSource] = useState(searchParams.get('source') || '');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<FeedbackEntry | null>(null);
   const [form, setForm] = useState<CreateFeedbackRequest>(emptyForm);
@@ -63,7 +78,7 @@ export default function FeedbackPage() {
   const fetchItems = useCallback(() => {
     setLoading(true);
     feedbackService
-      .list({ page, size: rowsPerPage, type: filterType || undefined })
+      .list({ page, size: rowsPerPage, type: filterType || undefined, source: filterSource || undefined })
       .then((res) => {
         setItems(res.content);
         setTotalCount(res.totalElements);
@@ -73,15 +88,16 @@ export default function FeedbackPage() {
         setTotalCount(0);
       })
       .finally(() => setLoading(false));
-  }, [page, rowsPerPage, filterType]);
+  }, [page, rowsPerPage, filterType, filterSource]);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
-  const handleFilterChange = (_filterId: string, value: string) => {
+  const handleFilterChange = (filterId: string, value: string) => {
     setPage(0);
-    setFilterType(value);
+    if (filterId === 'type') setFilterType(value);
+    if (filterId === 'source') setFilterSource(value);
   };
 
   const openCreate = () => {
@@ -92,7 +108,7 @@ export default function FeedbackPage() {
 
   const openEdit = (item: FeedbackEntry) => {
     setEditingItem(item);
-    setForm({ date: item.date, subject: item.subject, type: item.type, details: item.details });
+    setForm({ date: item.date, subject: item.subject, type: item.type, details: item.details, source: item.source });
     setDialogOpen(true);
   };
 
@@ -131,6 +147,12 @@ export default function FeedbackPage() {
       value: filterType,
       options: TYPES.map((t) => ({ label: t, value: t })),
     },
+    {
+      id: 'source',
+      label: 'Source',
+      value: filterSource,
+      options: SOURCES.map((s) => ({ label: s.replace(/_/g, ' '), value: s })),
+    },
   ];
 
   return (
@@ -163,6 +185,11 @@ export default function FeedbackPage() {
                         label={item.type}
                         size="small"
                         sx={{ backgroundColor: TYPE_COLORS[item.type] || '#9E9E9E', color: '#fff', fontWeight: 600 }}
+                      />
+                      <Chip
+                        label={item.source.replace(/_/g, ' ')}
+                        size="small"
+                        sx={{ backgroundColor: SOURCE_COLORS[item.source] || '#607D8B', color: '#fff', fontWeight: 600, ml: 0.5 }}
                       />
                       <Box>
                         <IconButton size="small" onClick={() => openEdit(item)} color="primary">
@@ -212,6 +239,14 @@ export default function FeedbackPage() {
             <Select value={form.type} label="Type" onChange={(e: SelectChangeEvent) => setForm((prev) => ({ ...prev, type: e.target.value as FeedbackType }))}>
               {TYPES.map((t) => (
                 <MenuItem key={t} value={t}>{t}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Source</InputLabel>
+            <Select value={form.source || 'OTHER'} label="Source" onChange={(e: SelectChangeEvent) => setForm((prev) => ({ ...prev, source: e.target.value as FeedbackSource }))}>
+              {SOURCES.map((s) => (
+                <MenuItem key={s} value={s}>{s.replace(/_/g, ' ')}</MenuItem>
               ))}
             </Select>
           </FormControl>

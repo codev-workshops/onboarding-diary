@@ -7,6 +7,7 @@ import com.onboarding.diary.dto.CreateFeedbackRequest;
 import com.onboarding.diary.dto.FeedbackFilterParams;
 import com.onboarding.diary.dto.FeedbackResponse;
 import com.onboarding.diary.dto.UpdateFeedbackRequest;
+import com.onboarding.diary.entity.FeedbackSource;
 import com.onboarding.diary.entity.FeedbackType;
 import com.onboarding.diary.service.FeedbackService;
 import jakarta.validation.Valid;
@@ -45,10 +46,12 @@ public class FeedbackController {
     public ResponseEntity<PageResponse<FeedbackResponse>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) FeedbackType type) {
+            @RequestParam(required = false) FeedbackType type,
+            @RequestParam(required = false) FeedbackSource source) {
         String userId = SecurityUtils.getCurrentUserId();
         FeedbackFilterParams filters = FeedbackFilterParams.builder()
                 .type(type)
+                .source(source)
                 .build();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(feedbackService.list(userId, filters, pageable));
@@ -80,13 +83,15 @@ public class FeedbackController {
             @PathVariable String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) FeedbackType type) {
+            @RequestParam(required = false) FeedbackType type,
+            @RequestParam(required = false) FeedbackSource source) {
         String role = SecurityUtils.getCurrentUserRole();
         if (!"MANAGER".equals(role) && !"ADMIN".equals(role)) {
             throw new AccessDeniedException("Only managers and admins can view other users' feedback");
         }
         FeedbackFilterParams filters = FeedbackFilterParams.builder()
                 .type(type)
+                .source(source)
                 .build();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(feedbackService.listForUser(userId, filters, pageable));

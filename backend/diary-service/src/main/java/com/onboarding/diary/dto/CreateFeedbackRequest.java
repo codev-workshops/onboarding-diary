@@ -1,5 +1,6 @@
 package com.onboarding.diary.dto;
 
+import com.onboarding.diary.entity.FeedbackSource;
 import com.onboarding.diary.entity.FeedbackType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,4 +28,6 @@ public class CreateFeedbackRequest {
 
     @NotBlank(message = "Details are required")
     private String details;
+
+    private FeedbackSource source;
 }

@@ -40,6 +40,10 @@ public class FeedbackEntry {
     @Column(nullable = false)
     private String details;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private FeedbackSource source;
+
     @Column(nullable = false)
     private boolean deleted;
 

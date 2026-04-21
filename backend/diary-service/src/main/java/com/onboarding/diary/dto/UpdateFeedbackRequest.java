@@ -1,5 +1,6 @@
 package com.onboarding.diary.dto;
 
+import com.onboarding.diary.entity.FeedbackSource;
 import com.onboarding.diary.entity.FeedbackType;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -21,4 +22,6 @@ public class UpdateFeedbackRequest {
     private FeedbackType type;
 
     private String details;
+
+    private FeedbackSource source;
 }

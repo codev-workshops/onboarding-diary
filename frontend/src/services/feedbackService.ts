@@ -6,7 +6,7 @@ export const feedbackService = {
   create: (data: CreateFeedbackRequest) =>
     api.post<FeedbackEntry>('/feedback', data).then((res) => res.data),
 
-  list: (params?: { type?: string; page?: number; size?: number }) =>
+  list: (params?: { type?: string; source?: string; page?: number; size?: number }) =>
     api.get<PageResponse<FeedbackEntry>>('/feedback', { params }).then((res) => res.data),
 
   getById: (id: string) =>

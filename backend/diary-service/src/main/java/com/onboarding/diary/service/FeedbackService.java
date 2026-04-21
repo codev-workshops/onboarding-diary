@@ -8,6 +8,7 @@ import com.onboarding.diary.dto.FeedbackFilterParams;
 import com.onboarding.diary.dto.FeedbackResponse;
 import com.onboarding.diary.dto.UpdateFeedbackRequest;
 import com.onboarding.diary.entity.FeedbackEntry;
+import com.onboarding.diary.entity.FeedbackSource;
 import com.onboarding.diary.entity.FeedbackType;
 import com.onboarding.diary.repository.FeedbackEntryRepository;
 import java.time.Instant;
@@ -36,6 +37,7 @@ public class FeedbackService {
                 .subject(request.getSubject())
                 .type(request.getType())
                 .details(request.getDetails())
+                .source(request.getSource() != null ? request.getSource() : FeedbackSource.OTHER)
                 .deleted(false)
                 .createdAt(now)
                 .updatedAt(now)
@@ -56,9 +58,18 @@ public class FeedbackService {
 
     public PageResponse<FeedbackResponse> list(String userId, FeedbackFilterParams filters, Pageable pageable) {
         Page<FeedbackEntry> page;
-        if (filters.getType() != null) {
+        boolean hasType = filters.getType() != null;
+        boolean hasSource = filters.getSource() != null;
+
+        if (hasType && hasSource) {
+            page = feedbackEntryRepository.findByUserIdAndTypeAndSourceAndDeletedFalse(
+                    userId, filters.getType(), filters.getSource(), pageable);
+        } else if (hasType) {
             page = feedbackEntryRepository.findByUserIdAndTypeAndDeletedFalse(
                     userId, filters.getType(), pageable);
+        } else if (hasSource) {
+            page = feedbackEntryRepository.findByUserIdAndSourceAndDeletedFalse(
+                    userId, filters.getSource(), pageable);
         } else {
             page = feedbackEntryRepository.findByUserIdAndDeletedFalse(userId, pageable);
         }
@@ -80,6 +91,7 @@ public class FeedbackService {
         if (request.getSubject() != null) entry.setSubject(request.getSubject());
         if (request.getType() != null) entry.setType(request.getType());
         if (request.getDetails() != null) entry.setDetails(request.getDetails());
+        if (request.getSource() != null) entry.setSource(request.getSource());
         entry.setUpdatedAt(Instant.now().toString());
         feedbackEntryRepository.save(entry);
         return toResponse(entry);
@@ -114,6 +126,7 @@ public class FeedbackService {
                 .subject(entry.getSubject())
                 .type(entry.getType())
                 .details(entry.getDetails())
+                .source(entry.getSource())
                 .createdAt(entry.getCreatedAt())
                 .updatedAt(entry.getUpdatedAt())
                 .build();

@@ -1,6 +1,7 @@
 package com.onboarding.diary.repository;
 
 import com.onboarding.diary.entity.FeedbackEntry;
+import com.onboarding.diary.entity.FeedbackSource;
 import com.onboarding.diary.entity.FeedbackType;
 import java.util.List;
 import java.util.Optional;
@@ -21,4 +22,8 @@ public interface FeedbackEntryRepository extends JpaRepository<FeedbackEntry, St
     Optional<FeedbackEntry> findByIdAndDeletedFalse(String id);
 
     Page<FeedbackEntry> findByUserIdAndTypeAndDeletedFalse(String userId, FeedbackType type, Pageable pageable);
+
+    Page<FeedbackEntry> findByUserIdAndSourceAndDeletedFalse(String userId, FeedbackSource source, Pageable pageable);
+
+    Page<FeedbackEntry> findByUserIdAndTypeAndSourceAndDeletedFalse(String userId, FeedbackType type, FeedbackSource source, Pageable pageable);
 }
