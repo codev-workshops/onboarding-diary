@@ -1,7 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, Typography } from '@mui/material';
 
-const COLORS = ['#3F51B5', '#009688', '#FF9800', '#F44336', '#9C27B0', '#2196F3', '#4CAF50'];
+const COLORS = ['#2E7D32', '#00897B', '#FF9800', '#F44336', '#9C27B0', '#2196F3', '#66BB6A'];
 
 interface CategoryPieChartProps {
   data: Record<string, number>;

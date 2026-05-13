@@ -54,7 +54,7 @@ export default function DashboardPage() {
             icon={<AssignmentIcon sx={{ fontSize: 48 }} />}
             value={data.completedTasks}
             label={`of ${data.totalTasks} Tasks Completed`}
-            gradient="linear-gradient(135deg, #3F51B5, #7986CB)"
+            gradient="linear-gradient(135deg, #2E7D32, #66BB6A)"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -70,7 +70,7 @@ export default function DashboardPage() {
             icon={<FeedbackIcon sx={{ fontSize: 48 }} />}
             value={data.feedbackCount}
             label="Feedback Given"
-            gradient="linear-gradient(135deg, #009688, #4DB6AC)"
+            gradient="linear-gradient(135deg, #00897B, #4DB6AC)"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>

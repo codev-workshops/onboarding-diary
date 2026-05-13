@@ -9,14 +9,14 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #3F51B5 0%, #009688 100%)',
+        background: 'linear-gradient(135deg, #2E7D32 0%, #00897B 100%)',
         p: 2,
       }}
     >
       <Card sx={{ maxWidth: 440, width: '100%' }}>
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #3F51B5, #009688)',
+            background: 'linear-gradient(135deg, #2E7D32, #00897B)',
             py: 3,
             px: 4,
             textAlign: 'center',
