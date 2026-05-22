@@ -17,9 +17,10 @@ export default function NoteList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Note | null>(null)
   const [filters, setFilters] = useState<Record<string, string | undefined>>({})
-  const { selectedRecruitId, isManagerView } = useRecruit()
+  const { selectedRecruitId, isManagerView, loading: recruitLoading } = useRecruit()
 
   const fetch = useCallback(async () => {
+    if (recruitLoading) return
     setLoading(true)
     try {
       const params = { page, size: 20, ...filters }
@@ -30,7 +31,7 @@ export default function NoteList() {
       setTotal(res.data.totalElements)
     } catch { message.error('Failed to load notes') }
     setLoading(false)
-  }, [page, filters, selectedRecruitId, isManagerView])
+  }, [page, filters, selectedRecruitId, isManagerView, recruitLoading])
 
   useEffect(() => { fetch() }, [fetch])
 

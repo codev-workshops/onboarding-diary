@@ -24,9 +24,10 @@ export default function TaskList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Task | null>(null)
   const [filters, setFilters] = useState<Record<string, string | undefined>>({})
-  const { selectedRecruitId, isManagerView } = useRecruit()
+  const { selectedRecruitId, isManagerView, loading: recruitLoading } = useRecruit()
 
   const fetchTasks = useCallback(async () => {
+    if (recruitLoading) return
     setLoading(true)
     try {
       const params: Record<string, string | number | undefined> = { page, size: 20, ...filters }
@@ -37,7 +38,7 @@ export default function TaskList() {
       setTotal(res.data.totalElements)
     } catch { message.error('Failed to load tasks') }
     setLoading(false)
-  }, [page, filters, selectedRecruitId, isManagerView])
+  }, [page, filters, selectedRecruitId, isManagerView, recruitLoading])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 

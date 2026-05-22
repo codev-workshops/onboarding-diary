@@ -8,6 +8,7 @@ interface RecruitContextType {
   selectedRecruitId: string | null
   setSelectedRecruitId: (id: string | null) => void
   isManagerView: boolean
+  loading: boolean
 }
 
 const RecruitContext = createContext<RecruitContextType | undefined>(undefined)
@@ -16,17 +17,19 @@ export function RecruitProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [recruits, setRecruits] = useState<User[]>([])
   const [selectedRecruitId, setSelectedRecruitId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const isManager = user?.role === 'MANAGER'
 
   useEffect(() => {
     if (isManager) {
+      setLoading(true)
       usersApi.getMyRecruits().then((res) => {
         setRecruits(res.data)
         if (res.data.length > 0 && !selectedRecruitId) {
           setSelectedRecruitId(res.data[0].id)
         }
-      }).catch(() => setRecruits([]))
+      }).catch(() => setRecruits([])).finally(() => setLoading(false))
     } else {
       setRecruits([])
       setSelectedRecruitId(null)
@@ -39,6 +42,7 @@ export function RecruitProvider({ children }: { children: ReactNode }) {
       selectedRecruitId,
       setSelectedRecruitId,
       isManagerView: isManager && selectedRecruitId !== null,
+      loading,
     }}>
       {children}
     </RecruitContext.Provider>

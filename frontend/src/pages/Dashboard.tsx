@@ -15,9 +15,10 @@ const { Title } = Typography
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const { selectedRecruitId, isManagerView } = useRecruit()
+  const { selectedRecruitId, isManagerView, loading: recruitLoading } = useRecruit()
 
   useEffect(() => {
+    if (recruitLoading) return
     setLoading(true)
     const promise = isManagerView && selectedRecruitId
       ? dashboardApi.getForUser(selectedRecruitId)
@@ -26,7 +27,7 @@ export default function Dashboard() {
       setData(res.data)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [selectedRecruitId, isManagerView])
+  }, [selectedRecruitId, isManagerView, recruitLoading])
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />
   if (!data) return <div>Failed to load dashboard</div>

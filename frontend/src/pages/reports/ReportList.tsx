@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Table, Button, Card, Form, DatePicker, Select, message, Typography, Space } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
 import { reportsApi } from '../../api/reports'
+import { useRecruit } from '../../context/RecruitContext'
 import type { ReportItem } from '../../types'
 
 const { Title } = Typography
@@ -14,6 +15,7 @@ export default function ReportList() {
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [form] = Form.useForm()
+  const { selectedRecruitId, isManagerView } = useRecruit()
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -36,6 +38,7 @@ export default function ReportList() {
         dateTo: dates[1].format('YYYY-MM-DD'),
         reportType: values.reportType,
         format: values.format,
+        ...(isManagerView && selectedRecruitId ? { userId: selectedRecruitId } : {}),
       })
       message.success('Report generated')
       fetch()

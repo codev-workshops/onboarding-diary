@@ -19,9 +19,10 @@ export default function FeedbackList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Feedback | null>(null)
   const [filters, setFilters] = useState<Record<string, string | undefined>>({})
-  const { selectedRecruitId, isManagerView } = useRecruit()
+  const { selectedRecruitId, isManagerView, loading: recruitLoading } = useRecruit()
 
   const fetch = useCallback(async () => {
+    if (recruitLoading) return
     setLoading(true)
     try {
       const params = { page, size: 20, ...filters }
@@ -32,7 +33,7 @@ export default function FeedbackList() {
       setTotal(res.data.totalElements)
     } catch { message.error('Failed to load feedback') }
     setLoading(false)
-  }, [page, filters, selectedRecruitId, isManagerView])
+  }, [page, filters, selectedRecruitId, isManagerView, recruitLoading])
 
   useEffect(() => { fetch() }, [fetch])
 
