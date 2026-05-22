@@ -14,17 +14,23 @@ import java.util.UUID;
 
 public interface TaskRepository extends JpaRepository<Task, UUID> {
 
-    @Query("SELECT t FROM Task t WHERE t.user.id = :userId " +
-            "AND (:dateFrom IS NULL OR t.date >= :dateFrom) " +
-            "AND (:dateTo IS NULL OR t.date <= :dateTo) " +
-            "AND (:category IS NULL OR t.category = :category) " +
-            "AND (:status IS NULL OR t.status = :status) " +
-            "ORDER BY t.date DESC")
+    @Query(value = "SELECT * FROM tasks t WHERE t.user_id = :userId " +
+            "AND (CAST(:dateFrom AS DATE) IS NULL OR t.date >= :dateFrom) " +
+            "AND (CAST(:dateTo AS DATE) IS NULL OR t.date <= :dateTo) " +
+            "AND (CAST(:category AS VARCHAR) IS NULL OR t.category = CAST(:category AS VARCHAR)) " +
+            "AND (CAST(:status AS VARCHAR) IS NULL OR t.status = CAST(:status AS VARCHAR)) " +
+            "ORDER BY t.date DESC",
+            countQuery = "SELECT COUNT(*) FROM tasks t WHERE t.user_id = :userId " +
+            "AND (CAST(:dateFrom AS DATE) IS NULL OR t.date >= :dateFrom) " +
+            "AND (CAST(:dateTo AS DATE) IS NULL OR t.date <= :dateTo) " +
+            "AND (CAST(:category AS VARCHAR) IS NULL OR t.category = CAST(:category AS VARCHAR)) " +
+            "AND (CAST(:status AS VARCHAR) IS NULL OR t.status = CAST(:status AS VARCHAR))",
+            nativeQuery = true)
     Page<Task> findByUserWithFilters(@Param("userId") UUID userId,
                                      @Param("dateFrom") LocalDate dateFrom,
                                      @Param("dateTo") LocalDate dateTo,
-                                     @Param("category") TaskCategory category,
-                                     @Param("status") TaskStatus status,
+                                     @Param("category") String category,
+                                     @Param("status") String status,
                                      Pageable pageable);
 
     long countByUserId(UUID userId);

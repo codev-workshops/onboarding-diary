@@ -14,17 +14,23 @@ import java.util.UUID;
 
 public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
-    @Query("SELECT i FROM Issue i WHERE i.user.id = :userId " +
-            "AND (:dateFrom IS NULL OR i.date >= :dateFrom) " +
-            "AND (:dateTo IS NULL OR i.date <= :dateTo) " +
-            "AND (:severity IS NULL OR i.severity = :severity) " +
-            "AND (:status IS NULL OR i.status = :status) " +
-            "ORDER BY i.date DESC")
+    @Query(value = "SELECT * FROM issues i WHERE i.user_id = :userId " +
+            "AND (CAST(:dateFrom AS DATE) IS NULL OR i.date >= :dateFrom) " +
+            "AND (CAST(:dateTo AS DATE) IS NULL OR i.date <= :dateTo) " +
+            "AND (CAST(:severity AS VARCHAR) IS NULL OR i.severity = CAST(:severity AS VARCHAR)) " +
+            "AND (CAST(:status AS VARCHAR) IS NULL OR i.status = CAST(:status AS VARCHAR)) " +
+            "ORDER BY i.date DESC",
+            countQuery = "SELECT COUNT(*) FROM issues i WHERE i.user_id = :userId " +
+            "AND (CAST(:dateFrom AS DATE) IS NULL OR i.date >= :dateFrom) " +
+            "AND (CAST(:dateTo AS DATE) IS NULL OR i.date <= :dateTo) " +
+            "AND (CAST(:severity AS VARCHAR) IS NULL OR i.severity = CAST(:severity AS VARCHAR)) " +
+            "AND (CAST(:status AS VARCHAR) IS NULL OR i.status = CAST(:status AS VARCHAR))",
+            nativeQuery = true)
     Page<Issue> findByUserWithFilters(@Param("userId") UUID userId,
                                       @Param("dateFrom") LocalDate dateFrom,
                                       @Param("dateTo") LocalDate dateTo,
-                                      @Param("severity") IssueSeverity severity,
-                                      @Param("status") IssueStatus status,
+                                      @Param("severity") String severity,
+                                      @Param("status") String status,
                                       Pageable pageable);
 
     long countByUserId(UUID userId);

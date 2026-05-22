@@ -20,10 +20,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     List<User> findByManagerId(UUID managerId);
 
-    @Query("SELECT u FROM User u WHERE " +
-            "(:role IS NULL OR u.role = :role) AND " +
-            "(:isActive IS NULL OR u.isActive = :isActive)")
-    Page<User> findWithFilters(@Param("role") Role role,
+    @Query(value = "SELECT * FROM users u WHERE " +
+            "(CAST(:role AS VARCHAR) IS NULL OR u.role = CAST(:role AS VARCHAR)) AND " +
+            "(CAST(:isActive AS BOOLEAN) IS NULL OR u.is_active = :isActive)",
+            countQuery = "SELECT COUNT(*) FROM users u WHERE " +
+            "(CAST(:role AS VARCHAR) IS NULL OR u.role = CAST(:role AS VARCHAR)) AND " +
+            "(CAST(:isActive AS BOOLEAN) IS NULL OR u.is_active = :isActive)",
+            nativeQuery = true)
+    Page<User> findWithFilters(@Param("role") String role,
                                @Param("isActive") Boolean isActive,
                                Pageable pageable);
 }

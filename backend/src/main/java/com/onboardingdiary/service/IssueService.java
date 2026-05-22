@@ -50,7 +50,9 @@ public class IssueService {
 
     public Page<IssueResponse> list(UUID userId, LocalDate dateFrom, LocalDate dateTo,
                                      IssueSeverity severity, IssueStatus status, Pageable pageable) {
-        return issueRepository.findByUserWithFilters(userId, dateFrom, dateTo, severity, status, pageable)
+        return issueRepository.findByUserWithFilters(userId, dateFrom, dateTo,
+                        severity != null ? severity.name() : null,
+                        status != null ? status.name() : null, pageable)
                 .map(IssueResponse::from);
     }
 

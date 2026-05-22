@@ -47,7 +47,9 @@ public class TaskService {
 
     public Page<TaskResponse> list(UUID userId, LocalDate dateFrom, LocalDate dateTo,
                                     TaskCategory category, TaskStatus status, Pageable pageable) {
-        return taskRepository.findByUserWithFilters(userId, dateFrom, dateTo, category, status, pageable)
+        return taskRepository.findByUserWithFilters(userId, dateFrom, dateTo,
+                        category != null ? category.name() : null,
+                        status != null ? status.name() : null, pageable)
                 .map(TaskResponse::from);
     }
 

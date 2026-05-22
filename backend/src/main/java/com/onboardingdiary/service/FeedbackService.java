@@ -44,7 +44,8 @@ public class FeedbackService {
 
     public Page<FeedbackResponse> list(UUID userId, LocalDate dateFrom, LocalDate dateTo,
                                         FeedbackType type, Pageable pageable) {
-        return feedbackRepository.findByUserWithFilters(userId, dateFrom, dateTo, type, pageable)
+        return feedbackRepository.findByUserWithFilters(userId, dateFrom, dateTo,
+                        type != null ? type.name() : null, pageable)
                 .map(FeedbackResponse::from);
     }
 

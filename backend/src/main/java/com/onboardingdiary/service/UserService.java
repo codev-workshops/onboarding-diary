@@ -50,8 +50,8 @@ public class UserService {
     }
 
     public Page<UserResponse> listUsers(String role, Boolean isActive, Pageable pageable) {
-        Role roleEnum = role != null ? Role.valueOf(role.toUpperCase()) : null;
-        return userRepository.findWithFilters(roleEnum, isActive, pageable)
+        String roleStr = role != null ? role.toUpperCase() : null;
+        return userRepository.findWithFilters(roleStr, isActive, pageable)
                 .map(UserResponse::from);
     }
 

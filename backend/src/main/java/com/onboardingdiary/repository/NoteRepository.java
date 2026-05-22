@@ -12,10 +12,14 @@ import java.util.UUID;
 
 public interface NoteRepository extends JpaRepository<Note, UUID> {
 
-    @Query("SELECT n FROM Note n WHERE n.user.id = :userId " +
-            "AND (:dateFrom IS NULL OR n.date >= :dateFrom) " +
-            "AND (:dateTo IS NULL OR n.date <= :dateTo) " +
-            "ORDER BY n.date DESC")
+    @Query(value = "SELECT * FROM notes n WHERE n.user_id = :userId " +
+            "AND (CAST(:dateFrom AS DATE) IS NULL OR n.date >= :dateFrom) " +
+            "AND (CAST(:dateTo AS DATE) IS NULL OR n.date <= :dateTo) " +
+            "ORDER BY n.date DESC",
+            countQuery = "SELECT COUNT(*) FROM notes n WHERE n.user_id = :userId " +
+            "AND (CAST(:dateFrom AS DATE) IS NULL OR n.date >= :dateFrom) " +
+            "AND (CAST(:dateTo AS DATE) IS NULL OR n.date <= :dateTo)",
+            nativeQuery = true)
     Page<Note> findByUserWithFilters(@Param("userId") UUID userId,
                                      @Param("dateFrom") LocalDate dateFrom,
                                      @Param("dateTo") LocalDate dateTo,

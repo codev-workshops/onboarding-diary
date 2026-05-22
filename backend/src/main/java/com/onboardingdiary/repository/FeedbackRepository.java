@@ -13,15 +13,20 @@ import java.util.UUID;
 
 public interface FeedbackRepository extends JpaRepository<Feedback, UUID> {
 
-    @Query("SELECT f FROM Feedback f WHERE f.user.id = :userId " +
-            "AND (:dateFrom IS NULL OR f.date >= :dateFrom) " +
-            "AND (:dateTo IS NULL OR f.date <= :dateTo) " +
-            "AND (:type IS NULL OR f.type = :type) " +
-            "ORDER BY f.date DESC")
+    @Query(value = "SELECT * FROM feedback f WHERE f.user_id = :userId " +
+            "AND (CAST(:dateFrom AS DATE) IS NULL OR f.date >= :dateFrom) " +
+            "AND (CAST(:dateTo AS DATE) IS NULL OR f.date <= :dateTo) " +
+            "AND (CAST(:type AS VARCHAR) IS NULL OR f.type = CAST(:type AS VARCHAR)) " +
+            "ORDER BY f.date DESC",
+            countQuery = "SELECT COUNT(*) FROM feedback f WHERE f.user_id = :userId " +
+            "AND (CAST(:dateFrom AS DATE) IS NULL OR f.date >= :dateFrom) " +
+            "AND (CAST(:dateTo AS DATE) IS NULL OR f.date <= :dateTo) " +
+            "AND (CAST(:type AS VARCHAR) IS NULL OR f.type = CAST(:type AS VARCHAR))",
+            nativeQuery = true)
     Page<Feedback> findByUserWithFilters(@Param("userId") UUID userId,
                                          @Param("dateFrom") LocalDate dateFrom,
                                          @Param("dateTo") LocalDate dateTo,
-                                         @Param("type") FeedbackType type,
+                                         @Param("type") String type,
                                          Pageable pageable);
 
     long countByUserId(UUID userId);
