@@ -6,6 +6,8 @@ import {
   MessageOutlined,
   FileTextOutlined,
   BarChartOutlined,
+  LineChartOutlined,
+  SearchOutlined,
   UserOutlined,
   TeamOutlined,
   LogoutOutlined,
@@ -41,6 +43,8 @@ export default function AppLayout() {
     { key: '/feedback', icon: <MessageOutlined />, label: 'Feedback' },
     { key: '/notes', icon: <FileTextOutlined />, label: 'Notes' },
     { key: '/reports', icon: <BarChartOutlined />, label: 'Reports' },
+    { key: '/analytics', icon: <LineChartOutlined />, label: 'Analytics' },
+    { key: '/search', icon: <SearchOutlined />, label: 'Search' },
     { key: '/profile', icon: <UserOutlined />, label: 'Profile' },
     ...(user?.role === 'ADMIN'
       ? [{ key: '/admin/users', icon: <TeamOutlined />, label: 'User Management' }]

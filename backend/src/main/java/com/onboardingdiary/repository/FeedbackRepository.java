@@ -30,4 +30,18 @@ public interface FeedbackRepository extends JpaRepository<Feedback, UUID> {
                                          Pageable pageable);
 
     long countByUserId(UUID userId);
+
+    @Query("SELECT f.type, COUNT(f) FROM Feedback f WHERE f.user.id = :userId GROUP BY f.type")
+    java.util.List<Object[]> countByUserGroupByType(@Param("userId") UUID userId);
+
+    @Query(value = "SELECT TO_CHAR(date_trunc('week', f.date), 'YYYY-MM-DD') AS week, COUNT(*) " +
+            "FROM feedback f WHERE f.user_id = :userId AND f.date >= :since " +
+            "GROUP BY week ORDER BY week", nativeQuery = true)
+    java.util.List<Object[]> countWeeklyActivity(@Param("userId") UUID userId, @Param("since") LocalDate since);
+
+    @Query(value = "SELECT * FROM feedback f WHERE f.user_id = :userId " +
+            "AND (LOWER(f.subject) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(f.details) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+            "ORDER BY f.date DESC", nativeQuery = true)
+    java.util.List<Feedback> search(@Param("userId") UUID userId, @Param("query") String query);
 }

@@ -36,4 +36,22 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
     long countByUserId(UUID userId);
 
     long countByUserIdAndStatusIn(UUID userId, java.util.Collection<IssueStatus> statuses);
+
+    @Query("SELECT i.severity, COUNT(i) FROM Issue i WHERE i.user.id = :userId GROUP BY i.severity")
+    java.util.List<Object[]> countByUserGroupBySeverity(@Param("userId") UUID userId);
+
+    @Query("SELECT i.status, COUNT(i) FROM Issue i WHERE i.user.id = :userId GROUP BY i.status")
+    java.util.List<Object[]> countByUserGroupByStatus(@Param("userId") UUID userId);
+
+    @Query(value = "SELECT TO_CHAR(date_trunc('week', i.date), 'YYYY-MM-DD') AS week, COUNT(*) " +
+            "FROM issues i WHERE i.user_id = :userId AND i.date >= :since " +
+            "GROUP BY week ORDER BY week", nativeQuery = true)
+    java.util.List<Object[]> countWeeklyActivity(@Param("userId") UUID userId, @Param("since") LocalDate since);
+
+    @Query(value = "SELECT * FROM issues i WHERE i.user_id = :userId " +
+            "AND (LOWER(i.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(i.description) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(i.resolution_notes) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+            "ORDER BY i.date DESC", nativeQuery = true)
+    java.util.List<Issue> search(@Param("userId") UUID userId, @Param("query") String query);
 }

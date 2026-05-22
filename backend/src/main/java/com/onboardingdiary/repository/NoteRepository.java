@@ -26,4 +26,16 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
                                      Pageable pageable);
 
     long countByUserId(UUID userId);
+
+    @Query(value = "SELECT TO_CHAR(date_trunc('week', n.date), 'YYYY-MM-DD') AS week, COUNT(*) " +
+            "FROM notes n WHERE n.user_id = :userId AND n.date >= :since " +
+            "GROUP BY week ORDER BY week", nativeQuery = true)
+    java.util.List<Object[]> countWeeklyActivity(@Param("userId") UUID userId, @Param("since") LocalDate since);
+
+    @Query(value = "SELECT * FROM notes n WHERE n.user_id = :userId " +
+            "AND (LOWER(n.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(n.content) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(n.tags) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+            "ORDER BY n.date DESC", nativeQuery = true)
+    java.util.List<Note> search(@Param("userId") UUID userId, @Param("query") String query);
 }

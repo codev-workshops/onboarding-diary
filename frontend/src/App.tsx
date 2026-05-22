@@ -14,6 +14,8 @@ import NoteList from './pages/notes/NoteList'
 import ReportList from './pages/reports/ReportList'
 import Profile from './pages/Profile'
 import UserManagement from './pages/admin/UserManagement'
+import Analytics from './pages/Analytics'
+import SearchPage from './pages/Search'
 
 function App() {
   return (
@@ -31,6 +33,8 @@ function App() {
               <Route path="/feedback" element={<FeedbackList />} />
               <Route path="/notes" element={<NoteList />} />
               <Route path="/reports" element={<ReportList />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/search" element={<SearchPage />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin/users" element={
                 <ProtectedRoute roles={['ADMIN']}><UserManagement /></ProtectedRoute>
