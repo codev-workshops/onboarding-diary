@@ -5,6 +5,7 @@ import com.onboardingdiary.dto.response.FeedbackResponse;
 import com.onboardingdiary.enums.FeedbackType;
 import com.onboardingdiary.security.UserPrincipal;
 import com.onboardingdiary.service.FeedbackService;
+import com.onboardingdiary.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import java.util.UUID;
 public class FeedbackController {
 
     private final FeedbackService feedbackService;
+    private final UserService userService;
 
     @PostMapping
     public ResponseEntity<FeedbackResponse> create(@AuthenticationPrincipal UserPrincipal principal,
@@ -63,11 +65,13 @@ public class FeedbackController {
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<Page<FeedbackResponse>> listForUser(@PathVariable UUID userId,
+    public ResponseEntity<Page<FeedbackResponse>> listForUser(@AuthenticationPrincipal UserPrincipal principal,
+                                                               @PathVariable UUID userId,
                                                                @RequestParam(required = false) LocalDate dateFrom,
                                                                @RequestParam(required = false) LocalDate dateTo,
                                                                @RequestParam(required = false) FeedbackType type,
                                                                @PageableDefault(size = 20) Pageable pageable) {
+        userService.verifyManagerAccess(principal.getId(), principal.getRole(), userId);
         return ResponseEntity.ok(feedbackService.list(userId, dateFrom, dateTo, type, pageable));
     }
 }

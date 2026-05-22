@@ -6,6 +6,7 @@ import com.onboardingdiary.enums.IssueSeverity;
 import com.onboardingdiary.enums.IssueStatus;
 import com.onboardingdiary.security.UserPrincipal;
 import com.onboardingdiary.service.IssueService;
+import com.onboardingdiary.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import java.util.UUID;
 public class IssueController {
 
     private final IssueService issueService;
+    private final UserService userService;
 
     @PostMapping
     public ResponseEntity<IssueResponse> create(@AuthenticationPrincipal UserPrincipal principal,
@@ -65,12 +67,14 @@ public class IssueController {
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<Page<IssueResponse>> listForUser(@PathVariable UUID userId,
+    public ResponseEntity<Page<IssueResponse>> listForUser(@AuthenticationPrincipal UserPrincipal principal,
+                                                            @PathVariable UUID userId,
                                                             @RequestParam(required = false) LocalDate dateFrom,
                                                             @RequestParam(required = false) LocalDate dateTo,
                                                             @RequestParam(required = false) IssueSeverity severity,
                                                             @RequestParam(required = false) IssueStatus status,
                                                             @PageableDefault(size = 20) Pageable pageable) {
+        userService.verifyManagerAccess(principal.getId(), principal.getRole(), userId);
         return ResponseEntity.ok(issueService.list(userId, dateFrom, dateTo, severity, status, pageable));
     }
 }

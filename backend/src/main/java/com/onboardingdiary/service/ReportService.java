@@ -53,6 +53,12 @@ public class ReportService {
                 userRepository.findById(targetUserId)
                         .orElseThrow(() -> new ResourceNotFoundException("Target user not found"));
 
+        if (!targetUserId.equals(requesterId) && role.equals("MANAGER")) {
+            if (targetUser.getManager() == null || !targetUser.getManager().getId().equals(requesterId)) {
+                throw new BadRequestException("You can only generate reports for recruits assigned to you");
+            }
+        }
+
         try {
             String filePath = generateFile(targetUserId, request);
 
@@ -121,33 +127,36 @@ public class ReportService {
         LocalDate from = request.getDateFrom();
         LocalDate to = request.getDateTo();
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filePath.toFile()))) {
+        try (com.opencsv.CSVWriter csvWriter = new com.opencsv.CSVWriter(new FileWriter(filePath.toFile()))) {
             ReportType type = request.getReportType();
 
             if (type == ReportType.TASKS || type == ReportType.COMBINED) {
-                writer.println("--- TASKS ---");
-                writer.println("Date,Title,Category,Status,Priority,Description");
+                csvWriter.writeNext(new String[]{"--- TASKS ---", "", "", "", "", ""});
+                csvWriter.writeNext(new String[]{"Date", "Title", "Category", "Status", "Priority", "Description"});
                 taskRepository.findByUserWithFilters(userId, from, to, null, null, all)
-                        .forEach(t -> writer.printf("%s,\"%s\",%s,%s,%s,\"%s\"%n",
-                                t.getDate(), t.getTitle(), t.getCategory(), t.getStatus(),
-                                t.getPriority(), t.getDescription() != null ? t.getDescription() : ""));
+                        .forEach(t -> csvWriter.writeNext(new String[]{
+                                t.getDate().toString(), t.getTitle(), t.getCategory().name(),
+                                t.getStatus().name(), t.getPriority().name(),
+                                t.getDescription() != null ? t.getDescription() : ""}));
             }
 
             if (type == ReportType.ISSUES || type == ReportType.COMBINED) {
-                writer.println("--- ISSUES ---");
-                writer.println("Date,Title,Severity,Status,Description,Resolution Notes");
+                csvWriter.writeNext(new String[]{"--- ISSUES ---", "", "", "", "", ""});
+                csvWriter.writeNext(new String[]{"Date", "Title", "Severity", "Status", "Description", "Resolution Notes"});
                 issueRepository.findByUserWithFilters(userId, from, to, null, null, all)
-                        .forEach(i -> writer.printf("%s,\"%s\",%s,%s,\"%s\",\"%s\"%n",
-                                i.getDate(), i.getTitle(), i.getSeverity(), i.getStatus(),
-                                i.getDescription(), i.getResolutionNotes() != null ? i.getResolutionNotes() : ""));
+                        .forEach(i -> csvWriter.writeNext(new String[]{
+                                i.getDate().toString(), i.getTitle(), i.getSeverity().name(),
+                                i.getStatus().name(), i.getDescription(),
+                                i.getResolutionNotes() != null ? i.getResolutionNotes() : ""}));
             }
 
             if (type == ReportType.FEEDBACK || type == ReportType.COMBINED) {
-                writer.println("--- FEEDBACK ---");
-                writer.println("Date,Subject,Type,Details");
+                csvWriter.writeNext(new String[]{"--- FEEDBACK ---", "", "", ""});
+                csvWriter.writeNext(new String[]{"Date", "Subject", "Type", "Details"});
                 feedbackRepository.findByUserWithFilters(userId, from, to, null, all)
-                        .forEach(f -> writer.printf("%s,\"%s\",%s,\"%s\"%n",
-                                f.getDate(), f.getSubject(), f.getType(), f.getDetails()));
+                        .forEach(f -> csvWriter.writeNext(new String[]{
+                                f.getDate().toString(), f.getSubject(), f.getType().name(),
+                                f.getDetails()}));
             }
         }
     }

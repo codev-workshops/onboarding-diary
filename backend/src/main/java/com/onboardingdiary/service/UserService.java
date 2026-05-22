@@ -8,6 +8,7 @@ import com.onboardingdiary.entity.User;
 import com.onboardingdiary.enums.Role;
 import com.onboardingdiary.exception.BadRequestException;
 import com.onboardingdiary.exception.ResourceNotFoundException;
+import com.onboardingdiary.exception.UnauthorizedException;
 import com.onboardingdiary.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -94,6 +95,18 @@ public class UserService {
 
         user = userRepository.save(user);
         return UserResponse.from(user);
+    }
+
+    public void verifyManagerAccess(UUID requesterId, String role, UUID targetUserId) {
+        if (role.equals("ADMIN")) return;
+        if (role.equals("MANAGER")) {
+            User target = findUserOrThrow(targetUserId);
+            if (target.getManager() != null && target.getManager().getId().equals(requesterId)) {
+                return;
+            }
+            throw new UnauthorizedException("You can only access data for recruits assigned to you");
+        }
+        throw new UnauthorizedException("Access denied");
     }
 
     private User findUserOrThrow(UUID userId) {

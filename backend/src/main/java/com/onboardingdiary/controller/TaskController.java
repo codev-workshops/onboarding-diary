@@ -6,6 +6,7 @@ import com.onboardingdiary.enums.TaskCategory;
 import com.onboardingdiary.enums.TaskStatus;
 import com.onboardingdiary.security.UserPrincipal;
 import com.onboardingdiary.service.TaskService;
+import com.onboardingdiary.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import java.util.UUID;
 public class TaskController {
 
     private final TaskService taskService;
+    private final UserService userService;
 
     @PostMapping
     public ResponseEntity<TaskResponse> create(@AuthenticationPrincipal UserPrincipal principal,
@@ -65,12 +67,14 @@ public class TaskController {
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<Page<TaskResponse>> listForUser(@PathVariable UUID userId,
+    public ResponseEntity<Page<TaskResponse>> listForUser(@AuthenticationPrincipal UserPrincipal principal,
+                                                           @PathVariable UUID userId,
                                                            @RequestParam(required = false) LocalDate dateFrom,
                                                            @RequestParam(required = false) LocalDate dateTo,
                                                            @RequestParam(required = false) TaskCategory category,
                                                            @RequestParam(required = false) TaskStatus status,
                                                            @PageableDefault(size = 20) Pageable pageable) {
+        userService.verifyManagerAccess(principal.getId(), principal.getRole(), userId);
         return ResponseEntity.ok(taskService.list(userId, dateFrom, dateTo, category, status, pageable));
     }
 }
