@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -29,6 +30,12 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(userService.getUserById(principal.getId()));
+    }
+
+    @GetMapping("/my-recruits")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<List<UserResponse>> getMyRecruits(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(userService.getRecruitsForManager(principal.getId()));
     }
 
     @PutMapping("/me")

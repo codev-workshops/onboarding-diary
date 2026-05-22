@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import { AuthProvider } from './context/AuthContext'
+import { RecruitProvider } from './context/RecruitContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import Login from './pages/Login'
@@ -18,6 +19,7 @@ function App() {
   return (
     <ConfigProvider theme={{ token: { colorPrimary: '#1677ff' } }}>
       <AuthProvider>
+        <RecruitProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -37,6 +39,7 @@ function App() {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
+        </RecruitProvider>
       </AuthProvider>
     </ConfigProvider>
   )

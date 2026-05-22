@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Table, Button, Space, Tag, Modal, message, Select, DatePicker, Typography } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { feedbackApi } from '../../api/feedback'
+import { useRecruit } from '../../context/RecruitContext'
 import type { Feedback, FeedbackType } from '../../types'
 import FeedbackForm from './FeedbackForm'
 
@@ -18,16 +19,20 @@ export default function FeedbackList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Feedback | null>(null)
   const [filters, setFilters] = useState<Record<string, string | undefined>>({})
+  const { selectedRecruitId, isManagerView } = useRecruit()
 
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await feedbackApi.list({ page, size: 20, ...filters })
+      const params = { page, size: 20, ...filters }
+      const res = isManagerView && selectedRecruitId
+        ? await feedbackApi.listForUser(selectedRecruitId, params)
+        : await feedbackApi.list(params)
       setItems(res.data.content)
       setTotal(res.data.totalElements)
     } catch { message.error('Failed to load feedback') }
     setLoading(false)
-  }, [page, filters])
+  }, [page, filters, selectedRecruitId, isManagerView])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -41,7 +46,7 @@ export default function FeedbackList() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Feedback</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalOpen(true) }}>New Feedback</Button>
+{!isManagerView && <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalOpen(true) }}>New Feedback</Button>}
       </div>
       <Space wrap style={{ marginBottom: 16 }}>
         <Select placeholder="Type" allowClear style={{ width: 150 }}
@@ -58,7 +63,7 @@ export default function FeedbackList() {
           { title: 'Date', dataIndex: 'date', width: 110 },
           { title: 'Subject', dataIndex: 'subject' },
           { title: 'Type', dataIndex: 'type', render: (v: FeedbackType) => <Tag color={typeColors[v]}>{v}</Tag> },
-          {
+          ...(!isManagerView ? [{
             title: 'Actions', width: 120,
             render: (_: unknown, r: Feedback) => (
               <Space>
@@ -66,7 +71,7 @@ export default function FeedbackList() {
                 <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(r.id)} />
               </Space>
             ),
-          },
+          }] : []),
         ]}
       />
       <Modal title={editing ? 'Edit Feedback' : 'New Feedback'} open={modalOpen} onCancel={() => { setModalOpen(false); setEditing(null) }} footer={null} destroyOnHidden>

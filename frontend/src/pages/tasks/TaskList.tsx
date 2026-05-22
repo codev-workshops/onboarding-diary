@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Table, Button, Space, Tag, Modal, message, Select, DatePicker, Typography } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { tasksApi } from '../../api/tasks'
+import { useRecruit } from '../../context/RecruitContext'
 import type { Task, TaskStatus, TaskCategory, TaskPriority } from '../../types'
 import TaskForm from './TaskForm'
 
@@ -23,17 +24,20 @@ export default function TaskList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Task | null>(null)
   const [filters, setFilters] = useState<Record<string, string | undefined>>({})
+  const { selectedRecruitId, isManagerView } = useRecruit()
 
   const fetchTasks = useCallback(async () => {
     setLoading(true)
     try {
       const params: Record<string, string | number | undefined> = { page, size: 20, ...filters }
-      const res = await tasksApi.list(params)
+      const res = isManagerView && selectedRecruitId
+        ? await tasksApi.listForUser(selectedRecruitId, params)
+        : await tasksApi.list(params)
       setTasks(res.data.content)
       setTotal(res.data.totalElements)
     } catch { message.error('Failed to load tasks') }
     setLoading(false)
-  }, [page, filters])
+  }, [page, filters, selectedRecruitId, isManagerView])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
@@ -58,9 +62,11 @@ export default function TaskList() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Tasks</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalOpen(true) }}>
-          New Task
-        </Button>
+        {!isManagerView && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalOpen(true) }}>
+            New Task
+          </Button>
+        )}
       </div>
       <Space wrap style={{ marginBottom: 16 }}>
         <Select placeholder="Category" allowClear style={{ width: 150 }}
@@ -88,7 +94,7 @@ export default function TaskList() {
           { title: 'Category', dataIndex: 'category', render: (v: TaskCategory) => <Tag>{v}</Tag> },
           { title: 'Status', dataIndex: 'status', render: (v: TaskStatus) => <Tag color={statusColors[v]}>{v}</Tag> },
           { title: 'Priority', dataIndex: 'priority', render: (v: TaskPriority) => <Tag color={priorityColors[v]}>{v}</Tag> },
-          {
+          ...(!isManagerView ? [{
             title: 'Actions', width: 120,
             render: (_: unknown, record: Task) => (
               <Space>
@@ -96,7 +102,7 @@ export default function TaskList() {
                 <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} />
               </Space>
             ),
-          },
+          }] : []),
         ]}
       />
       <Modal title={editing ? 'Edit Task' : 'New Task'} open={modalOpen} onCancel={() => { setModalOpen(false); setEditing(null) }} footer={null} destroyOnHidden>

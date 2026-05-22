@@ -12,4 +12,6 @@ export const usersApi = {
 
   create: (data: Record<string, unknown>) =>
     apiClient.post<User>('/users', data),
+
+  getMyRecruits: () => apiClient.get<User[]>('/users/my-recruits'),
 }

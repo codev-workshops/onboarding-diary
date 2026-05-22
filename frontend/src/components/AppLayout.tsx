@@ -1,4 +1,4 @@
-import { Layout, Menu, Typography, Button, Space, Tag } from 'antd'
+import { Layout, Menu, Typography, Button, Space, Tag, Select } from 'antd'
 import {
   DashboardOutlined,
   CheckSquareOutlined,
@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useRecruit } from '../context/RecruitContext'
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
@@ -26,6 +27,7 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
+  const { recruits, selectedRecruitId, setSelectedRecruitId, isManagerView } = useRecruit()
 
   const handleLogout = () => {
     logout()
@@ -62,7 +64,19 @@ export default function AppLayout() {
         />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Space>
+            {user?.role === 'MANAGER' && recruits.length > 0 && (
+              <Select
+                style={{ width: 250 }}
+                placeholder="Select a recruit"
+                value={selectedRecruitId}
+                onChange={setSelectedRecruitId}
+                options={recruits.map(r => ({ label: `${r.fullName} (${r.department || 'N/A'})`, value: r.id }))}
+              />
+            )}
+            {isManagerView && <Tag color="orange">Viewing recruit data</Tag>}
+          </Space>
           <Space>
             <span>{user?.fullName}</span>
             <Tag color={roleColors[user?.role || 'RECRUIT']}>{user?.role}</Tag>

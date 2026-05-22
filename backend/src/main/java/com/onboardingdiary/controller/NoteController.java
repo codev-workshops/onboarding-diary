@@ -4,6 +4,7 @@ import com.onboardingdiary.dto.request.NoteRequest;
 import com.onboardingdiary.dto.response.NoteResponse;
 import com.onboardingdiary.security.UserPrincipal;
 import com.onboardingdiary.service.NoteService;
+import com.onboardingdiary.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +25,7 @@ import java.util.UUID;
 public class NoteController {
 
     private final NoteService noteService;
+    private final UserService userService;
 
     @PostMapping
     public ResponseEntity<NoteResponse> create(@AuthenticationPrincipal UserPrincipal principal,
@@ -36,6 +39,17 @@ public class NoteController {
                                                     @RequestParam(required = false) LocalDate dateTo,
                                                     @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(noteService.list(principal.getId(), dateFrom, dateTo, pageable));
+    }
+
+    @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<Page<NoteResponse>> listForUser(@AuthenticationPrincipal UserPrincipal principal,
+                                                           @PathVariable UUID userId,
+                                                           @RequestParam(required = false) LocalDate dateFrom,
+                                                           @RequestParam(required = false) LocalDate dateTo,
+                                                           @PageableDefault(size = 20) Pageable pageable) {
+        userService.verifyManagerAccess(principal.getId(), principal.getRole(), userId);
+        return ResponseEntity.ok(noteService.list(userId, dateFrom, dateTo, pageable));
     }
 
     @GetMapping("/{noteId}")

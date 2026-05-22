@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Table, Button, Space, Tag, Modal, message, Select, DatePicker, Typography } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { issuesApi } from '../../api/issues'
+import { useRecruit } from '../../context/RecruitContext'
 import type { Issue, IssueSeverity, IssueStatus } from '../../types'
 import IssueForm from './IssueForm'
 
@@ -19,16 +20,20 @@ export default function IssueList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Issue | null>(null)
   const [filters, setFilters] = useState<Record<string, string | undefined>>({})
+  const { selectedRecruitId, isManagerView } = useRecruit()
 
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await issuesApi.list({ page, size: 20, ...filters })
+      const params = { page, size: 20, ...filters }
+      const res = isManagerView && selectedRecruitId
+        ? await issuesApi.listForUser(selectedRecruitId, params)
+        : await issuesApi.list(params)
       setIssues(res.data.content)
       setTotal(res.data.totalElements)
     } catch { message.error('Failed to load issues') }
     setLoading(false)
-  }, [page, filters])
+  }, [page, filters, selectedRecruitId, isManagerView])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -42,7 +47,7 @@ export default function IssueList() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Issues</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalOpen(true) }}>New Issue</Button>
+{!isManagerView && <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalOpen(true) }}>New Issue</Button>}
       </div>
       <Space wrap style={{ marginBottom: 16 }}>
         <Select placeholder="Severity" allowClear style={{ width: 130 }}
@@ -63,7 +68,7 @@ export default function IssueList() {
           { title: 'Title', dataIndex: 'title' },
           { title: 'Severity', dataIndex: 'severity', render: (v: IssueSeverity) => <Tag color={severityColors[v]}>{v}</Tag> },
           { title: 'Status', dataIndex: 'status', render: (v: IssueStatus) => <Tag color={statusColors[v]}>{v}</Tag> },
-          {
+          ...(!isManagerView ? [{
             title: 'Actions', width: 120,
             render: (_: unknown, r: Issue) => (
               <Space>
@@ -71,7 +76,7 @@ export default function IssueList() {
                 <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(r.id)} />
               </Space>
             ),
-          },
+          }] : []),
         ]}
       />
       <Modal title={editing ? 'Edit Issue' : 'New Issue'} open={modalOpen} onCancel={() => { setModalOpen(false); setEditing(null) }} footer={null} destroyOnHidden>

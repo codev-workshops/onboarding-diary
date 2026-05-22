@@ -14,4 +14,7 @@ export const notesApi = {
     apiClient.put<Note>(`/notes/${id}`, data),
 
   delete: (id: string) => apiClient.delete(`/notes/${id}`),
+
+  listForUser: (userId: string, params?: Record<string, string | number | undefined>) =>
+    apiClient.get<PageResponse<Note>>(`/notes/user/${userId}`, { params }),
 }

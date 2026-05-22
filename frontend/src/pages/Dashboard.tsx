@@ -7,6 +7,7 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons'
 import { dashboardApi } from '../api/dashboard'
+import { useRecruit } from '../context/RecruitContext'
 import type { DashboardData } from '../types'
 
 const { Title } = Typography
@@ -14,13 +15,18 @@ const { Title } = Typography
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const { selectedRecruitId, isManagerView } = useRecruit()
 
   useEffect(() => {
-    dashboardApi.get().then((res) => {
+    setLoading(true)
+    const promise = isManagerView && selectedRecruitId
+      ? dashboardApi.getForUser(selectedRecruitId)
+      : dashboardApi.get()
+    promise.then((res) => {
       setData(res.data)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [])
+  }, [selectedRecruitId, isManagerView])
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />
   if (!data) return <div>Failed to load dashboard</div>
