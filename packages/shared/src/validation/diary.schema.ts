@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { NOTE, PAGINATION, TASK } from '../constants';
-import { Priority, TaskStatus, Visibility } from '../enums';
+import { ISSUE, NOTE, PAGINATION, TASK } from '../constants';
+import { IssueSeverity, IssueStatus, Priority, TaskStatus, Visibility } from '../enums';
 
 export const createTaskEntrySchema = z.object({
   title: z.string().min(TASK.TITLE_MIN_LENGTH).max(TASK.TITLE_MAX_LENGTH),
@@ -64,8 +64,49 @@ export const taskListParamsSchema = z.object({
   q: z.string().max(200).optional(),
 });
 
+export const createIssueEntrySchema = z.object({
+  title: z.string().min(ISSUE.TITLE_MIN_LENGTH).max(ISSUE.TITLE_MAX_LENGTH),
+  description: z.string().min(ISSUE.DESCRIPTION_MIN_LENGTH).max(ISSUE.DESCRIPTION_MAX_LENGTH),
+  severity: z.nativeEnum(IssueSeverity).default(IssueSeverity.MEDIUM),
+  visibility: z.nativeEnum(Visibility).default(Visibility.MANAGER_ONLY),
+  tags: z
+    .array(z.string().max(ISSUE.TAG_MAX_LENGTH).regex(/^[a-zA-Z0-9-]+$/))
+    .max(ISSUE.MAX_TAGS)
+    .optional(),
+});
+
+export const updateIssueEntrySchema = z.object({
+  title: z.string().min(ISSUE.TITLE_MIN_LENGTH).max(ISSUE.TITLE_MAX_LENGTH).optional(),
+  description: z.string().min(ISSUE.DESCRIPTION_MIN_LENGTH).max(ISSUE.DESCRIPTION_MAX_LENGTH).optional(),
+  severity: z.nativeEnum(IssueSeverity).optional(),
+  status: z.nativeEnum(IssueStatus).optional(),
+  resolution_note: z.string().max(ISSUE.RESOLUTION_MAX_LENGTH).optional().nullable(),
+  visibility: z.nativeEnum(Visibility).optional(),
+  tags: z
+    .array(z.string().max(ISSUE.TAG_MAX_LENGTH).regex(/^[a-zA-Z0-9-]+$/))
+    .max(ISSUE.MAX_TAGS)
+    .optional(),
+});
+
+export const issueListParamsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
+  limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
+  sort_by: z.enum(['created_at', 'updated_at', 'severity', 'status', 'title']).default('created_at'),
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
+  status: z.nativeEnum(IssueStatus).optional(),
+  severity: z.nativeEnum(IssueSeverity).optional(),
+  visibility: z.nativeEnum(Visibility).optional(),
+  from_date: z.string().date().optional(),
+  to_date: z.string().date().optional(),
+  tag: z.string().max(50).optional(),
+  q: z.string().max(200).optional(),
+});
+
 export type CreateTaskEntrySchema = z.infer<typeof createTaskEntrySchema>;
 export type UpdateTaskEntrySchema = z.infer<typeof updateTaskEntrySchema>;
 export type CreateNoteEntrySchema = z.infer<typeof createNoteEntrySchema>;
 export type UpdateNoteEntrySchema = z.infer<typeof updateNoteEntrySchema>;
 export type TaskListParamsSchema = z.infer<typeof taskListParamsSchema>;
+export type CreateIssueEntrySchema = z.infer<typeof createIssueEntrySchema>;
+export type UpdateIssueEntrySchema = z.infer<typeof updateIssueEntrySchema>;
+export type IssueListParamsSchema = z.infer<typeof issueListParamsSchema>;
