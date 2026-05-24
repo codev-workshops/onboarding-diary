@@ -17,6 +17,7 @@ import { feedbackRoutes } from './modules/feedback/feedback.routes.js';
 import { notesRoutes } from './modules/notes/notes.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
+import { searchRoutes } from './modules/search/search.routes.js';
 import { prisma } from './config/database.js';
 
 const app = express();
@@ -62,6 +63,7 @@ app.use(`${config.API_PREFIX}/feedback`, feedbackRoutes);
 app.use(`${config.API_PREFIX}/notes`, notesRoutes);
 app.use(`${config.API_PREFIX}/dashboard`, dashboardRoutes);
 app.use(`${config.API_PREFIX}/reports`, reportsRoutes);
+app.use(`${config.API_PREFIX}/search`, searchRoutes);
 
 // Catch-all and error handling
 app.use(notFoundMiddleware);

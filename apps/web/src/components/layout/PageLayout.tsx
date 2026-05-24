@@ -15,6 +15,7 @@ import {
   X,
   LogOut,
   ChevronDown,
+  Search,
 } from 'lucide-react';
 
 interface PageLayoutProps {
@@ -35,8 +36,37 @@ const navItems: NavItem[] = [
   { label: 'Feedback', href: '/feedback', icon: MessageSquare },
   { label: 'Notes', href: '/notes', icon: StickyNote },
   { label: 'Reports', href: '/reports', icon: FileText },
+  { label: 'Search', href: '/search', icon: Search },
   { label: 'Admin', href: '/admin/users', icon: Users, roles: [Role.ADMIN] },
 ];
+
+function HeaderSearchBar() {
+  const navigate = useNavigate();
+  const [value, setValue] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (value.trim()) {
+      navigate(`/search?q=${encodeURIComponent(value.trim())}`);
+      setValue('');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="hidden sm:flex items-center mx-4 flex-1 max-w-md">
+      <div className="relative w-full">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Search…"
+          className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-sm focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+      </div>
+    </form>
+  );
+}
 
 export function PageLayout({ children }: PageLayoutProps) {
   const { user, logout } = useAuth();
@@ -116,7 +146,9 @@ export function PageLayout({ children }: PageLayoutProps) {
             <Menu className="h-6 w-6 text-gray-600" />
           </button>
 
-          <div className="lg:flex-1" />
+          <HeaderSearchBar />
+
+          <div className="hidden lg:flex-1 lg:block" />
 
           {user && (
             <div className="relative">

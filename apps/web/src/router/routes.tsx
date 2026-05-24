@@ -13,6 +13,7 @@ import { ReportsPage } from '@/pages/reports/ReportsPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { AssignmentsPage } from '@/pages/admin/AssignmentsPage';
 import { NotFoundPage } from '@/pages/shared/NotFoundPage';
+import { SearchPage } from '@/pages/search/SearchPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       { path: '/feedback', element: <FeedbackPage /> },
       { path: '/notes', element: <NotesPage /> },
       { path: '/reports', element: <ReportsPage /> },
+      { path: '/search', element: <SearchPage /> },
 
       // Admin-only routes
       {
