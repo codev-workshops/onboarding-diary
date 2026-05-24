@@ -11,6 +11,6 @@ router.post('/register', authRateLimiter, validate(registerSchema), authControll
 router.post('/login', authRateLimiter, validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshTokenSchema), authController.refresh);
 router.get('/me', authMiddleware, authController.me);
-router.post('/logout', authMiddleware, authController.logout);
+router.post('/logout', authMiddleware, validate(refreshTokenSchema), authController.logout);
 
 export { router as authRoutes };

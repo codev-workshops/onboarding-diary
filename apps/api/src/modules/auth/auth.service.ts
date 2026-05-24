@@ -212,11 +212,9 @@ export async function getCurrentUser(userId: string) {
 }
 
 export async function logout(refreshToken: string, userId: string) {
-  if (refreshToken) {
-    const tokenHash = hashToken(refreshToken);
-    await prisma.refreshToken.updateMany({
-      where: { tokenHash, userId },
-      data: { revokedAt: new Date() },
-    });
-  }
+  const tokenHash = hashToken(refreshToken);
+  await prisma.refreshToken.updateMany({
+    where: { tokenHash, userId },
+    data: { revokedAt: new Date() },
+  });
 }
