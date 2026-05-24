@@ -10,5 +10,6 @@
     }
   },
   "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/__tests__/**", "src/__mocks__/**"],
   "references": [{ "path": "../../packages/shared" }]
 }

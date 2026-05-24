@@ -14,7 +14,10 @@
     "db:migrate:prod": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@onboarding-diary/shared": "workspace:*",
@@ -39,8 +42,11 @@
     "@types/express-serve-static-core": "^5.1.1",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.0",
+    "@types/supertest": "^7.2.0",
     "prisma": "^6.2.0",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.7"
   }
 }

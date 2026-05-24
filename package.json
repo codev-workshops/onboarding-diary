@@ -18,6 +18,9 @@
     "db:seed": "pnpm --filter @onboarding-diary/api db:seed",
     "db:studio": "pnpm --filter @onboarding-diary/api db:studio",
     "db:generate": "pnpm --filter @onboarding-diary/api db:generate",
+    "test": "pnpm -r run test",
+    "test:api": "pnpm --filter @onboarding-diary/api test",
+    "test:web": "pnpm --filter @onboarding-diary/web test",
     "clean": "pnpm -r run clean && rm -rf node_modules"
   },
   "engines": {
