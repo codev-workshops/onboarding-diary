@@ -1,12 +1,25 @@
-import type { NotificationType } from '../enums';
-
-export interface NotificationDto {
+export interface ManagerRecruitRelationshipDto {
   id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  reference_type: string | null;
-  reference_id: string | null;
-  is_read: boolean;
-  created_at: string;
+  manager_id: string;
+  recruit_id: string;
+  assigned_at: string;
+  unassigned_at: string | null;
+  is_active: boolean;
+  notes: string | null;
+  manager?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  recruit?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+}
+
+export interface CreateManagerRecruitInput {
+  manager_id: string;
+  recruit_id: string;
+  notes?: string;
 }

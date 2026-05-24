@@ -1,19 +1,21 @@
 import { z } from 'zod';
-import { COMMENT } from '../constants';
+import { FEEDBACK } from '../constants';
+import { FeedbackType } from '../enums';
 
-export const createCommentSchema = z.object({
-  body: z
-    .string()
-    .min(COMMENT.BODY_MIN_LENGTH, 'Comment cannot be empty')
-    .max(COMMENT.BODY_MAX_LENGTH),
+export const createFeedbackSchema = z.object({
+  subject_id: z.string().uuid('Subject must be a valid user ID'),
+  type: z.nativeEnum(FeedbackType).default(FeedbackType.NEUTRAL),
+  title: z.string().min(FEEDBACK.TITLE_MIN_LENGTH).max(FEEDBACK.TITLE_MAX_LENGTH),
+  body: z.string().min(FEEDBACK.BODY_MIN_LENGTH).max(FEEDBACK.BODY_MAX_LENGTH),
+  rating: z.number().int().min(FEEDBACK.RATING_MIN).max(FEEDBACK.RATING_MAX).optional(),
 });
 
-export const updateCommentSchema = z.object({
-  body: z
-    .string()
-    .min(COMMENT.BODY_MIN_LENGTH, 'Comment cannot be empty')
-    .max(COMMENT.BODY_MAX_LENGTH),
+export const updateFeedbackSchema = z.object({
+  type: z.nativeEnum(FeedbackType).optional(),
+  title: z.string().min(FEEDBACK.TITLE_MIN_LENGTH).max(FEEDBACK.TITLE_MAX_LENGTH).optional(),
+  body: z.string().min(FEEDBACK.BODY_MIN_LENGTH).max(FEEDBACK.BODY_MAX_LENGTH).optional(),
+  rating: z.number().int().min(FEEDBACK.RATING_MIN).max(FEEDBACK.RATING_MAX).optional(),
 });
 
-export type CreateCommentSchema = z.infer<typeof createCommentSchema>;
-export type UpdateCommentSchema = z.infer<typeof updateCommentSchema>;
+export type CreateFeedbackSchema = z.infer<typeof createFeedbackSchema>;
+export type UpdateFeedbackSchema = z.infer<typeof updateFeedbackSchema>;

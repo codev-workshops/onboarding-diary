@@ -12,60 +12,96 @@ datasource db {
 // Enums
 // ============================================================
 
+/// User roles in the system. RECRUIT is the default for new sign-ups.
+/// MANAGER supervises recruits. HR_ADMIN manages org-wide settings.
+/// SYS_ADMIN has full system access.
 enum Role {
   RECRUIT
-  MENTOR
   MANAGER
   HR_ADMIN
   SYS_ADMIN
 }
 
+/// Account lifecycle status. INVITED = pending first login,
+/// ACTIVE = normal, INACTIVE = disabled by admin.
 enum UserStatus {
   ACTIVE
   INACTIVE
   INVITED
 }
 
+/// Controls who can read a diary entry.
+/// PRIVATE = author only, MANAGER_ONLY = author + assigned manager,
+/// PUBLIC = all authenticated users.
 enum Visibility {
   PRIVATE
-  MENTOR_ONLY
-  TEAM
+  MANAGER_ONLY
   PUBLIC
 }
 
-enum MilestoneCategory {
-  ADMINISTRATIVE
-  TECHNICAL
-  SOCIAL
-  LEARNING
-  DELIVERABLE
+/// Task priority levels (low → critical). Used for sorting and filtering.
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
-enum EnrollmentStatus {
+/// Task lifecycle: PENDING → IN_PROGRESS → COMPLETED or BLOCKED.
+enum TaskStatus {
+  PENDING
   IN_PROGRESS
   COMPLETED
-  WITHDRAWN
+  BLOCKED
 }
 
-enum CompletionStatus {
-  PENDING_VERIFICATION
-  VERIFIED
-  REJECTED
+/// Issue severity mirrors Priority but semantically describes impact.
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
-enum NotificationType {
-  COMMENT_ADDED
-  MILESTONE_REMINDER
-  MILESTONE_VERIFIED
-  MILESTONE_REJECTED
-  MENTOR_ASSIGNED
-  PROGRAM_ENROLLED
+/// Issue resolution lifecycle.
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+/// Feedback sentiment: positive, neutral, or constructive.
+enum FeedbackType {
+  POSITIVE
+  NEUTRAL
+  CONSTRUCTIVE
+}
+
+/// Report status tracks the generation/review lifecycle.
+enum ReportStatus {
+  DRAFT
+  GENERATED
+  REVIEWED
+  ARCHIVED
+}
+
+/// Report type distinguishes weekly check-ins from final summaries.
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  FINAL
+  CUSTOM
 }
 
 // ============================================================
 // Models
 // ============================================================
 
+/// Core user account. Every person in the system (recruit, manager,
+/// HR admin, sys admin) has exactly one User row. Auth fields live
+/// here to keep the auth flow simple. Role-specific data for recruits
+/// is extracted into RecruitProfile (1:1) to keep User lean.
 model User {
   id           String     @id @default(uuid())
   email        String     @unique
@@ -73,226 +109,261 @@ model User {
   firstName    String     @map("first_name") @db.VarChar(100)
   lastName     String     @map("last_name") @db.VarChar(100)
   avatarUrl    String?    @map("avatar_url") @db.VarChar(500)
-  bio          String?    @db.Text
-  department   String?    @db.VarChar(100)
   role         Role       @default(RECRUIT)
   status       UserStatus @default(ACTIVE)
-  startDate    DateTime?  @map("start_date") @db.Date
   lastLoginAt  DateTime?  @map("last_login_at")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
   deletedAt    DateTime?  @map("deleted_at")
 
-  diaryEntries         DiaryEntry[]
-  comments             Comment[]
-  milestoneCompletions MilestoneCompletion[]
-  notifications        Notification[]
-  refreshTokens        RefreshToken[]
-  programEnrollments   ProgramEnrollment[]
-  createdPrograms      OnboardingProgram[]   @relation("ProgramCreator")
+  // 1:1 profile (only for recruits)
+  recruitProfile RecruitProfile?
 
-  mentorAssignmentsAsMentor MentorAssignment[] @relation("MentorUser")
-  mentorAssignmentsAsMentee MentorAssignment[] @relation("MenteeUser")
-  verifiedCompletions       MilestoneCompletion[] @relation("Verifier")
+  // Authored entries
+  taskEntries     TaskEntry[]
+  issueEntries    IssueEntry[]
+  feedbackGiven   FeedbackEntry[]  @relation("FeedbackAuthor")
+  feedbackAbout   FeedbackEntry[]  @relation("FeedbackSubject")
+  noteEntries     NoteEntry[]
+
+  // Reports authored by this user
+  reports Report[]
+
+  // Manager ↔ Recruit relationships
+  managedRecruits  ManagerRecruitRelationship[] @relation("ManagerSide")
+  assignedManagers ManagerRecruitRelationship[] @relation("RecruitSide")
+
+  // Auth
+  refreshTokens RefreshToken[]
 
   @@index([role])
   @@index([status])
-  @@index([department])
+  @@index([email])
   @@map("users")
 }
 
-model DiaryEntry {
-  id         String     @id @default(uuid())
-  userId     String     @map("user_id")
-  title      String     @db.VarChar(255)
-  body       String     @db.Text
-  moodRating Int        @map("mood_rating") @db.SmallInt
-  entryDate  DateTime   @map("entry_date") @db.Date
-  visibility Visibility @default(MENTOR_ONLY)
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
-  deletedAt  DateTime?  @map("deleted_at")
+/// Extended profile for users with role = RECRUIT. Separated from
+/// User to keep the User table role-agnostic and avoid nullable
+/// columns that only apply to recruits. One-to-one via userId.
+///
+/// Schema decision: 1:1 split avoids polluting the shared User table
+/// with recruit-only fields (department, startDate, onboardingStatus).
+/// Managers/admins never need these columns, so normalization wins.
+model RecruitProfile {
+  id               String    @id @default(uuid())
+  userId           String    @unique @map("user_id")
+  department       String?   @db.VarChar(100)
+  position         String?   @db.VarChar(200)
+  startDate        DateTime? @map("start_date") @db.Date
+  expectedEndDate  DateTime? @map("expected_end_date") @db.Date
+  bio              String?   @db.Text
+  onboardingStatus String    @default("NOT_STARTED") @map("onboarding_status") @db.VarChar(50)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments    Comment[]
-  tags        DiaryEntryTag[]
-  attachments Attachment[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, entryDate])
-  @@index([userId])
-  @@index([entryDate])
-  @@index([visibility])
-  @@index([moodRating])
-  @@map("diary_entries")
+  @@index([department])
+  @@index([onboardingStatus])
+  @@map("recruit_profiles")
 }
 
-model Tag {
-  id        String   @id @default(uuid())
-  name      String   @unique @db.VarChar(50)
-  slug      String   @unique @db.VarChar(50)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  entries DiaryEntryTag[]
-
-  @@map("tags")
-}
-
-model DiaryEntryTag {
-  diaryEntryId String @map("diary_entry_id")
-  tagId        String @map("tag_id")
-
-  diaryEntry DiaryEntry @relation(fields: [diaryEntryId], references: [id], onDelete: Cascade)
-  tag        Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([diaryEntryId, tagId])
-  @@index([tagId])
-  @@map("diary_entry_tags")
-}
-
-model Attachment {
-  id           String   @id @default(uuid())
-  diaryEntryId String   @map("diary_entry_id")
-  fileName     String   @map("file_name") @db.VarChar(255)
-  fileUrl      String   @map("file_url") @db.VarChar(500)
-  fileSize     Int      @map("file_size")
-  mimeType     String   @map("mime_type") @db.VarChar(100)
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  diaryEntry DiaryEntry @relation(fields: [diaryEntryId], references: [id], onDelete: Cascade)
-
-  @@index([diaryEntryId])
-  @@map("attachments")
-}
-
-model Comment {
-  id           String    @id @default(uuid())
-  diaryEntryId String    @map("diary_entry_id")
-  userId       String    @map("user_id")
-  body         String    @db.Text
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
-
-  diaryEntry DiaryEntry @relation(fields: [diaryEntryId], references: [id], onDelete: Cascade)
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([diaryEntryId])
-  @@index([userId])
-  @@map("comments")
-}
-
-model OnboardingProgram {
-  id           String    @id @default(uuid())
-  name         String    @db.VarChar(200)
-  description  String?   @db.Text
-  durationDays Int       @map("duration_days")
-  isActive     Boolean   @default(true) @map("is_active")
-  createdById  String    @map("created_by")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
-
-  createdBy   User                @relation("ProgramCreator", fields: [createdById], references: [id])
-  milestones  Milestone[]
-  enrollments ProgramEnrollment[]
-
-  @@index([isActive])
-  @@map("onboarding_programs")
-}
-
-model Milestone {
-  id          String            @id @default(uuid())
-  programId   String            @map("program_id")
-  name        String            @db.VarChar(200)
-  description String?           @db.Text
-  targetDay   Int               @map("target_day")
-  category    MilestoneCategory
-  sortOrder   Int               @default(0) @map("sort_order")
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
-
-  program     OnboardingProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
-  completions MilestoneCompletion[]
-
-  @@index([programId])
-  @@index([category])
-  @@index([programId, sortOrder])
-  @@map("milestones")
-}
-
-model ProgramEnrollment {
-  id          String           @id @default(uuid())
-  userId      String           @map("user_id")
-  programId   String           @map("program_id")
-  enrolledAt  DateTime         @default(now()) @map("enrolled_at")
-  completedAt DateTime?        @map("completed_at")
-  status      EnrollmentStatus @default(IN_PROGRESS)
-
-  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  program OnboardingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, programId])
-  @@index([userId])
-  @@index([programId])
-  @@index([status])
-  @@map("program_enrollments")
-}
-
-model MilestoneCompletion {
-  id          String           @id @default(uuid())
-  milestoneId String           @map("milestone_id")
-  userId      String           @map("user_id")
-  note        String?          @db.Text
-  status      CompletionStatus @default(PENDING_VERIFICATION)
-  verifiedById String?         @map("verified_by")
-  completedAt DateTime         @default(now()) @map("completed_at")
-  verifiedAt  DateTime?        @map("verified_at")
-
-  milestone  Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  verifiedBy User?     @relation("Verifier", fields: [verifiedById], references: [id])
-
-  @@unique([milestoneId, userId])
-  @@index([milestoneId])
-  @@index([userId])
-  @@index([status])
-  @@map("milestone_completions")
-}
-
-model MentorAssignment {
-  id           String    @id @default(uuid())
-  mentorId     String    @map("mentor_id")
-  menteeId     String    @map("mentee_id")
-  assignedAt   DateTime  @default(now()) @map("assigned_at")
-  unassignedAt DateTime? @map("unassigned_at")
-  isActive     Boolean   @default(true) @map("is_active")
-
-  mentor User @relation("MentorUser", fields: [mentorId], references: [id], onDelete: Cascade)
-  mentee User @relation("MenteeUser", fields: [menteeId], references: [id], onDelete: Cascade)
-
-  @@index([mentorId])
-  @@index([menteeId])
-  @@map("mentor_assignments")
-}
-
-model Notification {
-  id            String           @id @default(uuid())
-  userId        String           @map("user_id")
-  type          NotificationType
-  title         String           @db.VarChar(200)
-  message       String           @db.Text
-  referenceType String?          @map("reference_type") @db.VarChar(50)
-  referenceId   String?          @map("reference_id")
-  isRead        Boolean          @default(false) @map("is_read")
-  createdAt     DateTime         @default(now()) @map("created_at")
+/// A concrete task the recruit tracks during onboarding (e.g. "Set up
+/// dev environment", "Complete security training"). Tasks have a
+/// priority, status, and optional due date for deadline tracking.
+///
+/// Schema decision: Separate from IssueEntry because tasks are
+/// forward-looking action items while issues are problems encountered.
+/// Different status lifecycles (TaskStatus vs IssueStatus) and
+/// different query patterns justify separate tables over STI.
+model TaskEntry {
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
+  title       String     @db.VarChar(255)
+  description String?    @db.Text
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(PENDING)
+  dueDate     DateTime?  @map("due_date") @db.Date
+  completedAt DateTime?  @map("completed_at")
+  visibility  Visibility @default(MANAGER_ONLY)
+  tags        String[]   @default([])
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  deletedAt   DateTime?  @map("deleted_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([createdAt])
-  @@map("notifications")
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([userId, status])
+  @@map("task_entries")
 }
 
+/// A problem or blocker the recruit encounters during onboarding
+/// (e.g. "VPN not working", "Missing access to repo"). Issues have
+/// severity, resolution status, and an optional resolution note.
+///
+/// Schema decision: Separate from TaskEntry because issues track
+/// problems (reactive) while tasks track work items (proactive).
+/// The resolution workflow (OPEN → RESOLVED → CLOSED) differs from
+/// the task workflow (PENDING → IN_PROGRESS → COMPLETED).
+model IssueEntry {
+  id             String        @id @default(uuid())
+  userId         String        @map("user_id")
+  title          String        @db.VarChar(255)
+  description    String        @db.Text
+  severity       IssueSeverity @default(MEDIUM)
+  status         IssueStatus   @default(OPEN)
+  resolutionNote String?       @map("resolution_note") @db.Text
+  resolvedAt     DateTime?     @map("resolved_at")
+  visibility     Visibility    @default(MANAGER_ONLY)
+  tags           String[]      @default([])
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([severity])
+  @@index([userId, status])
+  @@map("issue_entries")
+}
+
+/// Feedback given by a manager about a recruit (or vice-versa).
+/// Has an author (who wrote it) and a subject (who it's about).
+/// This two-FK design allows querying "feedback I gave" and
+/// "feedback about me" efficiently.
+///
+/// Schema decision: Two User FKs (authorId, subjectId) instead of a
+/// single polymorphic reference. This keeps RI constraints enforceable
+/// and enables bidirectional queries without self-joins.
+model FeedbackEntry {
+  id        String       @id @default(uuid())
+  authorId  String       @map("author_id")
+  subjectId String       @map("subject_id")
+  type      FeedbackType @default(NEUTRAL)
+  title     String       @db.VarChar(255)
+  body      String       @db.Text
+  rating    Int?         @db.SmallInt
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  deletedAt DateTime?    @map("deleted_at")
+
+  author  User @relation("FeedbackAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  subject User @relation("FeedbackSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([subjectId])
+  @@index([type])
+  @@index([authorId, subjectId])
+  @@map("feedback_entries")
+}
+
+/// Free-form journal entry for the recruit's personal reflections
+/// (e.g. "Day 3: felt overwhelmed but the team was helpful").
+/// Notes are the most unstructured entry type — just a title, body,
+/// mood rating, and visibility.
+///
+/// Schema decision: Separate from Task/Issue because notes have no
+/// status lifecycle — they're pure journaling. Keeping them in their
+/// own table avoids adding nullable status/priority columns and
+/// lets us optimize storage (notes tend to have longer bodies).
+model NoteEntry {
+  id         String     @id @default(uuid())
+  userId     String     @map("user_id")
+  title      String     @db.VarChar(255)
+  body       String     @db.Text
+  moodRating Int?       @map("mood_rating") @db.SmallInt
+  entryDate  DateTime   @map("entry_date") @db.Date
+  visibility Visibility @default(PRIVATE)
+  tags       String[]   @default([])
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  deletedAt  DateTime?  @map("deleted_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entryDate])
+  @@index([userId, entryDate])
+  @@map("note_entries")
+}
+
+/// Aggregated progress report generated for a recruit over a time
+/// period. Contains computed metrics (task completion rate, issue
+/// count, avg mood) plus a manager's written summary. Reports go
+/// through a DRAFT → GENERATED → REVIEWED → ARCHIVED lifecycle.
+///
+/// Schema decision: Storing computed metrics as columns (not computed
+/// on-the-fly) gives us historical snapshots that don't change when
+/// underlying entries are edited/deleted. The generatedData JSON
+/// field stores flexible report payload without schema migrations
+/// for new metric types.
+model Report {
+  id            String       @id @default(uuid())
+  recruitId     String       @map("recruit_id")
+  generatedById String       @map("generated_by")
+  type          ReportType   @default(WEEKLY)
+  status        ReportStatus @default(DRAFT)
+  title         String       @db.VarChar(255)
+  summary       String?      @db.Text
+  periodStart   DateTime     @map("period_start") @db.Date
+  periodEnd     DateTime     @map("period_end") @db.Date
+  generatedData Json?        @map("generated_data")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  deletedAt     DateTime?    @map("deleted_at")
+
+  generatedBy User @relation(fields: [generatedById], references: [id], onDelete: Cascade)
+
+  @@index([recruitId])
+  @@index([generatedById])
+  @@index([status])
+  @@index([type])
+  @@index([recruitId, periodStart, periodEnd])
+  @@map("reports")
+}
+
+/// Maps which manager is responsible for which recruit. An active
+/// relationship means the manager can view the recruit's entries
+/// and write feedback. Historical relationships are preserved by
+/// setting isActive=false and recording unassignedAt.
+///
+/// Schema decision: Explicit join table rather than a managerId FK
+/// on User because (a) a recruit may be reassigned over time and we
+/// want history, (b) a manager may oversee multiple recruits, and
+/// (c) the relationship has its own metadata (assignedAt, notes).
+/// The unique constraint on (managerId, recruitId) WHERE isActive
+/// prevents duplicate active assignments.
+model ManagerRecruitRelationship {
+  id           String    @id @default(uuid())
+  managerId    String    @map("manager_id")
+  recruitId    String    @map("recruit_id")
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  unassignedAt DateTime? @map("unassigned_at")
+  isActive     Boolean   @default(true) @map("is_active")
+  notes        String?   @db.Text
+
+  manager User @relation("ManagerSide", fields: [managerId], references: [id], onDelete: Cascade)
+  recruit User @relation("RecruitSide", fields: [recruitId], references: [id], onDelete: Cascade)
+
+  @@unique([managerId, recruitId, isActive])
+  @@index([managerId])
+  @@index([recruitId])
+  @@index([isActive])
+  @@index([managerId, isActive])
+  @@index([recruitId, isActive])
+  @@map("manager_recruit_relationships")
+}
+
+/// Opaque refresh tokens for JWT rotation. Tokens are stored as
+/// SHA-256 hashes — the raw token is never persisted. Revocation
+/// is tracked via revokedAt (null = still valid). Old tokens are
+/// kept for reuse-detection auditing.
 model RefreshToken {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")

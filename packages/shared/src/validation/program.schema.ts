@@ -1,34 +1,30 @@
 import { z } from 'zod';
-import { MILESTONE, PROGRAM } from '../constants';
-import { MilestoneCategory } from '../enums';
+import { ISSUE } from '../constants';
+import { IssueSeverity, IssueStatus, Visibility } from '../enums';
 
-export const createMilestoneSchema = z.object({
-  name: z.string().min(MILESTONE.NAME_MIN_LENGTH).max(MILESTONE.NAME_MAX_LENGTH),
-  description: z.string().max(MILESTONE.DESCRIPTION_MAX_LENGTH).optional(),
-  target_day: z.number().int().min(1),
-  category: z.nativeEnum(MilestoneCategory),
-  sort_order: z.number().int().min(0),
-});
-
-export const createProgramSchema = z.object({
-  name: z.string().min(PROGRAM.NAME_MIN_LENGTH).max(PROGRAM.NAME_MAX_LENGTH),
-  description: z.string().max(PROGRAM.DESCRIPTION_MAX_LENGTH).optional(),
-  duration_days: z.number().int().min(PROGRAM.MIN_DURATION_DAYS).max(PROGRAM.MAX_DURATION_DAYS),
-  milestones: z.array(createMilestoneSchema).optional(),
-});
-
-export const updateProgramSchema = z.object({
-  name: z.string().min(PROGRAM.NAME_MIN_LENGTH).max(PROGRAM.NAME_MAX_LENGTH).optional(),
-  description: z.string().max(PROGRAM.DESCRIPTION_MAX_LENGTH).optional(),
-  duration_days: z
-    .number()
-    .int()
-    .min(PROGRAM.MIN_DURATION_DAYS)
-    .max(PROGRAM.MAX_DURATION_DAYS)
+export const createIssueEntrySchema = z.object({
+  title: z.string().min(ISSUE.TITLE_MIN_LENGTH).max(ISSUE.TITLE_MAX_LENGTH),
+  description: z.string().min(ISSUE.DESCRIPTION_MIN_LENGTH).max(ISSUE.DESCRIPTION_MAX_LENGTH),
+  severity: z.nativeEnum(IssueSeverity).default(IssueSeverity.MEDIUM),
+  visibility: z.nativeEnum(Visibility).default(Visibility.MANAGER_ONLY),
+  tags: z
+    .array(z.string().max(ISSUE.TAG_MAX_LENGTH).regex(/^[a-zA-Z0-9-]+$/))
+    .max(ISSUE.MAX_TAGS)
     .optional(),
-  is_active: z.boolean().optional(),
 });
 
-export type CreateMilestoneSchema = z.infer<typeof createMilestoneSchema>;
-export type CreateProgramSchema = z.infer<typeof createProgramSchema>;
-export type UpdateProgramSchema = z.infer<typeof updateProgramSchema>;
+export const updateIssueEntrySchema = z.object({
+  title: z.string().min(ISSUE.TITLE_MIN_LENGTH).max(ISSUE.TITLE_MAX_LENGTH).optional(),
+  description: z.string().min(ISSUE.DESCRIPTION_MIN_LENGTH).max(ISSUE.DESCRIPTION_MAX_LENGTH).optional(),
+  severity: z.nativeEnum(IssueSeverity).optional(),
+  status: z.nativeEnum(IssueStatus).optional(),
+  resolution_note: z.string().max(ISSUE.RESOLUTION_MAX_LENGTH).optional(),
+  visibility: z.nativeEnum(Visibility).optional(),
+  tags: z
+    .array(z.string().max(ISSUE.TAG_MAX_LENGTH).regex(/^[a-zA-Z0-9-]+$/))
+    .max(ISSUE.MAX_TAGS)
+    .optional(),
+});
+
+export type CreateIssueEntrySchema = z.infer<typeof createIssueEntrySchema>;
+export type UpdateIssueEntrySchema = z.infer<typeof updateIssueEntrySchema>;

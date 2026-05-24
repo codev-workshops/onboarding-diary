@@ -1,6 +1,5 @@
 export enum Role {
   RECRUIT = 'RECRUIT',
-  MENTOR = 'MENTOR',
   MANAGER = 'MANAGER',
   HR_ADMIN = 'HR_ADMIN',
   SYS_ADMIN = 'SYS_ADMIN',
@@ -14,36 +13,54 @@ export enum UserStatus {
 
 export enum Visibility {
   PRIVATE = 'PRIVATE',
-  MENTOR_ONLY = 'MENTOR_ONLY',
-  TEAM = 'TEAM',
+  MANAGER_ONLY = 'MANAGER_ONLY',
   PUBLIC = 'PUBLIC',
 }
 
-export enum MilestoneCategory {
-  ADMINISTRATIVE = 'ADMINISTRATIVE',
-  TECHNICAL = 'TECHNICAL',
-  SOCIAL = 'SOCIAL',
-  LEARNING = 'LEARNING',
-  DELIVERABLE = 'DELIVERABLE',
+export enum Priority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL',
 }
 
-export enum EnrollmentStatus {
+export enum TaskStatus {
+  PENDING = 'PENDING',
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
-  WITHDRAWN = 'WITHDRAWN',
+  BLOCKED = 'BLOCKED',
 }
 
-export enum CompletionStatus {
-  PENDING_VERIFICATION = 'PENDING_VERIFICATION',
-  VERIFIED = 'VERIFIED',
-  REJECTED = 'REJECTED',
+export enum IssueSeverity {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL',
 }
 
-export enum NotificationType {
-  COMMENT_ADDED = 'COMMENT_ADDED',
-  MILESTONE_REMINDER = 'MILESTONE_REMINDER',
-  MILESTONE_VERIFIED = 'MILESTONE_VERIFIED',
-  MILESTONE_REJECTED = 'MILESTONE_REJECTED',
-  MENTOR_ASSIGNED = 'MENTOR_ASSIGNED',
-  PROGRAM_ENROLLED = 'PROGRAM_ENROLLED',
+export enum IssueStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  CLOSED = 'CLOSED',
+}
+
+export enum FeedbackType {
+  POSITIVE = 'POSITIVE',
+  NEUTRAL = 'NEUTRAL',
+  CONSTRUCTIVE = 'CONSTRUCTIVE',
+}
+
+export enum ReportStatus {
+  DRAFT = 'DRAFT',
+  GENERATED = 'GENERATED',
+  REVIEWED = 'REVIEWED',
+  ARCHIVED = 'ARCHIVED',
+}
+
+export enum ReportType {
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+  FINAL = 'FINAL',
+  CUSTOM = 'CUSTOM',
 }

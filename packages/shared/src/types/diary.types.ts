@@ -1,56 +1,62 @@
-import type { Visibility } from '../enums';
+import type { Priority, TaskStatus, Visibility } from '../enums';
 
-export interface TagDto {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-export interface AttachmentDto {
-  id: string;
-  file_name: string;
-  file_url: string;
-  file_size: number;
-  mime_type: string;
-  created_at: string;
-}
-
-export interface DiaryEntryDto {
+export interface TaskEntryDto {
   id: string;
   user_id: string;
   title: string;
-  body: string;
-  mood_rating: number;
-  entry_date: string;
+  description: string | null;
+  priority: Priority;
+  status: TaskStatus;
+  due_date: string | null;
+  completed_at: string | null;
   visibility: Visibility;
-  tags: TagDto[];
-  attachments: AttachmentDto[];
-  comment_count: number;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
 
-export interface DiaryEntryListItemDto {
-  id: string;
+export interface CreateTaskEntryInput {
   title: string;
-  mood_rating: number;
-  entry_date: string;
-  visibility: Visibility;
-  tags: TagDto[];
-  comment_count: number;
-  created_at: string;
-}
-
-export interface CreateDiaryEntryInput {
-  title: string;
-  body: string;
-  mood_rating: number;
-  entry_date: string;
-  visibility: Visibility;
+  description?: string;
+  priority?: Priority;
+  due_date?: string;
+  visibility?: Visibility;
   tags?: string[];
 }
 
-export interface UpdateDiaryEntryInput {
+export interface UpdateTaskEntryInput {
+  title?: string;
+  description?: string;
+  priority?: Priority;
+  status?: TaskStatus;
+  due_date?: string;
+  visibility?: Visibility;
+  tags?: string[];
+}
+
+export interface NoteEntryDto {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  mood_rating: number | null;
+  entry_date: string;
+  visibility: Visibility;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateNoteEntryInput {
+  title: string;
+  body: string;
+  mood_rating?: number;
+  entry_date: string;
+  visibility?: Visibility;
+  tags?: string[];
+}
+
+export interface UpdateNoteEntryInput {
   title?: string;
   body?: string;
   mood_rating?: number;
@@ -58,14 +64,13 @@ export interface UpdateDiaryEntryInput {
   tags?: string[];
 }
 
-export interface DiaryEntryListParams {
+export interface DiaryListParams {
   page?: number;
   limit?: number;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
-  mood_min?: number;
-  mood_max?: number;
-  tag?: string;
+  status?: TaskStatus;
+  priority?: Priority;
   visibility?: Visibility;
   from_date?: string;
   to_date?: string;

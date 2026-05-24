@@ -8,7 +8,10 @@ async function main() {
 
   const passwordHash = await bcrypt.hash('Password1!', 12);
 
-  // Create system admin
+  // ------------------------------------------------------------------
+  // Users
+  // ------------------------------------------------------------------
+
   const admin = await prisma.user.upsert({
     where: { email: 'admin@onboarding-diary.local' },
     update: {},
@@ -18,12 +21,10 @@ async function main() {
       firstName: 'System',
       lastName: 'Admin',
       role: 'SYS_ADMIN',
-      department: 'IT',
     },
   });
   console.log(`Created admin: ${admin.email}`);
 
-  // Create HR admin
   const hr = await prisma.user.upsert({
     where: { email: 'hr@onboarding-diary.local' },
     update: {},
@@ -33,27 +34,23 @@ async function main() {
       firstName: 'Sarah',
       lastName: 'HR',
       role: 'HR_ADMIN',
-      department: 'Human Resources',
     },
   });
   console.log(`Created HR admin: ${hr.email}`);
 
-  // Create a mentor
-  const mentor = await prisma.user.upsert({
-    where: { email: 'mentor@onboarding-diary.local' },
+  const manager = await prisma.user.upsert({
+    where: { email: 'manager@onboarding-diary.local' },
     update: {},
     create: {
-      email: 'mentor@onboarding-diary.local',
+      email: 'manager@onboarding-diary.local',
       passwordHash,
       firstName: 'John',
-      lastName: 'Mentor',
-      role: 'MENTOR',
-      department: 'Engineering',
+      lastName: 'Manager',
+      role: 'MANAGER',
     },
   });
-  console.log(`Created mentor: ${mentor.email}`);
+  console.log(`Created manager: ${manager.email}`);
 
-  // Create a recruit
   const recruit = await prisma.user.upsert({
     where: { email: 'recruit@onboarding-diary.local' },
     update: {},
@@ -63,98 +60,230 @@ async function main() {
       firstName: 'Jane',
       lastName: 'Recruit',
       role: 'RECRUIT',
-      department: 'Engineering',
-      startDate: new Date(),
     },
   });
   console.log(`Created recruit: ${recruit.email}`);
 
-  // Create sample onboarding program
-  const program = await prisma.onboardingProgram.upsert({
+  // ------------------------------------------------------------------
+  // Recruit Profile
+  // ------------------------------------------------------------------
+
+  await prisma.recruitProfile.upsert({
+    where: { userId: recruit.id },
+    update: {},
+    create: {
+      userId: recruit.id,
+      department: 'Engineering',
+      position: 'Junior Software Engineer',
+      startDate: new Date(),
+      expectedEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      bio: 'New engineering recruit, excited to start!',
+      onboardingStatus: 'IN_PROGRESS',
+    },
+  });
+  console.log('Created recruit profile');
+
+  // ------------------------------------------------------------------
+  // Manager ↔ Recruit Relationship
+  // ------------------------------------------------------------------
+
+  await prisma.managerRecruitRelationship.upsert({
     where: { id: '00000000-0000-0000-0000-000000000001' },
     update: {},
     create: {
       id: '00000000-0000-0000-0000-000000000001',
-      name: 'Engineering 90-Day Onboarding',
-      description: 'A comprehensive 90-day onboarding program for new software engineers.',
-      durationDays: 90,
-      createdById: hr.id,
-      milestones: {
-        create: [
-          {
-            name: 'Complete HR Paperwork',
-            description: 'Submit all required HR documents.',
-            targetDay: 1,
-            category: 'ADMINISTRATIVE',
-            sortOrder: 1,
-          },
-          {
-            name: 'Set Up Development Environment',
-            description: 'Install required tools and run the project locally.',
-            targetDay: 3,
-            category: 'TECHNICAL',
-            sortOrder: 2,
-          },
-          {
-            name: 'Meet 5 Team Members',
-            description: 'Schedule and complete 1-on-1 coffee chats.',
-            targetDay: 14,
-            category: 'SOCIAL',
-            sortOrder: 3,
-          },
-          {
-            name: 'Complete Security Training',
-            description: 'Finish the mandatory security awareness module.',
-            targetDay: 7,
-            category: 'LEARNING',
-            sortOrder: 4,
-          },
-          {
-            name: 'First Pull Request Merged',
-            description: 'Submit and get your first PR approved and merged.',
-            targetDay: 30,
-            category: 'DELIVERABLE',
-            sortOrder: 5,
-          },
-        ],
-      },
+      managerId: manager.id,
+      recruitId: recruit.id,
+      notes: 'Primary manager assignment for onboarding',
     },
   });
-  console.log(`Created program: ${program.name}`);
+  console.log('Assigned manager to recruit');
 
-  // Assign mentor to recruit
-  await prisma.mentorAssignment.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000002' },
-    update: {},
-    create: {
-      id: '00000000-0000-0000-0000-000000000002',
-      mentorId: mentor.id,
-      menteeId: recruit.id,
-    },
-  });
-  console.log('Assigned mentor to recruit');
+  // ------------------------------------------------------------------
+  // Task Entries (sample onboarding tasks)
+  // ------------------------------------------------------------------
 
-  // Enroll recruit in program
-  await prisma.programEnrollment.upsert({
-    where: {
-      userId_programId: {
+  await prisma.taskEntry.createMany({
+    data: [
+      {
         userId: recruit.id,
-        programId: program.id,
+        title: 'Complete HR paperwork',
+        description: 'Submit all required HR documents including tax forms and emergency contacts.',
+        priority: 'HIGH',
+        status: 'COMPLETED',
+        dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+        completedAt: new Date(),
+        visibility: 'MANAGER_ONLY',
+        tags: ['hr', 'administrative'],
+      },
+      {
+        userId: recruit.id,
+        title: 'Set up development environment',
+        description: 'Install required tools (Node.js, Docker, VS Code) and run the project locally.',
+        priority: 'HIGH',
+        status: 'IN_PROGRESS',
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        visibility: 'MANAGER_ONLY',
+        tags: ['technical', 'setup'],
+      },
+      {
+        userId: recruit.id,
+        title: 'Complete security training',
+        description: 'Finish the mandatory security awareness training module.',
+        priority: 'MEDIUM',
+        status: 'PENDING',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        visibility: 'MANAGER_ONLY',
+        tags: ['training', 'security'],
+      },
+      {
+        userId: recruit.id,
+        title: 'Meet 5 team members',
+        description: 'Schedule and complete 1-on-1 coffee chats with team members.',
+        priority: 'LOW',
+        status: 'PENDING',
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        visibility: 'PUBLIC',
+        tags: ['social', 'team'],
+      },
+      {
+        userId: recruit.id,
+        title: 'Submit first pull request',
+        description: 'Pick up a starter issue and get your first PR approved and merged.',
+        priority: 'MEDIUM',
+        status: 'PENDING',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        visibility: 'MANAGER_ONLY',
+        tags: ['deliverable', 'code'],
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('Created sample task entries');
+
+  // ------------------------------------------------------------------
+  // Issue Entries
+  // ------------------------------------------------------------------
+
+  await prisma.issueEntry.createMany({
+    data: [
+      {
+        userId: recruit.id,
+        title: 'VPN not connecting',
+        description: 'Unable to connect to the corporate VPN. Getting timeout errors after entering credentials.',
+        severity: 'HIGH',
+        status: 'OPEN',
+        visibility: 'MANAGER_ONLY',
+        tags: ['infrastructure', 'vpn'],
+      },
+      {
+        userId: recruit.id,
+        title: 'Missing access to staging environment',
+        description: 'I need access to the staging Kubernetes cluster to deploy my changes for testing.',
+        severity: 'MEDIUM',
+        status: 'RESOLVED',
+        resolutionNote: 'Access granted by DevOps team after manager approval.',
+        resolvedAt: new Date(),
+        visibility: 'MANAGER_ONLY',
+        tags: ['access', 'infrastructure'],
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('Created sample issue entries');
+
+  // ------------------------------------------------------------------
+  // Note Entries (journal)
+  // ------------------------------------------------------------------
+
+  await prisma.noteEntry.createMany({
+    data: [
+      {
+        userId: recruit.id,
+        title: 'Day 1: First impressions',
+        body: 'Really positive first day. The team was welcoming and the onboarding process seems well-structured. Looking forward to diving into the codebase tomorrow.',
+        moodRating: 4,
+        entryDate: new Date(),
+        visibility: 'PRIVATE',
+        tags: ['reflection', 'day-1'],
+      },
+      {
+        userId: recruit.id,
+        title: 'Day 3: Getting into the code',
+        body: 'Spent the day setting up my development environment and reading through the architecture docs. The codebase is large but well-organized. Had some VPN issues but IT is looking into it.',
+        moodRating: 3,
+        entryDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        visibility: 'MANAGER_ONLY',
+        tags: ['reflection', 'technical'],
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('Created sample note entries');
+
+  // ------------------------------------------------------------------
+  // Feedback Entries
+  // ------------------------------------------------------------------
+
+  await prisma.feedbackEntry.createMany({
+    data: [
+      {
+        authorId: manager.id,
+        subjectId: recruit.id,
+        type: 'POSITIVE',
+        title: 'Great initiative on first week',
+        body: 'Jane has shown excellent initiative in her first week. She proactively set up meetings with team members and started contributing to documentation improvements.',
+        rating: 4,
+      },
+      {
+        authorId: recruit.id,
+        subjectId: manager.id,
+        type: 'POSITIVE',
+        title: 'Very supportive onboarding experience',
+        body: 'John has been incredibly supportive during my first week. He ensured I had all the access I needed and checked in regularly without being overbearing.',
+        rating: 5,
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('Created sample feedback entries');
+
+  // ------------------------------------------------------------------
+  // Report
+  // ------------------------------------------------------------------
+
+  await prisma.report.create({
+    data: {
+      recruitId: recruit.id,
+      generatedById: manager.id,
+      type: 'WEEKLY',
+      status: 'DRAFT',
+      title: 'Week 1 Progress Report - Jane Recruit',
+      summary: 'First week summary: completed HR paperwork, started dev environment setup, filed one issue (VPN). Positive attitude and good engagement with the team.',
+      periodStart: new Date(),
+      periodEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      generatedData: {
+        tasks_total: 5,
+        tasks_completed: 1,
+        tasks_in_progress: 1,
+        issues_open: 1,
+        issues_resolved: 1,
+        avg_mood: 3.5,
+        feedback_count: 2,
       },
     },
-    update: {},
-    create: {
-      userId: recruit.id,
-      programId: program.id,
-    },
   });
-  console.log('Enrolled recruit in program');
+  console.log('Created sample report');
 
-  console.log('Seeding complete!');
+  // ------------------------------------------------------------------
+  // Done
+  // ------------------------------------------------------------------
+
+  console.log('\nSeeding complete!');
   console.log('\nTest credentials (all use password: Password1!):');
   console.log('  Admin:   admin@onboarding-diary.local');
   console.log('  HR:      hr@onboarding-diary.local');
-  console.log('  Mentor:  mentor@onboarding-diary.local');
+  console.log('  Manager: manager@onboarding-diary.local');
   console.log('  Recruit: recruit@onboarding-diary.local');
 }
 

@@ -1,24 +1,40 @@
-export interface CommentAuthorDto {
-  id: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  avatar_url: string | null;
-}
+import type { FeedbackType } from '../enums';
 
-export interface CommentDto {
+export interface FeedbackEntryDto {
   id: string;
-  diary_entry_id: string;
+  author_id: string;
+  subject_id: string;
+  type: FeedbackType;
+  title: string;
   body: string;
-  author: CommentAuthorDto;
+  rating: number | null;
   created_at: string;
   updated_at: string;
+  author?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  };
+  subject?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  };
 }
 
-export interface CreateCommentInput {
+export interface CreateFeedbackInput {
+  subject_id: string;
+  type: FeedbackType;
+  title: string;
   body: string;
+  rating?: number;
 }
 
-export interface UpdateCommentInput {
-  body: string;
+export interface UpdateFeedbackInput {
+  type?: FeedbackType;
+  title?: string;
+  body?: string;
+  rating?: number;
 }

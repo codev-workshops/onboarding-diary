@@ -1,60 +1,70 @@
 import { z } from 'zod';
-import { DIARY, PAGINATION } from '../constants';
-import { Visibility } from '../enums';
+import { NOTE, PAGINATION, TASK } from '../constants';
+import { Priority, TaskStatus, Visibility } from '../enums';
 
-export const createDiaryEntrySchema = z.object({
-  title: z
-    .string()
-    .min(DIARY.TITLE_MIN_LENGTH, `Title must be at least ${DIARY.TITLE_MIN_LENGTH} characters`)
-    .max(DIARY.TITLE_MAX_LENGTH),
-  body: z
-    .string()
-    .min(DIARY.BODY_MIN_LENGTH, `Body must be at least ${DIARY.BODY_MIN_LENGTH} characters`)
-    .max(DIARY.BODY_MAX_LENGTH),
-  mood_rating: z.number().int().min(DIARY.MOOD_MIN).max(DIARY.MOOD_MAX),
-  entry_date: z.string().date('Must be a valid date (YYYY-MM-DD)'),
-  visibility: z.nativeEnum(Visibility),
+export const createTaskEntrySchema = z.object({
+  title: z.string().min(TASK.TITLE_MIN_LENGTH).max(TASK.TITLE_MAX_LENGTH),
+  description: z.string().max(TASK.DESCRIPTION_MAX_LENGTH).optional(),
+  priority: z.nativeEnum(Priority).default(Priority.MEDIUM),
+  due_date: z.string().date('Must be a valid date (YYYY-MM-DD)').optional(),
+  visibility: z.nativeEnum(Visibility).default(Visibility.MANAGER_ONLY),
   tags: z
-    .array(
-      z
-        .string()
-        .max(DIARY.TAG_MAX_LENGTH)
-        .regex(/^[a-zA-Z0-9-]+$/, 'Tags must be alphanumeric with hyphens'),
-    )
-    .max(DIARY.MAX_TAGS)
+    .array(z.string().max(TASK.TAG_MAX_LENGTH).regex(/^[a-zA-Z0-9-]+$/))
+    .max(TASK.MAX_TAGS)
     .optional(),
 });
 
-export const updateDiaryEntrySchema = z.object({
-  title: z.string().min(DIARY.TITLE_MIN_LENGTH).max(DIARY.TITLE_MAX_LENGTH).optional(),
-  body: z.string().min(DIARY.BODY_MIN_LENGTH).max(DIARY.BODY_MAX_LENGTH).optional(),
-  mood_rating: z.number().int().min(DIARY.MOOD_MIN).max(DIARY.MOOD_MAX).optional(),
+export const updateTaskEntrySchema = z.object({
+  title: z.string().min(TASK.TITLE_MIN_LENGTH).max(TASK.TITLE_MAX_LENGTH).optional(),
+  description: z.string().max(TASK.DESCRIPTION_MAX_LENGTH).optional(),
+  priority: z.nativeEnum(Priority).optional(),
+  status: z.nativeEnum(TaskStatus).optional(),
+  due_date: z.string().date().optional(),
   visibility: z.nativeEnum(Visibility).optional(),
   tags: z
-    .array(
-      z
-        .string()
-        .max(DIARY.TAG_MAX_LENGTH)
-        .regex(/^[a-zA-Z0-9-]+$/),
-    )
-    .max(DIARY.MAX_TAGS)
+    .array(z.string().max(TASK.TAG_MAX_LENGTH).regex(/^[a-zA-Z0-9-]+$/))
+    .max(TASK.MAX_TAGS)
     .optional(),
 });
 
-export const diaryEntryListParamsSchema = z.object({
+export const createNoteEntrySchema = z.object({
+  title: z.string().min(NOTE.TITLE_MIN_LENGTH).max(NOTE.TITLE_MAX_LENGTH),
+  body: z.string().min(NOTE.BODY_MIN_LENGTH).max(NOTE.BODY_MAX_LENGTH),
+  mood_rating: z.number().int().min(NOTE.MOOD_MIN).max(NOTE.MOOD_MAX).optional(),
+  entry_date: z.string().date('Must be a valid date (YYYY-MM-DD)'),
+  visibility: z.nativeEnum(Visibility).default(Visibility.PRIVATE),
+  tags: z
+    .array(z.string().max(NOTE.TAG_MAX_LENGTH).regex(/^[a-zA-Z0-9-]+$/))
+    .max(NOTE.MAX_TAGS)
+    .optional(),
+});
+
+export const updateNoteEntrySchema = z.object({
+  title: z.string().min(NOTE.TITLE_MIN_LENGTH).max(NOTE.TITLE_MAX_LENGTH).optional(),
+  body: z.string().min(NOTE.BODY_MIN_LENGTH).max(NOTE.BODY_MAX_LENGTH).optional(),
+  mood_rating: z.number().int().min(NOTE.MOOD_MIN).max(NOTE.MOOD_MAX).optional(),
+  visibility: z.nativeEnum(Visibility).optional(),
+  tags: z
+    .array(z.string().max(NOTE.TAG_MAX_LENGTH).regex(/^[a-zA-Z0-9-]+$/))
+    .max(NOTE.MAX_TAGS)
+    .optional(),
+});
+
+export const entryListParamsSchema = z.object({
   page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
   limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
-  sort_by: z.enum(['created_at', 'entry_date', 'mood_rating']).default('entry_date'),
+  sort_by: z.enum(['created_at', 'updated_at', 'due_date', 'priority', 'entry_date']).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
-  mood_min: z.coerce.number().int().min(DIARY.MOOD_MIN).max(DIARY.MOOD_MAX).optional(),
-  mood_max: z.coerce.number().int().min(DIARY.MOOD_MIN).max(DIARY.MOOD_MAX).optional(),
-  tag: z.string().optional(),
+  status: z.nativeEnum(TaskStatus).optional(),
+  priority: z.nativeEnum(Priority).optional(),
   visibility: z.nativeEnum(Visibility).optional(),
   from_date: z.string().date().optional(),
   to_date: z.string().date().optional(),
   q: z.string().max(200).optional(),
 });
 
-export type CreateDiaryEntrySchema = z.infer<typeof createDiaryEntrySchema>;
-export type UpdateDiaryEntrySchema = z.infer<typeof updateDiaryEntrySchema>;
-export type DiaryEntryListParamsSchema = z.infer<typeof diaryEntryListParamsSchema>;
+export type CreateTaskEntrySchema = z.infer<typeof createTaskEntrySchema>;
+export type UpdateTaskEntrySchema = z.infer<typeof updateTaskEntrySchema>;
+export type CreateNoteEntrySchema = z.infer<typeof createNoteEntrySchema>;
+export type UpdateNoteEntrySchema = z.infer<typeof updateNoteEntrySchema>;
+export type EntryListParamsSchema = z.infer<typeof entryListParamsSchema>;

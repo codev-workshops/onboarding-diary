@@ -23,7 +23,9 @@ export async function register(input: RegisterSchema): Promise<AuthResponse> {
       passwordHash,
       firstName: input.first_name,
       lastName: input.last_name,
-      department: input.department,
+      recruitProfile: input.department
+        ? { create: { department: input.department } }
+        : undefined,
     },
   });
 
