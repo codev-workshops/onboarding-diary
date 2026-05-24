@@ -51,6 +51,8 @@ async function assertNoteAccess(
   if (requesterRole === Role.ADMIN) return;
   if (note.userId === requesterId) return;
 
+  if (note.visibility === 'PUBLIC') return;
+
   if (requesterRole === Role.MANAGER) {
     const assignment = await prisma.managerRecruitRelationship.findFirst({
       where: { managerId: requesterId, recruitId: note.userId, isActive: true },
@@ -185,7 +187,21 @@ export async function listNotes(
   };
 
   if (requesterRole === Role.RECRUIT) {
-    where.userId = requesterId;
+    const scopeFilter = {
+      OR: [
+        { userId: requesterId },
+        { visibility: 'PUBLIC' as const },
+      ],
+    };
+    if (q) {
+      where.AND = [
+        { OR: [{ title: { contains: q, mode: 'insensitive' as const } }, { body: { contains: q, mode: 'insensitive' as const } }] },
+        scopeFilter,
+      ];
+      delete where.OR;
+    } else {
+      where.OR = scopeFilter.OR;
+    }
   } else if (requesterRole === Role.MANAGER) {
     const assignments = await prisma.managerRecruitRelationship.findMany({
       where: { managerId: requesterId, isActive: true },
@@ -197,6 +213,7 @@ export async function listNotes(
       OR: [
         { userId: requesterId },
         { userId: { in: recruitIds }, visibility: { not: 'PRIVATE' as const } },
+        { visibility: 'PUBLIC' as const },
       ],
     };
 

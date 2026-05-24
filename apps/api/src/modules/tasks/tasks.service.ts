@@ -63,6 +63,8 @@ async function assertTaskAccess(
   if (requesterRole === Role.ADMIN) return;
   if (task.userId === requesterId) return;
 
+  if (task.visibility === 'PUBLIC') return;
+
   if (requesterRole === Role.MANAGER) {
     const assignment = await prisma.managerRecruitRelationship.findFirst({
       where: { managerId: requesterId, recruitId: task.userId, isActive: true },
@@ -210,23 +212,12 @@ export async function listTasks(
 
   // Scope by role
   if (requesterRole === Role.RECRUIT) {
-    where.userId = requesterId;
-  } else if (requesterRole === Role.MANAGER) {
-    const assignments = await prisma.managerRecruitRelationship.findMany({
-      where: { managerId: requesterId, isActive: true },
-      select: { recruitId: true },
-    });
-    const recruitIds = assignments.map((a) => a.recruitId);
-
-    where.OR = [
-      { userId: requesterId },
-      {
-        userId: { in: recruitIds },
-        visibility: { not: 'PRIVATE' },
-      },
-    ];
-
-    // Merge with existing text search OR if present
+    const scopeFilter = {
+      OR: [
+        { userId: requesterId },
+        { visibility: 'PUBLIC' as const },
+      ],
+    };
     if (q) {
       const textFilter = {
         OR: [
@@ -234,16 +225,37 @@ export async function listTasks(
           { description: { contains: q, mode: 'insensitive' as const } },
         ],
       };
-      where.AND = [
-        textFilter,
-        {
-          OR: [
-            { userId: requesterId },
-            { userId: { in: recruitIds }, visibility: { not: 'PRIVATE' } },
-          ],
-        },
-      ];
+      where.AND = [textFilter, scopeFilter];
       delete where.OR;
+    } else {
+      where.OR = scopeFilter.OR;
+    }
+  } else if (requesterRole === Role.MANAGER) {
+    const assignments = await prisma.managerRecruitRelationship.findMany({
+      where: { managerId: requesterId, isActive: true },
+      select: { recruitId: true },
+    });
+    const recruitIds = assignments.map((a) => a.recruitId);
+
+    const scopeFilter = {
+      OR: [
+        { userId: requesterId },
+        { userId: { in: recruitIds }, visibility: { not: 'PRIVATE' as const } },
+        { visibility: 'PUBLIC' as const },
+      ],
+    };
+
+    if (q) {
+      const textFilter = {
+        OR: [
+          { title: { contains: q, mode: 'insensitive' as const } },
+          { description: { contains: q, mode: 'insensitive' as const } },
+        ],
+      };
+      where.AND = [textFilter, scopeFilter];
+      delete where.OR;
+    } else {
+      where.OR = scopeFilter.OR;
     }
   }
   // ADMIN: no additional scoping

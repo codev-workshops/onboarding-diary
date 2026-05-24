@@ -56,6 +56,8 @@ async function assertIssueAccess(
   if (requesterRole === Role.ADMIN) return;
   if (issue.userId === requesterId) return;
 
+  if (issue.visibility === 'PUBLIC') return;
+
   if (requesterRole === Role.MANAGER) {
     const assignment = await prisma.managerRecruitRelationship.findFirst({
       where: { managerId: requesterId, recruitId: issue.userId, isActive: true },
@@ -201,7 +203,24 @@ export async function listIssues(
 
   // Scope by role
   if (requesterRole === Role.RECRUIT) {
-    where.userId = requesterId;
+    const scopeFilter = {
+      OR: [
+        { userId: requesterId },
+        { visibility: 'PUBLIC' as const },
+      ],
+    };
+    if (q) {
+      const textFilter = {
+        OR: [
+          { title: { contains: q, mode: 'insensitive' as const } },
+          { description: { contains: q, mode: 'insensitive' as const } },
+        ],
+      };
+      where.AND = [textFilter, scopeFilter];
+      delete where.OR;
+    } else {
+      where.OR = scopeFilter.OR;
+    }
   } else if (requesterRole === Role.MANAGER) {
     const assignments = await prisma.managerRecruitRelationship.findMany({
       where: { managerId: requesterId, isActive: true },
@@ -213,6 +232,7 @@ export async function listIssues(
       OR: [
         { userId: requesterId },
         { userId: { in: recruitIds }, visibility: { not: 'PRIVATE' as const } },
+        { visibility: 'PUBLIC' as const },
       ],
     };
 
