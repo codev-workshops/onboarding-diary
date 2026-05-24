@@ -17,6 +17,7 @@ import { feedbackRoutes } from './modules/feedback/feedback.routes.js';
 import { notesRoutes } from './modules/notes/notes.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
+import { prisma } from './config/database.js';
 
 const app = express();
 
@@ -29,12 +30,25 @@ app.use(express.json({ limit: '1mb' }));
 app.use(globalRateLimiter);
 
 // Health check
-app.get(`${config.API_PREFIX}/health`, (_req, res) => {
-  res.json({
-    status: 'healthy',
+app.get(`${config.API_PREFIX}/health`, async (_req, res) => {
+  let dbStatus = 'healthy';
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch {
+    dbStatus = 'unhealthy';
+  }
+
+  const status = dbStatus === 'healthy' ? 'healthy' : 'degraded';
+  const statusCode = status === 'healthy' ? 200 : 503;
+
+  res.status(statusCode).json({
+    status,
     timestamp: new Date().toISOString(),
     version: '0.1.0',
     uptime: process.uptime(),
+    checks: {
+      database: dbStatus,
+    },
   });
 });
 
