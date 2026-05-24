@@ -1,0 +1,35 @@
+{
+  "name": "onboarding-diary",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:web": "pnpm --filter @onboarding-diary/web dev",
+    "dev:api": "pnpm --filter @onboarding-diary/api dev",
+    "build": "pnpm -r run build",
+    "build:web": "pnpm --filter @onboarding-diary/web build",
+    "build:api": "pnpm --filter @onboarding-diary/api build",
+    "start:api": "pnpm --filter @onboarding-diary/api start",
+    "lint": "pnpm -r run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r run typecheck",
+    "db:migrate": "pnpm --filter @onboarding-diary/api db:migrate",
+    "db:migrate:prod": "pnpm --filter @onboarding-diary/api db:migrate:prod",
+    "db:seed": "pnpm --filter @onboarding-diary/api db:seed",
+    "db:studio": "pnpm --filter @onboarding-diary/api db:studio",
+    "db:generate": "pnpm --filter @onboarding-diary/api db:generate",
+    "clean": "pnpm -r run clean && rm -rf node_modules"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.1",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "@typescript-eslint/parser": "^8.59.4",
+    "eslint": "^10.4.0",
+    "prettier": "^3.8.3"
+  }
+}

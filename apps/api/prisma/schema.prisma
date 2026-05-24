@@ -1,0 +1,311 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum Role {
+  RECRUIT
+  MENTOR
+  MANAGER
+  HR_ADMIN
+  SYS_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+}
+
+enum Visibility {
+  PRIVATE
+  MENTOR_ONLY
+  TEAM
+  PUBLIC
+}
+
+enum MilestoneCategory {
+  ADMINISTRATIVE
+  TECHNICAL
+  SOCIAL
+  LEARNING
+  DELIVERABLE
+}
+
+enum EnrollmentStatus {
+  IN_PROGRESS
+  COMPLETED
+  WITHDRAWN
+}
+
+enum CompletionStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+}
+
+enum NotificationType {
+  COMMENT_ADDED
+  MILESTONE_REMINDER
+  MILESTONE_VERIFIED
+  MILESTONE_REJECTED
+  MENTOR_ASSIGNED
+  PROGRAM_ENROLLED
+}
+
+// ============================================================
+// Models
+// ============================================================
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  firstName    String     @map("first_name") @db.VarChar(100)
+  lastName     String     @map("last_name") @db.VarChar(100)
+  avatarUrl    String?    @map("avatar_url") @db.VarChar(500)
+  bio          String?    @db.Text
+  department   String?    @db.VarChar(100)
+  role         Role       @default(RECRUIT)
+  status       UserStatus @default(ACTIVE)
+  startDate    DateTime?  @map("start_date") @db.Date
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
+
+  diaryEntries         DiaryEntry[]
+  comments             Comment[]
+  milestoneCompletions MilestoneCompletion[]
+  notifications        Notification[]
+  refreshTokens        RefreshToken[]
+  programEnrollments   ProgramEnrollment[]
+  createdPrograms      OnboardingProgram[]   @relation("ProgramCreator")
+
+  mentorAssignmentsAsMentor MentorAssignment[] @relation("MentorUser")
+  mentorAssignmentsAsMentee MentorAssignment[] @relation("MenteeUser")
+  verifiedCompletions       MilestoneCompletion[] @relation("Verifier")
+
+  @@index([role])
+  @@index([status])
+  @@index([department])
+  @@map("users")
+}
+
+model DiaryEntry {
+  id         String     @id @default(uuid())
+  userId     String     @map("user_id")
+  title      String     @db.VarChar(255)
+  body       String     @db.Text
+  moodRating Int        @map("mood_rating") @db.SmallInt
+  entryDate  DateTime   @map("entry_date") @db.Date
+  visibility Visibility @default(MENTOR_ONLY)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  deletedAt  DateTime?  @map("deleted_at")
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  tags        DiaryEntryTag[]
+  attachments Attachment[]
+
+  @@unique([userId, entryDate])
+  @@index([userId])
+  @@index([entryDate])
+  @@index([visibility])
+  @@index([moodRating])
+  @@map("diary_entries")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique @db.VarChar(50)
+  slug      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  entries DiaryEntryTag[]
+
+  @@map("tags")
+}
+
+model DiaryEntryTag {
+  diaryEntryId String @map("diary_entry_id")
+  tagId        String @map("tag_id")
+
+  diaryEntry DiaryEntry @relation(fields: [diaryEntryId], references: [id], onDelete: Cascade)
+  tag        Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([diaryEntryId, tagId])
+  @@index([tagId])
+  @@map("diary_entry_tags")
+}
+
+model Attachment {
+  id           String   @id @default(uuid())
+  diaryEntryId String   @map("diary_entry_id")
+  fileName     String   @map("file_name") @db.VarChar(255)
+  fileUrl      String   @map("file_url") @db.VarChar(500)
+  fileSize     Int      @map("file_size")
+  mimeType     String   @map("mime_type") @db.VarChar(100)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  diaryEntry DiaryEntry @relation(fields: [diaryEntryId], references: [id], onDelete: Cascade)
+
+  @@index([diaryEntryId])
+  @@map("attachments")
+}
+
+model Comment {
+  id           String    @id @default(uuid())
+  diaryEntryId String    @map("diary_entry_id")
+  userId       String    @map("user_id")
+  body         String    @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  diaryEntry DiaryEntry @relation(fields: [diaryEntryId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([diaryEntryId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model OnboardingProgram {
+  id           String    @id @default(uuid())
+  name         String    @db.VarChar(200)
+  description  String?   @db.Text
+  durationDays Int       @map("duration_days")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdById  String    @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  createdBy   User                @relation("ProgramCreator", fields: [createdById], references: [id])
+  milestones  Milestone[]
+  enrollments ProgramEnrollment[]
+
+  @@index([isActive])
+  @@map("onboarding_programs")
+}
+
+model Milestone {
+  id          String            @id @default(uuid())
+  programId   String            @map("program_id")
+  name        String            @db.VarChar(200)
+  description String?           @db.Text
+  targetDay   Int               @map("target_day")
+  category    MilestoneCategory
+  sortOrder   Int               @default(0) @map("sort_order")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  program     OnboardingProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  completions MilestoneCompletion[]
+
+  @@index([programId])
+  @@index([category])
+  @@index([programId, sortOrder])
+  @@map("milestones")
+}
+
+model ProgramEnrollment {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  programId   String           @map("program_id")
+  enrolledAt  DateTime         @default(now()) @map("enrolled_at")
+  completedAt DateTime?        @map("completed_at")
+  status      EnrollmentStatus @default(IN_PROGRESS)
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program OnboardingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, programId])
+  @@index([userId])
+  @@index([programId])
+  @@index([status])
+  @@map("program_enrollments")
+}
+
+model MilestoneCompletion {
+  id          String           @id @default(uuid())
+  milestoneId String           @map("milestone_id")
+  userId      String           @map("user_id")
+  note        String?          @db.Text
+  status      CompletionStatus @default(PENDING_VERIFICATION)
+  verifiedById String?         @map("verified_by")
+  completedAt DateTime         @default(now()) @map("completed_at")
+  verifiedAt  DateTime?        @map("verified_at")
+
+  milestone  Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy User?     @relation("Verifier", fields: [verifiedById], references: [id])
+
+  @@unique([milestoneId, userId])
+  @@index([milestoneId])
+  @@index([userId])
+  @@index([status])
+  @@map("milestone_completions")
+}
+
+model MentorAssignment {
+  id           String    @id @default(uuid())
+  mentorId     String    @map("mentor_id")
+  menteeId     String    @map("mentee_id")
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  unassignedAt DateTime? @map("unassigned_at")
+  isActive     Boolean   @default(true) @map("is_active")
+
+  mentor User @relation("MentorUser", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentee User @relation("MenteeUser", fields: [menteeId], references: [id], onDelete: Cascade)
+
+  @@index([mentorId])
+  @@index([menteeId])
+  @@map("mentor_assignments")
+}
+
+model Notification {
+  id            String           @id @default(uuid())
+  userId        String           @map("user_id")
+  type          NotificationType
+  title         String           @db.VarChar(200)
+  message       String           @db.Text
+  referenceType String?          @map("reference_type") @db.VarChar(50)
+  referenceId   String?          @map("reference_id")
+  isRead        Boolean          @default(false) @map("is_read")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  userAgent String?   @map("user_agent") @db.VarChar(500)
+  ipAddress String?   @map("ip_address") @db.VarChar(45)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}

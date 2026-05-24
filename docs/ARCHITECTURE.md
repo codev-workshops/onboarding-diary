@@ -102,32 +102,30 @@ onboarding-diary/
 ### 1.2 Workspace Configuration
 
 **Root `package.json`:**
+
 ```jsonc
 {
   "name": "onboarding-diary",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "server",
-    "client"
-  ],
+  "workspaces": ["packages/*", "server", "client"],
   "scripts": {
-    "dev":          "npm run dev --workspaces --if-present",
-    "build":        "npm run build --workspaces --if-present",
-    "lint":         "npm run lint --workspaces --if-present",
-    "test":         "npm run test --workspaces --if-present",
-    "db:migrate":   "npm run db:migrate -w server",
-    "db:seed":      "npm run db:seed -w server",
-    "db:studio":    "npm run db:studio -w server",
-    "format":       "prettier --write .",
-    "format:check": "prettier --check ."
-  }
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate -w server",
+    "db:seed": "npm run db:seed -w server",
+    "db:studio": "npm run db:studio -w server",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+  },
 }
 ```
 
 ### 1.3 TypeScript Configuration
 
 **`tsconfig.base.json` (root):**
+
 ```jsonc
 {
   "compilerOptions": {
@@ -145,8 +143,8 @@ onboarding-diary/
     "sourceMap": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
-  }
+    "noUnusedParameters": true,
+  },
 }
 ```
 
@@ -245,14 +243,14 @@ client/src/
 
 ### 2.2 Component Design Principles
 
-| Principle | Guideline |
-|-----------|-----------|
-| **Composition over inheritance** | Build complex UIs by composing small components; avoid deep component trees |
-| **Container / Presentational split** | Pages (containers) own data fetching; components (presentational) receive data via props |
-| **Co-location** | Component-specific types and helpers live next to the component, not in a global `types/` |
-| **Barrel exports** | Each folder exports via `index.ts` for clean imports |
-| **Lazy loading** | All page-level components are loaded via `React.lazy` + `Suspense` for code splitting |
-| **Accessible defaults** | All interactive components include ARIA attributes; forms use `<label>` associations |
+| Principle                            | Guideline                                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| **Composition over inheritance**     | Build complex UIs by composing small components; avoid deep component trees               |
+| **Container / Presentational split** | Pages (containers) own data fetching; components (presentational) receive data via props  |
+| **Co-location**                      | Component-specific types and helpers live next to the component, not in a global `types/` |
+| **Barrel exports**                   | Each folder exports via `index.ts` for clean imports                                      |
+| **Lazy loading**                     | All page-level components are loaded via `React.lazy` + `Suspense` for code splitting     |
+| **Accessible defaults**              | All interactive components include ARIA attributes; forms use `<label>` associations      |
 
 ### 2.3 Routing Architecture
 
@@ -300,6 +298,7 @@ client/src/
 ```
 
 Role-based redirection after login:
+
 - `RECRUIT` → `/dashboard`
 - `MENTOR` → `/mentor/dashboard`
 - `MANAGER` → `/manager/dashboard`
@@ -323,45 +322,42 @@ Page Component
 
 ```typescript
 // Pattern: [resource, scope, filters]
-['diary-entries', 'list', { page, limit, tag, mood }]
-['diary-entries', 'detail', entryId]
-['milestones', 'user', userId]
-['notifications', 'unread-count']
-['programs', 'list']
-['reports', 'dashboard']
+['diary-entries', 'list', { page, limit, tag, mood }][('diary-entries', 'detail', entryId)][
+  ('milestones', 'user', userId)
+][('notifications', 'unread-count')][('programs', 'list')][('reports', 'dashboard')];
 ```
 
 **React Query Defaults:**
 
-| Setting | Value | Rationale |
-|---------|-------|-----------|
-| `staleTime` | 5 min | Diary data changes infrequently |
-| `gcTime` (cacheTime) | 30 min | Keep cached data for back-navigation |
-| `refetchOnWindowFocus` | true | Catch updates when user returns |
-| `retry` | 3 | Resilience against transient failures |
-| `refetchInterval` | 60s (notifications only) | Near-real-time notification count |
+| Setting                | Value                    | Rationale                             |
+| ---------------------- | ------------------------ | ------------------------------------- |
+| `staleTime`            | 5 min                    | Diary data changes infrequently       |
+| `gcTime` (cacheTime)   | 30 min                   | Keep cached data for back-navigation  |
+| `refetchOnWindowFocus` | true                     | Catch updates when user returns       |
+| `retry`                | 3                        | Resilience against transient failures |
+| `refetchInterval`      | 60s (notifications only) | Near-real-time notification count     |
 
 **Mutation Invalidation Map:**
 
-| Mutation | Invalidates |
-|----------|-------------|
-| Create diary entry | `['diary-entries', 'list']` |
-| Update diary entry | `['diary-entries', 'list']`, `['diary-entries', 'detail', id]` |
-| Delete diary entry | `['diary-entries', 'list']` |
-| Add comment | `['comments', entryId]`, `['diary-entries', 'detail', entryId]` |
-| Complete milestone | `['milestones', 'user', userId]`, `['reports', 'dashboard']` |
-| Verify/reject milestone | `['milestones', 'user', userId]` |
+| Mutation                | Invalidates                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| Create diary entry      | `['diary-entries', 'list']`                                     |
+| Update diary entry      | `['diary-entries', 'list']`, `['diary-entries', 'detail', id]`  |
+| Delete diary entry      | `['diary-entries', 'list']`                                     |
+| Add comment             | `['comments', entryId]`, `['diary-entries', 'detail', entryId]` |
+| Complete milestone      | `['milestones', 'user', userId]`, `['reports', 'dashboard']`    |
+| Verify/reject milestone | `['milestones', 'user', userId]`                                |
 
 ### 2.5 State Management Summary
 
-| State Category | Tool | Scope | Persistence |
-|----------------|------|-------|-------------|
-| Server state | TanStack Query | Global cache | In-memory (cache) |
-| Auth state | React Context + `useReducer` | Global | `localStorage` (refresh token only) |
-| Form state | React Hook Form + Zod resolver | Local (per form) | None |
-| UI state | `useState` / `useReducer` | Local (per component) | None |
-| URL state | React Router `useSearchParams` | URL | URL (bookmarkable) |
-| Theme | React Context | Global | `localStorage` |
+| State Category | Tool                           | Scope                 | Persistence                         |
+| -------------- | ------------------------------ | --------------------- | ----------------------------------- |
+| Server state   | TanStack Query                 | Global cache          | In-memory (cache)                   |
+| Auth state     | React Context + `useReducer`   | Global                | `localStorage` (refresh token only) |
+| Form state     | React Hook Form + Zod resolver | Local (per form)      | None                                |
+| UI state       | `useState` / `useReducer`      | Local (per component) | None                                |
+| URL state      | React Router `useSearchParams` | URL                   | URL (bookmarkable)                  |
+| Theme          | React Context                  | Global                | `localStorage`                      |
 
 ---
 
@@ -532,6 +528,7 @@ Each module follows the same three-layer pattern:
 ```
 
 **Rules:**
+
 - Controllers NEVER import Prisma directly
 - Services NEVER import `express` types
 - Routes are the ONLY place middleware is applied
@@ -578,13 +575,13 @@ POST /api/v1/diary-entries
 
 **Approach:** URI-based versioning with the prefix `/api/v1/`.
 
-| Aspect | Decision | Rationale |
-|--------|----------|-----------|
-| **Style** | URI prefix (`/api/v1/`) | Simple, explicit, easy to route and document |
-| **Granularity** | Whole-API versioning | Avoids per-endpoint version confusion |
-| **Breaking change policy** | Bump major version (`v2`) only for breaking changes | Additive changes (new fields, new endpoints) are non-breaking |
-| **Deprecation** | Announce 6 months before removal; add `Sunset` header | Clients have migration time |
-| **Concurrent versions** | Max 2 active versions at a time | Limits maintenance burden |
+| Aspect                     | Decision                                              | Rationale                                                     |
+| -------------------------- | ----------------------------------------------------- | ------------------------------------------------------------- |
+| **Style**                  | URI prefix (`/api/v1/`)                               | Simple, explicit, easy to route and document                  |
+| **Granularity**            | Whole-API versioning                                  | Avoids per-endpoint version confusion                         |
+| **Breaking change policy** | Bump major version (`v2`) only for breaking changes   | Additive changes (new fields, new endpoints) are non-breaking |
+| **Deprecation**            | Announce 6 months before removal; add `Sunset` header | Clients have migration time                                   |
+| **Concurrent versions**    | Max 2 active versions at a time                       | Limits maintenance burden                                     |
 
 **Route Mounting:**
 
@@ -603,38 +600,38 @@ app.use('/api/v1/attachments',   attachmentRoutes);
 
 ### 4.2 REST Conventions
 
-| Convention | Standard |
-|------------|----------|
-| Resource naming | Plural nouns, kebab-case (`/diary-entries`, `/mentor-assignments`) |
-| HTTP methods | `GET` (read), `POST` (create), `PATCH` (partial update), `DELETE` (soft-delete) |
-| Status codes | `200` OK, `201` Created, `204` No Content, `400`/`401`/`403`/`404`/`409`/`429`/`500` |
-| Response envelope | `{ "data": ... }` for success; `{ "error": { "code", "message", "details" } }` for errors |
-| Pagination | `{ "data": [...], "meta": { page, limit, total_count, total_pages, has_next, has_prev } }` |
-| Sorting | `?sort_by=created_at&sort_order=desc` |
-| Filtering | Resource-specific query params (`?mood_min=3&tag=development&from_date=2026-01-01`) |
-| Search | `?q=keyword` for full-text search endpoints |
-| Nested resources | Use nesting for strong ownership: `POST /diary-entries/:entryId/comments` |
-| Cross-resource refs | Use flat endpoints for weak references: `GET /users/:id/diary-entries` |
+| Convention          | Standard                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| Resource naming     | Plural nouns, kebab-case (`/diary-entries`, `/mentor-assignments`)                         |
+| HTTP methods        | `GET` (read), `POST` (create), `PATCH` (partial update), `DELETE` (soft-delete)            |
+| Status codes        | `200` OK, `201` Created, `204` No Content, `400`/`401`/`403`/`404`/`409`/`429`/`500`       |
+| Response envelope   | `{ "data": ... }` for success; `{ "error": { "code", "message", "details" } }` for errors  |
+| Pagination          | `{ "data": [...], "meta": { page, limit, total_count, total_pages, has_next, has_prev } }` |
+| Sorting             | `?sort_by=created_at&sort_order=desc`                                                      |
+| Filtering           | Resource-specific query params (`?mood_min=3&tag=development&from_date=2026-01-01`)        |
+| Search              | `?q=keyword` for full-text search endpoints                                                |
+| Nested resources    | Use nesting for strong ownership: `POST /diary-entries/:entryId/comments`                  |
+| Cross-resource refs | Use flat endpoints for weak references: `GET /users/:id/diary-entries`                     |
 
 ### 4.3 Request/Response Headers
 
 **Request Headers:**
 
-| Header | Required | Description |
-|--------|----------|-------------|
-| `Authorization` | Yes (protected) | `Bearer <access_token>` |
-| `Content-Type` | Yes (POST/PATCH) | `application/json` |
-| `X-Request-ID` | No | Client-generated request ID for tracing; server generates one if absent |
+| Header          | Required         | Description                                                             |
+| --------------- | ---------------- | ----------------------------------------------------------------------- |
+| `Authorization` | Yes (protected)  | `Bearer <access_token>`                                                 |
+| `Content-Type`  | Yes (POST/PATCH) | `application/json`                                                      |
+| `X-Request-ID`  | No               | Client-generated request ID for tracing; server generates one if absent |
 
 **Response Headers:**
 
-| Header | Description |
-|--------|-------------|
-| `X-Request-ID` | Echo or server-generated request trace ID |
-| `X-RateLimit-Limit` | Max requests per window |
-| `X-RateLimit-Remaining` | Remaining requests in current window |
-| `X-RateLimit-Reset` | Window reset timestamp (Unix epoch) |
-| `Content-Type` | `application/json` (or `text/csv` for exports) |
+| Header                  | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `X-Request-ID`          | Echo or server-generated request trace ID      |
+| `X-RateLimit-Limit`     | Max requests per window                        |
+| `X-RateLimit-Remaining` | Remaining requests in current window           |
+| `X-RateLimit-Reset`     | Window reset timestamp (Unix epoch)            |
+| `Content-Type`          | `application/json` (or `text/csv` for exports) |
 
 ### 4.4 API Documentation Plan
 
@@ -775,13 +772,13 @@ App Boot
 
 ### 5.4 Security Measures
 
-| Measure | Implementation |
-|---------|---------------|
-| Refresh token rotation | New refresh token on every refresh; old one revoked |
+| Measure                       | Implementation                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| Refresh token rotation        | New refresh token on every refresh; old one revoked                           |
 | Refresh token reuse detection | If a revoked token is used, revoke ALL tokens for that user (potential theft) |
-| Access token in memory only | Never stored in localStorage (XSS mitigation) |
-| Brute force on login | Rate limit: 5 attempts per 15 min per IP (sliding window) |
-| Password reset tokens | Cryptographically random, 1-hour expiry, single-use, stored hashed |
+| Access token in memory only   | Never stored in localStorage (XSS mitigation)                                 |
+| Brute force on login          | Rate limit: 5 attempts per 15 min per IP (sliding window)                     |
+| Password reset tokens         | Cryptographically random, 1-hour expiry, single-use, stored hashed            |
 
 ---
 
@@ -938,15 +935,15 @@ model RefreshToken { ... }
 
 #### 7.1.2 Key Prisma Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| ID strategy | UUID (`@default(uuid())`) | Prevents enumeration attacks, safe for distributed systems |
-| Timestamps | `@default(now())` + `@updatedAt` | Prisma auto-manages `updatedAt` |
-| Soft delete | `deletedAt DateTime?` | Application-level; enforced via Prisma middleware |
-| Relations | Explicit `@relation` with `onDelete` | Cascade for owned resources; Restrict for references |
-| Indexes | `@@index`, `@@unique` | Defined per entity as specified in REQUIREMENTS.md §7 |
-| Full-text search | `previewFeatures = ["fullTextSearch"]` | Native PostgreSQL tsvector support |
-| Enum mapping | Prisma `enum` → PostgreSQL `ENUM` type | Type-safe at DB level |
+| Decision         | Choice                                 | Rationale                                                  |
+| ---------------- | -------------------------------------- | ---------------------------------------------------------- |
+| ID strategy      | UUID (`@default(uuid())`)              | Prevents enumeration attacks, safe for distributed systems |
+| Timestamps       | `@default(now())` + `@updatedAt`       | Prisma auto-manages `updatedAt`                            |
+| Soft delete      | `deletedAt DateTime?`                  | Application-level; enforced via Prisma middleware          |
+| Relations        | Explicit `@relation` with `onDelete`   | Cascade for owned resources; Restrict for references       |
+| Indexes          | `@@index`, `@@unique`                  | Defined per entity as specified in REQUIREMENTS.md §7      |
+| Full-text search | `previewFeatures = ["fullTextSearch"]` | Native PostgreSQL tsvector support                         |
+| Enum mapping     | Prisma `enum` → PostgreSQL `ENUM` type | Type-safe at DB level                                      |
 
 #### 7.1.3 Soft Delete Middleware
 
@@ -960,38 +957,38 @@ This ensures soft delete is consistent across the entire application without man
 
 #### 7.1.4 Migration Strategy
 
-| Aspect | Approach |
-|--------|----------|
-| Tool | `prisma migrate dev` (development), `prisma migrate deploy` (production) |
-| Naming | Timestamped with descriptive suffix: `20260524_init`, `20260601_add_notifications` |
+| Aspect    | Approach                                                                                                |
+| --------- | ------------------------------------------------------------------------------------------------------- |
+| Tool      | `prisma migrate dev` (development), `prisma migrate deploy` (production)                                |
+| Naming    | Timestamped with descriptive suffix: `20260524_init`, `20260601_add_notifications`                      |
 | Seed data | `prisma/seed.ts` creates: 1 SYS_ADMIN, 1 HR_ADMIN, sample program with milestones, 2 recruits, 1 mentor |
-| Rollback | Prisma does not support down migrations; roll forward with corrective migrations |
-| CI | Run `prisma migrate deploy` in CI before tests |
+| Rollback  | Prisma does not support down migrations; roll forward with corrective migrations                        |
+| CI        | Run `prisma migrate deploy` in CI before tests                                                          |
 
 #### 7.1.5 Connection Management
 
-| Setting | Value | Rationale |
-|---------|-------|-----------|
-| Connection pool size | 10 (default) | Sufficient for 500 concurrent users with short-lived queries |
-| Connection timeout | 5 seconds | Fail fast on DB unavailability |
-| Idle timeout | 10 seconds | Release unused connections |
-| Query logging | Enabled in development (`log: ['query']`) | Debug slow queries |
+| Setting              | Value                                     | Rationale                                                    |
+| -------------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| Connection pool size | 10 (default)                              | Sufficient for 500 concurrent users with short-lived queries |
+| Connection timeout   | 5 seconds                                 | Fail fast on DB unavailability                               |
+| Idle timeout         | 10 seconds                                | Release unused connections                                   |
+| Query logging        | Enabled in development (`log: ['query']`) | Debug slow queries                                           |
 
 ### 7.2 Index Strategy Summary
 
 **Primary access patterns and their supporting indexes:**
 
-| Access Pattern | Index | Type |
-|----------------|-------|------|
-| Login by email | `idx_user_email` UNIQUE | B-tree |
-| List entries by user + date | `idx_diary_user_date` UNIQUE (partial) | B-tree |
-| Filter entries by visibility | `idx_diary_visibility` | B-tree |
-| Search entries by keyword | GIN on tsvector(`title`, `body`) | GIN |
-| List comments by entry | `idx_comment_entry_id` | B-tree |
-| List milestones by program | `idx_milestone_program_id` | B-tree |
-| Find mentor for mentee | `idx_mentor_assignment_active` (partial) | B-tree |
-| Unread notifications | `idx_notification_read` (partial) | B-tree |
-| Active (non-deleted) records | `idx_*_deleted_at` (partial WHERE NULL) | B-tree |
+| Access Pattern               | Index                                    | Type   |
+| ---------------------------- | ---------------------------------------- | ------ |
+| Login by email               | `idx_user_email` UNIQUE                  | B-tree |
+| List entries by user + date  | `idx_diary_user_date` UNIQUE (partial)   | B-tree |
+| Filter entries by visibility | `idx_diary_visibility`                   | B-tree |
+| Search entries by keyword    | GIN on tsvector(`title`, `body`)         | GIN    |
+| List comments by entry       | `idx_comment_entry_id`                   | B-tree |
+| List milestones by program   | `idx_milestone_program_id`               | B-tree |
+| Find mentor for mentee       | `idx_mentor_assignment_active` (partial) | B-tree |
+| Unread notifications         | `idx_notification_read` (partial)        | B-tree |
+| Active (non-deleted) records | `idx_*_deleted_at` (partial WHERE NULL)  | B-tree |
 
 All partial indexes use `WHERE deleted_at IS NULL` or similar conditions to keep the index compact and relevant.
 
@@ -1005,22 +1002,22 @@ This package is the **single source of truth** for all types, enums, constants, 
 
 ### 8.2 What Lives in Shared
 
-| Category | Examples | Consumed By |
-|----------|----------|-------------|
-| **Enums** | `Role`, `Visibility`, `MilestoneCategory`, `UserStatus`, `EnrollmentStatus`, `CompletionStatus`, `NotificationType` | Client + Server |
-| **DTO Interfaces** | `UserDto`, `DiaryEntryDto`, `CreateDiaryEntryInput`, `PaginatedResponse<T>`, `ApiError` | Client + Server |
-| **Zod Schemas** | `createDiaryEntrySchema`, `loginSchema`, `registerSchema` | Server (validation middleware) + Client (form validation) |
-| **Constants** | `MAX_FILE_SIZE`, `MAX_TAGS_PER_ENTRY`, `PAGINATION_DEFAULTS`, `ALLOWED_MIME_TYPES` | Client + Server |
+| Category           | Examples                                                                                                            | Consumed By                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Enums**          | `Role`, `Visibility`, `MilestoneCategory`, `UserStatus`, `EnrollmentStatus`, `CompletionStatus`, `NotificationType` | Client + Server                                           |
+| **DTO Interfaces** | `UserDto`, `DiaryEntryDto`, `CreateDiaryEntryInput`, `PaginatedResponse<T>`, `ApiError`                             | Client + Server                                           |
+| **Zod Schemas**    | `createDiaryEntrySchema`, `loginSchema`, `registerSchema`                                                           | Server (validation middleware) + Client (form validation) |
+| **Constants**      | `MAX_FILE_SIZE`, `MAX_TAGS_PER_ENTRY`, `PAGINATION_DEFAULTS`, `ALLOWED_MIME_TYPES`                                  | Client + Server                                           |
 
 ### 8.3 What Does NOT Live in Shared
 
-| Category | Reason | Lives In |
-|----------|--------|----------|
-| Prisma-generated types | Tightly coupled to DB schema | `server/` (auto-generated) |
-| React component types | Frontend-only | `client/src/types/` |
-| Express augmentations | Backend-only | `server/src/types/express.d.ts` |
-| Internal service types | Implementation details | `server/src/modules/*/types.ts` |
-| UI state types | Component-specific | Co-located with components |
+| Category               | Reason                       | Lives In                        |
+| ---------------------- | ---------------------------- | ------------------------------- |
+| Prisma-generated types | Tightly coupled to DB schema | `server/` (auto-generated)      |
+| React component types  | Frontend-only                | `client/src/types/`             |
+| Express augmentations  | Backend-only                 | `server/src/types/express.d.ts` |
+| Internal service types | Implementation details       | `server/src/modules/*/types.ts` |
+| UI state types         | Component-specific           | Co-located with components      |
 
 ### 8.4 Type Flow
 
@@ -1039,13 +1036,13 @@ Prisma Schema (source of truth for DB)
 
 ### 8.5 DTO Naming Convention
 
-| Pattern | Example | Purpose |
-|---------|---------|---------|
-| `*Dto` | `UserDto`, `DiaryEntryDto` | API response shape (what the client receives) |
-| `Create*Input` | `CreateDiaryEntryInput` | POST request body shape |
-| `Update*Input` | `UpdateDiaryEntryInput` | PATCH request body shape |
-| `*ListParams` | `DiaryEntryListParams` | Query parameters for list endpoints |
-| `PaginatedResponse<T>` | `PaginatedResponse<DiaryEntryDto>` | Paginated list response wrapper |
+| Pattern                | Example                            | Purpose                                       |
+| ---------------------- | ---------------------------------- | --------------------------------------------- |
+| `*Dto`                 | `UserDto`, `DiaryEntryDto`         | API response shape (what the client receives) |
+| `Create*Input`         | `CreateDiaryEntryInput`            | POST request body shape                       |
+| `Update*Input`         | `UpdateDiaryEntryInput`            | PATCH request body shape                      |
+| `*ListParams`          | `DiaryEntryListParams`             | Query parameters for list endpoints           |
+| `PaginatedResponse<T>` | `PaginatedResponse<DiaryEntryDto>` | Paginated list response wrapper               |
 
 ---
 
@@ -1094,18 +1091,18 @@ All error responses follow this schema:
 
 ### 9.3 Error Code Catalog
 
-| Code | Status | Trigger |
-|------|--------|---------|
-| `VALIDATION_ERROR` | 400 | Zod schema validation failure |
-| `BAD_REQUEST` | 400 | Malformed request (missing body, bad JSON) |
-| `UNAUTHORIZED` | 401 | Missing or invalid access token |
-| `TOKEN_EXPIRED` | 401 | Access token has expired (triggers client refresh) |
-| `INVALID_CREDENTIALS` | 401 | Wrong email or password on login |
-| `FORBIDDEN` | 403 | User lacks role or resource-level permission |
-| `NOT_FOUND` | 404 | Resource does not exist (or is soft-deleted) |
-| `CONFLICT` | 409 | Duplicate resource (e.g., email, diary entry for same date) |
-| `RATE_LIMITED` | 429 | Too many requests |
-| `INTERNAL_ERROR` | 500 | Unhandled server error |
+| Code                  | Status | Trigger                                                     |
+| --------------------- | ------ | ----------------------------------------------------------- |
+| `VALIDATION_ERROR`    | 400    | Zod schema validation failure                               |
+| `BAD_REQUEST`         | 400    | Malformed request (missing body, bad JSON)                  |
+| `UNAUTHORIZED`        | 401    | Missing or invalid access token                             |
+| `TOKEN_EXPIRED`       | 401    | Access token has expired (triggers client refresh)          |
+| `INVALID_CREDENTIALS` | 401    | Wrong email or password on login                            |
+| `FORBIDDEN`           | 403    | User lacks role or resource-level permission                |
+| `NOT_FOUND`           | 404    | Resource does not exist (or is soft-deleted)                |
+| `CONFLICT`            | 409    | Duplicate resource (e.g., email, diary entry for same date) |
+| `RATE_LIMITED`        | 429    | Too many requests                                           |
+| `INTERNAL_ERROR`      | 500    | Unhandled server error                                      |
 
 ### 9.4 Backend Error Handling Flow
 
@@ -1180,14 +1177,14 @@ Service throws AppError subclass
 
 ### 10.2 Log Levels
 
-| Level | Usage | Environment |
-|-------|-------|-------------|
-| `fatal` | Process cannot continue; immediate shutdown | All |
-| `error` | Unhandled exceptions, failed DB queries, external service failures | All |
-| `warn` | Validation failures, deprecated API usage, rate limit approached, auth failures | All |
-| `info` | Request/response lifecycle, auth events, CRUD operations, milestone completions | All |
-| `debug` | SQL queries (Prisma), request/response bodies, internal state | Development only |
-| `trace` | Fine-grained debugging (rarely used) | Development only |
+| Level   | Usage                                                                           | Environment      |
+| ------- | ------------------------------------------------------------------------------- | ---------------- |
+| `fatal` | Process cannot continue; immediate shutdown                                     | All              |
+| `error` | Unhandled exceptions, failed DB queries, external service failures              | All              |
+| `warn`  | Validation failures, deprecated API usage, rate limit approached, auth failures | All              |
+| `info`  | Request/response lifecycle, auth events, CRUD operations, milestone completions | All              |
+| `debug` | SQL queries (Prisma), request/response bodies, internal state                   | Development only |
+| `trace` | Fine-grained debugging (rarely used)                                            | Development only |
 
 ### 10.3 Log Format
 
@@ -1211,19 +1208,19 @@ All logs are structured JSON for machine parsing:
 
 ### 10.4 What Gets Logged
 
-| Event | Level | Fields |
-|-------|-------|--------|
-| Incoming request | `info` | requestId, method, path, ip, userAgent |
-| Response sent | `info` | requestId, statusCode, durationMs |
-| Login success | `info` | userId, email (masked), ip |
-| Login failure | `warn` | email (masked), ip, reason |
-| Token refresh | `info` | userId |
-| Token refresh failure | `warn` | reason, ip |
-| Resource created/updated/deleted | `info` | userId, resourceType, resourceId |
-| Validation failure | `warn` | requestId, path, errors (field names only, no values) |
-| Authorization failure | `warn` | userId, path, requiredRole, actualRole |
-| Unhandled error | `error` | requestId, error message, stack trace |
-| DB query (dev only) | `debug` | query, params, durationMs |
+| Event                            | Level   | Fields                                                |
+| -------------------------------- | ------- | ----------------------------------------------------- |
+| Incoming request                 | `info`  | requestId, method, path, ip, userAgent                |
+| Response sent                    | `info`  | requestId, statusCode, durationMs                     |
+| Login success                    | `info`  | userId, email (masked), ip                            |
+| Login failure                    | `warn`  | email (masked), ip, reason                            |
+| Token refresh                    | `info`  | userId                                                |
+| Token refresh failure            | `warn`  | reason, ip                                            |
+| Resource created/updated/deleted | `info`  | userId, resourceType, resourceId                      |
+| Validation failure               | `warn`  | requestId, path, errors (field names only, no values) |
+| Authorization failure            | `warn`  | userId, path, requiredRole, actualRole                |
+| Unhandled error                  | `error` | requestId, error message, stack trace                 |
+| DB query (dev only)              | `debug` | query, params, durationMs                             |
 
 ### 10.5 What NEVER Gets Logged
 
@@ -1244,13 +1241,13 @@ Every request receives a unique ID (`X-Request-ID` header or server-generated UU
 
 ### 10.7 Production Log Management
 
-| Aspect | Strategy |
-|--------|----------|
-| Output | stdout/stderr (12-factor app) |
+| Aspect     | Strategy                                                            |
+| ---------- | ------------------------------------------------------------------- |
+| Output     | stdout/stderr (12-factor app)                                       |
 | Collection | Container runtime → log aggregator (e.g., CloudWatch, Datadog, ELK) |
-| Retention | 30 days hot, 90 days cold |
-| Alerting | Error rate > 1% in 5 min window → alert |
-| Rotation | Managed by container runtime, not the application |
+| Retention  | 30 days hot, 90 days cold                                           |
+| Alerting   | Error rate > 1% in 5 min window → alert                             |
+| Rotation   | Managed by container runtime, not the application                   |
 
 ---
 
@@ -1273,15 +1270,15 @@ Every request receives a unique ID (`X-Request-ID` header or server-generated UU
 
 ### 11.2 Testing Tools
 
-| Tool | Purpose | Package |
-|------|---------|---------|
-| **Vitest** | Unit + integration test runner | `server`, `client`, `shared` |
-| **@testing-library/react** | React component testing | `client` |
-| **Supertest** | HTTP integration testing | `server` |
-| **Prisma Test Environment** | Isolated test database | `server` |
-| **MSW (Mock Service Worker)** | Mock API responses in frontend tests | `client` |
-| **Playwright** | End-to-end browser testing (future) | Root |
-| **c8 / istanbul** | Code coverage (via Vitest) | All |
+| Tool                          | Purpose                              | Package                      |
+| ----------------------------- | ------------------------------------ | ---------------------------- |
+| **Vitest**                    | Unit + integration test runner       | `server`, `client`, `shared` |
+| **@testing-library/react**    | React component testing              | `client`                     |
+| **Supertest**                 | HTTP integration testing             | `server`                     |
+| **Prisma Test Environment**   | Isolated test database               | `server`                     |
+| **MSW (Mock Service Worker)** | Mock API responses in frontend tests | `client`                     |
+| **Playwright**                | End-to-end browser testing (future)  | Root                         |
+| **c8 / istanbul**             | Code coverage (via Vitest)           | All                          |
 
 ### 11.3 Backend Testing Strategy
 
@@ -1296,6 +1293,7 @@ Every request receives a unique ID (`X-Request-ID` header or server-generated UU
 **File pattern:** `server/src/modules/*/__.service.test.ts`
 
 **Example test areas:**
+
 ```
 diary.service.test.ts
   ├── create()
@@ -1324,6 +1322,7 @@ diary.service.test.ts
 **File pattern:** `server/src/modules/*/__. routes.test.ts`
 
 **Test database setup:**
+
 ```
 Before all tests:
   1. Create test database (onboarding_diary_test)
@@ -1386,13 +1385,13 @@ After all tests:
 
 ### 11.7 Coverage Targets
 
-| Package | Target | Enforcement |
-|---------|--------|-------------|
-| `shared` | 90% | CI gate |
-| `server` (services) | 80% | CI gate |
-| `server` (controllers) | 70% | Advisory |
-| `client` (components) | 70% | Advisory |
-| `client` (hooks) | 80% | CI gate |
+| Package                | Target | Enforcement |
+| ---------------------- | ------ | ----------- |
+| `shared`               | 90%    | CI gate     |
+| `server` (services)    | 80%    | CI gate     |
+| `server` (controllers) | 70%    | Advisory    |
+| `client` (components)  | 70%    | Advisory    |
+| `client` (hooks)       | 80%    | CI gate     |
 
 ### 11.8 CI Test Pipeline
 
@@ -1457,13 +1456,13 @@ After all tests:
 
 ### 12.2 Deployment Options
 
-| Component | Option A (Simple) | Option B (Scalable) |
-|-----------|-------------------|---------------------|
-| Frontend | Vercel / Netlify | CloudFront + S3 |
-| Backend | Railway / Render | AWS ECS / GCP Cloud Run |
-| Database | Supabase / Neon | AWS RDS PostgreSQL |
-| File Storage | Local filesystem | AWS S3 |
-| CI/CD | GitHub Actions | GitHub Actions |
+| Component    | Option A (Simple) | Option B (Scalable)     |
+| ------------ | ----------------- | ----------------------- |
+| Frontend     | Vercel / Netlify  | CloudFront + S3         |
+| Backend      | Railway / Render  | AWS ECS / GCP Cloud Run |
+| Database     | Supabase / Neon   | AWS RDS PostgreSQL      |
+| File Storage | Local filesystem  | AWS S3                  |
+| CI/CD        | GitHub Actions    | GitHub Actions          |
 
 **Recommended for v1: Option A** (simplicity, cost-effectiveness, fast iteration).
 
@@ -1491,6 +1490,7 @@ Stage 3: "runner" — copy compiled output + production deps, run with node
 ```
 
 **Image details:**
+
 - Base: `node:20-alpine`
 - Non-root user: `node`
 - Health check: `GET /api/v1/health`
@@ -1580,33 +1580,33 @@ Production:
 
 #### 13.1.1 Server Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `NODE_ENV` | Yes | `development` | `development`, `staging`, `production`, `test` |
-| `PORT` | No | `3000` | HTTP server port |
-| `API_PREFIX` | No | `/api/v1` | API route prefix |
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `JWT_ACCESS_SECRET` | Yes | — | Secret for signing access tokens |
-| `JWT_REFRESH_SECRET` | Yes | — | Secret for signing/verifying refresh tokens |
-| `JWT_ACCESS_EXPIRY` | No | `15m` | Access token lifetime |
-| `JWT_REFRESH_EXPIRY` | No | `7d` | Refresh token lifetime |
-| `BCRYPT_ROUNDS` | No | `12` | Bcrypt cost factor |
-| `CORS_ORIGIN` | Yes | `http://localhost:5173` | Allowed CORS origin(s), comma-separated |
-| `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate limit window in milliseconds |
-| `RATE_LIMIT_MAX` | No | `100` | Max requests per window |
-| `RATE_LIMIT_AUTH_MAX` | No | `10` | Max auth requests per window |
-| `MAX_FILE_SIZE` | No | `10485760` | Max upload file size in bytes (10 MB) |
-| `UPLOAD_DIR` | No | `./uploads` | File upload directory |
-| `LOG_LEVEL` | No | `info` | Pino log level |
-| `REQUEST_BODY_LIMIT` | No | `1mb` | Max JSON body size |
+| Variable               | Required | Default                 | Description                                    |
+| ---------------------- | -------- | ----------------------- | ---------------------------------------------- |
+| `NODE_ENV`             | Yes      | `development`           | `development`, `staging`, `production`, `test` |
+| `PORT`                 | No       | `3000`                  | HTTP server port                               |
+| `API_PREFIX`           | No       | `/api/v1`               | API route prefix                               |
+| `DATABASE_URL`         | Yes      | —                       | PostgreSQL connection string                   |
+| `JWT_ACCESS_SECRET`    | Yes      | —                       | Secret for signing access tokens               |
+| `JWT_REFRESH_SECRET`   | Yes      | —                       | Secret for signing/verifying refresh tokens    |
+| `JWT_ACCESS_EXPIRY`    | No       | `15m`                   | Access token lifetime                          |
+| `JWT_REFRESH_EXPIRY`   | No       | `7d`                    | Refresh token lifetime                         |
+| `BCRYPT_ROUNDS`        | No       | `12`                    | Bcrypt cost factor                             |
+| `CORS_ORIGIN`          | Yes      | `http://localhost:5173` | Allowed CORS origin(s), comma-separated        |
+| `RATE_LIMIT_WINDOW_MS` | No       | `60000`                 | Rate limit window in milliseconds              |
+| `RATE_LIMIT_MAX`       | No       | `100`                   | Max requests per window                        |
+| `RATE_LIMIT_AUTH_MAX`  | No       | `10`                    | Max auth requests per window                   |
+| `MAX_FILE_SIZE`        | No       | `10485760`              | Max upload file size in bytes (10 MB)          |
+| `UPLOAD_DIR`           | No       | `./uploads`             | File upload directory                          |
+| `LOG_LEVEL`            | No       | `info`                  | Pino log level                                 |
+| `REQUEST_BODY_LIMIT`   | No       | `1mb`                   | Max JSON body size                             |
 
 #### 13.1.2 Client Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `VITE_API_BASE_URL` | Yes | `http://localhost:3000/api/v1` | Backend API base URL |
-| `VITE_APP_NAME` | No | `Onboarding Diary` | Application display name |
-| `VITE_APP_VERSION` | No | from `package.json` | Application version |
+| Variable            | Required | Default                        | Description              |
+| ------------------- | -------- | ------------------------------ | ------------------------ |
+| `VITE_API_BASE_URL` | Yes      | `http://localhost:3000/api/v1` | Backend API base URL     |
+| `VITE_APP_NAME`     | No       | `Onboarding Diary`             | Application display name |
+| `VITE_APP_VERSION`  | No       | from `package.json`            | Application version      |
 
 ### 13.2 Configuration Loading
 
@@ -1624,20 +1624,20 @@ This ensures the application fails fast with a clear error message if configurat
 
 ### 13.3 Environment Files
 
-| File | Purpose | Git-tracked |
-|------|---------|-------------|
-| `.env.example` | Documented template with placeholder values | Yes |
-| `.env` | Local development values | No (in .gitignore) |
-| `.env.test` | Test environment overrides (test DB URL) | No (in .gitignore) |
-| Production vars | Set via deployment platform (Railway, Vercel, etc.) | N/A |
+| File            | Purpose                                             | Git-tracked        |
+| --------------- | --------------------------------------------------- | ------------------ |
+| `.env.example`  | Documented template with placeholder values         | Yes                |
+| `.env`          | Local development values                            | No (in .gitignore) |
+| `.env.test`     | Test environment overrides (test DB URL)            | No (in .gitignore) |
+| Production vars | Set via deployment platform (Railway, Vercel, etc.) | N/A                |
 
 ### 13.4 Secret Rotation Strategy
 
-| Secret | Rotation Frequency | Rotation Process |
-|--------|--------------------|-----------------|
-| `JWT_ACCESS_SECRET` | 90 days | Deploy new secret → old tokens expire naturally (15 min) |
-| `JWT_REFRESH_SECRET` | 90 days | Deploy new secret → force re-login (revoke all refresh tokens) |
-| `DATABASE_URL` | As needed | Update in deployment platform → restart service |
+| Secret               | Rotation Frequency | Rotation Process                                               |
+| -------------------- | ------------------ | -------------------------------------------------------------- |
+| `JWT_ACCESS_SECRET`  | 90 days            | Deploy new secret → old tokens expire naturally (15 min)       |
+| `JWT_REFRESH_SECRET` | 90 days            | Deploy new secret → force re-login (revoke all refresh tokens) |
+| `DATABASE_URL`       | As needed          | Update in deployment platform → restart service                |
 
 ---
 
