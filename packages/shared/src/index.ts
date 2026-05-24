@@ -4,6 +4,7 @@ export * from './types/api.types';
 export * from './types/auth.types';
 export * from './types/user.types';
 export * from './types/diary.types';
+export * from './types/dashboard.types';
 export * from './types/milestone.types';
 export * from './types/comment.types';
 export * from './types/notification.types';
