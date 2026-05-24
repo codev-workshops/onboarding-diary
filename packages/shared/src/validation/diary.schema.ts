@@ -50,16 +50,17 @@ export const updateNoteEntrySchema = z.object({
     .optional(),
 });
 
-export const entryListParamsSchema = z.object({
+export const taskListParamsSchema = z.object({
   page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
   limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
-  sort_by: z.enum(['created_at', 'updated_at', 'due_date', 'priority', 'entry_date']).default('created_at'),
+  sort_by: z.enum(['created_at', 'updated_at', 'due_date', 'priority', 'status', 'title']).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
   status: z.nativeEnum(TaskStatus).optional(),
   priority: z.nativeEnum(Priority).optional(),
   visibility: z.nativeEnum(Visibility).optional(),
   from_date: z.string().date().optional(),
   to_date: z.string().date().optional(),
+  tag: z.string().max(50).optional(),
   q: z.string().max(200).optional(),
 });
 
@@ -67,4 +68,4 @@ export type CreateTaskEntrySchema = z.infer<typeof createTaskEntrySchema>;
 export type UpdateTaskEntrySchema = z.infer<typeof updateTaskEntrySchema>;
 export type CreateNoteEntrySchema = z.infer<typeof createNoteEntrySchema>;
 export type UpdateNoteEntrySchema = z.infer<typeof updateNoteEntrySchema>;
-export type EntryListParamsSchema = z.infer<typeof entryListParamsSchema>;
+export type TaskListParamsSchema = z.infer<typeof taskListParamsSchema>;
