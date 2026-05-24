@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { USER } from '../constants';
+import { PAGINATION, USER } from '../constants';
 import { Role, UserStatus } from '../enums';
 
 export const updateProfileSchema = z.object({
@@ -7,17 +7,24 @@ export const updateProfileSchema = z.object({
     .string()
     .min(USER.NAME_MIN_LENGTH)
     .max(USER.NAME_MAX_LENGTH)
-    .regex(/^[a-zA-Z\s-]+$/)
+    .regex(/^[a-zA-Z\s-]+$/, 'Name can only contain letters, spaces, and hyphens')
     .optional(),
   last_name: z
     .string()
     .min(USER.NAME_MIN_LENGTH)
     .max(USER.NAME_MAX_LENGTH)
-    .regex(/^[a-zA-Z\s-]+$/)
+    .regex(/^[a-zA-Z\s-]+$/, 'Name can only contain letters, spaces, and hyphens')
     .optional(),
-  bio: z.string().max(USER.BIO_MAX_LENGTH).optional(),
-  department: z.string().max(USER.DEPARTMENT_MAX_LENGTH).optional(),
-  avatar_url: z.string().url().optional(),
+  avatar_url: z.string().url().max(500).optional().nullable(),
+});
+
+export const updateRecruitProfileSchema = z.object({
+  department: z.string().max(USER.DEPARTMENT_MAX_LENGTH).optional().nullable(),
+  position: z.string().max(USER.POSITION_MAX_LENGTH).optional().nullable(),
+  start_date: z.string().date('Must be a valid date (YYYY-MM-DD)').optional().nullable(),
+  expected_end_date: z.string().date('Must be a valid date (YYYY-MM-DD)').optional().nullable(),
+  bio: z.string().max(USER.BIO_MAX_LENGTH).optional().nullable(),
+  onboarding_status: z.string().max(50).optional(),
 });
 
 export const changePasswordSchema = z.object({
@@ -40,7 +47,43 @@ export const updateStatusSchema = z.object({
   status: z.nativeEnum(UserStatus),
 });
 
+export const assignManagerSchema = z.object({
+  manager_id: z.string().uuid('Must be a valid UUID'),
+  recruit_id: z.string().uuid('Must be a valid UUID'),
+  notes: z.string().max(1000).optional(),
+});
+
+export const unassignManagerSchema = z.object({
+  notes: z.string().max(1000).optional(),
+});
+
+export const userListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
+  limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
+  sort_by: z.enum(['created_at', 'first_name', 'last_name', 'email', 'role', 'status']).default('created_at'),
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
+  role: z.nativeEnum(Role).optional(),
+  status: z.nativeEnum(UserStatus).optional(),
+  search: z.string().max(100).optional(),
+});
+
+export const assignmentListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
+  limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
+  manager_id: z.string().uuid().optional(),
+  recruit_id: z.string().uuid().optional(),
+  is_active: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
+});
+
 export type UpdateProfileSchema = z.infer<typeof updateProfileSchema>;
+export type UpdateRecruitProfileSchema = z.infer<typeof updateRecruitProfileSchema>;
 export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
 export type UpdateRoleSchema = z.infer<typeof updateRoleSchema>;
 export type UpdateStatusSchema = z.infer<typeof updateStatusSchema>;
+export type AssignManagerSchema = z.infer<typeof assignManagerSchema>;
+export type UnassignManagerSchema = z.infer<typeof unassignManagerSchema>;
+export type UserListQuerySchema = z.infer<typeof userListQuerySchema>;
+export type AssignmentListQuerySchema = z.infer<typeof assignmentListQuerySchema>;

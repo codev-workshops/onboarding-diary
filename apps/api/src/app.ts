@@ -9,6 +9,8 @@ import { globalRateLimiter } from './middleware/rateLimiter.middleware.js';
 import { notFoundMiddleware } from './middleware/notFound.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+import { usersRoutes } from './modules/users/users.routes.js';
+import { assignmentsRoutes } from './modules/assignments/assignments.routes.js';
 
 const app = express();
 
@@ -32,6 +34,8 @@ app.get(`${config.API_PREFIX}/health`, (_req, res) => {
 
 // API routes
 app.use(`${config.API_PREFIX}/auth`, authRoutes);
+app.use(`${config.API_PREFIX}/users`, usersRoutes);
+app.use(`${config.API_PREFIX}/assignments`, assignmentsRoutes);
 
 // Catch-all and error handling
 app.use(notFoundMiddleware);
