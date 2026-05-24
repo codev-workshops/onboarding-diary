@@ -14,6 +14,7 @@ import { UsersPage } from '@/pages/admin/UsersPage';
 import { AssignmentsPage } from '@/pages/admin/AssignmentsPage';
 import { NotFoundPage } from '@/pages/shared/NotFoundPage';
 import { SearchPage } from '@/pages/search/SearchPage';
+import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: '/notes', element: <NotesPage /> },
       { path: '/reports', element: <ReportsPage /> },
       { path: '/search', element: <SearchPage /> },
+      { path: '/analytics', element: <AnalyticsPage /> },
 
       // Admin-only routes
       {

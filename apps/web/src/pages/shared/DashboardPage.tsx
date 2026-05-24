@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Role } from '@onboarding-diary/shared';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useAuth } from '@/context/AuthContext';
 import { dashboardApi } from '@/api/dashboard.api';
+import { analyticsApi } from '@/api/analytics.api';
 import { Card, CardContent, StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { TaskCompletionChart } from '@/components/charts/TaskCompletionChart';
+import { RecruitActivityChart } from '@/components/charts/RecruitActivityChart';
 
 function RecruitDashboard() {
   const { data, isLoading } = useQuery({
@@ -45,6 +49,8 @@ function RecruitDashboard() {
         <RecentList title="Recent Issues" entries={data.recent_issues} />
         <RecentList title="Recent Notes" entries={data.recent_notes} />
       </div>
+
+      <DashboardAnalyticsSummary />
     </div>
   );
 }
@@ -121,6 +127,35 @@ function ManagerDashboard() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function DashboardAnalyticsSummary() {
+  const to = new Date();
+  const from = new Date(to.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const params = {
+    from_date: from.toISOString().split('T')[0],
+    to_date: to.toISOString().split('T')[0],
+  };
+
+  const { data } = useQuery({
+    queryKey: ['analytics', 'dashboard-summary', params],
+    queryFn: () => analyticsApi.getOverview(params),
+  });
+
+  if (!data) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900">Trends (Last 14 Days)</h3>
+        <Link to="/analytics" className="text-sm font-medium text-blue-600 hover:text-blue-800">
+          View full analytics
+        </Link>
+      </div>
+      <TaskCompletionChart data={data.task_trends} />
+      <RecruitActivityChart data={data.recruit_activity} />
     </div>
   );
 }

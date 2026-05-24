@@ -26,6 +26,7 @@
     "react-hook-form": "^7.54.0",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.1.0",
+    "recharts": "^3.8.1",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {

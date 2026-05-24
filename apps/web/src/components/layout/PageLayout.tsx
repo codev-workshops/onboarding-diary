@@ -16,6 +16,7 @@ import {
   LogOut,
   ChevronDown,
   Search,
+  BarChart3,
 } from 'lucide-react';
 
 interface PageLayoutProps {
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { label: 'Notes', href: '/notes', icon: StickyNote },
   { label: 'Reports', href: '/reports', icon: FileText },
   { label: 'Search', href: '/search', icon: Search },
+  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Admin', href: '/admin/users', icon: Users, roles: [Role.ADMIN] },
 ];
 
