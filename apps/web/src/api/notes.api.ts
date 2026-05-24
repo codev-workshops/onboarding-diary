@@ -23,7 +23,7 @@ export interface CreateNoteInput {
   tags?: string[];
 }
 
-export interface UpdateNoteInput extends Partial<CreateNoteInput> {}
+export type UpdateNoteInput = Partial<CreateNoteInput>;
 
 export const notesApi = {
   async list(params?: Record<string, string | number | undefined>): Promise<PaginatedResponse<NoteEntryDto>> {

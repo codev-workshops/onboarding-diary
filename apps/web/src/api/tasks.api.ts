@@ -26,7 +26,7 @@ export interface CreateTaskInput {
   tags?: string[];
 }
 
-export interface UpdateTaskInput extends Partial<CreateTaskInput> {}
+export type UpdateTaskInput = Partial<CreateTaskInput>;
 
 export const tasksApi = {
   async list(params?: Record<string, string | number | undefined>): Promise<PaginatedResponse<TaskEntryDto>> {
