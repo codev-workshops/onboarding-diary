@@ -3,7 +3,7 @@ import type { RegisterSchema, LoginSchema, AuthResponse } from '@onboarding-diar
 import { prisma } from '../../config/database.js';
 import { ConflictError, UnauthorizedError } from '../../errors/AppError.js';
 import { hashPassword, comparePassword } from '../../utils/hash.js';
-import { signAccessToken, verifyRefreshToken } from '../../utils/jwt.js';
+import { signAccessToken } from '../../utils/jwt.js';
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -113,14 +113,7 @@ export async function refreshTokens(token: string) {
     throw new UnauthorizedError('Invalid or expired refresh token');
   }
 
-  let payload;
-  try {
-    payload = verifyRefreshToken(token);
-  } catch {
-    throw new UnauthorizedError('Invalid refresh token');
-  }
-
-  const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+  const user = await prisma.user.findUnique({ where: { id: stored.userId } });
   if (!user || user.deletedAt) {
     throw new UnauthorizedError('User not found');
   }
