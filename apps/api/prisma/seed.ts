@@ -20,23 +20,10 @@ async function main() {
       passwordHash,
       firstName: 'System',
       lastName: 'Admin',
-      role: 'SYS_ADMIN',
+      role: 'ADMIN',
     },
   });
   console.log(`Created admin: ${admin.email}`);
-
-  const hr = await prisma.user.upsert({
-    where: { email: 'hr@onboarding-diary.local' },
-    update: {},
-    create: {
-      email: 'hr@onboarding-diary.local',
-      passwordHash,
-      firstName: 'Sarah',
-      lastName: 'HR',
-      role: 'HR_ADMIN',
-    },
-  });
-  console.log(`Created HR admin: ${hr.email}`);
 
   const manager = await prisma.user.upsert({
     where: { email: 'manager@onboarding-diary.local' },
@@ -282,7 +269,6 @@ async function main() {
   console.log('\nSeeding complete!');
   console.log('\nTest credentials (all use password: Password1!):');
   console.log('  Admin:   admin@onboarding-diary.local');
-  console.log('  HR:      hr@onboarding-diary.local');
   console.log('  Manager: manager@onboarding-diary.local');
   console.log('  Recruit: recruit@onboarding-diary.local');
 }

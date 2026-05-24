@@ -13,13 +13,11 @@ datasource db {
 // ============================================================
 
 /// User roles in the system. RECRUIT is the default for new sign-ups.
-/// MANAGER supervises recruits. HR_ADMIN manages org-wide settings.
-/// SYS_ADMIN has full system access.
+/// MANAGER supervises recruits. ADMIN has full system access.
 enum Role {
   RECRUIT
   MANAGER
-  HR_ADMIN
-  SYS_ADMIN
+  ADMIN
 }
 
 /// Account lifecycle status. INVITED = pending first login,
