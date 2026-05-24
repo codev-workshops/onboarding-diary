@@ -13,6 +13,8 @@ import { usersRoutes } from './modules/users/users.routes.js';
 import { assignmentsRoutes } from './modules/assignments/assignments.routes.js';
 import { tasksRoutes } from './modules/tasks/tasks.routes.js';
 import { issuesRoutes } from './modules/issues/issues.routes.js';
+import { feedbackRoutes } from './modules/feedback/feedback.routes.js';
+import { notesRoutes } from './modules/notes/notes.routes.js';
 
 const app = express();
 
@@ -40,6 +42,8 @@ app.use(`${config.API_PREFIX}/users`, usersRoutes);
 app.use(`${config.API_PREFIX}/assignments`, assignmentsRoutes);
 app.use(`${config.API_PREFIX}/tasks`, tasksRoutes);
 app.use(`${config.API_PREFIX}/issues`, issuesRoutes);
+app.use(`${config.API_PREFIX}/feedback`, feedbackRoutes);
+app.use(`${config.API_PREFIX}/notes`, notesRoutes);
 
 // Catch-all and error handling
 app.use(notFoundMiddleware);

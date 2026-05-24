@@ -102,6 +102,18 @@ export const issueListParamsSchema = z.object({
   q: z.string().max(200).optional(),
 });
 
+export const noteListParamsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
+  limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
+  sort_by: z.enum(['created_at', 'updated_at', 'entry_date', 'title']).default('entry_date'),
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
+  visibility: z.nativeEnum(Visibility).optional(),
+  from_date: z.string().date().optional(),
+  to_date: z.string().date().optional(),
+  tag: z.string().max(50).optional(),
+  q: z.string().max(200).optional(),
+});
+
 export type CreateTaskEntrySchema = z.infer<typeof createTaskEntrySchema>;
 export type UpdateTaskEntrySchema = z.infer<typeof updateTaskEntrySchema>;
 export type CreateNoteEntrySchema = z.infer<typeof createNoteEntrySchema>;
@@ -110,3 +122,4 @@ export type TaskListParamsSchema = z.infer<typeof taskListParamsSchema>;
 export type CreateIssueEntrySchema = z.infer<typeof createIssueEntrySchema>;
 export type UpdateIssueEntrySchema = z.infer<typeof updateIssueEntrySchema>;
 export type IssueListParamsSchema = z.infer<typeof issueListParamsSchema>;
+export type NoteListParamsSchema = z.infer<typeof noteListParamsSchema>;
