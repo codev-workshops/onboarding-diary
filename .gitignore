@@ -36,6 +36,9 @@ apps/api/prisma/*.db-journal
 # Uploads
 uploads/
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Temporary
 tmp/
 temp/
