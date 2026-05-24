@@ -63,3 +63,15 @@ export enum ReportType {
   FINAL = 'FINAL',
   CUSTOM = 'CUSTOM',
 }
+
+export enum ReportContentType {
+  TASKS = 'TASKS',
+  ISSUES = 'ISSUES',
+  FEEDBACK = 'FEEDBACK',
+  COMBINED = 'COMBINED',
+}
+
+export enum ExportFormat {
+  PDF = 'PDF',
+  CSV = 'CSV',
+}

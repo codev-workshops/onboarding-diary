@@ -12,3 +12,4 @@ export * from './validation/auth.schema';
 export * from './validation/diary.schema';
 export * from './validation/user.schema';
 export * from './validation/comment.schema';
+export * from './validation/report.schema';

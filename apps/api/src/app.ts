@@ -16,6 +16,7 @@ import { issuesRoutes } from './modules/issues/issues.routes.js';
 import { feedbackRoutes } from './modules/feedback/feedback.routes.js';
 import { notesRoutes } from './modules/notes/notes.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
+import { reportsRoutes } from './modules/reports/reports.routes.js';
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use(`${config.API_PREFIX}/issues`, issuesRoutes);
 app.use(`${config.API_PREFIX}/feedback`, feedbackRoutes);
 app.use(`${config.API_PREFIX}/notes`, notesRoutes);
 app.use(`${config.API_PREFIX}/dashboard`, dashboardRoutes);
+app.use(`${config.API_PREFIX}/reports`, reportsRoutes);
 
 // Catch-all and error handling
 app.use(notFoundMiddleware);
