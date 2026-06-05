@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+langchain
+langchain-openai
+langchain-community
+duckduckgo-search
+sse-starlette
+pydantic
+python-dotenv
