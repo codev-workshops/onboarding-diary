@@ -15,6 +15,9 @@
 6. [Responsive Design Specification](#6-responsive-design-specification)
 7. [Accessibility Specification](#7-accessibility-specification)
 8. [State Management Design](#8-state-management-design)
+9. [Visual Design System](#9-visual-design-system)
+10. [Welcome & Empty States](#10-welcome--empty-states)
+11. [Chat Scroll Behavior](#11-chat-scroll-behavior)
 
 ---
 
@@ -397,6 +400,147 @@ const result = await generateObject({
   prompt: buildRecommendationPrompt(userMessage, searchResults),
 });
 ```
+
+### 3.6 Session Context Tracking
+
+Track user preferences expressed during conversation in a lightweight context object that persists for the session and informs subsequent LLM calls.
+
+**Context shape:**
+
+```ts
+interface SessionContext {
+  preferredBrand: string | null;       // e.g., "Samsung"
+  budgetRange: { min?: number; max?: number } | null;
+  categoryInterest: string[];          // e.g., ["electronics", "phones"]
+  deliveryCity: string | null;         // e.g., "Kandy"
+  occasion: string | null;             // e.g., "birthday", "anniversary"
+  pricePreference: "budget" | "mid" | "premium" | null;
+  recentSearchQueries: string[];       // last 5 search terms
+}
+```
+
+**Extraction logic — runs after every user message:**
+
+```ts
+const contextExtractionPrompt = `
+Analyze the user message and extract any stated or implied preferences.
+Return a JSON patch (only changed fields) for the session context.
+
+Examples:
+- "I like Samsung" → { "preferredBrand": "Samsung" }
+- "under 20k" → { "budgetRange": { "max": 20000 } }
+- "something premium" → { "pricePreference": "premium" }
+- "for my mom's birthday" → { "occasion": "birthday" }
+- "deliver to Galle" → { "deliveryCity": "Galle" }
+
+Return {} if no preferences detected.
+`;
+```
+
+**Integration with subsequent calls:** The accumulated `SessionContext` is serialized and appended to every Concierge/Shopper prompt:
+
+```ts
+const systemSuffix = `
+[SESSION CONTEXT]
+${JSON.stringify(sessionContext, null, 2)}
+Use this context to prioritize results. For example, if preferredBrand is set,
+rank that brand's products higher. If budgetRange is set, pre-filter results.
+`;
+```
+
+**Context reset:** The context object resets on page reload (session-scoped, not persisted to localStorage). Users can explicitly reset via a "Start fresh" quick-action chip.
+
+### 3.7 Conversational Refinement
+
+When users issue follow-up commands that modify a previous search, the Shopper agent interprets the refinement relative to the last search state.
+
+**Refinement command mapping:**
+
+| User Phrase                          | Action                                                                 |
+|--------------------------------------|------------------------------------------------------------------------|
+| "show me more" / "more options"      | Increment `page` param on the previous search query (pagination)       |
+| "no, cheaper" / "too expensive"      | Apply `max_price` filter = lowest price from current results × 0.8     |
+| "something more expensive" / "premium" | Apply `min_price` filter = highest price from current results          |
+| "different color" / "other variants" | Re-search with `variant_filter` or fetch variant details via `kapruka_get_product` |
+| "sort by price"                      | Re-run search with `sort: "price_asc"`                                |
+| "sort by popularity"                 | Re-run search with `sort: "popularity"`                               |
+
+**Implementation — last-search state:**
+
+```ts
+interface LastSearchState {
+  query: string;
+  filters: Record<string, unknown>;
+  page: number;
+  results: ProductSummary[];
+}
+
+// Stored in conversation context, updated after each search
+let lastSearch: LastSearchState | null = null;
+```
+
+**Quick-action chips after search results:**
+
+After displaying search results, the UI renders contextual chips:
+
+```tsx
+const postSearchChips = [
+  { label: "Show more", action: "show me more" },
+  { label: "Filter by price", action: "sort by price" },
+  { label: "Compare these", action: "compare these products" },
+];
+```
+
+These chips are injected as assistant-suggested actions via the Vercel AI SDK `data` stream channel, rendered below the product carousel.
+
+### 3.8 Delivery Date Constraint Logic
+
+Parse delivery-date requirements from natural language and validate against the Kapruka delivery network.
+
+**Date extraction patterns:**
+
+```ts
+const datePatterns = [
+  // Relative day references
+  { regex: /\b(tomorrow)\b/i, resolve: () => addDays(new Date(), 1) },
+  { regex: /\b(day after tomorrow)\b/i, resolve: () => addDays(new Date(), 2) },
+  // Day-of-week: "by Friday", "before Saturday"
+  { regex: /\b(?:by|before)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+    resolve: (_, day) => getNextDayOfWeek(day) },
+  // Explicit date: "before June 15", "by 15th June"
+  { regex: /\b(?:by|before)\s+(\w+\s+\d{1,2})\b/i,
+    resolve: (_, dateStr) => parseNaturalDate(dateStr) },
+  { regex: /\b(?:by|before)\s+(\d{1,2}(?:st|nd|rd|th)?\s+\w+)\b/i,
+    resolve: (_, dateStr) => parseNaturalDate(dateStr) },
+  // Relative: "within 3 days", "in 2 days"
+  { regex: /\b(?:within|in)\s+(\d+)\s+days?\b/i,
+    resolve: (_, n) => addDays(new Date(), parseInt(n)) },
+];
+```
+
+**Date normalization:** All parsed dates are converted to ISO 8601 format (`YYYY-MM-DD`) in the Sri Lanka timezone (UTC+5:30).
+
+**Validation flow:**
+
+```
+1. Extract target date from user message using regex patterns above.
+2. If regex fails, delegate to LLM: "Extract the delivery deadline as ISO date."
+3. Normalize to YYYY-MM-DD in Asia/Colombo timezone.
+4. Call `kapruka_check_delivery` with { city, productId, targetDate }.
+5. If deliverable by date → confirm: "Yes! I can get that to Kandy by Friday (June 13)."
+6. If NOT deliverable by date → suggest alternatives:
+   - "Delivery to Kandy takes 2-3 days — earliest is Monday June 16.
+      Want me to check express options or a closer city?"
+```
+
+**User-facing messaging when date can't be met:**
+
+| Scenario                     | Kapri's Response                                                                         |
+|------------------------------|-------------------------------------------------------------------------------------------|
+| 1 day late                   | "Almost! Delivery to {city} takes one extra day. Earliest is {date}. Still want to go?"  |
+| 2+ days late                 | "Hmm, {city} delivery needs {n} days. Earliest arrival is {date}. Want to check express?" |
+| City not in delivery network | "Aiyo, {city} isn't in the delivery network yet. Can I check a nearby city?"              |
+| Date is in the past          | "That date has already passed! When do you need it by?"                                   |
 
 ---
 
@@ -911,6 +1055,330 @@ const LanguageContext = createContext<{
   setLanguage: (lang: "en" | "si" | "tanglish") => void;
 }>({ language: "en", setLanguage: () => {} });
 ```
+
+---
+
+## 9. Visual Design System
+
+A unified design language for both light and dark modes, ensuring visual consistency across every component.
+
+### 9.1 Color Palette
+
+| Role            | Light Mode                              | Dark Mode                               | Tailwind Class (Light / Dark)                  |
+|-----------------|-----------------------------------------|-----------------------------------------|------------------------------------------------|
+| **Primary**     | `#7C3AED` (violet-600)                  | `#A78BFA` (violet-400)                  | `bg-violet-600` / `dark:bg-violet-400`         |
+| **Primary Hover** | `#6D28D9` (violet-700)               | `#C4B5FD` (violet-300)                  | `hover:bg-violet-700` / `dark:hover:bg-violet-300` |
+| **Secondary**   | `#F59E0B` (amber-500)                   | `#FBBF24` (amber-400)                   | `bg-amber-500` / `dark:bg-amber-400`           |
+| **Accent**      | `#06B6D4` (cyan-500)                    | `#22D3EE` (cyan-400)                    | `bg-cyan-500` / `dark:bg-cyan-400`             |
+| **Neutral BG**  | `#FFFFFF` (white)                       | `#111827` (gray-900)                    | `bg-white` / `dark:bg-gray-900`                |
+| **Surface**     | `#F9FAFB` (gray-50)                     | `#1F2937` (gray-800)                    | `bg-gray-50` / `dark:bg-gray-800`              |
+| **Border**      | `#E5E7EB` (gray-200)                    | `#374151` (gray-700)                    | `border-gray-200` / `dark:border-gray-700`     |
+| **Text Primary** | `#111827` (gray-900)                   | `#F9FAFB` (gray-50)                     | `text-gray-900` / `dark:text-gray-50`          |
+| **Text Secondary** | `#6B7280` (gray-500)                 | `#9CA3AF` (gray-400)                    | `text-gray-500` / `dark:text-gray-400`         |
+| **Success**     | `#10B981` (emerald-500)                 | `#34D399` (emerald-400)                 | `text-emerald-500` / `dark:text-emerald-400`   |
+| **Warning**     | `#F59E0B` (amber-500)                   | `#FBBF24` (amber-400)                   | `text-amber-500` / `dark:text-amber-400`       |
+| **Error**       | `#EF4444` (red-500)                     | `#F87171` (red-400)                     | `text-red-500` / `dark:text-red-400`           |
+
+**Usage rule:** Primary (violet) is for CTAs and interactive highlights. Secondary (amber) is for badges, price tags, and attention markers. Accent (cyan) is for informational elements and links.
+
+### 9.2 Typography Scale
+
+Font stack: `"Inter", "Noto Sans Sinhala", system-ui, sans-serif`
+
+| Token          | Size    | Weight      | Line Height | Tailwind Class            | Usage                              |
+|----------------|---------|-------------|-------------|---------------------------|------------------------------------||
+| **Display**    | 36 px   | Bold (700)  | 1.2         | `text-4xl font-bold`      | Welcome screen heading             |
+| **H1**         | 30 px   | Bold (700)  | 1.2         | `text-3xl font-bold`      | Page titles                        |
+| **H2**         | 24 px   | Semibold (600) | 1.3      | `text-2xl font-semibold`  | Section headings, modal titles     |
+| **H3**         | 20 px   | Semibold (600) | 1.4      | `text-xl font-semibold`   | Card titles, product names         |
+| **Body**       | 16 px   | Regular (400) | 1.5       | `text-base`               | Chat messages, descriptions        |
+| **Body Small** | 14 px   | Regular (400) | 1.5       | `text-sm`                 | Secondary text, metadata           |
+| **Caption**    | 12 px   | Medium (500) | 1.4        | `text-xs font-medium`     | Labels, badges, timestamps         |
+
+Sinhala text uses the same scale. `Noto Sans Sinhala` is loaded with `unicode-range: U+0D80-0DFF` so it only activates for Sinhala characters (see §7.8).
+
+### 9.3 Button Styles
+
+| Variant       | Background                        | Text Color         | Border               | Example Usage               |
+|---------------|-----------------------------------|--------------------|----------------------|-----------------------------|
+| **Primary**   | `bg-violet-600 dark:bg-violet-400` | `text-white dark:text-gray-900` | none     | "Add to Cart", "Pay Now"   |
+| **Secondary** | `bg-transparent`                  | `text-violet-600 dark:text-violet-400` | `border border-violet-600 dark:border-violet-400` | "View Details", "Compare" |
+| **Ghost**     | `bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800` | `text-gray-700 dark:text-gray-300` | none | "Cancel", icon buttons |
+| **Disabled**  | `bg-gray-200 dark:bg-gray-700`    | `text-gray-400 dark:text-gray-500` | none  | Any disabled button          |
+
+All buttons: `rounded-lg px-4 py-2.5 text-sm font-medium transition-colors duration-150`
+
+Hover: darken primary by one shade (`violet-700` / `violet-300`). Active: scale to `0.98` for tactile feedback.
+
+Focus: `ring-2 ring-violet-500 ring-offset-2 dark:ring-offset-gray-900` for keyboard accessibility.
+
+### 9.4 Spacing System
+
+Use Tailwind's 4 px base unit consistently:
+
+| Token   | Value   | Usage                                        |
+|---------|---------|----------------------------------------------|
+| `xs`    | 4 px    | Inline icon gaps, tight label spacing        |
+| `sm`    | 8 px    | Between related elements (badge + text)      |
+| `md`    | 16 px   | Card inner padding, input padding            |
+| `lg`    | 24 px   | Section spacing, gap between cards           |
+| `xl`    | 32 px   | Page-level padding, major section dividers   |
+| `2xl`   | 48 px   | Top-level layout margins                     |
+
+Component-specific:
+- Chat message padding: `px-4 py-3` (16 px / 12 px)
+- Product card padding: `p-4` (16 px)
+- Cart sidebar padding: `p-6` (24 px)
+- Modal content padding: `p-6` (24 px)
+
+### 9.5 Border Radius Conventions
+
+| Element             | Radius           | Tailwind Class    |
+|---------------------|------------------|-------------------|
+| Buttons             | 8 px             | `rounded-lg`      |
+| Input fields        | 8 px             | `rounded-lg`      |
+| Product cards       | 12 px            | `rounded-xl`      |
+| Chat bubbles        | 16 px            | `rounded-2xl`     |
+| Modals              | 16 px            | `rounded-2xl`     |
+| Avatars             | Full circle      | `rounded-full`    |
+| Quick-action chips  | Full pill        | `rounded-full`    |
+| Bottom sheet handle | 9999 px          | `rounded-full`    |
+
+### 9.6 Shadow Levels
+
+| Level       | CSS Value                                                  | Tailwind Class  | Usage                               |
+|-------------|------------------------------------------------------------|-----------------|------------------------------------||
+| **Subtle**  | `0 1px 2px rgba(0,0,0,0.05)`                              | `shadow-sm`     | Chips, input fields                 |
+| **Card**    | `0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)`  | `shadow`        | Product cards, chat bubbles         |
+| **Elevated**| `0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)`  | `shadow-md`     | Dropdowns, popovers                 |
+| **Modal**   | `0 20px 25px rgba(0,0,0,0.1), 0 8px 10px rgba(0,0,0,0.04)` | `shadow-xl`   | Modals, cart sidebar                |
+| **Overlay** | `0 25px 50px rgba(0,0,0,0.25)`                            | `shadow-2xl`    | Full-screen overlays                |
+
+Dark mode: shadows use `rgba(0,0,0,0.3)` base instead of `0.1` for visibility against dark backgrounds. Apply with `dark:shadow-[0_4px_6px_rgba(0,0,0,0.3)]` or rely on surface color differentiation for depth instead of shadows.
+
+---
+
+## 10. Welcome & Empty States
+
+Design for first impressions and zero-data scenarios — these moments set the agent's personality before any shopping begins.
+
+### 10.1 Welcome Screen
+
+Displayed on first load (no conversation history). Centered vertically in the chat area.
+
+```tsx
+<div className="flex flex-col items-center justify-center gap-6 px-6 py-12 text-center">
+  {/* Animated Kapri avatar — Excited state, loops once then returns to Idle */}
+  <KapriAvatar state="excited" size={96} />
+
+  {/* Greeting */}
+  <div>
+    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
+      Ayubowan! 🙏
+    </h1>
+    <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+      I'm Kapri, your shopping buddy at Kapruka.
+      Tell me what you're looking for — or pick a quick action below!
+    </p>
+  </div>
+
+  {/* Quick-action chips */}
+  <div className="flex flex-wrap justify-center gap-2">
+    {[
+      { label: "Browse categories", icon: "🗂️" },
+      { label: "Gift ideas", icon: "🎁" },
+      { label: "What's popular?", icon: "🔥" },
+      { label: "Track an order", icon: "📦" },
+      { label: "Deals under LKR 5,000", icon: "💰" },
+    ].map((chip) => (
+      <QuickActionChip key={chip.label} {...chip} />
+    ))}
+  </div>
+</div>
+```
+
+**Animation sequence:**
+1. Kapri avatar fades in (0→1 opacity, 300 ms) and plays Excited state animation
+2. Greeting text fades in with stagger (200 ms delay after avatar)
+3. Chips cascade in from below with 50 ms stagger per chip (reuses `cardItemVariants` from §1.2)
+
+### 10.2 Empty Search Results State
+
+When `kapruka_search_products` returns 0 results:
+
+```tsx
+<div className="flex flex-col items-center gap-4 py-8 text-center">
+  <KapriAvatar state="empathetic" size={64} />
+  <p className="text-base text-gray-600 dark:text-gray-400">
+    Hmm, couldn't find exactly that. Let me try something else...
+  </p>
+  <div className="flex flex-wrap justify-center gap-2">
+    <QuickActionChip label="Browse categories" />
+    <QuickActionChip label="Try a different search" />
+    <QuickActionChip label="What's popular?" />
+  </div>
+</div>
+```
+
+The Concierge agent also autonomously broadens the search (removes filters, tries synonyms) before showing this state — see §5 Error Handling ("Empty search results" row).
+
+### 10.3 Empty Cart State
+
+When the cart sidebar/bottom sheet opens with zero items:
+
+```tsx
+<div className="flex flex-col items-center gap-4 py-12 text-center">
+  {/* Illustrated empty cart icon — lightweight SVG, not Lottie */}
+  <svg className="h-16 w-16 text-gray-300 dark:text-gray-600" ...>/* cart outline */</svg>
+  <p className="text-base font-medium text-gray-600 dark:text-gray-400">
+    Your cart is empty
+  </p>
+  <p className="text-sm text-gray-400 dark:text-gray-500">
+    Ask me to find something, or browse categories to get started!
+  </p>
+  <button
+    className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white dark:bg-violet-400 dark:text-gray-900"
+    onClick={closeCartAndFocusInput}
+  >
+    Start shopping
+  </button>
+</div>
+```
+
+### 10.4 First-Time User Experience Flow
+
+```
+1. Page load → Welcome screen with Kapri greeting + chips (§10.1)
+2. User sends first message OR clicks a chip:
+   - Welcome screen fades out (200 ms)
+   - Chat area transitions to conversation mode
+   - Kapri responds with personality: "Great choice! Let me find that for you..."
+3. After first search results:
+   - Kapri's avatar switches to Excited state
+   - Contextual chips appear below results ("Show more", "Compare these")
+4. After first add-to-cart:
+   - Cart icon in header shows badge count with bounce animation (§1.3)
+   - Kapri: "Nice pick! Want to keep shopping or ready to checkout?"
+   - Chips: "Continue shopping", "View cart", "Checkout"
+5. Language detection:
+   - If first message contains Sinhala Unicode (U+0D80–0DFF), auto-switch to Sinhala mode
+   - If mixed, switch to Tanglish mode
+   - Show a subtle pill: "Detected: සිංහල — Switch to English?"
+```
+
+---
+
+## 11. Chat Scroll Behavior
+
+Smooth, predictable scrolling that keeps the user anchored to new messages without hijacking manual browsing of history.
+
+### 11.1 Auto-Scroll Rules
+
+| Condition                                    | Behavior                                       |
+|----------------------------------------------|-------------------------------------------------|
+| User is at/near bottom (within 100 px)       | Auto-scroll to bottom on new message            |
+| User has scrolled up (> 100 px from bottom)  | Do NOT auto-scroll — preserve reading position  |
+| User sends a new message                     | Always scroll to bottom (they initiated action) |
+| Page first load                              | Scroll to bottom                                |
+
+### 11.2 "New Messages" Floating Indicator
+
+When auto-scroll is paused and new messages arrive, show a floating pill at the bottom of the chat area:
+
+```tsx
+{hasNewMessages && !isNearBottom && (
+  <motion.button
+    className="fixed bottom-20 left-1/2 -translate-x-1/2 z-10
+               rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white
+               shadow-lg dark:bg-violet-400 dark:text-gray-900"
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: 10 }}
+    onClick={scrollToBottom}
+  >
+    ↓ New messages
+  </motion.button>
+)}
+```
+
+Clicking the indicator smoothly scrolls to the bottom and dismisses the pill.
+
+### 11.3 Smooth Scroll Implementation
+
+Use `scrollTo` with `behavior: "smooth"` for all programmatic scrolls — no instant jumps:
+
+```ts
+const chatContainerRef = useRef<HTMLDivElement>(null);
+
+const scrollToBottom = useCallback(() => {
+  chatContainerRef.current?.scrollTo({
+    top: chatContainerRef.current.scrollHeight,
+    behavior: "smooth",
+  });
+}, []);
+```
+
+### 11.4 Scroll Position Tracking
+
+Track whether the user is "near the bottom" using a scroll event listener with a 100 px threshold:
+
+```ts
+const [isNearBottom, setIsNearBottom] = useState(true);
+const [hasNewMessages, setHasNewMessages] = useState(false);
+
+useEffect(() => {
+  const container = chatContainerRef.current;
+  if (!container) return;
+
+  const handleScroll = () => {
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    setIsNearBottom(distanceFromBottom <= 100);
+
+    // Clear "new messages" indicator when user scrolls to bottom
+    if (distanceFromBottom <= 100) {
+      setHasNewMessages(false);
+    }
+  };
+
+  container.addEventListener("scroll", handleScroll, { passive: true });
+  return () => container.removeEventListener("scroll", handleScroll);
+}, []);
+```
+
+### 11.5 Auto-Scroll on New Messages
+
+```ts
+// Trigger when messages array changes
+useEffect(() => {
+  if (isNearBottom) {
+    scrollToBottom();
+  } else {
+    // User is reading history — don't scroll, but show indicator
+    setHasNewMessages(true);
+  }
+}, [messages.length, isNearBottom, scrollToBottom]);
+```
+
+**Alternative approach — IntersectionObserver:** Place a sentinel `<div>` at the bottom of the message list. When visible (user is at bottom), auto-scroll is active. When not visible (user scrolled up), auto-scroll pauses:
+
+```tsx
+const sentinelRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  const observer = new IntersectionObserver(
+    ([entry]) => setIsNearBottom(entry.isIntersecting),
+    { root: chatContainerRef.current, rootMargin: "100px" }
+  );
+  if (sentinelRef.current) observer.observe(sentinelRef.current);
+  return () => observer.disconnect();
+}, []);
+
+// At the end of the message list:
+<div ref={sentinelRef} className="h-px" aria-hidden />
+```
+
+Either approach is valid. IntersectionObserver is slightly more performant (no scroll event overhead), while the scroll listener gives pixel-precise distance values useful for the 100 px threshold.
 
 ---
 
