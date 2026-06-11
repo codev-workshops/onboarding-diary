@@ -5,6 +5,30 @@ import { getAllTools, getShopperTools, getLogisticsTools, getOrderTools } from "
 
 type Intent = "shopping" | "logistics" | "order" | "general";
 
+// Rule-based intent patterns to avoid an LLM call for common queries
+const SHOPPING_PATTERNS =
+  /\b(show me|search|find|browse|look for|products?|items?|cakes?|flowers?|chocolates?|gifts?|buy|shop|categories|catalog|compare|cheaper|expensive|price|similar|recommend|suggest)\b/i;
+const LOGISTICS_PATTERNS =
+  /\b(deliver(y|ies)?|shipping|ship to|cities|city list|available.*(deliver|ship)|deliver.*(date|time|rate|cost|charge)|can you deliver|where.*(deliver|ship))\b/i;
+const ORDER_PATTERNS =
+  /\b(place.*(my|the)?\s*order|checkout|confirm.*order|complete.*purchase|cart.*order)\b/i;
+
+/**
+ * Fast rule-based intent detection. Returns null when uncertain so we can
+ * fall back to the LLM classifier only when needed.
+ */
+export function classifyIntentByRules(message: string): Intent | null {
+  const trimmed = message.trim();
+  if (trimmed.length === 0) return "general";
+
+  // Order patterns are very specific, check first
+  if (ORDER_PATTERNS.test(trimmed)) return "order";
+  if (LOGISTICS_PATTERNS.test(trimmed)) return "logistics";
+  if (SHOPPING_PATTERNS.test(trimmed)) return "shopping";
+
+  return null; // uncertain -> fall back to LLM
+}
+
 const INTENT_SYSTEM_PROMPT = `You are an intent classifier for a Sri Lankan e-commerce shopping assistant.
 Given a user message, classify the intent into exactly one of these categories:
 - "shopping": product search, browse, compare, view details, list categories
@@ -18,6 +42,10 @@ export async function classifyIntent(
   model: LanguageModelV1,
   lastMessage: string
 ): Promise<Intent> {
+  // Try rule-based classification first to save an LLM call
+  const ruleResult = classifyIntentByRules(lastMessage);
+  if (ruleResult !== null) return ruleResult;
+
   try {
     const result = await streamText({
       model,

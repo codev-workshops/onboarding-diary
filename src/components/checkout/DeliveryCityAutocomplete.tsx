@@ -32,23 +32,15 @@ export default function DeliveryCityAutocomplete({
     }
     setIsLoading(true);
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: `List delivery cities matching "${query}"` }],
-          language: "en",
-        }),
-      });
+      const res = await fetch(
+        `/api/cities?q=${encodeURIComponent(query)}`
+      );
       if (!res.ok) throw new Error("Failed to fetch cities");
-      const text = await res.text();
-      const cityNames = text
-        .split("\n")
-        .filter((line) => line.trim())
-        .slice(0, 10);
+      const data = await res.json();
+      const cityNames: string[] = data.cities ?? [];
       setSuggestions(
         cityNames
-          .map((name) => ({ name: name.replace(/^[-•*\d.)\s]+/, "").trim() }))
+          .map((name) => ({ name: name.trim() }))
           .filter((c) => c.name.length > 0)
       );
     } catch {

@@ -37,7 +37,7 @@ function getAvatarState(isLoading: boolean, messages: Message[]): AvatarState {
 
 export default function ChatContainer() {
   const { language } = useLanguage();
-  const { state: cartState } = useCart();
+  const { state: cartState, dispatch: cartDispatch } = useCart();
   const { saveSession } = useChatHistory();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -170,8 +170,10 @@ export default function ChatContainer() {
         details.giftMessage ? `Gift message: ${details.giftMessage}` : "",
       ].filter(Boolean).join(" ");
       handleSendMessage(msg);
+      // Clear cart after order is placed
+      cartDispatch({ type: "CLEAR_CART" });
     },
-    [handleSendMessage, cartState.items]
+    [handleSendMessage, cartState.items, cartDispatch]
   );
 
   const handleCategorySelect = useCallback(

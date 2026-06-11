@@ -19,7 +19,7 @@ vi.mock("@/lib/agents/tools", () => ({
   getOrderTools: vi.fn(() => ({ order: true })),
 }));
 
-import { classifyIntent, orchestrate } from "@/lib/agents/orchestrator";
+import { classifyIntent, classifyIntentByRules, orchestrate } from "@/lib/agents/orchestrator";
 import { streamText } from "ai";
 import type { LanguageModelV1 } from "ai";
 import { getAllTools, getShopperTools, getLogisticsTools, getOrderTools } from "@/lib/agents/tools";
@@ -47,53 +47,91 @@ function makeTextStream(text: string): ReturnType<typeof streamText> {
   } as unknown as ReturnType<typeof streamText>;
 }
 
+describe("classifyIntentByRules", () => {
+  it("detects shopping intent", () => {
+    expect(classifyIntentByRules("show me birthday cakes")).toBe("shopping");
+    expect(classifyIntentByRules("search for flowers")).toBe("shopping");
+    expect(classifyIntentByRules("browse categories")).toBe("shopping");
+    expect(classifyIntentByRules("find me a gift")).toBe("shopping");
+    expect(classifyIntentByRules("compare prices")).toBe("shopping");
+    expect(classifyIntentByRules("recommend something")).toBe("shopping");
+  });
+
+  it("detects logistics intent", () => {
+    expect(classifyIntentByRules("can you deliver to Kandy?")).toBe("logistics");
+    expect(classifyIntentByRules("check delivery to Colombo")).toBe("logistics");
+    expect(classifyIntentByRules("show delivery cities")).toBe("logistics");
+    expect(classifyIntentByRules("shipping cost to Galle")).toBe("logistics");
+  });
+
+  it("detects order intent", () => {
+    expect(classifyIntentByRules("place my order")).toBe("order");
+    expect(classifyIntentByRules("checkout")).toBe("order");
+    expect(classifyIntentByRules("confirm order")).toBe("order");
+  });
+
+  it("returns null for ambiguous messages", () => {
+    expect(classifyIntentByRules("hello")).toBeNull();
+    expect(classifyIntentByRules("how are you today")).toBeNull();
+    expect(classifyIntentByRules("tell me a joke")).toBeNull();
+  });
+
+  it("returns general for empty input", () => {
+    expect(classifyIntentByRules("")).toBe("general");
+    expect(classifyIntentByRules("   ")).toBe("general");
+  });
+});
+
 describe("classifyIntent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("returns 'shopping' when model says shopping", async () => {
-    mockStreamText.mockReturnValue(makeTextStream("shopping"));
+  it("uses rule-based detection for shopping without LLM call", async () => {
     const model = createMockModel();
     const result = await classifyIntent(model, "Show me birthday cakes");
     expect(result).toBe("shopping");
+    expect(mockStreamText).not.toHaveBeenCalled();
   });
 
-  it("returns 'logistics' when model says logistics", async () => {
-    mockStreamText.mockReturnValue(makeTextStream("logistics"));
+  it("uses rule-based detection for logistics without LLM call", async () => {
     const model = createMockModel();
     const result = await classifyIntent(model, "Can you deliver to Kandy?");
     expect(result).toBe("logistics");
+    expect(mockStreamText).not.toHaveBeenCalled();
   });
 
-  it("returns 'general' for unrecognized classification", async () => {
-    mockStreamText.mockReturnValue(makeTextStream("hello"));
+  it("falls back to LLM for ambiguous messages", async () => {
+    mockStreamText.mockReturnValue(makeTextStream("general"));
     const model = createMockModel();
     const result = await classifyIntent(model, "Hello!");
     expect(result).toBe("general");
+    expect(mockStreamText).toHaveBeenCalledTimes(1);
   });
 
-  it("returns 'general' when model throws an error", async () => {
+  it("returns 'general' when LLM throws an error", async () => {
     mockStreamText.mockImplementation(() => {
       throw new Error("API error");
     });
     const model = createMockModel();
-    const result = await classifyIntent(model, "anything");
+    const result = await classifyIntent(model, "tell me something random");
     expect(result).toBe("general");
   });
 
-  it("returns 'order' when model says order", async () => {
-    mockStreamText.mockReturnValue(makeTextStream("order"));
+  it("uses rule-based detection for order without LLM call", async () => {
     const model = createMockModel();
     const result = await classifyIntent(model, "Place my order with these items");
     expect(result).toBe("order");
+    expect(mockStreamText).not.toHaveBeenCalled();
   });
 
-  it("trims and lowercases the model output", async () => {
+  it("falls back to LLM and trims/lowercases LLM output", async () => {
     mockStreamText.mockReturnValue(makeTextStream("  Shopping  "));
     const model = createMockModel();
-    const result = await classifyIntent(model, "Search for products");
+    // This message doesn't match any rule patterns
+    const result = await classifyIntent(model, "what do you have?");
     expect(result).toBe("shopping");
+    expect(mockStreamText).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -102,9 +140,9 @@ describe("orchestrate", () => {
     vi.clearAllMocks();
   });
 
-  it("routes shopping intent to shopper tools", async () => {
+  it("routes shopping intent to shopper tools (rule-based, no LLM classifier call)", async () => {
+    // "Show me cakes" matches rule-based shopping, so only 1 streamText call (agent)
     mockStreamText
-      .mockReturnValueOnce(makeTextStream("shopping"))
       .mockReturnValueOnce(makeTextStream("Here are some products"));
 
     const model = createMockModel();
@@ -115,16 +153,14 @@ describe("orchestrate", () => {
       language: "en",
     });
 
-    // The second streamText call should use shopper tools
-    expect(mockStreamText).toHaveBeenCalledTimes(2);
-    const secondCall = mockStreamText.mock.calls[1][0];
-    expect(secondCall.system).toBe("shopper-prompt");
+    expect(mockStreamText).toHaveBeenCalledTimes(1);
+    const agentCall = mockStreamText.mock.calls[0][0];
+    expect(agentCall.system).toBe("shopper-prompt");
     expect(getShopperTools).toHaveBeenCalled();
   });
 
-  it("routes logistics intent to logistics tools", async () => {
+  it("routes logistics intent to logistics tools (rule-based)", async () => {
     mockStreamText
-      .mockReturnValueOnce(makeTextStream("logistics"))
       .mockReturnValueOnce(makeTextStream("Delivery info"));
 
     const model = createMockModel();
@@ -135,14 +171,13 @@ describe("orchestrate", () => {
       language: "en",
     });
 
-    const secondCall = mockStreamText.mock.calls[1][0];
-    expect(secondCall.system).toBe("logistics-prompt");
+    const agentCall = mockStreamText.mock.calls[0][0];
+    expect(agentCall.system).toBe("logistics-prompt");
     expect(getLogisticsTools).toHaveBeenCalled();
   });
 
-  it("routes order intent to order tools", async () => {
+  it("routes order intent to order tools (rule-based)", async () => {
     mockStreamText
-      .mockReturnValueOnce(makeTextStream("order"))
       .mockReturnValueOnce(makeTextStream("Order placed!"));
 
     const model = createMockModel();
@@ -153,12 +188,13 @@ describe("orchestrate", () => {
       language: "en",
     });
 
-    const secondCall = mockStreamText.mock.calls[1][0];
-    expect(secondCall.system).toBe("order-prompt");
+    const agentCall = mockStreamText.mock.calls[0][0];
+    expect(agentCall.system).toBe("order-prompt");
     expect(getOrderTools).toHaveBeenCalled();
   });
 
-  it("routes general intent to all tools with language prompt", async () => {
+  it("routes general intent to all tools with language prompt (LLM fallback)", async () => {
+    // "Hello there" doesn't match any rule patterns -> LLM classifier + agent = 2 calls
     mockStreamText
       .mockReturnValueOnce(makeTextStream("general"))
       .mockReturnValueOnce(makeTextStream("Hello!"));
@@ -171,12 +207,14 @@ describe("orchestrate", () => {
       language: "si",
     });
 
+    expect(mockStreamText).toHaveBeenCalledTimes(2);
     const secondCall = mockStreamText.mock.calls[1][0];
     expect(secondCall.system).toBe("system-prompt-si");
     expect(getAllTools).toHaveBeenCalled();
   });
 
   it("extracts the last user message correctly", async () => {
+    // "second message" doesn't match rules -> LLM fallback
     mockStreamText
       .mockReturnValueOnce(makeTextStream("shopping"))
       .mockReturnValueOnce(makeTextStream("result"));
