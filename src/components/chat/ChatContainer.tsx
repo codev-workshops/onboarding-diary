@@ -216,12 +216,32 @@ export default function ChatContainer() {
       ];
     }
 
-    const hasOrderPlacement = recentAssistantTools.some(
+    const orderInvocation = recentAssistantTools.find(
       (inv) => inv.toolName === "kapruka_create_order"
     );
-    if (hasOrderPlacement) {
+    if (orderInvocation) {
+      // Extract order ID from the tool result so "Track my order" chip includes it
+      let trackText = "Track my order";
+      if (orderInvocation.state === "result" && orderInvocation.result) {
+        try {
+          const raw = orderInvocation.result;
+          const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
+          const content = obj?.content;
+          let parsed = obj;
+          if (Array.isArray(content) && content.length > 0) {
+            const textItem = content.find((c: { type: string }) => c.type === "text");
+            if (textItem?.text) parsed = JSON.parse(textItem.text);
+          }
+          const orderId = parsed?.order_id || parsed?.orderId;
+          if (orderId) {
+            trackText = `Track my order #${orderId}`;
+          }
+        } catch {
+          // keep default trackText
+        }
+      }
       return [
-        { label: "Track my order", icon: "📦", text: "Track my order" },
+        { label: "Track my order", icon: "📦", text: trackText },
         { label: "Browse more products", icon: "🛍️", text: "I want to browse more products" },
         { label: "Gift Ideas", icon: "🎁", text: "Show me gift ideas" },
       ];
