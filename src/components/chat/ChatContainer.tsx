@@ -220,8 +220,8 @@ export default function ChatContainer() {
       (inv) => inv.toolName === "kapruka_create_order"
     );
     if (orderInvocation) {
-      // Extract order ID from the tool result so "Track my order" chip includes it
-      let trackText = "Track my order";
+      // Extract order ID from the tool result (may not exist for guest checkout)
+      let orderId: string | null = null;
       if (orderInvocation.state === "result" && orderInvocation.result) {
         try {
           const raw = orderInvocation.result;
@@ -232,19 +232,20 @@ export default function ChatContainer() {
             const textItem = content.find((c: { type: string }) => c.type === "text");
             if (textItem?.text) parsed = JSON.parse(textItem.text);
           }
-          const orderId = parsed?.order_id || parsed?.orderId;
-          if (orderId) {
-            trackText = `Track my order #${orderId}`;
-          }
+          orderId = parsed?.order_id || parsed?.orderId || null;
         } catch {
-          // keep default trackText
+          // no order ID available
         }
       }
-      return [
-        { label: "Track my order", icon: "📦", text: trackText },
+      const chips = [
         { label: "Browse more products", icon: "🛍️", text: "I want to browse more products" },
         { label: "Gift Ideas", icon: "🎁", text: "Show me gift ideas" },
       ];
+      // Only show "Track my order" if we have an order ID
+      if (orderId) {
+        chips.unshift({ label: "Track my order", icon: "📦", text: `Track my order #${orderId}` });
+      }
+      return chips;
     }
 
     const hasSearchResults = recentAssistantTools.some(
