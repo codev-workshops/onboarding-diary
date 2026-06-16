@@ -370,4 +370,48 @@ describe("orchestrate", () => {
     const classifyCall = mockStreamText.mock.calls[0][0];
     expect(classifyCall.messages).toEqual([{ role: "user", content: "second message" }]);
   });
+
+  it("injects cart context into the system prompt when cart items are provided", async () => {
+    mockStreamText
+      .mockReturnValueOnce(makeTextStream("order"))
+      .mockReturnValueOnce(makeTextStream("Placing your order!"));
+
+    const model = createMockModel();
+    await orchestrate({
+      classifierModel: model,
+      agentModel: model,
+      messages: [{ role: "user", content: "place my order" }],
+      language: "en",
+      cart: [
+        { productId: "CAKE001", name: "Birthday Cake", price: 5000, currency: "LKR", quantity: 1 },
+        { productId: "CHOC002", name: "Chocolate Box", price: 2500, currency: "LKR", quantity: 2 },
+      ],
+    });
+
+    // The agent system prompt should contain cart context
+    const agentCall = mockStreamText.mock.calls[0][0]; // rule-based order, so agent is first call
+    expect(agentCall.system).toContain("Current Cart (2 items)");
+    expect(agentCall.system).toContain("Birthday Cake");
+    expect(agentCall.system).toContain("CAKE001");
+    expect(agentCall.system).toContain("Chocolate Box");
+    expect(agentCall.system).toContain("Subtotal");
+  });
+
+  it("does not inject cart context when cart is empty or undefined", async () => {
+    mockStreamText
+      .mockReturnValueOnce(makeTextStream("shopping"))
+      .mockReturnValueOnce(makeTextStream("Here are some products"));
+
+    const model = createMockModel();
+    await orchestrate({
+      classifierModel: model,
+      agentModel: model,
+      messages: [{ role: "user", content: "show me cakes" }],
+      language: "en",
+      cart: [],
+    });
+
+    const agentCall = mockStreamText.mock.calls[0][0];
+    expect(agentCall.system).not.toContain("Current Cart");
+  });
 });

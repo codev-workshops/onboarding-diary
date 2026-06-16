@@ -125,11 +125,20 @@ export async function classifyIntent(
   }
 }
 
+interface CartSummaryItem {
+  productId: string;
+  name: string;
+  price: number;
+  currency: string;
+  quantity: number;
+}
+
 interface OrchestrateParams {
   classifierModel: LanguageModelV1;
   agentModel: LanguageModelV1;
   messages: CoreMessage[];
   language: string;
+  cart?: CartSummaryItem[];
 }
 
 /**
@@ -154,11 +163,26 @@ function buildSlangContext(tokens: SinhalaIntentTokens, language: string): strin
   return parts.join("\n");
 }
 
+function buildCartContext(cart: CartSummaryItem[]): string {
+  if (cart.length === 0) return "";
+  const lines = cart.map(
+    (item) => `- ${item.name} (ID: ${item.productId}, qty: ${item.quantity}, ${item.currency} ${item.price.toLocaleString()})`
+  );
+  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  return [
+    `\n\n## Current Cart (${cart.length} item${cart.length > 1 ? "s" : ""})`,
+    ...lines,
+    `- **Subtotal:** LKR ${total.toLocaleString()}`,
+    `\nThe user's cart is managed by the UI. When the user says "checkout" or "place order", use these cart items for the order. You can reference items by name.`,
+  ].join("\n");
+}
+
 export async function orchestrate({
   classifierModel,
   agentModel,
   messages,
   language,
+  cart,
 }: OrchestrateParams) {
   const lastUserMessage = [...messages]
     .reverse()
@@ -230,7 +254,8 @@ export async function orchestrate({
 
   // Append slang context if we have normalized tokens
   const slangContext = slangTokens ? buildSlangContext(slangTokens, language) : "";
-  const systemPrompt = getSystemPromptForLanguage(language, intentAddendum) + slangContext;
+  const cartContext = cart && cart.length > 0 ? buildCartContext(cart) : "";
+  const systemPrompt = getSystemPromptForLanguage(language, intentAddendum) + slangContext + cartContext;
 
   return streamText({
     model: agentModel,
