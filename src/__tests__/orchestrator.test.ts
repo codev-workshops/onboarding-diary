@@ -116,12 +116,23 @@ describe("classifyIntentByRules", () => {
     expect(classifyIntentByRules("ekata ganna")).toBe("shopping");
   });
 
-  it("detects Singlish checkout as order, order karanawa as shopping", () => {
+  it("detects Singlish checkout as order, order karanawa as order", () => {
     // "checkout karanawa" matches ORDER_PATTERNS via bare "checkout" word
     expect(classifyIntentByRules("checkout karanawa")).toBe("order");
-    // "order karanawa" doesn't match ORDER_PATTERNS (needs "place order" etc.),
-    // so it falls through to SINGLISH_CART_PATTERNS as a shopping action
-    expect(classifyIntentByRules("order karanawa")).toBe("shopping");
+    // "order karanna" matches ORDER_PATTERNS via "order.*karanna"
+    expect(classifyIntentByRules("order karanna")).toBe("order");
+    expect(classifyIntentByRules("order karanawa")).toBe("order");
+    // "order eka place karanna" matches ORDER_PATTERNS via "order.*place"
+    expect(classifyIntentByRules("ow, order eka place karanna. Springtime Birthday Ribbon Cake only")).toBe("order");
+  });
+
+  it("classifies recipient/sender details as order (not logistics)", () => {
+    // Messages with "Recipient", "Sender", "Gift message" are providing order details,
+    // even if they contain "Delivery" (which would otherwise match logistics)
+    expect(classifyIntentByRules(
+      "Recipient: Lahiru, Phone: 0713456789, Address: No 123 Galle Road Colombo 07, Delivery: June 18, Sender: Devin, Gift message: Happy Birthday machan!"
+    )).toBe("order");
+    expect(classifyIntentByRules("Sender: Devin, gift message: happy birthday")).toBe("order");
   });
 
   it("detects Sinhala Unicode cart patterns", () => {
