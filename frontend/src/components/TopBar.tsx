@@ -16,6 +16,9 @@ export function TopBar() {
         <NavLink to="/feedback" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
           Feedback
         </NavLink>
+        <NavLink to="/notes" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+          Notes
+        </NavLink>
         <NavLink to="/profile" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
           Profile
         </NavLink>

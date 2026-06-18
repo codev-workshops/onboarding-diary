@@ -329,6 +329,21 @@ button.danger {
   color: #ba2525;
 }
 
+.tag-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag-chip {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #eef1f4;
+  color: #3e4c59;
+  font-size: 0.8rem;
+}
+
 select {
   padding: 0.6rem 0.7rem;
   border: 1px solid #cbd2d9;

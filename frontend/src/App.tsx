@@ -12,6 +12,9 @@ import { IssueFormPage } from "./pages/IssueFormPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
 import { FeedbackDetailPage } from "./pages/FeedbackDetailPage";
 import { FeedbackFormPage } from "./pages/FeedbackFormPage";
+import { NotesPage } from "./pages/NotesPage";
+import { NoteDetailPage } from "./pages/NoteDetailPage";
+import { NoteFormPage } from "./pages/NoteFormPage";
 
 export default function App() {
   return (
@@ -120,6 +123,38 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <FeedbackFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notes"
+            element={
+              <ProtectedRoute>
+                <NotesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notes/new"
+            element={
+              <ProtectedRoute>
+                <NoteFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notes/:id"
+            element={
+              <ProtectedRoute>
+                <NoteDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notes/:id/edit"
+            element={
+              <ProtectedRoute>
+                <NoteFormPage />
               </ProtectedRoute>
             }
           />

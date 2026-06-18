@@ -153,3 +153,29 @@ export interface FeedbackFilters {
 }
 
 export const FEEDBACK_TYPES: FeedbackType[] = ["POSITIVE", "SUGGESTION", "CONCERN"];
+
+export interface NoteResponse {
+  id: number;
+  ownerId: number;
+  date: string;
+  title: string;
+  content: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoteInput {
+  date: string;
+  title: string;
+  content: string | null;
+  tags: string[];
+}
+
+export interface NoteFilters {
+  tags?: string[];
+  ownerId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+}
