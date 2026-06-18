@@ -86,3 +86,40 @@ export const TASK_CATEGORIES: TaskCategory[] = [
 ];
 export const TASK_STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
 export const TASK_PRIORITIES: TaskPriority[] = ["LOW", "MEDIUM", "HIGH"];
+
+export type IssueSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type IssueStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+
+export interface IssueResponse {
+  id: number;
+  ownerId: number;
+  date: string;
+  title: string;
+  description: string | null;
+  severity: IssueSeverity;
+  status: IssueStatus;
+  resolutionNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueInput {
+  date: string;
+  title: string;
+  description: string | null;
+  severity: IssueSeverity;
+  status: IssueStatus;
+  resolutionNotes: string | null;
+}
+
+export interface IssueFilters {
+  status?: IssueStatus;
+  severity?: IssueSeverity;
+  ownerId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+}
+
+export const ISSUE_SEVERITIES: IssueSeverity[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+export const ISSUE_STATUSES: IssueStatus[] = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];

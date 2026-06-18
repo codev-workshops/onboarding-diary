@@ -6,6 +6,9 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { TasksPage } from "./pages/TasksPage";
 import { TaskDetailPage } from "./pages/TaskDetailPage";
 import { TaskFormPage } from "./pages/TaskFormPage";
+import { IssuesPage } from "./pages/IssuesPage";
+import { IssueDetailPage } from "./pages/IssueDetailPage";
+import { IssueFormPage } from "./pages/IssueFormPage";
 
 export default function App() {
   return (
@@ -50,6 +53,38 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <TaskFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/issues"
+            element={
+              <ProtectedRoute>
+                <IssuesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/issues/new"
+            element={
+              <ProtectedRoute>
+                <IssueFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/issues/:id"
+            element={
+              <ProtectedRoute>
+                <IssueDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/issues/:id/edit"
+            element={
+              <ProtectedRoute>
+                <IssueFormPage />
               </ProtectedRoute>
             }
           />

@@ -279,6 +279,41 @@ button.danger {
   color: #ba2525;
 }
 
+.badge.status-open {
+  background: #e0ecff;
+  color: #1f5fb0;
+}
+
+.badge.status-resolved {
+  background: #e3f9e5;
+  color: #207227;
+}
+
+.badge.status-closed {
+  background: #e4e7eb;
+  color: #3e4c59;
+}
+
+.badge.severity-low {
+  background: #eef1f4;
+  color: #52606d;
+}
+
+.badge.severity-medium {
+  background: #fff3d6;
+  color: #8a6d1a;
+}
+
+.badge.severity-high {
+  background: #fde6d3;
+  color: #b54708;
+}
+
+.badge.severity-critical {
+  background: #fdecec;
+  color: #ba2525;
+}
+
 select {
   padding: 0.6rem 0.7rem;
   border: 1px solid #cbd2d9;
