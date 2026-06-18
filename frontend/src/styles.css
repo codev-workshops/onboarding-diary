@@ -344,6 +344,76 @@ button.danger {
   font-size: 0.8rem;
 }
 
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.25rem;
+  border: 1px solid #e1e5ea;
+  border-radius: 10px;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+}
+
+.summary-card:hover {
+  border-color: #1f5fb0;
+}
+
+.summary-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #102a43;
+}
+
+.summary-label {
+  color: #627d98;
+  font-size: 0.9rem;
+}
+
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-card h2 {
+  margin-top: 0;
+}
+
+.metric-headline {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin: 0.25rem 0 0;
+  color: #102a43;
+}
+
+.metric-sub {
+  color: #627d98;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.metric-breakdown {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.metric-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  border-top: 1px solid #eef1f4;
+}
+
 select {
   padding: 0.6rem 0.7rem;
   border: 1px solid #cbd2d9;

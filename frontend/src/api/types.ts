@@ -179,3 +179,36 @@ export interface NoteFilters {
   dateTo?: string;
   search?: string;
 }
+
+export type ActivityType = "TASK" | "ISSUE" | "FEEDBACK" | "NOTE";
+
+export interface DashboardResponse {
+  summary: {
+    tasks: number;
+    issues: number;
+    feedback: number;
+    notes: number;
+  };
+  taskMetrics: {
+    total: number;
+    completed: number;
+    completionRate: number;
+    byStatus: Record<string, number>;
+  };
+  issueMetrics: {
+    total: number;
+    open: number;
+    byStatus: Record<string, number>;
+    bySeverity: Record<string, number>;
+  };
+  recentActivity: ActivityItem[];
+}
+
+export interface ActivityItem {
+  type: ActivityType;
+  id: number;
+  ownerId: number;
+  title: string;
+  date: string;
+  occurredAt: string;
+}

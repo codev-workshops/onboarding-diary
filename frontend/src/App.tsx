@@ -15,6 +15,7 @@ import { FeedbackFormPage } from "./pages/FeedbackFormPage";
 import { NotesPage } from "./pages/NotesPage";
 import { NoteDetailPage } from "./pages/NoteDetailPage";
 import { NoteFormPage } from "./pages/NoteFormPage";
+import { DashboardPage } from "./pages/DashboardPage";
 
 export default function App() {
   return (
@@ -22,6 +23,14 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={
@@ -158,7 +167,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/tasks" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

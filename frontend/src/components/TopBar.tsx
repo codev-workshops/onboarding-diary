@@ -7,6 +7,9 @@ export function TopBar() {
     <header className="topbar">
       <span className="brand">Onboarding Diary</span>
       <nav className="nav">
+        <NavLink to="/dashboard" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+          Dashboard
+        </NavLink>
         <NavLink to="/tasks" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
           Tasks
         </NavLink>

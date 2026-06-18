@@ -39,7 +39,7 @@ describe("LoginPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => expect(loginMock).toHaveBeenCalledWith("admin@acme.com", "password12345"));
-    expect(navigateMock).toHaveBeenCalledWith("/tasks", { replace: true });
+    expect(navigateMock).toHaveBeenCalledWith("/dashboard", { replace: true });
   });
 
   it("shows an error message when login fails", async () => {
