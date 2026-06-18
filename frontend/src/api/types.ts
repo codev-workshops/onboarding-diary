@@ -123,3 +123,33 @@ export interface IssueFilters {
 
 export const ISSUE_SEVERITIES: IssueSeverity[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 export const ISSUE_STATUSES: IssueStatus[] = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+
+export type FeedbackType = "POSITIVE" | "SUGGESTION" | "CONCERN";
+
+export interface FeedbackResponse {
+  id: number;
+  ownerId: number;
+  date: string;
+  subject: string;
+  type: FeedbackType;
+  details: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeedbackInput {
+  date: string;
+  subject: string;
+  type: FeedbackType;
+  details: string | null;
+}
+
+export interface FeedbackFilters {
+  type?: FeedbackType;
+  ownerId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+}
+
+export const FEEDBACK_TYPES: FeedbackType[] = ["POSITIVE", "SUGGESTION", "CONCERN"];

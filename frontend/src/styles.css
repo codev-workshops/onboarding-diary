@@ -314,6 +314,21 @@ button.danger {
   color: #ba2525;
 }
 
+.badge.feedback-positive {
+  background: #e3f9e5;
+  color: #207227;
+}
+
+.badge.feedback-suggestion {
+  background: #e0ecff;
+  color: #1f5fb0;
+}
+
+.badge.feedback-concern {
+  background: #fdecec;
+  color: #ba2525;
+}
+
 select {
   padding: 0.6rem 0.7rem;
   border: 1px solid #cbd2d9;

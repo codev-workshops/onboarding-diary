@@ -9,6 +9,9 @@ import { TaskFormPage } from "./pages/TaskFormPage";
 import { IssuesPage } from "./pages/IssuesPage";
 import { IssueDetailPage } from "./pages/IssueDetailPage";
 import { IssueFormPage } from "./pages/IssueFormPage";
+import { FeedbackPage } from "./pages/FeedbackPage";
+import { FeedbackDetailPage } from "./pages/FeedbackDetailPage";
+import { FeedbackFormPage } from "./pages/FeedbackFormPage";
 
 export default function App() {
   return (
@@ -85,6 +88,38 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <IssueFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedback"
+            element={
+              <ProtectedRoute>
+                <FeedbackPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedback/new"
+            element={
+              <ProtectedRoute>
+                <FeedbackFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedback/:id"
+            element={
+              <ProtectedRoute>
+                <FeedbackDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedback/:id/edit"
+            element={
+              <ProtectedRoute>
+                <FeedbackFormPage />
               </ProtectedRoute>
             }
           />
