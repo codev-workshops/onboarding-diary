@@ -16,6 +16,7 @@ import { NotesPage } from "./pages/NotesPage";
 import { NoteDetailPage } from "./pages/NoteDetailPage";
 import { NoteFormPage } from "./pages/NoteFormPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ReportsPage } from "./pages/ReportsPage";
 
 export default function App() {
   return (
@@ -164,6 +165,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <NoteFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <ReportsPage />
               </ProtectedRoute>
             }
           />
