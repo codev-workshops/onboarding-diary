@@ -502,6 +502,104 @@ button.danger {
   font-size: 0.9rem;
 }
 
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.chart-card h2 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 40px;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bar-label {
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.bar-track {
+  background: #eef1f4;
+  border-radius: 4px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.bar-value {
+  font-size: 0.8rem;
+  text-align: right;
+  color: #111827;
+}
+
+.line-svg {
+  width: 100%;
+  height: auto;
+}
+
+.line-svg .axis {
+  stroke: #cbd5e1;
+  stroke-width: 1;
+}
+
+.line-svg .axis-text {
+  fill: #6b7280;
+  font-size: 9px;
+}
+
+.line-svg circle {
+  transition: r 0.1s ease;
+}
+
+.line-svg circle:hover {
+  r: 5;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
 select {
   padding: 0.6rem 0.7rem;
   border: 1px solid #cbd2d9;

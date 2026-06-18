@@ -10,6 +10,9 @@ export function TopBar() {
         <NavLink to="/dashboard" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
           Dashboard
         </NavLink>
+        <NavLink to="/analytics" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+          Analytics
+        </NavLink>
         <NavLink to="/tasks" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
           Tasks
         </NavLink>
