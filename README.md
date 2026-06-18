@@ -22,7 +22,12 @@ this phase implements.
 - Role-based access control for `ADMIN`, `MANAGER`, and `RECRUIT`.
 - Admin user management (create/list/get/update/disable) and self-service
   profile (`/me`).
-- React login page and profile page.
+- Task log (Phase 2): per-user task entries with create/edit/delete/list and
+  filtering by status, category, priority, date range, and free-text search.
+  Recruits manage their own tasks; managers can view their assigned recruits'
+  tasks; admins can view all.
+- React login page, profile page, and task log pages (list, detail,
+  create/edit).
 
 ## Tech stack
 
@@ -92,4 +97,9 @@ Base path: `/api/v1`. Full contract in `API_SPEC.md`; live docs at
 | GET | `/users/{id}` | self / assigned manager / ADMIN |
 | PUT | `/users/{id}` | ADMIN |
 | DELETE | `/users/{id}` | ADMIN (soft delete / disable) |
+| POST | `/tasks` | authenticated (owner = caller) |
+| GET | `/tasks` | recruit (own), manager (own + assigned recruits), ADMIN (all); supports `status`, `category`, `priority`, `ownerId`, `dateFrom`, `dateTo`, `search` filters |
+| GET | `/tasks/{id}` | owner / assigned manager / ADMIN |
+| PUT | `/tasks/{id}` | owner |
+| DELETE | `/tasks/{id}` | owner |
 | GET | `/health`, `/ready` | public |

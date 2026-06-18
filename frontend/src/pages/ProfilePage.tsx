@@ -2,10 +2,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import { AxiosError } from "axios";
 import { apiClient } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { TopBar } from "../components/TopBar";
 import type { ApiError, UserResponse } from "../api/types";
 
 export function ProfilePage() {
-  const { user, logout, refresh } = useAuth();
+  const { user, refresh } = useAuth();
   const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -42,12 +43,7 @@ export function ProfilePage() {
 
   return (
     <div className="page">
-      <header className="topbar">
-        <span className="brand">Onboarding Diary</span>
-        <button type="button" className="link" onClick={logout}>
-          Sign out
-        </button>
-      </header>
+      <TopBar />
 
       <main className="content">
         <h1>My profile</h1>

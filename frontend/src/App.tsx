@@ -3,6 +3,9 @@ import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { TasksPage } from "./pages/TasksPage";
+import { TaskDetailPage } from "./pages/TaskDetailPage";
+import { TaskFormPage } from "./pages/TaskFormPage";
 
 export default function App() {
   return (
@@ -18,7 +21,39 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/profile" replace />} />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <TasksPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks/new"
+            element={
+              <ProtectedRoute>
+                <TaskFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks/:id"
+            element={
+              <ProtectedRoute>
+                <TaskDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks/:id/edit"
+            element={
+              <ProtectedRoute>
+                <TaskFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/tasks" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

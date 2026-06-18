@@ -18,7 +18,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(email, password);
-      navigate("/profile", { replace: true });
+      navigate("/tasks", { replace: true });
     } catch (err) {
       const axiosError = err as AxiosError<ApiError>;
       setError(axiosError.response?.data?.message ?? "Unable to sign in. Please try again.");
