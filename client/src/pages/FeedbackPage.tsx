@@ -66,7 +66,7 @@ export default function FeedbackPage() {
 
       <div className="flex gap-2">
         <button
-          onClick={() => setFilterType('')}
+          onClick={() => { setFilterType(''); setPage(1); }}
           className={`px-3 py-1.5 text-sm rounded-md ${!filterType ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
         >
           All
@@ -74,7 +74,7 @@ export default function FeedbackPage() {
         {Object.values(FeedbackType).map((t) => (
           <button
             key={t}
-            onClick={() => setFilterType(t)}
+            onClick={() => { setFilterType(t); setPage(1); }}
             className={`px-3 py-1.5 text-sm rounded-md ${filterType === t ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
           >
             {t}

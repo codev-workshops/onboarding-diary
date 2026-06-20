@@ -211,15 +211,18 @@ router.get('/download', async (req: Request, res: Response) => {
 
 router.get('/recruits/:userId', async (req: Request, res: Response) => {
   try {
-    const managerId = req.user!.userId;
+    const requesterId = req.user!.userId;
     const recruitId = req.params.userId;
 
-    const recruit = await prisma.user.findUnique({ where: { id: recruitId } });
+    const [requester, recruit] = await Promise.all([
+      prisma.user.findUnique({ where: { id: requesterId } }),
+      prisma.user.findUnique({ where: { id: recruitId } }),
+    ]);
     if (!recruit) {
       res.status(404).json({ error: 'User not found' });
       return;
     }
-    if (recruit.managerId !== managerId) {
+    if (requester?.role !== 'ADMIN' && recruit.managerId !== requesterId) {
       res.status(403).json({ error: 'You are not the manager of this recruit' });
       return;
     }
@@ -247,15 +250,18 @@ router.get('/recruits/:userId', async (req: Request, res: Response) => {
 
 router.get('/recruits/:userId/download', async (req: Request, res: Response) => {
   try {
-    const managerId = req.user!.userId;
+    const requesterId = req.user!.userId;
     const recruitId = req.params.userId;
 
-    const recruit = await prisma.user.findUnique({ where: { id: recruitId } });
+    const [requester, recruit] = await Promise.all([
+      prisma.user.findUnique({ where: { id: requesterId } }),
+      prisma.user.findUnique({ where: { id: recruitId } }),
+    ]);
     if (!recruit) {
       res.status(404).json({ error: 'User not found' });
       return;
     }
-    if (recruit.managerId !== managerId) {
+    if (requester?.role !== 'ADMIN' && recruit.managerId !== requesterId) {
       res.status(403).json({ error: 'You are not the manager of this recruit' });
       return;
     }

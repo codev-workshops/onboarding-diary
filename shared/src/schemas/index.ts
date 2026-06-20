@@ -66,7 +66,15 @@ export const updateIssueSchema = z.object({
   severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
   status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
   resolutionNotes: z.string().max(5000).nullable().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.status === 'RESOLVED' || data.status === 'CLOSED') {
+      return data.resolutionNotes && data.resolutionNotes.length > 0;
+    }
+    return true;
+  },
+  { message: 'Resolution notes are required when status is Resolved or Closed', path: ['resolutionNotes'] }
+);
 
 export const createFeedbackSchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), 'Invalid date'),

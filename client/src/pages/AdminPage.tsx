@@ -128,6 +128,7 @@ function EditUserModal({
   onSuccess: () => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const { register, handleSubmit } = useForm({
     defaultValues: {
@@ -138,6 +139,7 @@ function EditUserModal({
 
   const onSubmit = async (formData: { role: string; managerId: string }) => {
     setIsLoading(true);
+    setError('');
     try {
       if (formData.role !== user.role) {
         await api.put(`/admin/users/${user.id}/role`, { role: formData.role });
@@ -148,7 +150,7 @@ function EditUserModal({
       }
       onSuccess();
     } catch {
-      // handled silently
+      setError('Failed to update user. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -170,6 +172,7 @@ function EditUserModal({
             {managers.map((m) => <option key={m.id} value={m.id}>{m.firstName} {m.lastName}</option>)}
           </select>
         </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Cancel</button>
           <button type="submit" disabled={isLoading} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">

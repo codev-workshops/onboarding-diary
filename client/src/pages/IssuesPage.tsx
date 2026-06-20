@@ -78,7 +78,7 @@ export default function IssuesPage() {
             <label className="block text-xs text-gray-500 mb-1">Status</label>
             <select
               value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setPage(1); }}
               className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
             >
               <option value="">All</option>
@@ -89,7 +89,7 @@ export default function IssuesPage() {
             <label className="block text-xs text-gray-500 mb-1">Severity</label>
             <select
               value={filters.severity}
-              onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, severity: e.target.value }); setPage(1); }}
               className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
             >
               <option value="">All</option>

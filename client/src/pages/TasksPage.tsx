@@ -89,7 +89,7 @@ export default function TasksPage() {
             <input
               type="date"
               value={filters.dateFrom}
-              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, dateFrom: e.target.value }); setPage(1); }}
               className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
             />
           </div>
@@ -98,7 +98,7 @@ export default function TasksPage() {
             <input
               type="date"
               value={filters.dateTo}
-              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, dateTo: e.target.value }); setPage(1); }}
               className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
             />
           </div>
@@ -106,7 +106,7 @@ export default function TasksPage() {
             <label className="block text-xs text-gray-500 mb-1">Category</label>
             <select
               value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, category: e.target.value }); setPage(1); }}
               className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
             >
               <option value="">All</option>
@@ -117,7 +117,7 @@ export default function TasksPage() {
             <label className="block text-xs text-gray-500 mb-1">Status</label>
             <select
               value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setPage(1); }}
               className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
             >
               <option value="">All</option>

@@ -62,7 +62,7 @@ export default function NotesPage() {
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setFilterTag('')}
+            onClick={() => { setFilterTag(''); setPage(1); }}
             className={`px-3 py-1 text-sm rounded-full ${!filterTag ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
           >
             All
@@ -70,7 +70,7 @@ export default function NotesPage() {
           {allTags.map((tag) => (
             <button
               key={tag}
-              onClick={() => setFilterTag(tag)}
+              onClick={() => { setFilterTag(tag); setPage(1); }}
               className={`px-3 py-1 text-sm rounded-full ${filterTag === tag ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
               {tag}
