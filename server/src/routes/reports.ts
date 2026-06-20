@@ -129,6 +129,36 @@ function buildCsv(res: Response, data: ReportData, type: string): void {
   res.send(csv);
 }
 
+router.get('/my-recruits', async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!currentUser || (currentUser.role !== 'MANAGER' && currentUser.role !== 'ADMIN')) {
+      res.status(403).json({ error: 'Only managers and admins can view recruits' });
+      return;
+    }
+
+    if (currentUser.role === 'ADMIN') {
+      const recruits = await prisma.user.findMany({
+        where: { role: 'RECRUIT', isActive: true },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, department: true, startDate: true, managerId: true, isActive: true, createdAt: true, updatedAt: true },
+        orderBy: { firstName: 'asc' },
+      });
+      res.json(recruits);
+    } else {
+      const recruits = await prisma.user.findMany({
+        where: { managerId: userId, isActive: true },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, department: true, startDate: true, managerId: true, isActive: true, createdAt: true, updatedAt: true },
+        orderBy: { firstName: 'asc' },
+      });
+      res.json(recruits);
+    }
+  } catch (err) {
+    console.error('My recruits error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { type, dateFrom, dateTo } = req.query;

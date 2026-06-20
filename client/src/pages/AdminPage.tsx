@@ -31,8 +31,8 @@ export default function AdminPage() {
   });
 
   const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      api.put(`/admin/users/${id}`, { isActive }),
+    mutationFn: ({ id }: { id: string }) =>
+      api.put(`/admin/users/${id}/deactivate`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
   });
 
@@ -86,7 +86,7 @@ export default function AdminPage() {
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => setEditingUser(u)} className="p-1 text-gray-400 hover:text-indigo-600"><Pencil size={16} /></button>
                   <button
-                    onClick={() => toggleActiveMutation.mutate({ id: u.id, isActive: !u.isActive })}
+                    onClick={() => toggleActiveMutation.mutate({ id: u.id })}
                     className={`ml-2 px-2 py-1 text-xs font-medium rounded ${u.isActive ? 'text-red-600 bg-red-50 hover:bg-red-100' : 'text-green-600 bg-green-50 hover:bg-green-100'}`}
                   >
                     {u.isActive ? 'Deactivate' : 'Activate'}
@@ -136,13 +136,16 @@ function EditUserModal({
     },
   });
 
-  const onSubmit = async (data: { role: string; managerId: string }) => {
+  const onSubmit = async (formData: { role: string; managerId: string }) => {
     setIsLoading(true);
     try {
-      await api.put(`/admin/users/${user.id}`, {
-        role: data.role,
-        managerId: data.managerId || null,
-      });
+      if (formData.role !== user.role) {
+        await api.put(`/admin/users/${user.id}/role`, { role: formData.role });
+      }
+      const newManagerId = formData.managerId || null;
+      if (newManagerId !== user.managerId) {
+        await api.put(`/admin/users/${user.id}/manager`, { managerId: newManagerId });
+      }
       onSuccess();
     } catch {
       // handled silently

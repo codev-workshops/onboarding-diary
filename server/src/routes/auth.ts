@@ -131,13 +131,29 @@ router.post('/refresh', async (req: Request, res: Response) => {
       return;
     }
 
+    await prisma.refreshToken.delete({ where: { id: stored.id } });
+
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'dev-secret',
       { expiresIn: '15m' }
     );
 
-    res.json({ accessToken });
+    const newRefreshToken = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret',
+      { expiresIn: '7d' }
+    );
+
+    await prisma.refreshToken.create({
+      data: {
+        token: newRefreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    res.json({ accessToken, refreshToken: newRefreshToken });
   } catch (err) {
     console.error('Refresh error:', err);
     res.status(500).json({ error: 'Internal server error' });

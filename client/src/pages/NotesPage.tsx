@@ -20,7 +20,7 @@ export default function NotesPage() {
   const [filterTag, setFilterTag] = useState('');
 
   const queryParams = new URLSearchParams({ page: String(page), limit: '20' });
-  if (filterTag) queryParams.set('tag', filterTag);
+  if (filterTag) queryParams.set('tags', filterTag);
 
   const { data } = useQuery<PaginatedResponse<NoteEntry>>({
     queryKey: ['notes', page, filterTag],

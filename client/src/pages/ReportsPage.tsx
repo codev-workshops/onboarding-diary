@@ -15,6 +15,32 @@ interface ReportData {
   columns: string[];
 }
 
+function transformBackendResponse(
+  raw: Record<string, Record<string, unknown>[]>,
+  type: string,
+  dateFrom: string,
+  dateTo: string,
+): ReportData {
+  const allData: Record<string, unknown>[] = [];
+  const columnSet = new Set<string>();
+
+  for (const [, entries] of Object.entries(raw)) {
+    if (Array.isArray(entries)) {
+      for (const entry of entries) {
+        allData.push(entry);
+        for (const key of Object.keys(entry)) {
+          columnSet.add(key);
+        }
+      }
+    }
+  }
+
+  const excludeColumns = ['userId', 'createdAt', 'updatedAt'];
+  const columns = Array.from(columnSet).filter((c) => !excludeColumns.includes(c));
+
+  return { type, dateFrom, dateTo, data: allData, columns };
+}
+
 export default function ReportsPage() {
   const { user } = useAuth();
   const [report, setReport] = useState<ReportData | null>(null);
@@ -24,8 +50,8 @@ export default function ReportsPage() {
   const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
 
   const { data: recruits } = useQuery<UserProfile[]>({
-    queryKey: ['admin-users-recruits'],
-    queryFn: () => api.get('/admin/users?role=RECRUIT').then((r) => r.data?.data || r.data),
+    queryKey: ['my-recruits'],
+    queryFn: () => api.get('/reports/my-recruits').then((r) => r.data),
     enabled: isManager,
   });
 
@@ -46,9 +72,11 @@ export default function ReportsPage() {
         dateFrom: data.dateFrom,
         dateTo: data.dateTo,
       });
-      if (selectedRecruit) params.set('userId', selectedRecruit);
-      const res = await api.get(`/reports?${params.toString()}`);
-      setReport(res.data);
+      const baseUrl = selectedRecruit
+        ? `/reports/recruits/${selectedRecruit}`
+        : '/reports';
+      const res = await api.get(`${baseUrl}?${params.toString()}`);
+      setReport(transformBackendResponse(res.data, data.type, data.dateFrom, data.dateTo));
     } catch {
       setReport(null);
     } finally {
@@ -63,9 +91,11 @@ export default function ReportsPage() {
       dateTo: report?.dateTo || '',
       format,
     });
-    if (selectedRecruit) params.set('userId', selectedRecruit);
+    const baseUrl = selectedRecruit
+      ? `/reports/recruits/${selectedRecruit}/download`
+      : '/reports/download';
     try {
-      const res = await api.get(`/reports/download?${params.toString()}`, { responseType: 'blob' });
+      const res = await api.get(`${baseUrl}?${params.toString()}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;

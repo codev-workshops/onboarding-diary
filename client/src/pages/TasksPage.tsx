@@ -44,8 +44,8 @@ export default function TasksPage() {
   const [filters, setFilters] = useState({ dateFrom: '', dateTo: '', category: '', status: '' });
 
   const queryParams = new URLSearchParams({ page: String(page), limit: '20' });
-  if (filters.dateFrom) queryParams.set('dateFrom', filters.dateFrom);
-  if (filters.dateTo) queryParams.set('dateTo', filters.dateTo);
+  if (filters.dateFrom) queryParams.set('date_from', filters.dateFrom);
+  if (filters.dateTo) queryParams.set('date_to', filters.dateTo);
   if (filters.category) queryParams.set('category', filters.category);
   if (filters.status) queryParams.set('status', filters.status);
 
