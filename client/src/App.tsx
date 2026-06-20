@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { ThemeProvider } from './hooks/useTheme';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -11,6 +12,8 @@ import NotesPage from './pages/NotesPage';
 import ReportsPage from './pages/ReportsPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
+import SearchPage from './pages/SearchPage';
+import TimelinePage from './pages/TimelinePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -27,23 +30,27 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="tasks" element={<TasksPage />} />
-          <Route path="issues" element={<IssuesPage />} />
-          <Route path="feedback" element={<FeedbackPage />} />
-          <Route path="notes" element={<NotesPage />} />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
-        </Route>
-      </Routes>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="tasks" element={<TasksPage />} />
+            <Route path="issues" element={<IssuesPage />} />
+            <Route path="feedback" element={<FeedbackPage />} />
+            <Route path="notes" element={<NotesPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="search" element={<SearchPage />} />
+            <Route path="timeline" element={<TimelinePage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

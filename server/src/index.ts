@@ -8,6 +8,8 @@ import noteRoutes from './routes/notes';
 import dashboardRoutes from './routes/dashboard';
 import reportRoutes from './routes/reports';
 import adminRoutes from './routes/admin';
+import searchRoutes from './routes/search';
+import timelineRoutes from './routes/timeline';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -31,6 +33,8 @@ app.use('/api/notes', noteRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/timeline', timelineRoutes);
 
 app.use(errorHandler);
 
