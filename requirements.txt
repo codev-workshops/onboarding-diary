@@ -1,0 +1,302 @@
+# ============================================================
+# ONBOARDING DIARY APPLICATION — REQUIREMENTS SPECIFICATION
+# ============================================================
+# Version: 1.0
+# Date: 2026-06-17
+# ============================================================
+
+## 1. PROJECT OVERVIEW
+
+A responsive web application for new recruits to document their onboarding
+journey. Users log daily tasks, record issues, provide feedback, and capture
+notes. Managers can view entries of recruits they oversee and generate
+downloadable reports. Admins manage users and have full visibility.
+
+Tech Stack:
+  - Backend:  Spring Boot 3.x, Java 17, Spring Security, JWT Authentication
+  - Database: H2 (in-memory, with console enabled for development)
+  - Frontend: React JS, React Router, Axios, CSS
+  - Reports:  iText (PDF generation), OpenCSV (CSV export)
+
+---
+
+## 2. USER ROLES & PERMISSIONS
+
+### 2.1 New Recruit (ROLE_RECRUIT)
+  - Sign up and log in with email/password
+  - Create, read, update, delete OWN task entries
+  - Create, read, update, delete OWN issue entries
+  - Create, read, update, delete OWN feedback entries
+  - Create, read, update, delete OWN note entries
+  - View personal dashboard with summary counts and recent entries
+  - Cannot view other users' data
+  - Cannot generate reports
+
+### 2.2 Manager (ROLE_MANAGER)
+  - Log in with email/password (created by Admin or self-register)
+  - View entries (tasks, issues, feedback, notes) of assigned recruits (read-only)
+  - View own dashboard summarizing assigned recruits' data
+  - Generate and download reports (PDF or CSV) for assigned recruits
+  - Filter reports by date range and entry type
+  - Cannot modify recruit entries
+  - Cannot manage users
+
+### 2.3 Admin (ROLE_ADMIN)
+  - Log in with email/password
+  - View ALL users and their entries
+  - Create, update, deactivate user accounts
+  - Assign recruits to managers
+  - Generate reports for any recruit
+  - Access admin panel for user management
+  - Full CRUD on all data
+
+---
+
+## 3. AUTHENTICATION & AUTHORIZATION
+
+### 3.1 Sign Up
+  - Fields: name, email (unique), password (min 8 chars), department, startDate
+  - Default role: RECRUIT (manager/admin roles assigned by admin)
+  - Password stored as BCrypt hash
+  - Returns JWT token on successful signup
+
+### 3.2 Login
+  - Fields: email, password
+  - Returns JWT token with user ID, email, role
+  - Token expiry: 24 hours
+
+### 3.3 JWT Security
+  - All API endpoints (except /api/auth/**) require valid JWT in Authorization header
+  - Role-based access control on endpoints
+  - Token refresh not required for MVP
+
+---
+
+## 4. ENTITIES & DATA MODEL
+
+### 4.1 User
+  - id: Long (PK, auto-generated)
+  - name: String (required, max 255)
+  - email: String (required, unique, max 255)
+  - password: String (required, BCrypt hashed)
+  - role: Enum (RECRUIT, MANAGER, ADMIN)
+  - department: String (max 255)
+  - startDate: LocalDate
+  - active: Boolean (default true)
+  - createdAt: LocalDateTime (auto-set)
+  - updatedAt: LocalDateTime (auto-set on update)
+
+### 4.2 TaskEntry
+  - id: Long (PK, auto-generated)
+  - date: LocalDate (required)
+  - title: String (required, max 255)
+  - description: String (TEXT, required)
+  - category: String (e.g., "Training", "Documentation", "Development", "Meeting", "Other")
+  - status: Enum (NOT_STARTED, IN_PROGRESS, COMPLETED, DEFERRED)
+  - priority: Enum (LOW, MEDIUM, HIGH, CRITICAL)
+  - userId: Long (FK to User, required)
+  - createdAt: LocalDateTime
+  - updatedAt: LocalDateTime
+
+### 4.3 IssueEntry
+  - id: Long (PK, auto-generated)
+  - date: LocalDate (required)
+  - title: String (required, max 255)
+  - description: String (TEXT, required)
+  - severity: Enum (LOW, MEDIUM, HIGH, CRITICAL)
+  - status: Enum (OPEN, IN_PROGRESS, RESOLVED, CLOSED)
+  - resolutionNotes: String (TEXT, nullable)
+  - userId: Long (FK to User, required)
+  - createdAt: LocalDateTime
+  - updatedAt: LocalDateTime
+
+### 4.4 FeedbackEntry
+  - id: Long (PK, auto-generated)
+  - date: LocalDate (required)
+  - subject: String (required, max 255)
+  - type: Enum (POSITIVE, SUGGESTION, CONCERN)
+  - details: String (TEXT, required)
+  - userId: Long (FK to User, required)
+  - createdAt: LocalDateTime
+
+### 4.5 NoteEntry
+  - id: Long (PK, auto-generated)
+  - date: LocalDate (required)
+  - title: String (required, max 255)
+  - content: String (TEXT, required)
+  - userId: Long (FK to User, required)
+  - createdAt: LocalDateTime
+  - updatedAt: LocalDateTime
+  - tags: ManyToMany relationship with Tag
+
+### 4.6 Tag
+  - id: Long (PK, auto-generated)
+  - name: String (required, unique, max 100)
+
+### 4.7 NoteEntryTag (Join Table)
+  - noteEntryId: Long (FK)
+  - tagId: Long (FK)
+  - Composite PK
+
+### 4.8 ManagerRecruitAssignment
+  - id: Long (PK, auto-generated)
+  - managerId: Long (FK to User where role=MANAGER)
+  - recruitId: Long (FK to User where role=RECRUIT)
+  - assignedAt: LocalDateTime
+  - Unique constraint on (managerId, recruitId)
+
+---
+
+## 5. FEATURE SPECIFICATIONS
+
+### 5.1 Task Log
+  - CRUD operations for task entries
+  - Filter by: date range (dateFrom, dateTo), category, status
+  - Sort by: date descending (default), priority
+  - Validation: date, title, description are required
+
+### 5.2 Issue Log
+  - CRUD operations for issue entries
+  - Filter by: status, severity, date range
+  - Sort by: date descending (default), severity
+  - Resolution notes editable only when status changes to RESOLVED/CLOSED
+  - Validation: date, title, description are required
+
+### 5.3 Feedback Notes
+  - Create and read feedback entries
+  - Edit and delete own feedback
+  - Filter by: type (Positive/Suggestion/Concern), date range
+  - Validation: date, subject, type, details are required
+
+### 5.4 Additional Notes
+  - CRUD operations for free-form notes
+  - Tag support: associate multiple tags with a note
+  - Tags are created on-the-fly if they don't exist
+  - Filter by: tags, date range
+  - Validation: date, title, content are required
+
+### 5.5 Dashboard
+  - Recruit Dashboard:
+    * Total counts: tasks, issues, feedback, notes
+    * Task completion rate (percentage of COMPLETED tasks)
+    * Open issues count
+    * 5 most recent entries across all categories
+    * Entries grouped by current week
+  - Manager Dashboard:
+    * List of assigned recruits with summary stats
+    * Aggregate: total open issues, task completion across recruits
+    * Recent entries from all assigned recruits
+  - Admin Dashboard:
+    * Total user counts by role
+    * System-wide entry counts
+    * Recent activity across all users
+
+### 5.6 Reports
+  - Report types: Tasks Only, Issues Only, Feedback Only, Combined (all)
+  - Format: PDF or CSV (selectable)
+  - Filters: date range (required), recruit ID (required for managers)
+  - PDF: formatted document with headers, tables, generated timestamp
+  - CSV: standard comma-separated with headers
+  - Managers can only generate reports for recruits assigned to them
+  - Admins can generate reports for any recruit
+  - Download via GET endpoint returning file as attachment
+
+### 5.7 Admin Panel
+  - List all users with role, department, active status
+  - Edit user role (promote recruit to manager, etc.)
+  - Deactivate/reactivate user accounts
+  - Assign/unassign recruits to managers
+  - View any user's entries (read-only)
+
+---
+
+## 6. API ENDPOINTS
+
+### 6.1 Authentication
+  POST   /api/auth/signup              — Register new user (public)
+  POST   /api/auth/login               — Login, returns JWT (public)
+
+### 6.2 User Profile
+  GET    /api/users/me                 — Get current user profile
+  PUT    /api/users/me                 — Update current user profile
+
+### 6.3 Task Entries
+  POST   /api/tasks                    — Create task (Recruit)
+  GET    /api/tasks                    — List own tasks with filters (Recruit)
+  GET    /api/tasks/{id}               — Get task by ID
+  PUT    /api/tasks/{id}               — Update task (Recruit, own only)
+  DELETE /api/tasks/{id}               — Delete task (Recruit, own only)
+  GET    /api/recruits/{recruitId}/tasks — List recruit's tasks (Manager/Admin)
+
+### 6.4 Issue Entries
+  POST   /api/issues                   — Create issue (Recruit)
+  GET    /api/issues                   — List own issues with filters (Recruit)
+  GET    /api/issues/{id}              — Get issue by ID
+  PUT    /api/issues/{id}              — Update issue (Recruit, own only)
+  DELETE /api/issues/{id}              — Delete issue (Recruit, own only)
+  GET    /api/recruits/{recruitId}/issues — List recruit's issues (Manager/Admin)
+
+### 6.5 Feedback Entries
+  POST   /api/feedback                 — Create feedback (Recruit)
+  GET    /api/feedback                 — List own feedback with filters (Recruit)
+  GET    /api/feedback/{id}            — Get feedback by ID
+  PUT    /api/feedback/{id}            — Update feedback (Recruit, own only)
+  DELETE /api/feedback/{id}            — Delete feedback (Recruit, own only)
+  GET    /api/recruits/{recruitId}/feedback — List recruit's feedback (Manager/Admin)
+
+### 6.6 Note Entries
+  POST   /api/notes                    — Create note with tags (Recruit)
+  GET    /api/notes                    — List own notes with filters (Recruit)
+  GET    /api/notes/{id}               — Get note by ID
+  PUT    /api/notes/{id}               — Update note (Recruit, own only)
+  DELETE /api/notes/{id}               — Delete note (Recruit, own only)
+  GET    /api/recruits/{recruitId}/notes — List recruit's notes (Manager/Admin)
+
+### 6.7 Tags
+  GET    /api/tags                     — List all tags
+
+### 6.8 Dashboard
+  GET    /api/dashboard                — Get dashboard data (role-aware)
+
+### 6.9 Reports
+  GET    /api/reports                  — Generate report (Manager/Admin)
+         Query params: type (tasks|issues|feedback|combined),
+                       format (pdf|csv),
+                       dateFrom, dateTo,
+                       recruitId (required for manager)
+
+### 6.10 Admin - User Management
+  GET    /api/admin/users              — List all users (Admin)
+  GET    /api/admin/users/{id}         — Get user details (Admin)
+  PUT    /api/admin/users/{id}         — Update user (role, active) (Admin)
+  DELETE /api/admin/users/{id}         — Deactivate user (Admin)
+
+### 6.11 Admin - Assignments
+  GET    /api/admin/assignments        — List all assignments (Admin)
+  POST   /api/admin/assignments        — Assign recruit to manager (Admin)
+  DELETE /api/admin/assignments/{id}   — Remove assignment (Admin)
+  GET    /api/admin/managers/{managerId}/recruits — List recruits for a manager
+
+---
+
+## 7. NON-FUNCTIONAL REQUIREMENTS
+
+  - Responsive web design (mobile + desktop)
+  - Input validation on both frontend and backend
+  - Proper error messages returned as JSON { error, message, status }
+  - H2 console accessible at /h2-console for development
+  - CORS configured for frontend origin (http://localhost:3000)
+  - Passwords never returned in API responses
+  - Pagination support on list endpoints (page, size params)
+  - Timestamps in ISO 8601 format
+
+---
+
+## 8. SEED DATA
+
+On application startup, insert:
+  - 1 Admin user (admin@onboarding.com / admin123)
+  - 1 Manager user (manager@onboarding.com / manager123)
+  - 2 Recruit users with sample entries
+  - Sample tags: training, documentation, technical, process, team, tools
+  - Manager assigned to both recruits
