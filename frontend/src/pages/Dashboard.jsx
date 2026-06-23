@@ -26,27 +26,27 @@ export default function Dashboard() {
       {user?.role === 'RECRUIT' && (
         <div className="dashboard-content">
           <div className="stats-grid">
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/tasks')}>
               <h3>{data.totalTasks}</h3>
               <p>Total Tasks</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/tasks')}>
               <h3>{data.totalTasks > 0 ? Math.round((data.completedTasks / data.totalTasks) * 100) : 0}%</h3>
               <p>Task Completion</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/issues')}>
               <h3>{data.totalIssues}</h3>
               <p>Total Issues</p>
             </div>
-            <div className="stat-card stat-warning">
+            <div className="stat-card stat-warning stat-card-clickable" onClick={() => navigate('/issues')}>
               <h3>{data.openIssues}</h3>
               <p>Open Issues</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/feedback')}>
               <h3>{data.totalFeedback}</h3>
               <p>Feedback</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/notes')}>
               <h3>{data.totalNotes}</h3>
               <p>Notes</p>
             </div>
@@ -71,19 +71,19 @@ export default function Dashboard() {
       {user?.role === 'MANAGER' && (
         <div className="dashboard-content">
           <div className="stats-grid">
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/reports')}>
               <h3>{data.totalTasks}</h3>
               <p>Total Tasks (All Recruits)</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/reports')}>
               <h3>{data.totalTasks > 0 ? Math.round((data.completedTasks / data.totalTasks) * 100) : 0}%</h3>
               <p>Overall Completion</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/reports')}>
               <h3>{data.totalIssues}</h3>
               <p>Total Issues</p>
             </div>
-            <div className="stat-card stat-warning">
+            <div className="stat-card stat-warning stat-card-clickable" onClick={() => navigate('/reports')}>
               <h3>{data.openIssues}</h3>
               <p>Open Issues</p>
             </div>
@@ -114,19 +114,19 @@ export default function Dashboard() {
       {user?.role === 'ADMIN' && (
         <div className="dashboard-content">
           <div className="stats-grid">
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/reports')}>
               <h3>{data.totalTasks}</h3>
               <p>Total Tasks</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/reports')}>
               <h3>{data.totalIssues}</h3>
               <p>Total Issues</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/reports')}>
               <h3>{data.totalFeedback}</h3>
               <p>Total Feedback</p>
             </div>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => navigate('/reports')}>
               <h3>{data.totalNotes}</h3>
               <p>Total Notes</p>
             </div>
@@ -136,7 +136,7 @@ export default function Dashboard() {
               <h3>Users by Role</h3>
               <div className="stats-grid">
                 {Object.entries(data.userCountsByRole).map(([role, count]) => (
-                  <div key={role} className="stat-card">
+                  <div key={role} className="stat-card stat-card-clickable" onClick={() => navigate('/admin/users')}>
                     <h3>{count}</h3>
                     <p>{role}s</p>
                   </div>

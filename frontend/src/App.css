@@ -205,6 +205,20 @@
   text-align: center;
 }
 
+.stat-card-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card-clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card-clickable:active {
+  transform: translateY(0);
+}
+
 .stat-card h3 {
   font-size: 28px;
   color: var(--primary);
