@@ -14,4 +14,6 @@ public interface IssueEntryRepository extends JpaRepository<IssueEntry, Long> {
     List<IssueEntry> findByUserIdAndDateBetween(Long userId, LocalDate from, LocalDate to);
     long countByUserIdAndStatus(Long userId, IssueStatus status);
     long countByUserId(Long userId);
+    List<IssueEntry> findAllByOrderByDateDesc();
+    List<IssueEntry> findAllByDateBetween(LocalDate from, LocalDate to);
 }

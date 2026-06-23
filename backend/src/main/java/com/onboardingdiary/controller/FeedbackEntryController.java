@@ -3,6 +3,7 @@ package com.onboardingdiary.controller;
 import com.onboardingdiary.dto.FeedbackEntryRequest;
 import com.onboardingdiary.entity.FeedbackEntry;
 import com.onboardingdiary.entity.User;
+import com.onboardingdiary.entity.enums.Role;
 import com.onboardingdiary.exception.ResourceNotFoundException;
 import com.onboardingdiary.repository.UserRepository;
 import com.onboardingdiary.service.FeedbackEntryService;
@@ -41,8 +42,11 @@ public class FeedbackEntryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             @RequestParam(required = false) String type) {
-        Long userId = getUserId(userDetails);
-        return ResponseEntity.ok(feedbackEntryService.getByUser(userId, dateFrom, dateTo, type));
+        User user = getUser(userDetails);
+        if (user.getRole() == Role.MANAGER || user.getRole() == Role.ADMIN) {
+            return ResponseEntity.ok(feedbackEntryService.getAll(dateFrom, dateTo, type));
+        }
+        return ResponseEntity.ok(feedbackEntryService.getByUser(user.getId(), dateFrom, dateTo, type));
     }
 
     @GetMapping("/{id}")
@@ -66,9 +70,12 @@ public class FeedbackEntryController {
         return ResponseEntity.noContent().build();
     }
 
-    private Long getUserId(UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
+    private User getUser(UserDetails userDetails) {
+        return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return user.getId();
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        return getUser(userDetails).getId();
     }
 }

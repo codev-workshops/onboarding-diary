@@ -3,6 +3,7 @@ package com.onboardingdiary.controller;
 import com.onboardingdiary.dto.TaskEntryRequest;
 import com.onboardingdiary.entity.TaskEntry;
 import com.onboardingdiary.entity.User;
+import com.onboardingdiary.entity.enums.Role;
 import com.onboardingdiary.exception.ResourceNotFoundException;
 import com.onboardingdiary.repository.UserRepository;
 import com.onboardingdiary.service.TaskEntryService;
@@ -42,8 +43,11 @@ public class TaskEntryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String status) {
-        Long userId = getUserId(userDetails);
-        return ResponseEntity.ok(taskEntryService.getByUser(userId, dateFrom, dateTo, category, status));
+        User user = getUser(userDetails);
+        if (user.getRole() == Role.MANAGER || user.getRole() == Role.ADMIN) {
+            return ResponseEntity.ok(taskEntryService.getAll(dateFrom, dateTo, category, status));
+        }
+        return ResponseEntity.ok(taskEntryService.getByUser(user.getId(), dateFrom, dateTo, category, status));
     }
 
     @GetMapping("/{id}")
@@ -67,9 +71,12 @@ public class TaskEntryController {
         return ResponseEntity.noContent().build();
     }
 
-    private Long getUserId(UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
+    private User getUser(UserDetails userDetails) {
+        return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return user.getId();
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        return getUser(userDetails).getId();
     }
 }

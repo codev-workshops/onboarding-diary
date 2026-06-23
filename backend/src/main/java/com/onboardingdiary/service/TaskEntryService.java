@@ -64,6 +64,28 @@ public class TaskEntryService {
         return entries;
     }
 
+    public List<TaskEntry> getAll(LocalDate dateFrom, LocalDate dateTo, String category, String status) {
+        List<TaskEntry> entries;
+        if (dateFrom != null && dateTo != null) {
+            entries = taskEntryRepository.findAllByDateBetween(dateFrom, dateTo);
+        } else {
+            entries = taskEntryRepository.findAllByOrderByDateDesc();
+        }
+
+        if (category != null && !category.isEmpty()) {
+            entries = entries.stream()
+                    .filter(e -> category.equals(e.getCategory()))
+                    .toList();
+        }
+        if (status != null && !status.isEmpty()) {
+            entries = entries.stream()
+                    .filter(e -> e.getStatus() != null && status.equals(e.getStatus().name()))
+                    .toList();
+        }
+
+        return entries;
+    }
+
     public TaskEntry getById(Long id) {
         return taskEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task entry not found"));

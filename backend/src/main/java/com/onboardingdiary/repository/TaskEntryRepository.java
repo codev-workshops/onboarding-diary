@@ -14,4 +14,6 @@ public interface TaskEntryRepository extends JpaRepository<TaskEntry, Long> {
     List<TaskEntry> findByUserIdAndDateBetween(Long userId, LocalDate from, LocalDate to);
     long countByUserIdAndStatus(Long userId, TaskStatus status);
     long countByUserId(Long userId);
+    List<TaskEntry> findAllByOrderByDateDesc();
+    List<TaskEntry> findAllByDateBetween(LocalDate from, LocalDate to);
 }

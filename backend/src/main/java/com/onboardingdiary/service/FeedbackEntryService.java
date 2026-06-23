@@ -55,6 +55,23 @@ public class FeedbackEntryService {
         return entries;
     }
 
+    public List<FeedbackEntry> getAll(LocalDate dateFrom, LocalDate dateTo, String type) {
+        List<FeedbackEntry> entries;
+        if (dateFrom != null && dateTo != null) {
+            entries = feedbackEntryRepository.findAllByDateBetween(dateFrom, dateTo);
+        } else {
+            entries = feedbackEntryRepository.findAllByOrderByDateDesc();
+        }
+
+        if (type != null && !type.isEmpty()) {
+            entries = entries.stream()
+                    .filter(e -> e.getType() != null && type.equals(e.getType().name()))
+                    .toList();
+        }
+
+        return entries;
+    }
+
     public FeedbackEntry getById(Long id) {
         return feedbackEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback entry not found"));

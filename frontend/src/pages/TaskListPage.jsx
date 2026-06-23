@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { getTasks, deleteTask } from '../api/taskApi';
 import FilterBar from '../components/FilterBar';
 import StatusBadge from '../components/StatusBadge';
 
 export default function TaskListPage() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [filters, setFilters] = useState({});
   const navigate = useNavigate();
+  const isRecruit = user?.role === 'RECRUIT';
 
   const loadTasks = () => {
     getTasks(filters).then(res => setTasks(res.data)).catch(console.error);
@@ -37,7 +40,7 @@ export default function TaskListPage() {
     <div className="page">
       <div className="page-header">
         <h2>Tasks</h2>
-        <button className="btn btn-primary" onClick={() => navigate('/tasks/new')}>New Task</button>
+        {isRecruit && <button className="btn btn-primary" onClick={() => navigate('/tasks/new')}>New Task</button>}
       </div>
       <FilterBar filters={filters} onFilterChange={handleFilterChange} filterConfig={filterConfig} />
       <div className="table-container">
@@ -49,7 +52,7 @@ export default function TaskListPage() {
               <th>Category</th>
               <th>Status</th>
               <th>Priority</th>
-              <th>Actions</th>
+              {isRecruit && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -60,10 +63,12 @@ export default function TaskListPage() {
                 <td>{task.category}</td>
                 <td><StatusBadge value={task.status} /></td>
                 <td><StatusBadge value={task.priority} /></td>
-                <td className="actions">
-                  <button className="btn btn-sm btn-edit" onClick={() => navigate(`/tasks/${task.id}/edit`)}>Edit</button>
-                  <button className="btn btn-sm btn-delete" onClick={() => handleDelete(task.id)}>Delete</button>
-                </td>
+                {isRecruit && (
+                  <td className="actions">
+                    <button className="btn btn-sm btn-edit" onClick={() => navigate(`/tasks/${task.id}/edit`)}>Edit</button>
+                    <button className="btn btn-sm btn-delete" onClick={() => handleDelete(task.id)}>Delete</button>
+                  </td>
+                )}
               </tr>
             ))}
             {tasks.length === 0 && (

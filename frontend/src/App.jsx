@@ -32,16 +32,16 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/tasks" element={<ProtectedRoute roles={['RECRUIT']}><TaskListPage /></ProtectedRoute>} />
+          <Route path="/tasks" element={<ProtectedRoute><TaskListPage /></ProtectedRoute>} />
           <Route path="/tasks/new" element={<ProtectedRoute roles={['RECRUIT']}><TaskFormPage /></ProtectedRoute>} />
           <Route path="/tasks/:id/edit" element={<ProtectedRoute roles={['RECRUIT']}><TaskFormPage /></ProtectedRoute>} />
-          <Route path="/issues" element={<ProtectedRoute roles={['RECRUIT']}><IssueListPage /></ProtectedRoute>} />
+          <Route path="/issues" element={<ProtectedRoute><IssueListPage /></ProtectedRoute>} />
           <Route path="/issues/new" element={<ProtectedRoute roles={['RECRUIT']}><IssueFormPage /></ProtectedRoute>} />
           <Route path="/issues/:id/edit" element={<ProtectedRoute roles={['RECRUIT']}><IssueFormPage /></ProtectedRoute>} />
-          <Route path="/feedback" element={<ProtectedRoute roles={['RECRUIT']}><FeedbackListPage /></ProtectedRoute>} />
+          <Route path="/feedback" element={<ProtectedRoute><FeedbackListPage /></ProtectedRoute>} />
           <Route path="/feedback/new" element={<ProtectedRoute roles={['RECRUIT']}><FeedbackFormPage /></ProtectedRoute>} />
           <Route path="/feedback/:id/edit" element={<ProtectedRoute roles={['RECRUIT']}><FeedbackFormPage /></ProtectedRoute>} />
-          <Route path="/notes" element={<ProtectedRoute roles={['RECRUIT']}><NoteListPage /></ProtectedRoute>} />
+          <Route path="/notes" element={<ProtectedRoute><NoteListPage /></ProtectedRoute>} />
           <Route path="/notes/new" element={<ProtectedRoute roles={['RECRUIT']}><NoteFormPage /></ProtectedRoute>} />
           <Route path="/notes/:id/edit" element={<ProtectedRoute roles={['RECRUIT']}><NoteFormPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute roles={['MANAGER', 'ADMIN']}><ReportPage /></ProtectedRoute>} />

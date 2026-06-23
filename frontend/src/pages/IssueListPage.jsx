@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { getIssues, deleteIssue } from '../api/issueApi';
 import FilterBar from '../components/FilterBar';
 import StatusBadge from '../components/StatusBadge';
 
 export default function IssueListPage() {
+  const { user } = useAuth();
   const [issues, setIssues] = useState([]);
   const [filters, setFilters] = useState({});
   const navigate = useNavigate();
+  const isRecruit = user?.role === 'RECRUIT';
 
   const loadIssues = () => {
     getIssues(filters).then(res => setIssues(res.data)).catch(console.error);
@@ -37,7 +40,7 @@ export default function IssueListPage() {
     <div className="page">
       <div className="page-header">
         <h2>Issues</h2>
-        <button className="btn btn-primary" onClick={() => navigate('/issues/new')}>New Issue</button>
+        {isRecruit && <button className="btn btn-primary" onClick={() => navigate('/issues/new')}>New Issue</button>}
       </div>
       <FilterBar filters={filters} onFilterChange={handleFilterChange} filterConfig={filterConfig} />
       <div className="table-container">
@@ -48,7 +51,7 @@ export default function IssueListPage() {
               <th>Title</th>
               <th>Severity</th>
               <th>Status</th>
-              <th>Actions</th>
+              {isRecruit && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -58,10 +61,12 @@ export default function IssueListPage() {
                 <td>{issue.title}</td>
                 <td><StatusBadge value={issue.severity} /></td>
                 <td><StatusBadge value={issue.status} /></td>
-                <td className="actions">
-                  <button className="btn btn-sm btn-edit" onClick={() => navigate(`/issues/${issue.id}/edit`)}>Edit</button>
-                  <button className="btn btn-sm btn-delete" onClick={() => handleDelete(issue.id)}>Delete</button>
-                </td>
+                {isRecruit && (
+                  <td className="actions">
+                    <button className="btn btn-sm btn-edit" onClick={() => navigate(`/issues/${issue.id}/edit`)}>Edit</button>
+                    <button className="btn btn-sm btn-delete" onClick={() => handleDelete(issue.id)}>Delete</button>
+                  </td>
+                )}
               </tr>
             ))}
             {issues.length === 0 && (

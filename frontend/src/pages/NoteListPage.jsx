@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { getNotes, deleteNote } from '../api/noteApi';
 import FilterBar from '../components/FilterBar';
 
 export default function NoteListPage() {
+  const { user } = useAuth();
   const [notes, setNotes] = useState([]);
   const [filters, setFilters] = useState({});
   const navigate = useNavigate();
+  const isRecruit = user?.role === 'RECRUIT';
 
   const loadNotes = () => {
     getNotes(filters).then(res => setNotes(res.data)).catch(console.error);
@@ -34,7 +37,7 @@ export default function NoteListPage() {
     <div className="page">
       <div className="page-header">
         <h2>Notes</h2>
-        <button className="btn btn-primary" onClick={() => navigate('/notes/new')}>New Note</button>
+        {isRecruit && <button className="btn btn-primary" onClick={() => navigate('/notes/new')}>New Note</button>}
       </div>
       <FilterBar filters={filters} onFilterChange={handleFilterChange} filterConfig={filterConfig} />
       <div className="table-container">
@@ -44,7 +47,7 @@ export default function NoteListPage() {
               <th>Date</th>
               <th>Title</th>
               <th>Tags</th>
-              <th>Actions</th>
+              {isRecruit && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -57,10 +60,12 @@ export default function NoteListPage() {
                     <span key={tag.id} className="tag-pill">{tag.name}</span>
                   ))}
                 </td>
-                <td className="actions">
-                  <button className="btn btn-sm btn-edit" onClick={() => navigate(`/notes/${note.id}/edit`)}>Edit</button>
-                  <button className="btn btn-sm btn-delete" onClick={() => handleDelete(note.id)}>Delete</button>
-                </td>
+                {isRecruit && (
+                  <td className="actions">
+                    <button className="btn btn-sm btn-edit" onClick={() => navigate(`/notes/${note.id}/edit`)}>Edit</button>
+                    <button className="btn btn-sm btn-delete" onClick={() => handleDelete(note.id)}>Delete</button>
+                  </td>
+                )}
               </tr>
             ))}
             {notes.length === 0 && (

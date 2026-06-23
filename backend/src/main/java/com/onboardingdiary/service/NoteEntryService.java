@@ -66,6 +66,23 @@ public class NoteEntryService {
         return entries;
     }
 
+    public List<NoteEntry> getAll(LocalDate dateFrom, LocalDate dateTo, String tag) {
+        List<NoteEntry> entries;
+        if (dateFrom != null && dateTo != null) {
+            entries = noteEntryRepository.findAllByDateBetween(dateFrom, dateTo);
+        } else {
+            entries = noteEntryRepository.findAllByOrderByDateDesc();
+        }
+
+        if (tag != null && !tag.isEmpty()) {
+            entries = entries.stream()
+                    .filter(e -> e.getTags().stream().anyMatch(t -> t.getName().equalsIgnoreCase(tag)))
+                    .toList();
+        }
+
+        return entries;
+    }
+
     public NoteEntry getById(Long id) {
         return noteEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Note entry not found"));

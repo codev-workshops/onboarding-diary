@@ -64,6 +64,28 @@ public class IssueEntryService {
         return entries;
     }
 
+    public List<IssueEntry> getAll(LocalDate dateFrom, LocalDate dateTo, String status, String severity) {
+        List<IssueEntry> entries;
+        if (dateFrom != null && dateTo != null) {
+            entries = issueEntryRepository.findAllByDateBetween(dateFrom, dateTo);
+        } else {
+            entries = issueEntryRepository.findAllByOrderByDateDesc();
+        }
+
+        if (status != null && !status.isEmpty()) {
+            entries = entries.stream()
+                    .filter(e -> e.getStatus() != null && status.equals(e.getStatus().name()))
+                    .toList();
+        }
+        if (severity != null && !severity.isEmpty()) {
+            entries = entries.stream()
+                    .filter(e -> e.getSeverity() != null && severity.equals(e.getSeverity().name()))
+                    .toList();
+        }
+
+        return entries;
+    }
+
     public IssueEntry getById(Long id) {
         return issueEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue entry not found"));

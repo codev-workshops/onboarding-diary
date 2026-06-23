@@ -12,4 +12,6 @@ public interface FeedbackEntryRepository extends JpaRepository<FeedbackEntry, Lo
     List<FeedbackEntry> findByUserIdOrderByDateDesc(Long userId);
     List<FeedbackEntry> findByUserIdAndDateBetween(Long userId, LocalDate from, LocalDate to);
     long countByUserId(Long userId);
+    List<FeedbackEntry> findAllByOrderByDateDesc();
+    List<FeedbackEntry> findAllByDateBetween(LocalDate from, LocalDate to);
 }

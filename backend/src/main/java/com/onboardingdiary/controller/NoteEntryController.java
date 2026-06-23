@@ -3,6 +3,7 @@ package com.onboardingdiary.controller;
 import com.onboardingdiary.dto.NoteEntryRequest;
 import com.onboardingdiary.entity.NoteEntry;
 import com.onboardingdiary.entity.User;
+import com.onboardingdiary.entity.enums.Role;
 import com.onboardingdiary.exception.ResourceNotFoundException;
 import com.onboardingdiary.repository.UserRepository;
 import com.onboardingdiary.service.NoteEntryService;
@@ -41,8 +42,11 @@ public class NoteEntryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             @RequestParam(required = false) String tag) {
-        Long userId = getUserId(userDetails);
-        return ResponseEntity.ok(noteEntryService.getByUser(userId, dateFrom, dateTo, tag));
+        User user = getUser(userDetails);
+        if (user.getRole() == Role.MANAGER || user.getRole() == Role.ADMIN) {
+            return ResponseEntity.ok(noteEntryService.getAll(dateFrom, dateTo, tag));
+        }
+        return ResponseEntity.ok(noteEntryService.getByUser(user.getId(), dateFrom, dateTo, tag));
     }
 
     @GetMapping("/{id}")
@@ -66,9 +70,12 @@ public class NoteEntryController {
         return ResponseEntity.noContent().build();
     }
 
-    private Long getUserId(UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
+    private User getUser(UserDetails userDetails) {
+        return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return user.getId();
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        return getUser(userDetails).getId();
     }
 }

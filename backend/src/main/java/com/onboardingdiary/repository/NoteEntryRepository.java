@@ -12,4 +12,6 @@ public interface NoteEntryRepository extends JpaRepository<NoteEntry, Long> {
     List<NoteEntry> findByUserIdOrderByDateDesc(Long userId);
     List<NoteEntry> findByUserIdAndDateBetween(Long userId, LocalDate from, LocalDate to);
     long countByUserId(Long userId);
+    List<NoteEntry> findAllByOrderByDateDesc();
+    List<NoteEntry> findAllByDateBetween(LocalDate from, LocalDate to);
 }
