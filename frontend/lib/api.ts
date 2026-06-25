@@ -206,3 +206,74 @@ export async function resetPassword(
 export async function ping(): Promise<{ userId: string; role: string; isAuthenticated: boolean }> {
   return apiFetch("/api/auth/ping");
 }
+
+// --- User Profile & Admin User Management ---
+
+export interface UpdateProfileRequest {
+  name: string;
+  department: string;
+  startDate: string;
+  avatarUrl: string | null;
+}
+
+export interface UpdateRoleRequest {
+  role: string;
+}
+
+export interface UserListItemDto {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  department: string;
+  startDate: string;
+  isActive: boolean;
+}
+
+export interface PagedUsersResponse {
+  users: UserListItemDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export async function getMyProfile(): Promise<{ user: UserDto }> {
+  return apiFetch("/api/users/me");
+}
+
+export async function updateMyProfile(req: UpdateProfileRequest): Promise<{ user: UserDto }> {
+  return apiFetch("/api/users/me", {
+    method: "PUT",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function listUsers(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  department?: string;
+}): Promise<PagedUsersResponse> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.search) qs.set("search", params.search);
+  if (params.role) qs.set("role", params.role);
+  if (params.department) qs.set("department", params.department);
+  return apiFetch(`/api/users?${qs.toString()}`);
+}
+
+export async function updateUserRole(userId: string, role: string): Promise<{ user: UserDto }> {
+  return apiFetch(`/api/users/${userId}/role`, {
+    method: "PUT",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function deactivateUser(userId: string): Promise<void> {
+  return apiFetch(`/api/users/${userId}`, {
+    method: "DELETE",
+  });
+}
