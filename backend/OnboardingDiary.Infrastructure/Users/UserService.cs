@@ -109,16 +109,16 @@ public class UserService : IUserService
         user.Role = role;
         await _context.SaveChangesAsync();
 
-        await _emailSender.SendAsync(
-            user.Email,
-            "Your Role Has Been Updated",
-            $"Hi {user.Name}, your role has been changed from {oldRole} to {role}.");
-
         await _auditLogger.LogAsync(
             "RoleChanged",
             "User",
             userId.ToString(),
             $"Role changed from {oldRole} to {role}");
+
+        await _emailSender.SendAsync(
+            user.Email,
+            "Your Role Has Been Updated",
+            $"Hi {user.Name}, your role has been changed from {oldRole} to {role}.");
 
         return user.Adapt<UserDto>();
     }
@@ -129,7 +129,6 @@ public class UserService : IUserService
             ?? throw new KeyNotFoundException("User not found.");
 
         user.IsActive = false;
-        await _context.SaveChangesAsync();
 
         var tokens = await _context.RefreshTokens
             .Where(rt => rt.UserId == userId && !rt.IsRevoked)
@@ -141,8 +140,7 @@ public class UserService : IUserService
             token.RevokedAt = DateTime.UtcNow;
         }
 
-        if (tokens.Count > 0)
-            await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
         await _auditLogger.LogAsync(
             "UserDeactivated",
