@@ -1,0 +1,46 @@
+.page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  font-family: var(--font-geist-sans);
+}
+
+.main {
+  text-align: center;
+  max-width: 600px;
+}
+
+.main h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.main p {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.status {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+
+.status h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.success {
+  color: #0a7;
+  font-weight: 600;
+}
+
+.error {
+  color: #e00;
+  font-weight: 600;
+}
