@@ -115,6 +115,9 @@ public class AuthService : IAuthService
         if (existingToken is null || existingToken.IsRevoked || existingToken.ExpiresAt <= DateTime.UtcNow)
             throw new UnauthorizedAccessException("Invalid or expired refresh token.");
 
+        if (!existingToken.User.IsActive)
+            throw new UnauthorizedAccessException("Account is deactivated.");
+
         existingToken.IsRevoked = true;
         existingToken.RevokedAt = DateTime.UtcNow;
 
