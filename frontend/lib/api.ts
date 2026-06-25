@@ -107,20 +107,25 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+interface ApiFetchOptions extends RequestInit {
+  suppressRedirect?: boolean;
+}
+
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: ApiFetchOptions = {}
 ): Promise<T> {
+  const { suppressRedirect, ...fetchOptions } = options;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
+    ...(fetchOptions.headers as Record<string, string>),
   };
 
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  let res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  let res = await fetch(`${API_BASE_URL}${path}`, { ...fetchOptions, headers });
 
   if (res.status === 401 && getRefreshToken()) {
     if (!refreshPromise) {
@@ -131,9 +136,9 @@ export async function apiFetch<T>(
 
     if (newToken) {
       headers["Authorization"] = `Bearer ${newToken}`;
-      res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+      res = await fetch(`${API_BASE_URL}${path}`, { ...fetchOptions, headers });
     } else {
-      if (typeof window !== "undefined") {
+      if (!suppressRedirect && typeof window !== "undefined") {
         window.location.href = "/login";
       }
       throw new Error("Session expired. Please log in again.");
@@ -203,6 +208,8 @@ export async function resetPassword(
   });
 }
 
-export async function ping(): Promise<{ userId: string; role: string; isAuthenticated: boolean }> {
-  return apiFetch("/api/auth/ping");
+export async function ping(
+  opts?: { suppressRedirect?: boolean }
+): Promise<{ userId: string; role: string; isAuthenticated: boolean }> {
+  return apiFetch("/api/auth/ping", opts);
 }

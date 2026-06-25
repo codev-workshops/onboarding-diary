@@ -35,7 +35,7 @@ async function tryRestoreSession(): Promise<UserDto | null> {
   if (!rt) return null;
 
   try {
-    const data = await ping();
+    const data = await ping({ suppressRedirect: true });
     return {
       id: data.userId,
       role: data.role,
