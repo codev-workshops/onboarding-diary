@@ -71,6 +71,12 @@ public class AuthService : IAuthService
             throw new InvalidOperationException(
                 $"Account is locked. Try again after {user.LockoutEnd.Value:u}.");
 
+        if (user.LockoutEnd.HasValue && user.LockoutEnd.Value <= DateTime.UtcNow)
+        {
+            user.FailedLoginAttempts = 0;
+            user.LockoutEnd = null;
+        }
+
         if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             user.FailedLoginAttempts++;

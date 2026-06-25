@@ -15,6 +15,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.Property(rt => rt.UpdatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
 
         builder.Property(rt => rt.Token).IsRequired().HasMaxLength(500);
+        builder.HasIndex(rt => rt.Token);
         builder.Property(rt => rt.ExpiresAt).IsRequired();
         builder.Property(rt => rt.IsRevoked).HasDefaultValue(false);
 
