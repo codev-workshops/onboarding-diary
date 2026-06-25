@@ -5,8 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Auth.Mapping;
 using OnboardingDiary.Application.Common.Auth;
+using OnboardingDiary.Application.Users;
+using OnboardingDiary.Application.Users.Mapping;
 using OnboardingDiary.Infrastructure.Auth;
 using OnboardingDiary.Infrastructure.Persistence;
+using OnboardingDiary.Infrastructure.Users;
 
 namespace OnboardingDiary.Infrastructure;
 
@@ -30,6 +33,18 @@ public static class DependencyInjection
         services.AddValidatorsFromAssemblyContaining<Application.Auth.Validators.RegisterRequestValidator>();
 
         AuthMappingConfig.Configure();
+
+        services.AddUserModule();
+
+        return services;
+    }
+
+    private static IServiceCollection AddUserModule(this IServiceCollection services)
+    {
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAuditLogger, AuditLogger>();
+
+        UserMappingConfig.Configure();
 
         return services;
     }
