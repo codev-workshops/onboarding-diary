@@ -142,7 +142,7 @@ public class UsersControllerTests : IClassFixture<Integration.TestWebApplication
 
         var (_, recruitId) = await RegisterAndLogin();
 
-        var roleRes = await adminClient.PutAsJsonAsync($"/api/users/{recruitId}/role", new { Role = 1 });
+        var roleRes = await adminClient.PutAsJsonAsync($"/api/users/{recruitId}/role", new { Role = "Manager" });
         Assert.Equal(HttpStatusCode.OK, roleRes.StatusCode);
 
         var json = await roleRes.Content.ReadFromJsonAsync<JsonElement>();
@@ -194,7 +194,7 @@ public class UsersControllerTests : IClassFixture<Integration.TestWebApplication
         var (adminToken, adminId) = await GetAdminToken();
         var adminClient = AuthenticatedClient(adminToken);
 
-        var roleRes = await adminClient.PutAsJsonAsync($"/api/users/{adminId}/role", new { Role = 0 });
+        var roleRes = await adminClient.PutAsJsonAsync($"/api/users/{adminId}/role", new { Role = "Recruit" });
         Assert.Equal(HttpStatusCode.BadRequest, roleRes.StatusCode);
 
         var body = await roleRes.Content.ReadAsStringAsync();
@@ -207,7 +207,7 @@ public class UsersControllerTests : IClassFixture<Integration.TestWebApplication
         var (token, _) = await RegisterAndLogin();
         var client = AuthenticatedClient(token);
 
-        var res = await client.PutAsJsonAsync($"/api/users/{Guid.NewGuid()}/role", new { Role = 1 });
+        var res = await client.PutAsJsonAsync($"/api/users/{Guid.NewGuid()}/role", new { Role = "Manager" });
         Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
     }
 }

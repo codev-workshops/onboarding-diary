@@ -85,7 +85,14 @@ public class UserService : IUserService
             .OrderBy(u => u.Name)
             .Skip((page - 1) * limit)
             .Take(limit)
-            .Select(u => u.Adapt<UserListItemDto>())
+            .Select(u => new UserListItemDto(
+                u.Id,
+                u.Name,
+                u.Email,
+                u.Role.ToString(),
+                u.Department,
+                u.StartDate,
+                u.IsActive))
             .ToListAsync();
 
         var totalPages = (int)Math.Ceiling((double)total / limit);
