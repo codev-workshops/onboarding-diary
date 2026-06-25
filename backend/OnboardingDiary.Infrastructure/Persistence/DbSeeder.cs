@@ -19,7 +19,10 @@ public static class DbSeeder
         var environment = sp.GetRequiredService<IHostEnvironment>();
         var logger = sp.GetRequiredService<ILogger<AppDbContext>>();
 
-        if (environment.IsDevelopment() && context.Database.IsRelational())
+        if (!environment.IsDevelopment())
+            return;
+
+        if (context.Database.IsRelational())
         {
             await context.Database.MigrateAsync();
             logger.LogInformation("Applied pending migrations");
