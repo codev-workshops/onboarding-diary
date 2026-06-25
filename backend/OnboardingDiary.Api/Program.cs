@@ -6,6 +6,7 @@ using Microsoft.OpenApi.Models;
 using OnboardingDiary.Api.Authorization;
 using OnboardingDiary.Application.Common.Auth;
 using OnboardingDiary.Domain.Enums;
+using System.Text.Json.Serialization;
 using OnboardingDiary.Infrastructure;
 using OnboardingDiary.Infrastructure.Persistence;
 
@@ -15,7 +16,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // JWT Authentication
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);

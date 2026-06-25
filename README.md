@@ -110,6 +110,40 @@ dotnet test
 - **Protected routes**: wrap pages with `<ProtectedRoute>` to enforce authentication.
 - **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder).
 
+## Task Log Endpoints (`/api/tasks/`) — Phase 4
+
+| Method | Path        | Auth   | Description                                       |
+|--------|-------------|--------|---------------------------------------------------|
+| GET    | `/`         | Bearer | List tasks (paginated/filtered) -> 200            |
+| POST   | `/`         | Bearer | Create task -> 201                                |
+| GET    | `/{id}`     | Bearer | Get task by ID -> 200 (404 if not found)          |
+| PUT    | `/{id}`     | Bearer | Update task -> 200                                |
+| DELETE | `/{id}`     | Bearer | Soft delete task -> 204                           |
+| GET    | `/stats`    | Bearer | Get task stats (optional `?recruitId`) -> 200     |
+
+### Query parameters (GET `/api/tasks`)
+
+`page`, `limit` (max 100, default 20), `startDate`, `endDate`, `category`, `status`, `priority`, `recruitId`.
+
+### Business rules
+
+- **Completed requires description**: when `Status == Completed`, `Description` must be non-empty.
+- **CompletedAt auto-set**: set automatically when status transitions to Completed; cleared when moved away.
+- **Soft delete**: tasks are never physically removed; `IsDeleted = true`.
+- **Manager read-only**: managers may list/get an assigned recruit's tasks but cannot create/update/delete them.
+- **Access control**: recruits see only own tasks; managers see own + assigned recruits'; admins see all.
+
+### Reference pattern
+
+This Task Log slice (Controller → Service → Repository → DTOs → Validators) is the **reference pattern** for Phases 5 (Issues), 6 (Feedback), and 7 (Notes). DI registration uses a dedicated `AddTaskModule()` extension to minimize merge conflicts.
+
+### Frontend routes
+
+| Route             | Description                                 |
+|-------------------|---------------------------------------------|
+| `/tasks`          | Task list with filters, pagination, CRUD    |
+| `/tasks/[id]`     | Task detail/edit page                       |
+
 ## Authorization Policies
 
 | Policy                | Requirement                                         |

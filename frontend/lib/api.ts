@@ -206,3 +206,106 @@ export async function resetPassword(
 export async function ping(): Promise<{ userId: string; role: string; isAuthenticated: boolean }> {
   return apiFetch("/api/auth/ping");
 }
+
+// --- Task Log types ---
+
+export interface TaskDto {
+  id: string;
+  userId: string;
+  date: string;
+  title: string;
+  description: string | null;
+  category: string;
+  status: string;
+  priority: string;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTaskRequest {
+  date: string;
+  title: string;
+  description: string | null;
+  category: string;
+  status: string;
+  priority: string;
+}
+
+export interface UpdateTaskRequest {
+  date: string;
+  title: string;
+  description: string | null;
+  category: string;
+  status: string;
+  priority: string;
+}
+
+export interface TaskListParams {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  category?: string;
+  status?: string;
+  priority?: string;
+  recruitId?: string;
+}
+
+export interface TaskListResponse {
+  tasks: TaskDto[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export interface TaskStatsDto {
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  completionRate: number;
+}
+
+// --- Task Log API ---
+
+export async function listTasks(params: TaskListParams = {}): Promise<TaskListResponse> {
+  const qs = new URLSearchParams();
+  if (params.page != null) qs.set("page", String(params.page));
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.startDate) qs.set("startDate", params.startDate);
+  if (params.endDate) qs.set("endDate", params.endDate);
+  if (params.category) qs.set("category", params.category);
+  if (params.status) qs.set("status", params.status);
+  if (params.priority) qs.set("priority", params.priority);
+  if (params.recruitId) qs.set("recruitId", params.recruitId);
+  const query = qs.toString();
+  return apiFetch<TaskListResponse>(`/api/tasks${query ? `?${query}` : ""}`);
+}
+
+export async function getTask(id: string): Promise<{ task: TaskDto }> {
+  return apiFetch<{ task: TaskDto }>(`/api/tasks/${id}`);
+}
+
+export async function createTask(req: CreateTaskRequest): Promise<{ task: TaskDto }> {
+  return apiFetch<{ task: TaskDto }>("/api/tasks", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function updateTask(id: string, req: UpdateTaskRequest): Promise<{ task: TaskDto }> {
+  return apiFetch<{ task: TaskDto }>(`/api/tasks/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  return apiFetch<void>(`/api/tasks/${id}`, { method: "DELETE" });
+}
+
+export async function getTaskStats(recruitId?: string): Promise<TaskStatsDto> {
+  const qs = recruitId ? `?recruitId=${recruitId}` : "";
+  return apiFetch<TaskStatsDto>(`/api/tasks/stats${qs}`);
+}
