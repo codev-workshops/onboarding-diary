@@ -96,14 +96,17 @@ interface TaskFormData {
   priority: string;
 }
 
-const emptyForm: TaskFormData = {
-  date: getTodayString(),
+const emptyFormDefaults: Omit<TaskFormData, 'date'> = {
   title: '',
   description: '',
   category: 'Training',
   status: 'NotStarted',
   priority: 'Medium',
 };
+
+function createEmptyForm(): TaskFormData {
+  return { date: getTodayString(), ...emptyFormDefaults };
+}
 
 interface FormErrors {
   date?: string;
@@ -173,7 +176,7 @@ export default function TasksPage() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskResponse | null>(null);
-  const [formData, setFormData] = useState<TaskFormData>(emptyForm);
+  const [formData, setFormData] = useState<TaskFormData>(createEmptyForm);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -240,7 +243,7 @@ export default function TasksPage() {
 
   const handleOpenCreate = () => {
     setEditingTask(null);
-    setFormData(emptyForm);
+    setFormData(createEmptyForm());
     setFormErrors({});
     setIsModalOpen(true);
   };
@@ -262,7 +265,7 @@ export default function TasksPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingTask(null);
-    setFormData(emptyForm);
+    setFormData(createEmptyForm());
     setFormErrors({});
   };
 
