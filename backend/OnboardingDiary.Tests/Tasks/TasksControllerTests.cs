@@ -253,6 +253,7 @@ public class TasksControllerTests : IClassFixture<TestWebApplicationFactory>
         var listRes = await managerClient.GetAsync($"/api/tasks?recruitId={recruitId}");
         Assert.True(
             listRes.StatusCode == HttpStatusCode.Forbidden ||
+            listRes.StatusCode == HttpStatusCode.Unauthorized ||
             listRes.StatusCode == HttpStatusCode.InternalServerError);
     }
 

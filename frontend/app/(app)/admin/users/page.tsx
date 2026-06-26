@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -34,6 +34,17 @@ function AdminUsersContent() {
   const [newRole, setNewRole] = useState("");
   const [deactivateTarget, setDeactivateTarget] = useState<UserListItemDto | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!editRoleUser && !deactivateTarget) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") { setEditRoleUser(null); setDeactivateTarget(null); }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    dialogRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [editRoleUser, deactivateTarget]);
 
   useEffect(() => {
     if (currentUser?.role !== "Admin") return;
@@ -138,21 +149,22 @@ function AdminUsersContent() {
       {error && <p className={styles.error}>{error}</p>}
       {success && <p className={styles.success}>{success}</p>}
 
-      <div className={styles.filters}>
+      <div className={styles.filters} role="search" aria-label="Filter users">
         <input
           type="text"
           placeholder="Search by name or email..."
+          aria-label="Search users"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           style={{ minWidth: 220 }}
         />
-        <select value={roleFilter} onChange={(e) => handleRoleFilterChange(e.target.value)}>
+        <select aria-label="Filter by role" value={roleFilter} onChange={(e) => handleRoleFilterChange(e.target.value)}>
           <option value="">All Roles</option>
           {ROLES.map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
-        <select value={deptFilter} onChange={(e) => handleDeptFilterChange(e.target.value)}>
+        <select aria-label="Filter by department" value={deptFilter} onChange={(e) => handleDeptFilterChange(e.target.value)}>
           <option value="">All Departments</option>
           {DEPARTMENTS.map((d) => (
             <option key={d} value={d}>{d}</option>
@@ -240,8 +252,8 @@ function AdminUsersContent() {
       )}
 
       {editRoleUser && (
-        <div className={styles.overlay} onClick={() => setEditRoleUser(null)}>
-          <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => setEditRoleUser(null)} role="presentation">
+          <div ref={dialogRef} className={styles.dialog} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Edit Role" tabIndex={-1}>
             <h2>Edit Role</h2>
             <p>Change role for <strong>{editRoleUser.name}</strong></p>
             <div className={styles.dialogField}>
@@ -269,8 +281,8 @@ function AdminUsersContent() {
       )}
 
       {deactivateTarget && (
-        <div className={styles.overlay} onClick={() => setDeactivateTarget(null)}>
-          <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => setDeactivateTarget(null)} role="presentation">
+          <div className={styles.dialog} onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true" aria-label="Confirm Deactivation" tabIndex={-1}>
             <h2>Confirm Deactivation</h2>
             <p>
               Are you sure you want to deactivate <strong>{deactivateTarget.name}</strong> ({deactivateTarget.email})?

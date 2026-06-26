@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Notes;
 using OnboardingDiary.Application.Notes.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -12,12 +13,14 @@ public class NoteService : INoteService
 {
     private readonly INoteRepository _repository;
     private readonly ICurrentUser _currentUser;
+    private readonly ISanitizer _sanitizer;
     private const int MaxPinnedNotes = 5;
 
-    public NoteService(INoteRepository repository, ICurrentUser currentUser)
+    public NoteService(INoteRepository repository, ICurrentUser currentUser, ISanitizer sanitizer)
     {
         _repository = repository;
         _currentUser = currentUser;
+        _sanitizer = sanitizer;
     }
 
     public async Task<NoteDto> CreateAsync(CreateNoteRequest request, CancellationToken ct = default)
@@ -37,9 +40,9 @@ public class NoteService : INoteService
         {
             UserId = userId,
             Date = request.Date,
-            Title = request.Title.Trim(),
-            Content = request.Content,
-            Tags = request.Tags ?? new List<string>(),
+            Title = _sanitizer.Sanitize(request.Title.Trim()),
+            Content = _sanitizer.Sanitize(request.Content),
+            Tags = (request.Tags ?? new List<string>()).Select(t => _sanitizer.Sanitize(t)).ToList(),
             IsPinned = request.IsPinned,
         };
 
@@ -118,8 +121,7 @@ public class NoteService : INoteService
         var materialized = results.ToList();
         var total = materialized.Count;
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var items = materialized
             .Skip((page - 1) * limit)
@@ -165,9 +167,9 @@ public class NoteService : INoteService
                 throw new InvalidOperationException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
         }
 
-        entity.Title = request.Title.Trim();
-        entity.Content = request.Content;
-        entity.Tags = request.Tags ?? new List<string>();
+        entity.Title = _sanitizer.Sanitize(request.Title.Trim());
+        entity.Content = _sanitizer.Sanitize(request.Content);
+        entity.Tags = (request.Tags ?? new List<string>()).Select(t => _sanitizer.Sanitize(t)).ToList();
         entity.IsPinned = request.IsPinned;
 
         _repository.Update(entity);

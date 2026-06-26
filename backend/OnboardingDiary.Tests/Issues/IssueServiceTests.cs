@@ -5,6 +5,7 @@ using OnboardingDiary.Application.Issues.Dtos;
 using OnboardingDiary.Application.Issues.Mapping;
 using OnboardingDiary.Domain.Entities;
 using OnboardingDiary.Domain.Enums;
+using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Infrastructure.Issues;
 using OnboardingDiary.Infrastructure.Persistence;
 
@@ -75,14 +76,14 @@ public class IssueServiceTests : IDisposable
     {
         var currentUser = new FakeCurrentUser(userId ?? _userId, role);
         var emailSender = new FakeEmailSender();
-        return new IssueService(_repository, currentUser, _context, emailSender);
+        return new IssueService(_repository, currentUser, _context, emailSender, new HtmlSanitizer());
     }
 
     private IssueService CreateServiceWithEmailSender(out FakeEmailSender emailSender, Guid? userId = null, string role = "Recruit")
     {
         var currentUser = new FakeCurrentUser(userId ?? _userId, role);
         emailSender = new FakeEmailSender();
-        return new IssueService(_repository, currentUser, _context, emailSender);
+        return new IssueService(_repository, currentUser, _context, emailSender, new HtmlSanitizer());
     }
 
     private CreateIssueRequest ValidCreate(IssueStatus status = IssueStatus.Open) => new(

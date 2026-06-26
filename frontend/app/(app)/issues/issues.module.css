@@ -388,7 +388,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .container {
     padding: 1rem;
   }
@@ -399,5 +399,16 @@
   }
   .filters {
     flex-direction: column;
+  }
+  .filters select,
+  .filters input {
+    width: 100%;
+  }
+  .issueCardHeader {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .actions {
+    flex-wrap: wrap;
   }
 }

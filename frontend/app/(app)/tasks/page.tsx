@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ProtectedRoute } from "@/lib/protected-route";
 import {
   listTasks,
@@ -95,6 +95,17 @@ function TasksContent() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setModalOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    modalRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [modalOpen]);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -204,21 +215,21 @@ function TasksContent() {
         </button>
       </div>
 
-      <div className={styles.filters}>
-        <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }}>
+      <div className={styles.filters} role="search" aria-label="Filter tasks">
+        <select aria-label="Filter by category" value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }}>
           <option value="">All Categories</option>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}>
+        <select aria-label="Filter by status" value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}>
           <option value="">All Statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
-        <select value={filterPriority} onChange={(e) => { setFilterPriority(e.target.value); setPage(1); }}>
+        <select aria-label="Filter by priority" value={filterPriority} onChange={(e) => { setFilterPriority(e.target.value); setPage(1); }}>
           <option value="">All Priorities</option>
           {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <input type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} placeholder="Start date" />
-        <input type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} placeholder="End date" />
+        <input aria-label="Start date filter" type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} />
+        <input aria-label="End date filter" type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} />
       </div>
 
       {loading ? (
@@ -236,14 +247,14 @@ function TasksContent() {
                     <span className={styles.taskDate}> &mdash; {new Date(task.date).toLocaleDateString()}</span>
                   </div>
                   <div className={styles.actions}>
-                    <button className={styles.editBtn} onClick={() => openEdit(task)}>Edit</button>
+                    <button className={styles.editBtn} onClick={() => openEdit(task)} aria-label={`Edit task: ${task.title}`}>Edit</button>
                     {deleteConfirm === task.id ? (
                       <>
-                        <button className={styles.deleteBtn} onClick={() => handleDelete(task.id)}>Confirm</button>
+                        <button className={styles.deleteBtn} onClick={() => handleDelete(task.id)} aria-label={`Confirm delete: ${task.title}`}>Confirm</button>
                         <button className={styles.editBtn} onClick={() => setDeleteConfirm(null)}>Cancel</button>
                       </>
                     ) : (
-                      <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(task.id)}>Delete</button>
+                      <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(task.id)} aria-label={`Delete task: ${task.title}`}>Delete</button>
                     )}
                   </div>
                 </div>
@@ -266,8 +277,8 @@ function TasksContent() {
       )}
 
       {modalOpen && (
-        <div className={styles.overlay} onClick={() => setModalOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => setModalOpen(false)} role="presentation">
+          <div ref={modalRef} className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={editingTask ? "Edit Task" : "New Task"} tabIndex={-1}>
             <h2>{editingTask ? "Edit Task" : "New Task"}</h2>
             <div className={styles.form}>
               <div className={styles.field}>
@@ -315,7 +326,7 @@ function TasksContent() {
       )}
 
       {toast && (
-        <div className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
+        <div role="alert" aria-live="polite" className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
           {toast.message}
         </div>
       )}

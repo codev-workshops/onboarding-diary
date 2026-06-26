@@ -5,6 +5,7 @@ using OnboardingDiary.Application.Notes.Dtos;
 using OnboardingDiary.Application.Notes.Mapping;
 using OnboardingDiary.Domain.Entities;
 using OnboardingDiary.Domain.Enums;
+using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Infrastructure.Notes;
 using OnboardingDiary.Infrastructure.Persistence;
 
@@ -60,7 +61,7 @@ public class NoteServiceTests : IDisposable
     private NoteService CreateService(Guid? userId = null, string role = "Recruit")
     {
         var currentUser = new FakeCurrentUser(userId ?? _userId, role);
-        return new NoteService(_repository, currentUser);
+        return new NoteService(_repository, currentUser, new HtmlSanitizer());
     }
 
     private CreateNoteRequest ValidRequest(string title = "Test Note", bool isPinned = false) => new(

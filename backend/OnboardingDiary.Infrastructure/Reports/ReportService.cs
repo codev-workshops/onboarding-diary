@@ -134,8 +134,7 @@ public class ReportService : IReportService
 
         var total = await q.CountAsync(ct);
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var reports = await q
             .OrderByDescending(r => r.CreatedAt)

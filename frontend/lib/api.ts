@@ -48,6 +48,14 @@ export interface RefreshResponse {
   refreshToken: string;
 }
 
+export interface ProblemDetails {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  errors?: Record<string, string[]>;
+}
+
 export interface ApiError {
   error?: string;
   errors?: { propertyName: string; errorMessage: string }[];
@@ -142,9 +150,22 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const err = new Error(
-      body.error || body.errors?.map((e: { errorMessage: string }) => e.errorMessage).join(", ") || `Request failed (${res.status})`
-    );
+    let message: string;
+    if (body.detail) {
+      message = body.detail;
+    } else if (body.errors && typeof body.errors === "object" && !Array.isArray(body.errors)) {
+      const fieldErrors = Object.values(body.errors as Record<string, string[]>)
+        .flat()
+        .join("; ");
+      message = fieldErrors || body.title || `Request failed (${res.status})`;
+    } else if (body.error) {
+      message = body.error;
+    } else if (body.title) {
+      message = body.title;
+    } else {
+      message = `Request failed (${res.status})`;
+    }
+    const err = new Error(message);
     (err as Error & { status: number; body: unknown }).status = res.status;
     (err as Error & { body: unknown }).body = body;
     throw err;

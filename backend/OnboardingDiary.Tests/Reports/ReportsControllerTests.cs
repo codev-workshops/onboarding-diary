@@ -159,6 +159,7 @@ public class ReportsControllerTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.True(
             dlRes.StatusCode == HttpStatusCode.Forbidden ||
+            dlRes.StatusCode == HttpStatusCode.Unauthorized ||
             dlRes.StatusCode == HttpStatusCode.InternalServerError);
     }
 
@@ -202,6 +203,7 @@ public class ReportsControllerTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.True(
             res.StatusCode == HttpStatusCode.Forbidden ||
+            res.StatusCode == HttpStatusCode.Unauthorized ||
             res.StatusCode == HttpStatusCode.InternalServerError);
     }
 

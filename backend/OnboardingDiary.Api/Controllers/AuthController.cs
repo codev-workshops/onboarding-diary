@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Auth.Dtos;
 
@@ -25,42 +26,25 @@ public class AuthController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var response = await _authService.RegisterAsync(request);
-            return StatusCode(201, response);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        var response = await _authService.RegisterAsync(request);
+        return StatusCode(201, response);
     }
 
     [AllowAnonymous]
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequest request,
         [FromServices] IValidator<LoginRequest> validator)
     {
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var response = await _authService.LoginAsync(request);
-            return Ok(response);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized(new { Error = "Invalid email or password." });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        var response = await _authService.LoginAsync(request);
+        return Ok(response);
     }
 
     [AllowAnonymous]
@@ -71,7 +55,7 @@ public class AuthController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
         await _authService.LogoutAsync(request);
         return NoContent();
@@ -85,17 +69,10 @@ public class AuthController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var response = await _authService.RefreshAsync(request);
-            return Ok(response);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized(new { Error = "Invalid or expired refresh token." });
-        }
+        var response = await _authService.RefreshAsync(request);
+        return Ok(response);
     }
 
     [AllowAnonymous]
@@ -106,7 +83,7 @@ public class AuthController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
         await _authService.ForgotPasswordAsync(request);
         return Ok(new { Message = "If an account with that email exists, a password reset link has been sent." });
@@ -120,17 +97,10 @@ public class AuthController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            await _authService.ResetPasswordAsync(request);
-            return Ok(new { Message = "Password has been reset successfully." });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        await _authService.ResetPasswordAsync(request);
+        return Ok(new { Message = "Password has been reset successfully." });
     }
 
     [Authorize]

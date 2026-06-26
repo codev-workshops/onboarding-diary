@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Auth.Dtos;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Users;
 using OnboardingDiary.Application.Users.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -16,17 +17,20 @@ public class UserService : IUserService
     private readonly ICurrentUser _currentUser;
     private readonly IEmailSender _emailSender;
     private readonly IAuditLogger _auditLogger;
+    private readonly ISanitizer _sanitizer;
 
     public UserService(
         AppDbContext context,
         ICurrentUser currentUser,
         IEmailSender emailSender,
-        IAuditLogger auditLogger)
+        IAuditLogger auditLogger,
+        ISanitizer sanitizer)
     {
         _context = context;
         _currentUser = currentUser;
         _emailSender = emailSender;
         _auditLogger = auditLogger;
+        _sanitizer = sanitizer;
     }
 
     public async Task<UserDto> GetCurrentUserAsync()
@@ -48,8 +52,8 @@ public class UserService : IUserService
         var user = await _context.Users.FindAsync(userId)
             ?? throw new KeyNotFoundException("User not found.");
 
-        user.Name = request.Name;
-        user.Department = request.Department;
+        user.Name = _sanitizer.Sanitize(request.Name.Trim());
+        user.Department = _sanitizer.Sanitize(request.Department.Trim());
         user.StartDate = request.StartDate;
         user.AvatarUrl = request.AvatarUrl;
 
@@ -61,9 +65,7 @@ public class UserService : IUserService
     public async Task<PagedResult<UserListItemDto>> ListUsersAsync(
         int page, int limit, string? search, Role? role, string? department)
     {
-        if (page < 1) page = 1;
-        if (limit < 1) limit = 20;
-        if (limit > 100) limit = 100;
+        (page, limit) = PaginationParams.Normalize(page, limit);
 
         var query = _context.Users.IgnoreQueryFilters().AsQueryable();
 

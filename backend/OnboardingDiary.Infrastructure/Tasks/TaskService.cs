@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Tasks;
 using OnboardingDiary.Application.Tasks.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -16,12 +17,14 @@ public class TaskService : ITaskService
     private readonly ITaskRepository _repository;
     private readonly ICurrentUser _currentUser;
     private readonly AppDbContext _context;
+    private readonly ISanitizer _sanitizer;
 
-    public TaskService(ITaskRepository repository, ICurrentUser currentUser, AppDbContext context)
+    public TaskService(ITaskRepository repository, ICurrentUser currentUser, AppDbContext context, ISanitizer sanitizer)
     {
         _repository = repository;
         _currentUser = currentUser;
         _context = context;
+        _sanitizer = sanitizer;
     }
 
     public async Task<TaskDto> CreateAsync(CreateTaskRequest request, CancellationToken ct = default)
@@ -33,8 +36,8 @@ public class TaskService : ITaskService
         {
             UserId = userId,
             Date = request.Date,
-            Title = request.Title.Trim(),
-            Description = request.Description,
+            Title = _sanitizer.Sanitize(request.Title.Trim()),
+            Description = request.Description is not null ? _sanitizer.Sanitize(request.Description) : null,
             Category = request.Category,
             Status = request.Status,
             Priority = request.Priority,
@@ -95,8 +98,7 @@ public class TaskService : ITaskService
 
         var total = await q.CountAsync(ct);
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var items = await q
             .OrderByDescending(t => t.Date)
@@ -153,8 +155,8 @@ public class TaskService : ITaskService
         var previousStatus = entity.Status;
 
         entity.Date = request.Date;
-        entity.Title = request.Title.Trim();
-        entity.Description = request.Description;
+        entity.Title = _sanitizer.Sanitize(request.Title.Trim());
+        entity.Description = request.Description is not null ? _sanitizer.Sanitize(request.Description) : null;
         entity.Category = request.Category;
         entity.Status = request.Status;
         entity.Priority = request.Priority;

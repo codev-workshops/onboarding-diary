@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OnboardingDiary.Infrastructure.Persistence;
 
@@ -12,6 +13,10 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+
+        builder.UseSetting("RateLimiting:PermitPerMinute", "10000");
+        builder.UseSetting("RateLimiting:LoginPermit", "10000");
+        builder.UseSetting("RateLimiting:LoginWindowMinutes", "1");
 
         builder.ConfigureServices(services =>
         {

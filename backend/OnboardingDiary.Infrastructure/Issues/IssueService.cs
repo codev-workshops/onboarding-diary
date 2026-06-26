@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Issues;
 using OnboardingDiary.Application.Issues.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -16,13 +17,15 @@ public class IssueService : IIssueService
     private readonly ICurrentUser _currentUser;
     private readonly AppDbContext _context;
     private readonly IEmailSender _emailSender;
+    private readonly ISanitizer _sanitizer;
 
-    public IssueService(IIssueRepository repository, ICurrentUser currentUser, AppDbContext context, IEmailSender emailSender)
+    public IssueService(IIssueRepository repository, ICurrentUser currentUser, AppDbContext context, IEmailSender emailSender, ISanitizer sanitizer)
     {
         _repository = repository;
         _currentUser = currentUser;
         _context = context;
         _emailSender = emailSender;
+        _sanitizer = sanitizer;
     }
 
     public async Task<IssueDto> CreateAsync(CreateIssueRequest request, CancellationToken ct = default)
@@ -34,11 +37,11 @@ public class IssueService : IIssueService
         {
             UserId = userId,
             Date = request.Date,
-            Title = request.Title.Trim(),
-            Description = request.Description,
+            Title = _sanitizer.Sanitize(request.Title.Trim()),
+            Description = _sanitizer.Sanitize(request.Description),
             Severity = request.Severity,
             Status = request.Status,
-            ResolutionNotes = request.ResolutionNotes,
+            ResolutionNotes = request.ResolutionNotes is not null ? _sanitizer.Sanitize(request.ResolutionNotes) : null,
         };
 
         if (request.Status == IssueStatus.Resolved || request.Status == IssueStatus.Closed)
@@ -94,8 +97,7 @@ public class IssueService : IIssueService
 
         var total = await q.CountAsync(ct);
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var items = await q
             .OrderByDescending(i => i.Date)
@@ -159,11 +161,11 @@ public class IssueService : IIssueService
         if (InvalidTransitions.Contains((previousStatus, request.Status)))
             throw new InvalidOperationException($"Cannot transition from {previousStatus} to {request.Status}.");
 
-        entity.Title = request.Title.Trim();
-        entity.Description = request.Description;
+        entity.Title = _sanitizer.Sanitize(request.Title.Trim());
+        entity.Description = _sanitizer.Sanitize(request.Description);
         entity.Severity = request.Severity;
         entity.Status = request.Status;
-        entity.ResolutionNotes = request.ResolutionNotes;
+        entity.ResolutionNotes = request.ResolutionNotes is not null ? _sanitizer.Sanitize(request.ResolutionNotes) : null;
 
         if ((request.Status == IssueStatus.Resolved || request.Status == IssueStatus.Closed)
             && previousStatus != IssueStatus.Resolved && previousStatus != IssueStatus.Closed)

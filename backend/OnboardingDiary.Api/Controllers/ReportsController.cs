@@ -26,21 +26,10 @@ public class ReportsController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var result = await _reportService.GenerateAsync(request, ct);
-            return Ok(new { reportId = result.ReportId, downloadUrl = result.DownloadUrl });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { Error = ex.Message });
-        }
+        var result = await _reportService.GenerateAsync(request, ct);
+        return Ok(new { reportId = result.ReportId, downloadUrl = result.DownloadUrl });
     }
 
     [HttpGet("{id:guid}/download")]
@@ -49,30 +38,15 @@ public class ReportsController : ControllerBase
         [FromQuery] string? format = null,
         CancellationToken ct = default)
     {
-        try
+        Domain.Enums.ReportFormat? parsedFormat = null;
+        if (!string.IsNullOrWhiteSpace(format) &&
+            Enum.TryParse<Domain.Enums.ReportFormat>(format, ignoreCase: true, out var f))
         {
-            Domain.Enums.ReportFormat? parsedFormat = null;
-            if (!string.IsNullOrWhiteSpace(format) &&
-                Enum.TryParse<Domain.Enums.ReportFormat>(format, ignoreCase: true, out var f))
-            {
-                parsedFormat = f;
-            }
+            parsedFormat = f;
+        }
 
-            var (stream, contentType, fileName) = await _reportService.DownloadAsync(id, parsedFormat, ct);
-            return File(stream, contentType, fileName);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { Error = "Report not found." });
-        }
-        catch (FileNotFoundException)
-        {
-            return NotFound(new { Error = "Report file not found." });
-        }
+        var (stream, contentType, fileName) = await _reportService.DownloadAsync(id, parsedFormat, ct);
+        return File(stream, contentType, fileName);
     }
 
     [HttpGet]
@@ -81,15 +55,8 @@ public class ReportsController : ControllerBase
         [FromQuery] int limit = 20,
         CancellationToken ct = default)
     {
-        try
-        {
-            var query = new ReportListQuery(page, limit);
-            var result = await _reportService.ListAsync(query, ct);
-            return Ok(new { reports = result.Items, total = result.Total });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var query = new ReportListQuery(page, limit);
+        var result = await _reportService.ListAsync(query, ct);
+        return Ok(new { reports = result.Items, total = result.Total });
     }
 }

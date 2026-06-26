@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Feedback;
 using OnboardingDiary.Application.Feedback.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -30,16 +31,9 @@ public class FeedbackController : ControllerBase
         [FromQuery] string? department = null,
         CancellationToken ct = default)
     {
-        try
-        {
-            var query = new FeedbackListQuery(page, limit, type, startDate, endDate, recruitId, department);
-            var result = await _feedbackService.ListAsync(query, ct);
-            return Ok(new { feedback = result.Items, total = result.Total, page = result.Page, totalPages = result.TotalPages });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var query = new FeedbackListQuery(page, limit, type, startDate, endDate, recruitId, department);
+        var result = await _feedbackService.ListAsync(query, ct);
+        return Ok(new { feedback = result.Items, total = result.Total, page = result.Page, totalPages = result.TotalPages });
     }
 
     [HttpPost]
@@ -50,32 +44,18 @@ public class FeedbackController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var feedback = await _feedbackService.CreateAsync(request, ct);
-            return StatusCode(201, new { feedback });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var feedback = await _feedbackService.CreateAsync(request, ct);
+        return StatusCode(201, new { feedback });
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var feedback = await _feedbackService.GetByIdAsync(id, ct);
-            if (feedback is null) return NotFound(new { Error = "Feedback not found." });
-            return Ok(new { feedback });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var feedback = await _feedbackService.GetByIdAsync(id, ct);
+        if (feedback is null) throw new NotFoundException("Feedback", id);
+        return Ok(new { feedback });
     }
 
     [HttpPut("{id:guid}")]
@@ -87,32 +67,18 @@ public class FeedbackController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var feedback = await _feedbackService.UpdateAsync(id, request, ct);
-            if (feedback is null) return NotFound(new { Error = "Feedback not found or access denied." });
-            return Ok(new { feedback });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var feedback = await _feedbackService.UpdateAsync(id, request, ct);
+        if (feedback is null) throw new NotFoundException("Feedback", id);
+        return Ok(new { feedback });
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var deleted = await _feedbackService.DeleteAsync(id, ct);
-            if (!deleted) return NotFound(new { Error = "Feedback not found or access denied." });
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var deleted = await _feedbackService.DeleteAsync(id, ct);
+        if (!deleted) throw new NotFoundException("Feedback", id);
+        return NoContent();
     }
 }
