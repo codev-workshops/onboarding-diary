@@ -37,7 +37,7 @@ public class FeedbackService : IFeedbackService
         {
             query = filterUserId.HasValue
                 ? _feedbackRepository.GetByUserId(filterUserId.Value)
-                : _feedbackRepository.GetByUserId(userId);
+                : _feedbackRepository.GetByManagerId(userId);
         }
         else
         {
@@ -74,10 +74,20 @@ public class FeedbackService : IFeedbackService
         if (entry == null)
             throw new KeyNotFoundException("Feedback entry not found.");
 
-        if (userRole != "Admin" && userRole != "Manager" && entry.UserId != userId)
-            throw new UnauthorizedAccessException("You do not have access to this feedback entry.");
+        if (entry.UserId == userId)
+            return MapToDto(entry);
 
-        return MapToDto(entry);
+        if (userRole == "Admin")
+            return MapToDto(entry);
+
+        if (userRole == "Manager")
+        {
+            var isManaged = await _feedbackRepository.IsUserManagedByAsync(entry.UserId, userId);
+            if (isManaged)
+                return MapToDto(entry);
+        }
+
+        throw new UnauthorizedAccessException("You do not have access to this feedback entry.");
     }
 
     public async Task<FeedbackResponseDto> CreateAsync(CreateFeedbackDto dto, int userId)
