@@ -9,6 +9,7 @@ import Select from '@/components/ui/Select';
 import Table from '@/components/ui/Table';
 import Pagination from '@/components/ui/Pagination';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Toast from '@/components/ui/Toast';
 import Badge from '@/components/ui/Badge';
 
 const typeOptions = [
@@ -35,6 +36,7 @@ export default function FeedbackListPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,8 +57,8 @@ export default function FeedbackListPage() {
         if (!cancelled) {
           setData(result);
         }
-      } catch (error) {
-        console.error('Failed to fetch feedback entries:', error);
+      } catch {
+        if (!cancelled) setToast({ message: 'Failed to load feedback entries.', type: 'error' });
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -84,8 +86,8 @@ export default function FeedbackListPage() {
       await feedbackApi.delete(deleteId);
       setDeleteId(null);
       setRefreshKey((k) => k + 1);
-    } catch (error) {
-      console.error('Failed to delete feedback entry:', error);
+    } catch {
+      setToast({ message: 'Failed to delete feedback entry.', type: 'error' });
     } finally {
       setIsDeleting(false);
     }
@@ -168,7 +170,7 @@ export default function FeedbackListPage() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8 text-gray-500">Loading...</div>
+        <div className="text-center py-8 text-gray-500">Loading feedback...</div>
       ) : (
         <>
           <Table
@@ -177,7 +179,7 @@ export default function FeedbackListPage() {
             sortBy={sortBy}
             sortDesc={sortDesc}
             onSort={handleSort}
-            emptyMessage="No feedback entries found."
+            emptyMessage="No feedback entries yet. Click '+ New Feedback' to share your thoughts!"
           />
           {data && (
             <Pagination
@@ -201,6 +203,15 @@ export default function FeedbackListPage() {
         variant="danger"
         isLoading={isDeleting}
       />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={!!toast}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

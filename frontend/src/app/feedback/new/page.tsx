@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input';
 export default function NewFeedbackPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState<CreateFeedbackRequest>({
     date: new Date().toISOString().split('T')[0],
@@ -51,8 +52,8 @@ export default function NewFeedbackPage() {
     try {
       await feedbackApi.create(form);
       router.push('/feedback');
-    } catch (error) {
-      console.error('Failed to create feedback:', error);
+    } catch {
+      setApiError('Failed to create feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -61,6 +62,12 @@ export default function NewFeedbackPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">New Feedback</h1>
+
+      {apiError && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+          {apiError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input

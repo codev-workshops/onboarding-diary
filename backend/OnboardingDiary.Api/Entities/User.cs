@@ -13,6 +13,8 @@ public class User
     public DateTime StartDate { get; set; }
     public int? ManagerId { get; set; }
     public bool IsActive { get; set; } = true;
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetTokenExpiry { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

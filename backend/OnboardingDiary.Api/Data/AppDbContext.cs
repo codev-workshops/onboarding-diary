@@ -33,6 +33,8 @@ public class AppDbContext : DbContext
                 .HasConversion<string>()
                 .HasMaxLength(20);
 
+            entity.Property(u => u.PasswordResetToken).HasMaxLength(256);
+
             entity.HasOne(u => u.Manager)
                 .WithMany(u => u.Recruits)
                 .HasForeignKey(u => u.ManagerId)

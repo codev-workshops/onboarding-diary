@@ -34,4 +34,21 @@ public class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request);
         return Ok(result);
     }
+
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(ForgotPasswordResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var result = await _authService.ForgotPasswordAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(ResetPasswordResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var result = await _authService.ResetPasswordAsync(request);
+        return Ok(result);
+    }
 }

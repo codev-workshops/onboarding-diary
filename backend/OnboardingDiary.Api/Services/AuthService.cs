@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using OnboardingDiary.Api.Auth;
 using OnboardingDiary.Api.DTOs.Auth;
 using OnboardingDiary.Api.Entities;
@@ -72,6 +73,56 @@ public class AuthService : IAuthService
                 Email = user.Email,
                 Role = user.Role.ToString()
             }
+        };
+    }
+
+    public async Task<ForgotPasswordResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        var user = await _userRepository.GetByEmailAsync(request.Email.ToLowerInvariant());
+
+        if (user == null || !user.IsActive)
+        {
+            return new ForgotPasswordResponse
+            {
+                Message = "If the email is registered, a reset link has been sent.",
+                Token = null
+            };
+        }
+
+        var resetToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        user.PasswordResetToken = resetToken;
+        user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _userRepository.UpdateAsync(user);
+
+        return new ForgotPasswordResponse
+        {
+            Message = "If the email is registered, a reset link has been sent.",
+            Token = resetToken
+        };
+    }
+
+    public async Task<ResetPasswordResponse> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var user = await _userRepository.GetByResetTokenAsync(request.Token);
+
+        if (user == null)
+            throw new ArgumentException("Invalid or expired reset token.");
+
+        if (user.PasswordResetTokenExpiry == null || user.PasswordResetTokenExpiry < DateTime.UtcNow)
+            throw new ArgumentException("Invalid or expired reset token.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.PasswordResetToken = null;
+        user.PasswordResetTokenExpiry = null;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _userRepository.UpdateAsync(user);
+
+        return new ResetPasswordResponse
+        {
+            Message = "Password reset successfully."
         };
     }
 }

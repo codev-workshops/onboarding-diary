@@ -119,7 +119,7 @@ public class AdminService : IAdminService
         if (user == null)
             throw new KeyNotFoundException($"User with id {id} not found.");
 
-        user.IsActive = dto.IsActive.Value;
+        user.IsActive = dto.IsActive!.Value;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -129,14 +129,14 @@ public class AdminService : IAdminService
 
     public async Task<UserResponseDto> AssignManagerAsync(int userId, AssignManagerDto dto)
     {
-        if (userId == dto.ManagerId.Value)
+        if (userId == dto.ManagerId!.Value)
             throw new InvalidOperationException("A user cannot be assigned as their own manager.");
 
         var user = await _context.Users.Include(u => u.Manager).FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             throw new KeyNotFoundException($"User with id {userId} not found.");
 
-        var manager = await _context.Users.FirstOrDefaultAsync(u => u.Id == dto.ManagerId.Value && u.Role == UserRole.Manager);
+        var manager = await _context.Users.FirstOrDefaultAsync(u => u.Id == dto.ManagerId!.Value && u.Role == UserRole.Manager);
         if (manager == null)
             throw new KeyNotFoundException($"Manager with id {dto.ManagerId.Value} not found or user is not a Manager.");
 

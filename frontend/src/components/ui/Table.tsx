@@ -58,7 +58,7 @@ export default function Table<T extends Record<string, unknown>>({
             </tr>
           ) : (
             data.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-50">
+              <tr key={index} className="hover:bg-gray-50 transition-colors">
                 {columns.map((col) => (
                   <td key={col.key} className="px-4 py-3 text-sm text-gray-700">
                     {col.render ? col.render(item) : String(item[col.key] ?? '')}

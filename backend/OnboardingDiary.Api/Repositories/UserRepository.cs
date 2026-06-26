@@ -17,4 +17,9 @@ public class UserRepository : Repository<User>, IUserRepository
     {
         return await DbSet.AnyAsync(u => u.Email == email);
     }
+
+    public async Task<User?> GetByResetTokenAsync(string token)
+    {
+        return await DbSet.FirstOrDefaultAsync(u => u.PasswordResetToken == token);
+    }
 }

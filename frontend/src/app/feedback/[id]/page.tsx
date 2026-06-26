@@ -14,6 +14,7 @@ export default function EditFeedbackPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     date: '',
@@ -32,8 +33,8 @@ export default function EditFeedbackPage() {
           type: entry.type,
           details: entry.details,
         });
-      } catch (error) {
-        console.error('Failed to fetch feedback entry:', error);
+      } catch {
+        setApiError('Failed to load feedback entry.');
         router.push('/feedback');
       } finally {
         setIsLoading(false);
@@ -81,8 +82,8 @@ export default function EditFeedbackPage() {
       };
       await feedbackApi.update(id, updateData);
       router.push('/feedback');
-    } catch (error) {
-      console.error('Failed to update feedback:', error);
+    } catch {
+      setApiError('Failed to update feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -95,6 +96,12 @@ export default function EditFeedbackPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Edit Feedback</h1>
+
+      {apiError && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+          {apiError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input

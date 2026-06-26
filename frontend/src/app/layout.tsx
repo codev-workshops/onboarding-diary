@@ -6,8 +6,14 @@ import { AuthProvider } from '@/contexts/AuthContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Onboarding Diary',
+  title: {
+    default: 'Onboarding Diary',
+    template: '%s | Onboarding Diary',
+  },
   description: 'Document your onboarding journey',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
