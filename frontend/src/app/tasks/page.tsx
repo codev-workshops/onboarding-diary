@@ -159,7 +159,7 @@ export default function TasksPage() {
   const [filters, setFilters] = useState<TaskFilters>({
     page: 1,
     pageSize: 10,
-    sortBy: 'Date',
+    sortBy: 'date',
     sortDescending: true,
   });
 
@@ -221,7 +221,7 @@ export default function TasksPage() {
     setFilters({
       page: 1,
       pageSize: 10,
-      sortBy: 'Date',
+      sortBy: 'date',
       sortDescending: true,
     });
   };
