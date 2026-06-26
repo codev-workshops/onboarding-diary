@@ -37,9 +37,8 @@ export async function downloadReport(
 export async function getRecruits(): Promise<
   { id: number; name: string; email: string }[]
 > {
-  const response = await api.get<{ items: { id: number; name: string; email: string }[] }>(
-    '/admin/users',
-    { params: { role: 'Recruit', pageSize: 100 } }
+  const response = await api.get<{ id: number; name: string; email: string }[]>(
+    '/reports/recruits'
   );
-  return response.data.items;
+  return response.data;
 }

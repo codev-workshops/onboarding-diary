@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using OnboardingDiary.Api.Data;
 using OnboardingDiary.Api.DTOs.Reports;
 using OnboardingDiary.Api.Entities.Enums;
 using OnboardingDiary.Api.Services;
@@ -13,10 +15,12 @@ namespace OnboardingDiary.Api.Controllers;
 public class ReportsController : ControllerBase
 {
     private readonly IReportService _reportService;
+    private readonly AppDbContext _context;
 
-    public ReportsController(IReportService reportService)
+    public ReportsController(IReportService reportService, AppDbContext context)
     {
         _reportService = reportService;
+        _context = context;
     }
 
     [HttpGet]
@@ -72,6 +76,29 @@ public class ReportsController : ControllerBase
             var fileName = $"report_{dateFrom:yyyyMMdd}_{dateTo:yyyyMMdd}.pdf";
             return File(pdfBytes, "application/pdf", fileName);
         }
+    }
+
+    [HttpGet("recruits")]
+    [Authorize(Policy = "RequireManager")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRecruits()
+    {
+        var (currentUserId, currentUserRole) = GetCurrentUser();
+
+        var query = _context.Users
+            .Where(u => u.Role == UserRole.Recruit && u.IsActive);
+
+        if (currentUserRole == UserRole.Manager)
+        {
+            query = query.Where(u => u.ManagerId == currentUserId);
+        }
+
+        var recruits = await query
+            .OrderBy(u => u.Name)
+            .Select(u => new { u.Id, u.Name, u.Email })
+            .ToListAsync();
+
+        return Ok(recruits);
     }
 
     private (int UserId, UserRole Role) GetCurrentUser()
