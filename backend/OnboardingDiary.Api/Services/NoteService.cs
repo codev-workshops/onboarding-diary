@@ -75,8 +75,10 @@ public class NoteService : INoteService
         }
 
         var sortBy = paginationParams.SortBy;
-        if (string.IsNullOrWhiteSpace(sortBy) || !AllowedSortFields.Contains(sortBy))
+        if (string.IsNullOrWhiteSpace(sortBy))
             sortBy = "Date";
+        else
+            sortBy = AllowedSortFields.FirstOrDefault(f => string.Equals(f, sortBy, StringComparison.OrdinalIgnoreCase)) ?? "Date";
 
         query = query.OrderByProperty(sortBy, paginationParams.SortDescending);
 
@@ -165,21 +167,16 @@ public class NoteService : INoteService
         note.Content = dto.Content;
         note.UpdatedAt = DateTime.UtcNow;
 
-        var existingTags = note.Tags.ToList();
-        _context.NoteTags.RemoveRange(existingTags);
+        note.Tags.Clear();
 
         foreach (var tag in processedTags)
         {
-            _context.NoteTags.Add(new NoteTag
-            {
-                NoteEntryId = note.Id,
-                Tag = tag
-            });
+            note.Tags.Add(new NoteTag { Tag = tag });
         }
 
         await _context.SaveChangesAsync();
 
-        return await GetByIdWithoutAuthCheckAsync(note.Id);
+        return MapToResponseDto(note);
     }
 
     public async Task DeleteAsync(int id, int currentUserId)
