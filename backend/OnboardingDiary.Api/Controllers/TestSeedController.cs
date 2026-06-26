@@ -1,3 +1,4 @@
+#if DEBUG
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Domain.Enums;
@@ -6,7 +7,8 @@ using OnboardingDiary.Infrastructure.Persistence;
 namespace OnboardingDiary.Api.Controllers;
 
 /// <summary>
-/// Test-only controller for seeding data. Only available in Development environment.
+/// Test-only controller for seeding data. Compiled only in DEBUG builds
+/// and further guarded by IsDevelopment() at runtime.
 /// </summary>
 [ApiController]
 [Route("api/test")]
@@ -54,3 +56,4 @@ public class TestSeedController : ControllerBase
 
 public record AssignManagerRequest(Guid RecruitId, Guid ManagerId);
 public record SetRoleRequest(Guid UserId, Role Role);
+#endif
