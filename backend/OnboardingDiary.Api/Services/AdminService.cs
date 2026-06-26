@@ -129,6 +129,9 @@ public class AdminService : IAdminService
 
     public async Task<UserResponseDto> AssignManagerAsync(int userId, AssignManagerDto dto)
     {
+        if (userId == dto.ManagerId)
+            throw new InvalidOperationException("A user cannot be assigned as their own manager.");
+
         var user = await _context.Users.Include(u => u.Manager).FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             throw new KeyNotFoundException($"User with id {userId} not found.");
@@ -183,8 +186,18 @@ public class AdminService : IAdminService
         if (existing != null)
             throw new InvalidOperationException("A department with this name already exists.");
 
+        var oldName = department.Name;
         department.Name = dto.Name;
         department.Description = dto.Description;
+
+        if (oldName != dto.Name)
+        {
+            var usersInDepartment = await _context.Users.Where(u => u.Department == oldName).ToListAsync();
+            foreach (var user in usersInDepartment)
+            {
+                user.Department = dto.Name;
+            }
+        }
 
         await _context.SaveChangesAsync();
 
@@ -242,8 +255,18 @@ public class AdminService : IAdminService
         if (existing != null)
             throw new InvalidOperationException("A category with this name already exists.");
 
+        var oldName = category.Name;
         category.Name = dto.Name;
         category.Description = dto.Description;
+
+        if (oldName != dto.Name)
+        {
+            var tasksWithCategory = await _context.TaskEntries.Where(t => t.Category == oldName).ToListAsync();
+            foreach (var task in tasksWithCategory)
+            {
+                task.Category = dto.Name;
+            }
+        }
 
         await _context.SaveChangesAsync();
 

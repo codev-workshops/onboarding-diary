@@ -130,7 +130,7 @@ export default function AdminUsersPage() {
 
   const fetchManagers = useCallback(async () => {
     try {
-      const data = await getUsers({ role: UserRole.Manager, pageSize: 50 });
+      const data = await getUsers({ role: UserRole.Manager, isActive: true, pageSize: 50 });
       setManagers(data.items);
     } catch {
       // silently fail
