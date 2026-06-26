@@ -144,37 +144,42 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 | `/tasks`          | Task list with filters, pagination, CRUD    |
 | `/tasks/[id]`     | Task detail/edit page                       |
 
-## Issue Log Endpoints (`/api/issues/`) — Phase 5
+## Feedback Endpoints (`/api/feedback/`) — Phase 6
 
-| Method | Path               | Auth   | Description                                       |
-|--------|--------------------|--------|---------------------------------------------------|
-| GET    | `/`                | Bearer | List issues (paginated/filtered) -> 200           |
-| POST   | `/`                | Bearer | Create issue -> 201                               |
-| GET    | `/{id}`            | Bearer | Get issue by ID -> 200 (404 if not found)         |
-| PUT    | `/{id}`            | Bearer | Update issue -> 200                               |
-| DELETE | `/{id}`            | Bearer | Soft delete issue -> 204                          |
-| POST   | `/{id}/escalate`   | Bearer | Escalate issue to manager -> 200                  |
+| Method | Path        | Auth   | Description                                        |
+|--------|-------------|--------|----------------------------------------------------|
+| GET    | `/`         | Bearer | List feedback (paginated/filtered) -> 200          |
+| POST   | `/`         | Bearer | Create feedback -> 201                             |
+| GET    | `/{id}`     | Bearer | Get feedback by ID -> 200 (404 if not found)       |
+| PUT    | `/{id}`     | Bearer | Update feedback -> 200                             |
+| DELETE | `/{id}`     | Bearer | Soft delete feedback -> 204                        |
 
-### Query parameters (GET `/api/issues`)
+### Query parameters (GET `/api/feedback`)
 
-`page`, `limit` (max 100, default 20), `status`, `severity`, `startDate`, `endDate`, `recruitId`.
+`page`, `limit` (max 100, default 20), `type` (Positive/Suggestion/Concern), `startDate`, `endDate`, `recruitId`, `department` (admin only).
 
 ### Business rules
 
-- **Resolution notes required**: when `Status` is `Resolved` or `Closed`, `ResolutionNotes` must be non-empty.
-- **ResolvedAt auto-set**: set automatically when status transitions to Resolved/Closed; cleared when moved back.
-- **Status transition validation**: `Closed` -> `Open` is not allowed.
-- **Soft delete**: issues are never physically removed; `IsDeleted = true`.
-- **Manager read-only**: managers may list/get an assigned recruit's issues but cannot create/update/delete them.
-- **Escalate**: sets `IsEscalated = true` and sends an email notification to the recruit's manager.
-- **Access control**: recruits see only own issues; managers see own + assigned recruits'; admins see all.
+- **Soft delete**: feedback is never physically removed; `IsDeleted = true`.
+- **Owner-only update**: only the feedback author can edit their feedback.
+- **Delete**: owner or admin can soft-delete.
+- **Manager read-only**: managers may list/get an assigned recruit's feedback (US-FEED-03) but cannot create/update/delete it.
+- **Admin aggregated view**: admins can list all feedback across users, filterable by department, type, and date range (US-FEED-04).
+- **Access control**: recruits see only own feedback; managers see own + assigned recruits'; admins see all.
+
+### Validation rules (section 7.4)
+
+- **Date**: required, valid, not in the future.
+- **Subject**: required, 3–150 chars, trimmed.
+- **Type**: required, defined FeedbackType enum value.
+- **Details**: required, 20–5000 chars.
 
 ### Frontend routes
 
 | Route             | Description                                 |
 |-------------------|---------------------------------------------|
-| `/issues`         | Issue list with filters, pagination, CRUD   |
-| `/issues/[id]`    | Issue detail/edit page                      |
+| `/feedback`       | Feedback list with filters, pagination, CRUD|
+| `/feedback/[id]`  | Feedback detail/edit page                   |
 
 ## Authorization Policies
 
