@@ -309,3 +309,88 @@ export async function getTaskStats(recruitId?: string): Promise<TaskStatsDto> {
   const qs = recruitId ? `?recruitId=${recruitId}` : "";
   return apiFetch<TaskStatsDto>(`/api/tasks/stats${qs}`);
 }
+
+// --- Feedback types ---
+
+export interface FeedbackDto {
+  id: string;
+  userId: string;
+  date: string;
+  subject: string;
+  type: string;
+  details: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeedbackListItemDto extends FeedbackDto {
+  authorName: string | null;
+  authorDepartment: string | null;
+}
+
+export interface CreateFeedbackRequest {
+  date: string;
+  subject: string;
+  type: string;
+  details: string;
+}
+
+export interface UpdateFeedbackRequest {
+  subject: string;
+  type: string;
+  details: string;
+}
+
+export interface FeedbackListParams {
+  page?: number;
+  limit?: number;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+  recruitId?: string;
+  department?: string;
+}
+
+export interface FeedbackListResponse {
+  feedback: FeedbackListItemDto[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+// --- Feedback API ---
+
+export async function listFeedback(params: FeedbackListParams = {}): Promise<FeedbackListResponse> {
+  const qs = new URLSearchParams();
+  if (params.page != null) qs.set("page", String(params.page));
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.type) qs.set("type", params.type);
+  if (params.startDate) qs.set("startDate", params.startDate);
+  if (params.endDate) qs.set("endDate", params.endDate);
+  if (params.recruitId) qs.set("recruitId", params.recruitId);
+  if (params.department) qs.set("department", params.department);
+  const query = qs.toString();
+  return apiFetch<FeedbackListResponse>(`/api/feedback${query ? `?${query}` : ""}`);
+}
+
+export async function getFeedback(id: string): Promise<{ feedback: FeedbackDto }> {
+  return apiFetch<{ feedback: FeedbackDto }>(`/api/feedback/${id}`);
+}
+
+export async function createFeedback(req: CreateFeedbackRequest): Promise<{ feedback: FeedbackDto }> {
+  return apiFetch<{ feedback: FeedbackDto }>("/api/feedback", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function updateFeedback(id: string, req: UpdateFeedbackRequest): Promise<{ feedback: FeedbackDto }> {
+  return apiFetch<{ feedback: FeedbackDto }>(`/api/feedback/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteFeedback(id: string): Promise<void> {
+  return apiFetch<void>(`/api/feedback/${id}`, { method: "DELETE" });
+}

@@ -3,12 +3,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OnboardingDiary.Domain.Entities;
 using OnboardingDiary.Domain.Enums;
 using OnboardingDiary.Infrastructure.Persistence.Converters;
+using FeedbackEntity = OnboardingDiary.Domain.Entities.Feedback;
 
 namespace OnboardingDiary.Infrastructure.Persistence.Configurations;
 
-public class FeedbackConfiguration : IEntityTypeConfiguration<Feedback>
+public class FeedbackConfiguration : IEntityTypeConfiguration<FeedbackEntity>
 {
-    public void Configure(EntityTypeBuilder<Feedback> builder)
+    public void Configure(EntityTypeBuilder<FeedbackEntity> builder)
     {
         builder.HasKey(f => f.Id);
         builder.Property(f => f.Id).HasDefaultValueSql("NEWSEQUENTIALID()");

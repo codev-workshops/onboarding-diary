@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Domain.Entities;
+using FeedbackEntity = OnboardingDiary.Domain.Entities.Feedback;
 
 namespace OnboardingDiary.Infrastructure.Persistence;
 
@@ -13,7 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<TaskEntity> Tasks => Set<TaskEntity>();
     public DbSet<Issue> Issues => Set<Issue>();
-    public DbSet<Feedback> Feedbacks => Set<Feedback>();
+    public DbSet<FeedbackEntity> Feedbacks => Set<FeedbackEntity>();
     public DbSet<Note> Notes => Set<Note>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();

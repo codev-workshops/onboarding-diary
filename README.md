@@ -144,6 +144,43 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 | `/tasks`          | Task list with filters, pagination, CRUD    |
 | `/tasks/[id]`     | Task detail/edit page                       |
 
+## Feedback Endpoints (`/api/feedback/`) — Phase 6
+
+| Method | Path        | Auth   | Description                                        |
+|--------|-------------|--------|----------------------------------------------------|
+| GET    | `/`         | Bearer | List feedback (paginated/filtered) -> 200          |
+| POST   | `/`         | Bearer | Create feedback -> 201                             |
+| GET    | `/{id}`     | Bearer | Get feedback by ID -> 200 (404 if not found)       |
+| PUT    | `/{id}`     | Bearer | Update feedback -> 200                             |
+| DELETE | `/{id}`     | Bearer | Soft delete feedback -> 204                        |
+
+### Query parameters (GET `/api/feedback`)
+
+`page`, `limit` (max 100, default 20), `type` (Positive/Suggestion/Concern), `startDate`, `endDate`, `recruitId`, `department` (admin only).
+
+### Business rules
+
+- **Soft delete**: feedback is never physically removed; `IsDeleted = true`.
+- **Owner-only update**: only the feedback author can edit their feedback.
+- **Delete**: owner or admin can soft-delete.
+- **Manager read-only**: managers may list/get an assigned recruit's feedback (US-FEED-03) but cannot create/update/delete it.
+- **Admin aggregated view**: admins can list all feedback across users, filterable by department, type, and date range (US-FEED-04).
+- **Access control**: recruits see only own feedback; managers see own + assigned recruits'; admins see all.
+
+### Validation rules (section 7.4)
+
+- **Date**: required, valid, not in the future.
+- **Subject**: required, 3–150 chars, trimmed.
+- **Type**: required, defined FeedbackType enum value.
+- **Details**: required, 20–5000 chars.
+
+### Frontend routes
+
+| Route             | Description                                 |
+|-------------------|---------------------------------------------|
+| `/feedback`       | Feedback list with filters, pagination, CRUD|
+| `/feedback/[id]`  | Feedback detail/edit page                   |
+
 ## Authorization Policies
 
 | Policy                | Requirement                                         |
