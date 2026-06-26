@@ -3,6 +3,7 @@ using OnboardingDiary.Api.DTOs.Common;
 using OnboardingDiary.Api.DTOs.Tasks;
 using OnboardingDiary.Api.Entities;
 using OnboardingDiary.Api.Entities.Enums;
+using OnboardingDiary.Api.Exceptions;
 using OnboardingDiary.Api.Extensions;
 using OnboardingDiary.Api.Repositories;
 
@@ -44,7 +45,7 @@ public class TaskService : ITaskService
                 {
                     var targetUser = await _userRepository.GetByIdAsync(userId.Value);
                     if (targetUser == null || (targetUser.Id != currentUserId && targetUser.ManagerId != currentUserId))
-                        throw new UnauthorizedAccessException("You can only view tasks of recruits assigned to you.");
+                        throw new ForbiddenAccessException("You can only view tasks of recruits assigned to you.");
                     filterUserId = userId.Value;
                 }
                 else
@@ -95,13 +96,13 @@ public class TaskService : ITaskService
             ?? throw new KeyNotFoundException("Task not found.");
 
         if (currentUserRole == UserRole.Recruit && task.UserId != currentUserId)
-            throw new UnauthorizedAccessException("You do not have access to this task.");
+            throw new ForbiddenAccessException("You do not have access to this task.");
 
         if (currentUserRole == UserRole.Manager && task.UserId != currentUserId)
         {
             var taskOwner = await _userRepository.GetByIdAsync(task.UserId);
             if (taskOwner == null || taskOwner.ManagerId != currentUserId)
-                throw new UnauthorizedAccessException("You do not have access to this task.");
+                throw new ForbiddenAccessException("You do not have access to this task.");
         }
 
         return MapToDto(task);
@@ -135,7 +136,7 @@ public class TaskService : ITaskService
             ?? throw new KeyNotFoundException("Task not found.");
 
         if (task.UserId != currentUserId)
-            throw new UnauthorizedAccessException("Only the task owner can update this task.");
+            throw new ForbiddenAccessException("Only the task owner can update this task.");
 
         if (dto.Date.HasValue)
         {
@@ -171,7 +172,7 @@ public class TaskService : ITaskService
             ?? throw new KeyNotFoundException("Task not found.");
 
         if (task.UserId != currentUserId)
-            throw new UnauthorizedAccessException("Only the task owner can delete this task.");
+            throw new ForbiddenAccessException("Only the task owner can delete this task.");
 
         await _taskRepository.DeleteAsync(task);
     }
