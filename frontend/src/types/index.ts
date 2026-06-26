@@ -111,3 +111,47 @@ export interface ErrorResponse {
   message: string;
   errors?: string[];
 }
+
+export interface TaskResponse {
+  id: number;
+  userId: number;
+  date: string;
+  title: string;
+  description: string | null;
+  category: string;
+  status: TaskEntryStatus;
+  priority: Priority;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTaskRequest {
+  date: string;
+  title: string;
+  description?: string;
+  category: string;
+  status: TaskEntryStatus;
+  priority: Priority;
+}
+
+export interface UpdateTaskRequest {
+  date?: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  status?: TaskEntryStatus;
+  priority?: Priority;
+}
+
+export interface TaskFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  category?: string;
+  status?: TaskEntryStatus;
+  priority?: Priority;
+  userId?: number;
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDescending?: boolean;
+}
