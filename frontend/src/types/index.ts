@@ -382,3 +382,49 @@ export interface SystemOverviewDto {
   entryCounts: Record<string, number>;
   recentActivity: RecentActivityDto[];
 }
+
+// Report types
+
+export interface ReportFilters {
+  dateFrom: string;
+  dateTo: string;
+  category?: string;
+  userId?: number;
+}
+
+export interface ReportPeriod {
+  dateFrom: string;
+  dateTo: string;
+}
+
+export interface ReportEntry {
+  id: number;
+  date: string;
+  title: string;
+  description: string | null;
+  status: string | null;
+  priority: string | null;
+  severity: string | null;
+  type: string | null;
+  category: string | null;
+  tags: string | null;
+}
+
+export interface ReportSection {
+  total: number;
+  completed: number;
+  resolved: number;
+  entries: ReportEntry[];
+}
+
+export interface ReportResponse {
+  reportPeriod: ReportPeriod;
+  generatedAt: string;
+  generatedBy: string;
+  generatedForUserId: number;
+  generatedForUserName: string;
+  tasks: ReportSection | null;
+  issues: ReportSection | null;
+  feedback: ReportSection | null;
+  notes: ReportSection | null;
+}
