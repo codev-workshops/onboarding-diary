@@ -165,7 +165,6 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 | `/tasks`          | Task list with filters, pagination, CRUD    |
 | `/tasks/[id]`     | Task detail/edit page                       |
 
-<<<<<<< HEAD
 ## Notes Endpoints (`/api/notes/`) — Phase 7
 
 | Method | Path        | Auth   | Description                                       |
@@ -265,6 +264,65 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 |-------------------|---------------------------------------------|
 | `/feedback`       | Feedback list with filters, pagination, CRUD|
 | `/feedback/[id]`  | Feedback detail/edit page                   |
+
+## Report Endpoints (`/api/reports/`) — Phase 9
+
+| Method | Path                | Auth   | Description                                                    |
+|--------|---------------------|--------|----------------------------------------------------------------|
+| POST   | `/generate`         | Bearer | Generate a report (PDF/CSV) -> 200 `{ reportId, downloadUrl }`|
+| GET    | `/{id}/download`    | Bearer | Download generated report file -> 200 file stream              |
+| GET    | `/`                 | Bearer | List reports (paginated, role-scoped) -> 200 `{ reports[], total }` |
+
+### Query parameters
+
+**POST `/generate`** body:
+- `startDate` (required), `endDate` (required, >= startDate, range <= 365 days)
+- `categories` (required, at least one of: `tasks`, `issues`, `feedback`, `notes`, or `all`)
+- `format` (required, `Pdf` or `Csv`)
+- `recruitId` (optional; required for manager/admin generating for another user)
+
+**GET `/`**: `page`, `limit` (max 100, default 20).
+
+**GET `/{id}/download`**: `?format=pdf|csv` (optional; defaults to report's stored format).
+
+### Business rules
+
+- **PDF generation**: uses QuestPDF (Community license) with headers (recruit name, department, date range, generated-by, generated-on) and category sections with formatted tables.
+- **CSV generation**: uses CsvHelper with proper field escaping; category-delimited sections in a single CSV file.
+- **Soft-deleted entries excluded**: global query filters apply; deleted tasks/issues/feedback/notes are not included.
+- **Access control**:
+  - Recruits: can only generate/view reports for themselves.
+  - Managers: can generate/view for themselves and assigned recruits.
+  - Admins: can generate/view for any user.
+- **Download access**: caller must have generated the report, be the subject, be admin, or be the subject's assigned manager.
+
+### Configuration
+
+| Key                  | Default                        | Description                     |
+|----------------------|--------------------------------|---------------------------------|
+| `Reports:StoragePath`| `{AppContext.BaseDirectory}/reports` | Directory for generated report files |
+
+### Packages
+
+| Package    | License    | Description              |
+|------------|------------|--------------------------|
+| `QuestPDF` | Community  | PDF report generation    |
+| `CsvHelper`| Apache 2.0 | CSV report generation    |
+
+**Note**: `QuestPDF.Settings.License = LicenseType.Community` is set at startup via `AddReportModule()`.
+
+### Frontend routes
+
+| Route             | Description                                              |
+|-------------------|----------------------------------------------------------|
+| `/reports`        | Reports list with download links + generate new report   |
+
+### Validation rules (section 7.6)
+
+- **StartDate**: required, valid date.
+- **EndDate**: required, valid, >= StartDate, range <= 365 days.
+- **Categories**: at least one; each must be `tasks`, `issues`, `feedback`, `notes`, or `all`.
+- **Format**: required, `Pdf` or `Csv`.
 
 ## Authorization Policies
 

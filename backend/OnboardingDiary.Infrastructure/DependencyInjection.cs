@@ -12,6 +12,7 @@ using OnboardingDiary.Infrastructure.Persistence;
 using OnboardingDiary.Infrastructure.Feedback;
 using OnboardingDiary.Infrastructure.Issues;
 using OnboardingDiary.Infrastructure.Notes;
+using OnboardingDiary.Infrastructure.Reports;
 using OnboardingDiary.Infrastructure.Tasks;
 using OnboardingDiary.Infrastructure.Users;
 
@@ -43,6 +44,7 @@ public static class DependencyInjection
         services.AddNoteModule();
         services.AddIssueModule();
         services.AddFeedbackModule();
+        services.AddReportModule();
 
         return services;
     }

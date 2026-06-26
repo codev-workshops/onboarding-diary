@@ -309,8 +309,6 @@ export async function getTaskStats(recruitId?: string): Promise<TaskStatsDto> {
   const qs = recruitId ? `?recruitId=${recruitId}` : "";
   return apiFetch<TaskStatsDto>(`/api/tasks/stats${qs}`);
 }
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 // --- Notes types ---
 
@@ -646,4 +644,55 @@ export async function updateFeedback(id: string, req: UpdateFeedbackRequest): Pr
 
 export async function deleteFeedback(id: string): Promise<void> {
   return apiFetch<void>(`/api/feedback/${id}`, { method: "DELETE" });
+}
+
+// --- Reports types ---
+
+export interface GenerateReportPayload {
+  startDate: string;
+  endDate: string;
+  categories: string[];
+  recruitId?: string | null;
+  format: string;
+}
+
+export interface GenerateReportResponse {
+  reportId: string;
+  downloadUrl: string;
+}
+
+export interface ReportListItemDto {
+  id: string;
+  generatedBy: string;
+  recruitId: string;
+  recruitName: string;
+  startDate: string;
+  endDate: string;
+  categories: string[];
+  format: string;
+  fileUrl: string | null;
+  createdAt: string;
+}
+
+export interface ReportListResponse {
+  reports: ReportListItemDto[];
+  total: number;
+}
+
+// --- Reports API ---
+
+export async function generateReport(payload: GenerateReportPayload): Promise<GenerateReportResponse> {
+  return apiFetch<GenerateReportResponse>("/api/reports/generate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function downloadReportUrl(id: string, format?: string): string {
+  const qs = format ? `?format=${format}` : "";
+  return `${API_BASE_URL}/api/reports/${id}/download${qs}`;
+}
+
+export async function listReports(page = 1, limit = 20): Promise<ReportListResponse> {
+  return apiFetch<ReportListResponse>(`/api/reports?page=${page}&limit=${limit}`);
 }
