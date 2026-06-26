@@ -37,3 +37,14 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Regression test artifacts (large binaries: videos, traces, reports)
+artifacts/
+!docs/regression-run-report.md
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/
+
+# Regression env
+.regression-env
