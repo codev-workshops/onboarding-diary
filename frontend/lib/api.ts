@@ -309,3 +309,84 @@ export async function getTaskStats(recruitId?: string): Promise<TaskStatsDto> {
   const qs = recruitId ? `?recruitId=${recruitId}` : "";
   return apiFetch<TaskStatsDto>(`/api/tasks/stats${qs}`);
 }
+
+// --- Notes types ---
+
+export interface NoteDto {
+  id: string;
+  userId: string;
+  date: string;
+  title: string;
+  content: string;
+  tags: string[];
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateNoteRequest {
+  date: string;
+  title: string;
+  content: string;
+  tags: string[];
+  isPinned: boolean;
+}
+
+export interface UpdateNoteRequest {
+  title: string;
+  content: string;
+  tags: string[];
+  isPinned: boolean;
+}
+
+export interface NoteListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  tags?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface NoteListResponse {
+  notes: NoteDto[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+// --- Notes API ---
+
+export async function listNotes(params: NoteListParams = {}): Promise<NoteListResponse> {
+  const qs = new URLSearchParams();
+  if (params.page != null) qs.set("page", String(params.page));
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.search) qs.set("search", params.search);
+  if (params.tags) qs.set("tags", params.tags);
+  if (params.startDate) qs.set("startDate", params.startDate);
+  if (params.endDate) qs.set("endDate", params.endDate);
+  const query = qs.toString();
+  return apiFetch<NoteListResponse>(`/api/notes${query ? `?${query}` : ""}`);
+}
+
+export async function getNote(id: string): Promise<{ note: NoteDto }> {
+  return apiFetch<{ note: NoteDto }>(`/api/notes/${id}`);
+}
+
+export async function createNote(req: CreateNoteRequest): Promise<{ note: NoteDto }> {
+  return apiFetch<{ note: NoteDto }>("/api/notes", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function updateNote(id: string, req: UpdateNoteRequest): Promise<{ note: NoteDto }> {
+  return apiFetch<{ note: NoteDto }>(`/api/notes/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  return apiFetch<void>(`/api/notes/${id}`, { method: "DELETE" });
+}

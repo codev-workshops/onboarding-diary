@@ -144,6 +144,37 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 | `/tasks`          | Task list with filters, pagination, CRUD    |
 | `/tasks/[id]`     | Task detail/edit page                       |
 
+## Notes Endpoints (`/api/notes/`) — Phase 7
+
+| Method | Path        | Auth   | Description                                       |
+|--------|-------------|--------|---------------------------------------------------|
+| GET    | `/`         | Bearer | List notes (paginated/filtered/searched) -> 200   |
+| POST   | `/`         | Bearer | Create note -> 201                                |
+| GET    | `/{id}`     | Bearer | Get note by ID -> 200 (404 if not found/not owner)|
+| PUT    | `/{id}`     | Bearer | Update note -> 200                                |
+| DELETE | `/{id}`     | Bearer | Soft delete note -> 204                           |
+
+### Query parameters (GET `/api/notes`)
+
+`page`, `limit` (max 100, default 20), `search` (full-text across title/content/tags), `tags` (comma-separated), `startDate`, `endDate`.
+
+### Business rules
+
+- **Owner-only**: notes are private to the recruit; no manager/admin read access.
+- **Tags**: optional, max 10 per note, each 1–30 chars, alphanumeric and hyphens only; stored as JSON.
+- **Pinning**: `IsPinned` boolean; server enforces max 5 pinned notes per user (on create and on update toggle false→true); returns 400 when exceeded.
+- **Pinned-first ordering**: pinned notes appear first in list results, then by date descending.
+- **Search**: case-insensitive match across title, content, and tags.
+- **Soft delete**: notes are never physically removed; `IsDeleted = true`.
+- **Content**: supports Markdown (rendered in the frontend editor).
+
+### Frontend routes
+
+| Route             | Description                                          |
+|-------------------|------------------------------------------------------|
+| `/notes`          | Notes list with search, tag chips, pinned section    |
+| `/notes/[id]`     | Note detail/edit page with Markdown editor           |
+
 ## Authorization Policies
 
 | Policy                | Requirement                                         |
