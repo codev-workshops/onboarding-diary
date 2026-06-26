@@ -38,6 +38,7 @@ public class IssueService : IIssueService
             Description = request.Description,
             Severity = request.Severity,
             Status = request.Status,
+            ResolutionNotes = request.ResolutionNotes,
         };
 
         if (request.Status == IssueStatus.Resolved || request.Status == IssueStatus.Closed)

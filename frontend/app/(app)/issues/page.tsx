@@ -204,6 +204,7 @@ function IssuesContent() {
           description: formData.description.trim(),
           severity: formData.severity,
           status: formData.status,
+          resolutionNotes: formData.resolutionNotes.trim() || null,
         };
         await createIssue(payload);
         showToast("Issue created successfully.", "success");

@@ -7,4 +7,5 @@ public record CreateIssueRequest(
     string Title,
     string Description,
     IssueSeverity Severity,
-    IssueStatus Status = IssueStatus.Open);
+    IssueStatus Status = IssueStatus.Open,
+    string? ResolutionNotes = null);

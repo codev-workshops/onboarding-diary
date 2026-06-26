@@ -333,6 +333,7 @@ export interface CreateIssueRequest {
   description: string;
   severity: string;
   status?: string;
+  resolutionNotes?: string | null;
 }
 
 export interface UpdateIssueRequest {

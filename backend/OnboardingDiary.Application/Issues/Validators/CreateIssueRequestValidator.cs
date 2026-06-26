@@ -33,10 +33,13 @@ public class CreateIssueRequestValidator : AbstractValidator<CreateIssueRequest>
             .IsInEnum()
             .WithMessage("Status must be a valid IssueStatus value.");
 
-        RuleFor(x => x)
-            .Must(x => !string.IsNullOrWhiteSpace(x.Description) || (x.Status != IssueStatus.Resolved && x.Status != IssueStatus.Closed))
-            .WithName("Description")
-            .WithMessage("Resolution notes or description is required when status is Resolved or Closed.")
+        RuleFor(x => x.ResolutionNotes)
+            .NotEmpty()
+            .WithMessage("Resolution notes are required when status is Resolved or Closed.")
             .When(x => x.Status == IssueStatus.Resolved || x.Status == IssueStatus.Closed);
+
+        RuleFor(x => x.ResolutionNotes)
+            .MaximumLength(2000)
+            .When(x => x.ResolutionNotes is not null);
     }
 }
