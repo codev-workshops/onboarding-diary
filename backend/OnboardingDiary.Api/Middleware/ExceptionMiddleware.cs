@@ -55,12 +55,6 @@ public class ExceptionMiddleware
                 response.Message = exception.Message;
                 break;
 
-            case ForbiddenAccessException:
-                context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
-                response.StatusCode = (int)HttpStatusCode.Forbidden;
-                response.Message = exception.Message;
-                break;
-
             case KeyNotFoundException:
                 context.Response.StatusCode = (int)HttpStatusCode.NotFound;
                 response.StatusCode = (int)HttpStatusCode.NotFound;
