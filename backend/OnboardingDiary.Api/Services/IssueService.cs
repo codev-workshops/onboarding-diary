@@ -3,6 +3,7 @@ using OnboardingDiary.Api.DTOs.Common;
 using OnboardingDiary.Api.DTOs.Issues;
 using OnboardingDiary.Api.Entities;
 using OnboardingDiary.Api.Entities.Enums;
+using OnboardingDiary.Api.Exceptions;
 using OnboardingDiary.Api.Extensions;
 using OnboardingDiary.Api.Repositories;
 
@@ -114,7 +115,7 @@ public class IssueService : IIssueService
             ?? throw new KeyNotFoundException("Issue not found.");
 
         if (issue.UserId != currentUserId)
-            throw new UnauthorizedAccessException("You can only update your own issues.");
+            throw new ForbiddenAccessException("You can only update your own issues.");
 
         if (dto.Date.HasValue)
         {
@@ -155,7 +156,7 @@ public class IssueService : IIssueService
             ?? throw new KeyNotFoundException("Issue not found.");
 
         if (issue.UserId != currentUserId)
-            throw new UnauthorizedAccessException("You can only delete your own issues.");
+            throw new ForbiddenAccessException("You can only delete your own issues.");
 
         await _issueRepository.DeleteAsync(issue);
     }
@@ -177,7 +178,7 @@ public class IssueService : IIssueService
         if (role == UserRole.Admin) return;
         if (issue.UserId == currentUserId) return;
         if (role == UserRole.Manager && issue.User.ManagerId == currentUserId) return;
-        throw new UnauthorizedAccessException("You do not have access to this issue.");
+        throw new ForbiddenAccessException("You do not have access to this issue.");
     }
 
     private static void ValidateDate(DateTime date)

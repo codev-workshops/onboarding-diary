@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
 import Table from '@/components/ui/Table';
 import Pagination from '@/components/ui/Pagination';
 import Select from '@/components/ui/Select';
@@ -74,6 +75,7 @@ async function loadIssues(
 }
 
 export default function IssuesPage() {
+  const { user } = useAuth();
   const [issues, setIssues] = useState<IssueEntry[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -197,6 +199,8 @@ export default function IssuesPage() {
       header: 'Actions',
       render: (item: Record<string, unknown>) => {
         const issueItem = item as unknown as IssueEntry;
+        const isOwner = user?.id === issueItem.userId;
+        if (!isOwner) return null;
         return (
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => handleEdit(issueItem)}>
