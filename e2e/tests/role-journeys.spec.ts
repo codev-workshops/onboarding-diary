@@ -204,6 +204,13 @@ test.describe('Manager Journey', () => {
     const recBody = await recRegRes.json();
     recruitId = recBody.userId;
 
+    // Assign recruit to manager via test seed endpoint
+    const assignRes = await request.post(`${API_BASE}/api/test/assign-manager`, {
+      data: { recruitId, managerId },
+      ignoreHTTPSErrors: true,
+    });
+    expect(assignRes.status()).toBe(200);
+
     // Login as manager
     const mgrLoginRes = await request.post(`${API_BASE}/api/auth/login`, {
       data: { email: mgrEmail, password: 'Str0ng!Pass1' },

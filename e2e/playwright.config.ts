@@ -1,4 +1,8 @@
 import { defineConfig } from '@playwright/test';
+import path from 'path';
+
+const timestamp = process.env.REGRESSION_TIMESTAMP || new Date().toISOString().replace(/[:.]/g, '-');
+const artifactsDir = path.resolve(__dirname, '..', 'artifacts', 'regression', timestamp);
 
 export default defineConfig({
   testDir: './tests',
@@ -8,12 +12,19 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: [['html', { open: 'never' }], ['list']],
+  outputDir: path.join(artifactsDir, 'playwright-results'),
+  reporter: [
+    ['html', { outputFolder: path.join(artifactsDir, 'playwright-report'), open: 'never' }],
+    ['list'],
+    ['json', { outputFile: path.join(artifactsDir, 'playwright-results.json') }],
+  ],
   use: {
     baseURL: process.env.FRONTEND_URL || 'http://localhost:3000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    trace: 'on',
+    screenshot: 'on',
+    video: 'on',
     headless: true,
+    ignoreHTTPSErrors: true,
   },
   projects: [
     {

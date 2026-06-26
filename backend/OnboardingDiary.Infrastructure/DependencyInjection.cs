@@ -23,8 +23,23 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "";
+        var databaseProvider = configuration.GetValue<string>("DatabaseProvider") ?? "SqlServer";
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        {
+            switch (databaseProvider.ToLowerInvariant())
+            {
+                case "inmemory":
+                    options.UseInMemoryDatabase("OnboardingDiaryE2E");
+                    break;
+                case "sqlite":
+                    options.UseSqlite(connectionString);
+                    break;
+                default:
+                    options.UseSqlServer(connectionString);
+                    break;
+            }
+        });
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SectionName));
