@@ -111,3 +111,28 @@ export interface ErrorResponse {
   message: string;
   errors?: string[];
 }
+
+export interface FeedbackEntry {
+  id: number;
+  userId: number;
+  date: string;
+  subject: string;
+  type: FeedbackType;
+  details: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateFeedbackRequest {
+  date: string;
+  subject: string;
+  type: FeedbackType;
+  details: string;
+}
+
+export interface UpdateFeedbackRequest {
+  date?: string;
+  subject?: string;
+  type?: FeedbackType;
+  details?: string;
+}

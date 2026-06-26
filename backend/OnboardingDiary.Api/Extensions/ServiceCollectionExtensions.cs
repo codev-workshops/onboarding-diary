@@ -10,9 +10,11 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IFeedbackService, FeedbackService>();
 
         services.AddSingleton<JwtTokenGenerator>();
 
