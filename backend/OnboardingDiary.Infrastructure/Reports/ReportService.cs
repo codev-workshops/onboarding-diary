@@ -119,7 +119,13 @@ public class ReportService : IReportService
         }
         else if (role == nameof(Role.Manager))
         {
-            q = q.Where(r => r.GeneratedBy == currentUserId || r.RecruitId == currentUserId);
+            var assignedRecruitIds = await _context.Users.AsNoTracking()
+                .Where(u => u.ManagerId == currentUserId)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+            q = q.Where(r => r.GeneratedBy == currentUserId
+                || r.RecruitId == currentUserId
+                || assignedRecruitIds.Contains(r.RecruitId));
         }
         else
         {
