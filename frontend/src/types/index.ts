@@ -111,3 +111,47 @@ export interface ErrorResponse {
   message: string;
   errors?: string[];
 }
+
+export interface IssueEntry {
+  id: number;
+  userId: number;
+  userName: string;
+  date: string;
+  title: string;
+  description: string;
+  severity: IssueSeverity;
+  status: IssueStatus;
+  resolutionNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateIssueRequest {
+  date: string;
+  title: string;
+  description: string;
+  severity: IssueSeverity;
+  status: IssueStatus;
+  resolutionNotes?: string | null;
+}
+
+export interface UpdateIssueRequest {
+  date?: string;
+  title?: string;
+  description?: string;
+  severity?: IssueSeverity;
+  status?: IssueStatus;
+  resolutionNotes?: string | null;
+}
+
+export interface IssueFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  status?: IssueStatus | '';
+  severity?: IssueSeverity | '';
+  userId?: number;
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
