@@ -35,9 +35,24 @@ public class FeedbackService : IFeedbackService
         }
         else if (userRole == "Manager")
         {
-            query = filterUserId.HasValue
-                ? _feedbackRepository.GetByUserId(filterUserId.Value)
-                : _feedbackRepository.GetByManagerId(userId);
+            if (filterUserId.HasValue)
+            {
+                if (filterUserId.Value == userId ||
+                    await _feedbackRepository.IsUserManagedByAsync(filterUserId.Value, userId))
+                {
+                    query = _feedbackRepository.GetByUserId(filterUserId.Value);
+                }
+                else
+                {
+                    throw new UnauthorizedAccessException("You can only view feedback for your assigned recruits.");
+                }
+            }
+            else
+            {
+                var managedQuery = _feedbackRepository.GetByManagerId(userId);
+                var ownQuery = _feedbackRepository.GetByUserId(userId);
+                query = managedQuery.Union(ownQuery);
+            }
         }
         else
         {
