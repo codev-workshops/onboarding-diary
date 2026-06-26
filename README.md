@@ -103,33 +103,12 @@ cd backend
 dotnet test
 ```
 
-## User Profile & Admin User Management Endpoints (`/api/users/`)
-
-| Method | Path              | Auth          | Description                                              |
-|--------|-------------------|---------------|----------------------------------------------------------|
-| GET    | `/me`             | Bearer        | Returns the authenticated user's profile -> 200          |
-| PUT    | `/me`             | Bearer        | Updates the authenticated user's profile -> 200          |
-| GET    | `/`               | AdminOnly     | Lists users with pagination, search, role/department filters -> 200 |
-| PUT    | `/{id}/role`      | AdminOnly     | Updates a user's role (sends email notification, writes audit log) -> 200 |
-| DELETE | `/{id}`           | AdminOnly     | Soft-deactivates a user (sets IsActive=false, revokes refresh tokens, writes audit log) -> 204 |
-
-**Self-lockout prevention**: admins cannot deactivate themselves or remove their own Admin role (returns 400).
-
-**Validation (section 7.1)**:
-- Name: 2–100 chars, letters/spaces/hyphens/apostrophes only
-- Department: must be in the predefined `Departments` constant
-- StartDate: not more than 30 days future / 1 year past
-- AvatarUrl: optional; valid HTTP/HTTPS URL when present
-- Role: must be a defined `Role` enum value
-
-**Audit logging (NFR 8.2)**: `UpdateRoleAsync` and `DeactivateUserAsync` write `AuditLog` rows stamped with the acting admin's user ID.
-
 ## Frontend Auth
 
 - **Token storage**: access token in memory, refresh token in localStorage (trade-off: simpler setup vs. XSS risk; httpOnly cookies recommended for production).
 - **401 interceptor**: on 401, the API client automatically attempts one refresh; on failure, clears tokens and redirects to `/login`.
 - **Protected routes**: wrap pages with `<ProtectedRoute>` to enforce authentication.
-- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder), `/profile` (user profile editor), `/admin/users` (admin user management table — role-gated).
+- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder).
 
 ## Task Log Endpoints (`/api/tasks/`) — Phase 4
 
@@ -165,36 +144,37 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 | `/tasks`          | Task list with filters, pagination, CRUD    |
 | `/tasks/[id]`     | Task detail/edit page                       |
 
-## Notes Endpoints (`/api/notes/`) — Phase 7
+## Issue Log Endpoints (`/api/issues/`) — Phase 5
 
-| Method | Path        | Auth   | Description                                       |
-|--------|-------------|--------|---------------------------------------------------|
-| GET    | `/`         | Bearer | List notes (paginated/filtered/searched) -> 200   |
-| POST   | `/`         | Bearer | Create note -> 201                                |
-| GET    | `/{id}`     | Bearer | Get note by ID -> 200 (404 if not found/not owner)|
-| PUT    | `/{id}`     | Bearer | Update note -> 200                                |
-| DELETE | `/{id}`     | Bearer | Soft delete note -> 204                           |
+| Method | Path               | Auth   | Description                                       |
+|--------|--------------------|--------|---------------------------------------------------|
+| GET    | `/`                | Bearer | List issues (paginated/filtered) -> 200           |
+| POST   | `/`                | Bearer | Create issue -> 201                               |
+| GET    | `/{id}`            | Bearer | Get issue by ID -> 200 (404 if not found)         |
+| PUT    | `/{id}`            | Bearer | Update issue -> 200                               |
+| DELETE | `/{id}`            | Bearer | Soft delete issue -> 204                          |
+| POST   | `/{id}/escalate`   | Bearer | Escalate issue to manager -> 200                  |
 
-### Query parameters (GET `/api/notes`)
+### Query parameters (GET `/api/issues`)
 
-`page`, `limit` (max 100, default 20), `search` (full-text across title/content/tags), `tags` (comma-separated), `startDate`, `endDate`.
+`page`, `limit` (max 100, default 20), `status`, `severity`, `startDate`, `endDate`, `recruitId`.
 
 ### Business rules
 
-- **Owner-only**: notes are private to the recruit; no manager/admin read access.
-- **Tags**: optional, max 10 per note, each 1–30 chars, alphanumeric and hyphens only; stored as JSON.
-- **Pinning**: `IsPinned` boolean; server enforces max 5 pinned notes per user (on create and on update toggle false→true); returns 400 when exceeded.
-- **Pinned-first ordering**: pinned notes appear first in list results, then by date descending.
-- **Search**: case-insensitive match across title, content, and tags.
-- **Soft delete**: notes are never physically removed; `IsDeleted = true`.
-- **Content**: supports Markdown (rendered in the frontend editor).
+- **Resolution notes required**: when `Status` is `Resolved` or `Closed`, `ResolutionNotes` must be non-empty.
+- **ResolvedAt auto-set**: set automatically when status transitions to Resolved/Closed; cleared when moved back.
+- **Status transition validation**: `Closed` -> `Open` is not allowed.
+- **Soft delete**: issues are never physically removed; `IsDeleted = true`.
+- **Manager read-only**: managers may list/get an assigned recruit's issues but cannot create/update/delete them.
+- **Escalate**: sets `IsEscalated = true` and sends an email notification to the recruit's manager.
+- **Access control**: recruits see only own issues; managers see own + assigned recruits'; admins see all.
 
 ### Frontend routes
 
-| Route             | Description                                          |
-|-------------------|------------------------------------------------------|
-| `/notes`          | Notes list with search, tag chips, pinned section    |
-| `/notes/[id]`     | Note detail/edit page with Markdown editor           |
+| Route             | Description                                 |
+|-------------------|---------------------------------------------|
+| `/issues`         | Issue list with filters, pagination, CRUD   |
+| `/issues/[id]`    | Issue detail/edit page                      |
 
 ## Authorization Policies
 
