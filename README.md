@@ -108,7 +108,7 @@ dotnet test
 - **Token storage**: access token in memory, refresh token in localStorage (trade-off: simpler setup vs. XSS risk; httpOnly cookies recommended for production).
 - **401 interceptor**: on 401, the API client automatically attempts one refresh; on failure, clears tokens and redirects to `/login`.
 - **Protected routes**: wrap pages with `<ProtectedRoute>` to enforce authentication.
-- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder).
+- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard`, `/team`.
 
 ## Task Log Endpoints (`/api/tasks/`) — Phase 4
 
@@ -180,6 +180,36 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 |-------------------|---------------------------------------------|
 | `/feedback`       | Feedback list with filters, pagination, CRUD|
 | `/feedback/[id]`  | Feedback detail/edit page                   |
+
+## Dashboard Endpoints (`/api/dashboard/`) — Phase 8
+
+| Method | Path        | Auth              | Description                                               |
+|--------|-------------|-------------------|-----------------------------------------------------------|
+| GET    | `/`         | Bearer            | Per-user dashboard summary (stats, recent entries, open issues) -> 200 |
+| GET    | `/team`     | ManagerOrAdmin    | Team recruit progress (completion %, open/escalated issues) -> 200 |
+
+### GET `/api/dashboard`
+
+Returns for the authenticated user:
+- `taskStats` — total/completed/inProgress/pending/completionRate (reuses Phase 4 `GetStatsAsync`)
+- `issueStats` — total/open/inProgress/resolved/closed/critical/escalated
+- `feedbackStats` — total/positive/suggestion/concern
+- `noteStats` — total/pinned
+- `recentEntries` — last 5 entries per category (tasks/issues/feedback/notes) with badge
+- `openIssues` — all open/in-progress issues sorted Critical-first
+
+### GET `/api/dashboard/team`
+
+Query: `?department=` (optional, honored for admins; managers always scoped to assigned recruits).
+
+Returns `{ recruits: [...] }` with per-recruit: id, name, department, startDate, daysSinceStart, completionPercentage, openIssueCount, escalatedIssueCount.
+
+### Frontend routes
+
+| Route        | Description                                                    |
+|--------------|----------------------------------------------------------------|
+| `/dashboard` | Recruit dashboard — progress bar, stat tiles, recent entries, open issues, quick actions |
+| `/team`      | Manager/Admin team dashboard — recruit cards with progress, issue badges |
 
 ## Authorization Policies
 

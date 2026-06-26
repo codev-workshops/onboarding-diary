@@ -645,3 +645,83 @@ export async function updateFeedback(id: string, req: UpdateFeedbackRequest): Pr
 export async function deleteFeedback(id: string): Promise<void> {
   return apiFetch<void>(`/api/feedback/${id}`, { method: "DELETE" });
 }
+
+// --- Dashboard types ---
+
+export interface IssueStatsDto {
+  total: number;
+  open: number;
+  inProgress: number;
+  resolved: number;
+  closed: number;
+  critical: number;
+  escalated: number;
+}
+
+export interface FeedbackStatsDto {
+  total: number;
+  positive: number;
+  suggestion: number;
+  concern: number;
+}
+
+export interface NoteStatsDto {
+  total: number;
+  pinned: number;
+}
+
+export interface RecentEntryDto {
+  id: string;
+  title: string;
+  date: string;
+  badge: string | null;
+}
+
+export interface RecentEntriesDto {
+  tasks: RecentEntryDto[];
+  issues: RecentEntryDto[];
+  feedback: RecentEntryDto[];
+  notes: RecentEntryDto[];
+}
+
+export interface OpenIssueDto {
+  id: string;
+  title: string;
+  severity: string;
+  date: string;
+}
+
+export interface DashboardSummaryDto {
+  taskStats: TaskStatsDto;
+  issueStats: IssueStatsDto;
+  feedbackStats: FeedbackStatsDto;
+  noteStats: NoteStatsDto;
+  recentEntries: RecentEntriesDto;
+  openIssues: OpenIssueDto[];
+}
+
+export interface TeamRecruitDto {
+  id: string;
+  name: string;
+  department: string;
+  startDate: string;
+  daysSinceStart: number;
+  completionPercentage: number;
+  openIssueCount: number;
+  escalatedIssueCount: number;
+}
+
+export interface TeamDashboardResponse {
+  recruits: TeamRecruitDto[];
+}
+
+// --- Dashboard API ---
+
+export async function getDashboard(): Promise<DashboardSummaryDto> {
+  return apiFetch<DashboardSummaryDto>("/api/dashboard");
+}
+
+export async function getTeamDashboard(department?: string): Promise<TeamDashboardResponse> {
+  const qs = department ? `?department=${encodeURIComponent(department)}` : "";
+  return apiFetch<TeamDashboardResponse>(`/api/dashboard/team${qs}`);
+}

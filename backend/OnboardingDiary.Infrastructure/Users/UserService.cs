@@ -97,7 +97,14 @@ public class UserService : IUserService
 
         var totalPages = (int)Math.Ceiling((double)total / limit);
 
-        return new PagedResult<UserListItemDto>(items, total, page, limit, totalPages);
+        return new PagedResult<UserListItemDto>
+        {
+            Items = items,
+            Total = total,
+            Page = page,
+            PageSize = limit,
+            TotalPages = totalPages
+        };
     }
 
     public async Task<UserDto> UpdateRoleAsync(Guid userId, Role role)
