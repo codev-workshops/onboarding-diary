@@ -114,7 +114,7 @@ public class GlobalExceptionHandler : IExceptionHandler
     private static string GetType(int statusCode) => statusCode switch
     {
         400 => "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-        401 => "https://tools.ietf.org/html/rfc7231#section-6.5.2",
+        401 => "https://tools.ietf.org/html/rfc7235#section-3.1",
         403 => "https://tools.ietf.org/html/rfc7231#section-6.5.3",
         404 => "https://tools.ietf.org/html/rfc7231#section-6.5.4",
         409 => "https://tools.ietf.org/html/rfc7231#section-6.5.8",
