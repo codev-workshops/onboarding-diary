@@ -200,6 +200,17 @@ export interface IssueFilters {
   sortOrder?: 'asc' | 'desc';
 }
 
+export interface FeedbackEntry {
+  id: number;
+  userId: number;
+  date: string;
+  subject: string;
+  type: FeedbackType;
+  details: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateFeedbackRequest {
   date: string;
   subject: string;
@@ -321,4 +332,53 @@ export interface CreateCategoryRequest {
 export interface UpdateCategoryRequest {
   name: string;
   description?: string;
+}
+
+// Dashboard types
+
+export interface RecentEntryDto {
+  type: string;
+  id: number;
+  title: string;
+  date: string;
+  status: string | null;
+}
+
+export interface DashboardSummaryDto {
+  totalTasks: number;
+  completedTasks: number;
+  taskCompletionPercentage: number;
+  openIssues: number;
+  totalIssues: number;
+  totalFeedback: number;
+  totalNotes: number;
+  recentEntries: RecentEntryDto[];
+  onboardingDaysElapsed: number;
+  startDate: string;
+}
+
+export interface RecruitOverviewDto {
+  id: number;
+  name: string;
+  department: string;
+  startDate: string;
+  daysElapsed: number;
+  tasksCompleted: number;
+  totalTasks: number;
+  openIssues: number;
+  feedbackCount: number;
+}
+
+export interface RecentActivityDto {
+  userId: number;
+  userName: string;
+  action: string;
+  title: string;
+  timestamp: string;
+}
+
+export interface SystemOverviewDto {
+  userCounts: Record<string, number>;
+  entryCounts: Record<string, number>;
+  recentActivity: RecentActivityDto[];
 }
