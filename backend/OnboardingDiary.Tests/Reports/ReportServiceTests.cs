@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using OnboardingDiary.Application.Auth;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Reports;
 using OnboardingDiary.Application.Reports.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -71,7 +72,7 @@ public class ReportServiceTests : IDisposable
         var other = await SeedUser("Other", Role.Recruit);
         var service = CreateService(recruit.Id, nameof(Role.Recruit));
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             service.GenerateAsync(new GenerateReportRequest(
                 DateTime.UtcNow.AddDays(-30), DateTime.UtcNow,
                 new List<string> { "tasks" }, other.Id, ReportFormat.Csv)));
@@ -98,7 +99,7 @@ public class ReportServiceTests : IDisposable
         var recruit = await SeedUser("Recruit", Role.Recruit);
         var service = CreateService(manager.Id, nameof(Role.Manager));
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             service.GenerateAsync(new GenerateReportRequest(
                 DateTime.UtcNow.AddDays(-30), DateTime.UtcNow,
                 new List<string> { "tasks" }, recruit.Id, ReportFormat.Csv)));

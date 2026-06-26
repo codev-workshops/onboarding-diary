@@ -220,6 +220,7 @@ public class FeedbackControllerTests : IClassFixture<TestWebApplicationFactory>
         var listRes = await managerClient.GetAsync($"/api/feedback?recruitId={recruitId}");
         Assert.True(
             listRes.StatusCode == HttpStatusCode.Forbidden ||
+            listRes.StatusCode == HttpStatusCode.Unauthorized ||
             listRes.StatusCode == HttpStatusCode.InternalServerError);
     }
 

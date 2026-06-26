@@ -14,6 +14,7 @@ using OnboardingDiary.Infrastructure.Issues;
 using OnboardingDiary.Infrastructure.Notes;
 using OnboardingDiary.Infrastructure.Reports;
 using OnboardingDiary.Infrastructure.Tasks;
+using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Infrastructure.Users;
 
 namespace OnboardingDiary.Infrastructure;
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddSingleton<IEmailSender, LoggingEmailSender>();
         services.AddScoped<ICurrentUser, CurrentUser>();
+        services.AddSingleton<ISanitizer, HtmlSanitizer>();
 
         services.AddValidatorsFromAssemblyContaining<Application.Auth.Validators.RegisterRequestValidator>();
 

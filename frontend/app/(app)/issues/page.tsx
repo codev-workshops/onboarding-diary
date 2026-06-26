@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ProtectedRoute } from "@/lib/protected-route";
 import {
   listIssues,
@@ -124,6 +124,19 @@ function IssuesContent() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const escalateModalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!modalOpen && !escalateModal) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") { setModalOpen(false); setEscalateModal(null); }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    if (modalOpen) modalRef.current?.focus();
+    if (escalateModal) escalateModalRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [modalOpen, escalateModal]);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -255,17 +268,17 @@ function IssuesContent() {
         </button>
       </div>
 
-      <div className={styles.filters}>
-        <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}>
+      <div className={styles.filters} role="search" aria-label="Filter issues">
+        <select aria-label="Filter by status" value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}>
           <option value="">All Statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
-        <select value={filterSeverity} onChange={(e) => { setFilterSeverity(e.target.value); setPage(1); }}>
+        <select aria-label="Filter by severity" value={filterSeverity} onChange={(e) => { setFilterSeverity(e.target.value); setPage(1); }}>
           <option value="">All Severities</option>
           {SEVERITIES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <input type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} placeholder="Start date" />
-        <input type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} placeholder="End date" />
+        <input aria-label="Start date filter" type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} />
+        <input aria-label="End date filter" type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} />
       </div>
 
       {loading ? (
@@ -283,17 +296,17 @@ function IssuesContent() {
                     <span className={styles.issueDate}> &mdash; {new Date(issue.date).toLocaleDateString()}</span>
                   </div>
                   <div className={styles.actions}>
-                    <button className={styles.editBtn} onClick={() => openEdit(issue)}>Edit</button>
+                    <button className={styles.editBtn} onClick={() => openEdit(issue)} aria-label={`Edit issue: ${issue.title}`}>Edit</button>
                     {!issue.isEscalated && (
-                      <button className={styles.escalateBtn} onClick={() => { setEscalateModal(issue.id); setEscalateMessage(""); }}>Escalate</button>
+                      <button className={styles.escalateBtn} onClick={() => { setEscalateModal(issue.id); setEscalateMessage(""); }} aria-label={`Escalate issue: ${issue.title}`}>Escalate</button>
                     )}
                     {deleteConfirm === issue.id ? (
                       <>
-                        <button className={styles.deleteBtn} onClick={() => handleDelete(issue.id)}>Confirm</button>
+                        <button className={styles.deleteBtn} onClick={() => handleDelete(issue.id)} aria-label={`Confirm delete: ${issue.title}`}>Confirm</button>
                         <button className={styles.editBtn} onClick={() => setDeleteConfirm(null)}>Cancel</button>
                       </>
                     ) : (
-                      <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(issue.id)}>Delete</button>
+                      <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(issue.id)} aria-label={`Delete issue: ${issue.title}`}>Delete</button>
                     )}
                   </div>
                 </div>
@@ -317,8 +330,8 @@ function IssuesContent() {
 
       {/* Create/Edit Modal */}
       {modalOpen && (
-        <div className={styles.overlay} onClick={() => setModalOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => setModalOpen(false)} role="presentation">
+          <div ref={modalRef} className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={editingIssue ? "Edit Issue" : "Log New Issue"} tabIndex={-1}>
             <h2>{editingIssue ? "Edit Issue" : "Log New Issue"}</h2>
             <div className={styles.form}>
               {!editingIssue && (
@@ -386,8 +399,8 @@ function IssuesContent() {
 
       {/* Escalate Modal */}
       {escalateModal && (
-        <div className={styles.overlay} onClick={() => setEscalateModal(null)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => setEscalateModal(null)} role="presentation">
+          <div ref={escalateModalRef} className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Escalate to Manager" tabIndex={-1}>
             <h2>Escalate to Manager</h2>
             <div className={styles.form}>
               <div className={styles.field}>
@@ -412,7 +425,7 @@ function IssuesContent() {
       )}
 
       {toast && (
-        <div className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
+        <div role="alert" aria-live="polite" className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
           {toast.message}
         </div>
       )}

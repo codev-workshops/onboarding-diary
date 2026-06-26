@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnboardingDiary.Application.Auth;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Users;
 using OnboardingDiary.Application.Users.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -25,15 +26,8 @@ public class UsersController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> GetMe()
     {
-        try
-        {
-            var user = await _userService.GetCurrentUserAsync();
-            return Ok(new { User = user });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { Error = "User not found." });
-        }
+        var user = await _userService.GetCurrentUserAsync();
+        return Ok(new { User = user });
     }
 
     [HttpPut("me")]
@@ -43,17 +37,10 @@ public class UsersController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var user = await _userService.UpdateProfileAsync(request);
-            return Ok(new { User = user });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { Error = "User not found." });
-        }
+        var user = await _userService.UpdateProfileAsync(request);
+        return Ok(new { User = user });
     }
 
     [HttpGet]
@@ -78,20 +65,13 @@ public class UsersController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
         if (_currentUser.UserId == id && request.Role != Role.Admin)
-            return BadRequest(new { Error = "You cannot remove Admin role from yourself." });
+            throw new BusinessRuleException("You cannot remove Admin role from yourself.");
 
-        try
-        {
-            var user = await _userService.UpdateRoleAsync(id, request.Role);
-            return Ok(new { User = user });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { Error = "User not found." });
-        }
+        var user = await _userService.UpdateRoleAsync(id, request.Role);
+        return Ok(new { User = user });
     }
 
     [HttpDelete("{id:guid}")]
@@ -99,16 +79,9 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> DeactivateUser(Guid id)
     {
         if (_currentUser.UserId == id)
-            return BadRequest(new { Error = "You cannot deactivate yourself." });
+            throw new BusinessRuleException("You cannot deactivate yourself.");
 
-        try
-        {
-            await _userService.DeactivateUserAsync(id);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { Error = "User not found." });
-        }
+        await _userService.DeactivateUserAsync(id);
+        return NoContent();
     }
 }

@@ -331,3 +331,99 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 | `AdminOnly`           | Role = Admin                                        |
 | `ManagerOrAdmin`      | Role = Manager or Admin                             |
 | `AssignedRecruitOrSelf` | Caller is Admin, or owns the resource, or is a Manager assigned to the recruit |
+
+## Cross-Cutting Hardening — Phase 10
+
+### Global Exception Handling & ProblemDetails
+
+All unhandled exceptions are intercepted by `GlobalExceptionHandler` (`IExceptionHandler`) and returned as RFC 7807 `ProblemDetails` responses:
+
+| Exception Type               | HTTP Status | Notes                                    |
+|------------------------------|-------------|------------------------------------------|
+| `ValidationException`        | 400         | Includes `errors` dictionary (field → messages) |
+| FluentValidation failures    | 400         | Same `errors` dictionary format          |
+| `BusinessRuleException`      | 400         | Bad request detail (lockout, limits, invalid transitions) |
+| `UnauthorizedAccessException`| 401         | Missing/invalid authentication           |
+| `ForbiddenException`         | 403         | Insufficient permissions                 |
+| `NotFoundException`          | 404         | Resource not found                       |
+| `KeyNotFoundException`       | 404         | Resource not found                       |
+| `FileNotFoundException`      | 404         | File not found (e.g. report file)        |
+| `ConflictException`          | 409         | Duplicate resource                       |
+| Any other exception          | 500         | Generic message in Production; detail in Development |
+
+Response shape:
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "Validation failed.",
+  "errors": {
+    "Title": ["Title is required."]
+  }
+}
+```
+
+### Rate Limiting
+
+Built-in `Microsoft.AspNetCore.RateLimiting` middleware with two layers:
+
+| Policy    | Scope                          | Limit                    | Window  |
+|-----------|--------------------------------|--------------------------|---------|
+| Global    | Authenticated user ID or client IP | 100 requests             | 1 minute |
+| `login`   | IP + submitted email           | 5 attempts               | 15 minutes |
+
+Exceeded limits return `429 Too Many Requests` with a `ProblemDetails` body and `Retry-After` header.
+
+**Configuration** (`RateLimiting` section in `appsettings.json`):
+
+| Key                  | Default | Description                        |
+|----------------------|---------|------------------------------------|
+| `PermitPerMinute`    | `100`   | Global per-user/IP request limit   |
+| `LoginPermit`        | `5`     | Login attempts before rate-limited |
+| `LoginWindowMinutes` | `15`    | Login rate-limit window            |
+
+**Note**: This transport-level rate limit coexists with the Phase 2 per-account lockout (5 failed attempts → `LockoutEnd`). The rate limiter blocks by IP+email at the middleware level; the account lockout is a business rule that persists across server restarts.
+
+### Input Sanitization / XSS Prevention
+
+XSS prevention uses **output-time encoding** (the industry standard):
+
+- **React (frontend)**: JSX text interpolation automatically escapes `<`, `>`, `&`, `"`, `'` — this is the primary XSS defense for HTML contexts.
+- **Markdown notes**: The `simpleMarkdownToHtml` renderer escapes HTML before converting markdown syntax, preventing injection.
+- **Server-side**: All user-provided string inputs are **trimmed** on create/update. An `ISanitizer` abstraction (`HtmlSanitizer` using `System.Text.Encodings.Web.HtmlEncoder`) is registered in DI and available for contexts that need explicit HTML encoding (e.g. server-rendered HTML). Raw text is stored in the database so that non-HTML consumers (emails, CSV/PDF reports, search) work correctly without decoding.
+
+### Pagination Caps
+
+All list endpoints enforce centralized pagination via `PaginationParams.Normalize()`:
+
+| Parameter | Default | Min | Max |
+|-----------|---------|-----|-----|
+| `page`    | 1       | 1   | —   |
+| `limit`   | 20      | 1   | 100 |
+
+Requesting `limit=1000` silently clamps to 100. Requesting `limit=0` or negative defaults to 20.
+
+### CORS & HTTPS
+
+- **CORS**: `"FrontendCors"` policy allows only the configured origin (`Cors:FrontendOrigin`), with credentials. Not `AllowAnyOrigin`.
+- **HTTPS**: `app.UseHttpsRedirection()` is active. HSTS (`app.UseHsts()`) is enabled in non-Development environments.
+- **Secrets**: JWT signing key and admin seed password are loaded from configuration (`appsettings.json` / environment variables / secret store). The `SigningKey` placeholder in `appsettings.json` must be replaced with a secure value from a secret vault in production.
+
+### Accessibility & Responsiveness
+
+**WCAG 2.1 AA compliance**:
+- Semantic HTML landmarks: `<main>`, `<nav>`, `<header>`, skip-to-content link
+- ARIA attributes: `role="dialog"`, `aria-modal`, `aria-label` on all modals, buttons, and filters
+- Keyboard navigation: modals close on Escape, focus is managed on open
+- Focus indicator: 2px solid `#0070f3` outline with 2px offset on `:focus-visible`
+- Minimum tap targets: 44×44px on all interactive elements
+- Screen-reader-only utility class (`.sr-only`)
+- Toast notifications use `role="alert"` with `aria-live="polite"`
+
+**Responsive breakpoints**:
+- Mobile: < 768px (stacked layouts, full-width inputs)
+- Tablet: 768–1024px
+- Desktop: > 1024px
+
+Tables (admin users, reports) use `overflow-x: auto` for horizontal scrolling on small screens.

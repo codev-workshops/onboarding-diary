@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Feedback;
 using OnboardingDiary.Application.Feedback.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -65,7 +66,7 @@ public class FeedbackService : IFeedbackService
                 var recruit = await _context.Users.AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Id == query.RecruitId.Value, ct);
                 if (recruit is null || recruit.ManagerId != userId)
-                    throw new UnauthorizedAccessException("You do not have access to this recruit's feedback.");
+                    throw new ForbiddenException("You do not have access to this recruit's feedback.");
                 q = q.Where(f => f.UserId == query.RecruitId.Value);
             }
             else
@@ -87,8 +88,7 @@ public class FeedbackService : IFeedbackService
 
         var total = await q.CountAsync(ct);
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var items = await q
             .Include(f => f.User)

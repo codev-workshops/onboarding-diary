@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Issues;
 using OnboardingDiary.Application.Issues.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -30,16 +31,9 @@ public class IssuesController : ControllerBase
         [FromQuery] Guid? recruitId = null,
         CancellationToken ct = default)
     {
-        try
-        {
-            var query = new IssueListQuery(page, limit, status, severity, startDate, endDate, recruitId);
-            var result = await _issueService.ListAsync(query, ct);
-            return Ok(new { issues = result.Items, total = result.Total, page = result.Page, totalPages = result.TotalPages });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var query = new IssueListQuery(page, limit, status, severity, startDate, endDate, recruitId);
+        var result = await _issueService.ListAsync(query, ct);
+        return Ok(new { issues = result.Items, total = result.Total, page = result.Page, totalPages = result.TotalPages });
     }
 
     [HttpPost]
@@ -50,32 +44,18 @@ public class IssuesController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var issue = await _issueService.CreateAsync(request, ct);
-            return StatusCode(201, new { issue });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var issue = await _issueService.CreateAsync(request, ct);
+        return StatusCode(201, new { issue });
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var issue = await _issueService.GetByIdAsync(id, ct);
-            if (issue is null) return NotFound(new { Error = "Issue not found." });
-            return Ok(new { issue });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var issue = await _issueService.GetByIdAsync(id, ct);
+        if (issue is null) throw new NotFoundException("Issue", id);
+        return Ok(new { issue });
     }
 
     [HttpPut("{id:guid}")]
@@ -87,37 +67,19 @@ public class IssuesController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var issue = await _issueService.UpdateAsync(id, request, ct);
-            if (issue is null) return NotFound(new { Error = "Issue not found or access denied." });
-            return Ok(new { issue });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var issue = await _issueService.UpdateAsync(id, request, ct);
+        if (issue is null) throw new NotFoundException("Issue", id);
+        return Ok(new { issue });
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var deleted = await _issueService.DeleteAsync(id, ct);
-            if (!deleted) return NotFound(new { Error = "Issue not found or access denied." });
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var deleted = await _issueService.DeleteAsync(id, ct);
+        if (!deleted) throw new NotFoundException("Issue", id);
+        return NoContent();
     }
 
     [HttpPost("{id:guid}/escalate")]
@@ -129,17 +91,10 @@ public class IssuesController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var issue = await _issueService.EscalateAsync(id, request, ct);
-            if (issue is null) return NotFound(new { Error = "Issue not found or access denied." });
-            return Ok(new { issue });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var issue = await _issueService.EscalateAsync(id, request, ct);
+        if (issue is null) throw new NotFoundException("Issue", id);
+        return Ok(new { issue });
     }
 }

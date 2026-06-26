@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -91,6 +91,17 @@ function FeedbackContent() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setModalOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    modalRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [modalOpen]);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -199,13 +210,13 @@ function FeedbackContent() {
         </button>
       </div>
 
-      <div className={styles.filters}>
-        <select value={filterType} onChange={(e) => { setFilterType(e.target.value); setPage(1); }}>
+      <div className={styles.filters} role="search" aria-label="Filter feedback">
+        <select aria-label="Filter by type" value={filterType} onChange={(e) => { setFilterType(e.target.value); setPage(1); }}>
           <option value="">All Types</option>
           {FEEDBACK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <input type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} placeholder="Start date" />
-        <input type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} placeholder="End date" />
+        <input aria-label="Start date filter" type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} />
+        <input aria-label="End date filter" type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} />
         {isAdmin && (
           <input
             type="text"
@@ -235,16 +246,16 @@ function FeedbackContent() {
                   </div>
                   <div className={styles.actions}>
                     {fb.userId === user?.id && (
-                      <button className={styles.editBtn} onClick={() => openEdit(fb)}>Edit</button>
+                      <button className={styles.editBtn} onClick={() => openEdit(fb)} aria-label={`Edit feedback: ${fb.subject}`}>Edit</button>
                     )}
                     {deleteConfirm === fb.id ? (
                       <>
-                        <button className={styles.deleteBtn} onClick={() => handleDelete(fb.id)}>Confirm</button>
+                        <button className={styles.deleteBtn} onClick={() => handleDelete(fb.id)} aria-label={`Confirm delete: ${fb.subject}`}>Confirm</button>
                         <button className={styles.editBtn} onClick={() => setDeleteConfirm(null)}>Cancel</button>
                       </>
                     ) : (
                       (fb.userId === user?.id || isAdmin) && (
-                        <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(fb.id)}>Delete</button>
+                        <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(fb.id)} aria-label={`Delete feedback: ${fb.subject}`}>Delete</button>
                       )
                     )}
                   </div>
@@ -270,8 +281,8 @@ function FeedbackContent() {
       )}
 
       {modalOpen && (
-        <div className={styles.overlay} onClick={() => setModalOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => setModalOpen(false)} role="presentation">
+          <div ref={modalRef} className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={editingFeedback ? "Edit Feedback" : "New Feedback"} tabIndex={-1}>
             <h2>{editingFeedback ? "Edit Feedback" : "New Feedback"}</h2>
             <div className={styles.form}>
               {!editingFeedback && (
@@ -328,7 +339,7 @@ function FeedbackContent() {
       )}
 
       {toast && (
-        <div className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
+        <div role="alert" aria-live="polite" className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
           {toast.message}
         </div>
       )}

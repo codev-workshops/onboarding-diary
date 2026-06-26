@@ -48,8 +48,8 @@ public class UserService : IUserService
         var user = await _context.Users.FindAsync(userId)
             ?? throw new KeyNotFoundException("User not found.");
 
-        user.Name = request.Name;
-        user.Department = request.Department;
+        user.Name = request.Name.Trim();
+        user.Department = request.Department.Trim();
         user.StartDate = request.StartDate;
         user.AvatarUrl = request.AvatarUrl;
 
@@ -61,9 +61,7 @@ public class UserService : IUserService
     public async Task<PagedResult<UserListItemDto>> ListUsersAsync(
         int page, int limit, string? search, Role? role, string? department)
     {
-        if (page < 1) page = 1;
-        if (limit < 1) limit = 20;
-        if (limit > 100) limit = 100;
+        (page, limit) = PaginationParams.Normalize(page, limit);
 
         var query = _context.Users.IgnoreQueryFilters().AsQueryable();
 

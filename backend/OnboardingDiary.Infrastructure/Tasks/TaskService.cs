@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Tasks;
 using OnboardingDiary.Application.Tasks.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -69,7 +70,7 @@ public class TaskService : ITaskService
                 var recruit = await _context.Users.AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Id == query.RecruitId.Value, ct);
                 if (recruit is null || recruit.ManagerId != userId)
-                    throw new UnauthorizedAccessException("You do not have access to this recruit's tasks.");
+                    throw new ForbiddenException("You do not have access to this recruit's tasks.");
                 q = q.Where(t => t.UserId == query.RecruitId.Value);
             }
             else
@@ -95,8 +96,7 @@ public class TaskService : ITaskService
 
         var total = await q.CountAsync(ct);
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var items = await q
             .OrderByDescending(t => t.Date)
@@ -208,7 +208,7 @@ public class TaskService : ITaskService
                 var recruit = await _context.Users.AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Id == recruitId.Value, ct);
                 if (recruit is null || recruit.ManagerId != userId)
-                    throw new UnauthorizedAccessException("You do not have access to this recruit's stats.");
+                    throw new ForbiddenException("You do not have access to this recruit's stats.");
                 targetUserId = recruitId.Value;
             }
             else

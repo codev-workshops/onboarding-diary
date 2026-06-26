@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Notes;
 using OnboardingDiary.Application.Notes.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -30,7 +31,7 @@ public class NoteService : INoteService
             var pinnedCount = await _repository.Query()
                 .CountAsync(n => n.UserId == userId && n.IsPinned, ct);
             if (pinnedCount >= MaxPinnedNotes)
-                throw new InvalidOperationException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
+                throw new BusinessRuleException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
         }
 
         var entity = new Note
@@ -118,8 +119,7 @@ public class NoteService : INoteService
         var materialized = results.ToList();
         var total = materialized.Count;
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var items = materialized
             .Skip((page - 1) * limit)
@@ -162,7 +162,7 @@ public class NoteService : INoteService
             var pinnedCount = await _repository.Query()
                 .CountAsync(n => n.UserId == userId && n.IsPinned, ct);
             if (pinnedCount >= MaxPinnedNotes)
-                throw new InvalidOperationException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
+                throw new BusinessRuleException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
         }
 
         entity.Title = request.Title.Trim();

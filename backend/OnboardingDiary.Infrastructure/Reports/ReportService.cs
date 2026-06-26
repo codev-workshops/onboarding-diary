@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Reports;
 using OnboardingDiary.Application.Reports.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -52,7 +53,7 @@ public class ReportService : IReportService
             expandedCategories, ct);
 
         var renderer = _renderers.FirstOrDefault(r => r.Format == request.Format)
-            ?? throw new InvalidOperationException($"No renderer found for format {request.Format}.");
+            ?? throw new BusinessRuleException($"No renderer found for format {request.Format}.");
 
         var content = renderer.Render(data);
         var extension = request.Format == ReportFormat.Pdf ? "pdf" : "csv";
@@ -93,7 +94,7 @@ public class ReportService : IReportService
         await EnforceDownloadAccess(currentUserId, report, role, ct);
 
         if (report.FileUrl is null)
-            throw new InvalidOperationException("Report file not available.");
+            throw new BusinessRuleException("Report file not available.");
 
         var stream = await _fileStore.LoadAsync(report.FileUrl, ct);
 
@@ -134,8 +135,7 @@ public class ReportService : IReportService
 
         var total = await q.CountAsync(ct);
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var reports = await q
             .OrderByDescending(r => r.CreatedAt)
@@ -187,7 +187,7 @@ public class ReportService : IReportService
                 return;
         }
 
-        throw new UnauthorizedAccessException("You do not have access to generate a report for this recruit.");
+        throw new ForbiddenException("You do not have access to generate a report for this recruit.");
     }
 
     private async Task EnforceDownloadAccess(Guid currentUserId, Report report, string? role, CancellationToken ct)
@@ -209,6 +209,6 @@ public class ReportService : IReportService
                 return;
         }
 
-        throw new UnauthorizedAccessException("You do not have access to this report.");
+        throw new ForbiddenException("You do not have access to this report.");
     }
 }

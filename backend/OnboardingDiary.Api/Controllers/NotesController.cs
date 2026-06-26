@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Notes;
 using OnboardingDiary.Application.Notes.Dtos;
 
@@ -28,16 +29,9 @@ public class NotesController : ControllerBase
         [FromQuery] DateTime? endDate = null,
         CancellationToken ct = default)
     {
-        try
-        {
-            var query = new NoteListQuery(page, limit, search, tags, startDate, endDate);
-            var result = await _noteService.ListAsync(query, ct);
-            return Ok(new { notes = result.Items, total = result.Total, page = result.Page, totalPages = result.TotalPages });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var query = new NoteListQuery(page, limit, search, tags, startDate, endDate);
+        var result = await _noteService.ListAsync(query, ct);
+        return Ok(new { notes = result.Items, total = result.Total, page = result.Page, totalPages = result.TotalPages });
     }
 
     [HttpPost]
@@ -48,36 +42,18 @@ public class NotesController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var note = await _noteService.CreateAsync(request, ct);
-            return StatusCode(201, new { note });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        var note = await _noteService.CreateAsync(request, ct);
+        return StatusCode(201, new { note });
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var note = await _noteService.GetByIdAsync(id, ct);
-            if (note is null) return NotFound(new { Error = "Note not found." });
-            return Ok(new { note });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var note = await _noteService.GetByIdAsync(id, ct);
+        if (note is null) throw new NotFoundException("Note", id);
+        return Ok(new { note });
     }
 
     [HttpPut("{id:guid}")]
@@ -89,36 +65,18 @@ public class NotesController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var note = await _noteService.UpdateAsync(id, request, ct);
-            if (note is null) return NotFound(new { Error = "Note not found or access denied." });
-            return Ok(new { note });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        var note = await _noteService.UpdateAsync(id, request, ct);
+        if (note is null) throw new NotFoundException("Note", id);
+        return Ok(new { note });
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var deleted = await _noteService.DeleteAsync(id, ct);
-            if (!deleted) return NotFound(new { Error = "Note not found or access denied." });
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var deleted = await _noteService.DeleteAsync(id, ct);
+        if (!deleted) throw new NotFoundException("Note", id);
+        return NoContent();
     }
 }

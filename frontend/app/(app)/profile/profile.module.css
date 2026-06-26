@@ -102,3 +102,9 @@
   border-radius: 6px;
   background: rgba(0, 170, 119, 0.05);
 }
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+}

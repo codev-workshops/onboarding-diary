@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Auth.Dtos;
 using OnboardingDiary.Application.Common.Auth;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Domain.Entities;
 using OnboardingDiary.Domain.Enums;
 using OnboardingDiary.Infrastructure.Persistence;
@@ -36,14 +37,14 @@ public class AuthService : IAuthService
     {
         var emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email);
         if (emailExists)
-            throw new InvalidOperationException("A user with this email already exists.");
+            throw new BusinessRuleException("A user with this email already exists.");
 
         var user = new User
         {
             Email = request.Email,
             PasswordHash = _passwordHasher.Hash(request.Password),
-            Name = request.Name,
-            Department = request.Department,
+            Name = request.Name.Trim(),
+            Department = request.Department.Trim(),
             StartDate = request.StartDate,
             Role = Role.Recruit,
             IsActive = true
@@ -68,7 +69,7 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid email or password.");
 
         if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow)
-            throw new InvalidOperationException(
+            throw new BusinessRuleException(
                 $"Account is locked. Try again after {user.LockoutEnd.Value:u}.");
 
         if (user.LockoutEnd.HasValue && user.LockoutEnd.Value <= DateTime.UtcNow)
@@ -85,7 +86,7 @@ public class AuthService : IAuthService
             {
                 user.LockoutEnd = DateTime.UtcNow.AddMinutes(_securityOptions.LockoutMinutes);
                 await _context.SaveChangesAsync();
-                throw new InvalidOperationException(
+                throw new BusinessRuleException(
                     $"Account is locked due to {_securityOptions.MaxFailedAttempts} failed attempts. Try again after {user.LockoutEnd.Value:u}.");
             }
 
@@ -170,7 +171,7 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(t => t.Token == request.Token);
 
         if (resetToken is null || resetToken.IsUsed || resetToken.ExpiresAt <= DateTime.UtcNow)
-            throw new InvalidOperationException("Invalid or expired reset token.");
+            throw new BusinessRuleException("Invalid or expired reset token.");
 
         resetToken.User.PasswordHash = _passwordHasher.Hash(request.NewPassword);
         resetToken.IsUsed = true;

@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Issues;
 using OnboardingDiary.Application.Issues.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -70,7 +71,7 @@ public class IssueService : IIssueService
                 var recruit = await _context.Users.AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Id == query.RecruitId.Value, ct);
                 if (recruit is null || recruit.ManagerId != userId)
-                    throw new UnauthorizedAccessException("You do not have access to this recruit's issues.");
+                    throw new ForbiddenException("You do not have access to this recruit's issues.");
                 q = q.Where(i => i.UserId == query.RecruitId.Value);
             }
             else
@@ -94,8 +95,7 @@ public class IssueService : IIssueService
 
         var total = await q.CountAsync(ct);
 
-        var page = Math.Max(1, query.Page);
-        var limit = Math.Clamp(query.Limit, 1, 100);
+        var (page, limit) = PaginationParams.Normalize(query.Page, query.Limit);
 
         var items = await q
             .OrderByDescending(i => i.Date)
@@ -157,7 +157,7 @@ public class IssueService : IIssueService
         var previousStatus = entity.Status;
 
         if (InvalidTransitions.Contains((previousStatus, request.Status)))
-            throw new InvalidOperationException($"Cannot transition from {previousStatus} to {request.Status}.");
+            throw new BusinessRuleException($"Cannot transition from {previousStatus} to {request.Status}.");
 
         entity.Title = request.Title.Trim();
         entity.Description = request.Description;

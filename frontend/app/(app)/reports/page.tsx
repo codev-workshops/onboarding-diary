@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -78,6 +78,17 @@ function ReportsContent() {
   const [recruits, setRecruits] = useState<UserListItemDto[]>([]);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setModalOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    modalRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [modalOpen]);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -245,8 +256,8 @@ function ReportsContent() {
       )}
 
       {modalOpen && (
-        <div className={styles.overlay} onClick={() => setModalOpen(false)}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => setModalOpen(false)} role="presentation">
+          <div ref={modalRef} className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Generate New Report" tabIndex={-1}>
             <h2>Generate New Report</h2>
 
             {generatedResult ? (
@@ -367,7 +378,7 @@ function ReportsContent() {
       )}
 
       {toast && (
-        <div className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
+        <div role="alert" aria-live="polite" className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
           {toast.message}
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ProtectedRoute } from "@/lib/protected-route";
 import {
   listNotes,
@@ -116,6 +116,17 @@ function NotesContent() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setModalOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    modalRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [modalOpen]);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -288,17 +299,18 @@ function NotesContent() {
         </button>
       </div>
 
-      <div className={styles.filters}>
+      <div className={styles.filters} role="search" aria-label="Filter notes">
         <input
           type="text"
           className={styles.searchInput}
           placeholder="Search notes (title, content, tags)..."
+          aria-label="Search notes"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleSearchKeyDown}
         />
-        <input type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} />
-        <input type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} />
+        <input aria-label="Start date filter" type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} />
+        <input aria-label="End date filter" type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} />
       </div>
 
       {allTags.length > 0 && (
@@ -367,8 +379,8 @@ function NotesContent() {
       )}
 
       {modalOpen && (
-        <div className={styles.overlay} onClick={() => setModalOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => setModalOpen(false)} role="presentation">
+          <div ref={modalRef} className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={editingNote ? "Edit Note" : "New Note"} tabIndex={-1}>
             <h2>{editingNote ? "Edit Note" : "New Note"}</h2>
             <div className={styles.form}>
               {!editingNote && (
@@ -467,7 +479,7 @@ function NotesContent() {
       )}
 
       {toast && (
-        <div className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
+        <div role="alert" aria-live="polite" className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
           {toast.message}
         </div>
       )}
@@ -500,14 +512,14 @@ function NoteCard({
           <span className={styles.noteDate}> &mdash; {new Date(note.date).toLocaleDateString()}</span>
         </div>
         <div className={styles.actions}>
-          <button className={styles.editBtn} onClick={onEdit}>Edit</button>
+          <button className={styles.editBtn} onClick={onEdit} aria-label={`Edit note: ${note.title}`}>Edit</button>
           {deleteConfirm === note.id ? (
             <>
-              <button className={styles.deleteBtn} onClick={() => onDelete(note.id)}>Confirm</button>
+              <button className={styles.deleteBtn} onClick={() => onDelete(note.id)} aria-label={`Confirm delete: ${note.title}`}>Confirm</button>
               <button className={styles.editBtn} onClick={() => setDeleteConfirm(null)}>Cancel</button>
             </>
           ) : (
-            <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(note.id)}>Delete</button>
+            <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(note.id)} aria-label={`Delete note: ${note.title}`}>Delete</button>
           )}
         </div>
       </div>

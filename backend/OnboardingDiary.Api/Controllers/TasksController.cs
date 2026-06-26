@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Tasks;
 using OnboardingDiary.Application.Tasks.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -32,16 +33,9 @@ public class TasksController : ControllerBase
         [FromQuery] Guid? recruitId = null,
         CancellationToken ct = default)
     {
-        try
-        {
-            var query = new TaskListQuery(page, limit, startDate, endDate, category, status, priority, recruitId);
-            var result = await _taskService.ListAsync(query, ct);
-            return Ok(new { tasks = result.Items, total = result.Total, page = result.Page, totalPages = result.TotalPages });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var query = new TaskListQuery(page, limit, startDate, endDate, category, status, priority, recruitId);
+        var result = await _taskService.ListAsync(query, ct);
+        return Ok(new { tasks = result.Items, total = result.Total, page = result.Page, totalPages = result.TotalPages });
     }
 
     [HttpPost]
@@ -52,32 +46,18 @@ public class TasksController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var task = await _taskService.CreateAsync(request, ct);
-            return StatusCode(201, new { task });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var task = await _taskService.CreateAsync(request, ct);
+        return StatusCode(201, new { task });
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var task = await _taskService.GetByIdAsync(id, ct);
-            if (task is null) return NotFound(new { Error = "Task not found." });
-            return Ok(new { task });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var task = await _taskService.GetByIdAsync(id, ct);
+        if (task is null) throw new NotFoundException("Task", id);
+        return Ok(new { task });
     }
 
     [HttpPut("{id:guid}")]
@@ -89,46 +69,25 @@ public class TasksController : ControllerBase
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
-            return BadRequest(new { Errors = validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+            throw new FluentValidation.ValidationException(validation.Errors);
 
-        try
-        {
-            var task = await _taskService.UpdateAsync(id, request, ct);
-            if (task is null) return NotFound(new { Error = "Task not found or access denied." });
-            return Ok(new { task });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var task = await _taskService.UpdateAsync(id, request, ct);
+        if (task is null) throw new NotFoundException("Task", id);
+        return Ok(new { task });
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var deleted = await _taskService.DeleteAsync(id, ct);
-            if (!deleted) return NotFound(new { Error = "Task not found or access denied." });
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var deleted = await _taskService.DeleteAsync(id, ct);
+        if (!deleted) throw new NotFoundException("Task", id);
+        return NoContent();
     }
 
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats([FromQuery] Guid? recruitId = null, CancellationToken ct = default)
     {
-        try
-        {
-            var stats = await _taskService.GetStatsAsync(recruitId, ct);
-            return Ok(stats);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var stats = await _taskService.GetStatsAsync(recruitId, ct);
+        return Ok(stats);
     }
 }
