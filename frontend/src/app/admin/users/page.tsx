@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
     setFormLoading(true);
     setFormError(null);
     try {
-      await createUser(formData);
+      await createUser({ ...formData, startDate: formData.startDate || undefined });
       setShowCreateModal(false);
       setFormData({ name: '', email: '', password: '', role: UserRole.Recruit, department: '', startDate: '' });
       refetchUsers();
@@ -200,7 +200,7 @@ export default function AdminUsersPage() {
     setFormLoading(true);
     setFormError(null);
     try {
-      await updateUser(selectedUser.id, editFormData);
+      await updateUser(selectedUser.id, { ...editFormData, startDate: editFormData.startDate || undefined });
       setShowEditModal(false);
       setSelectedUser(null);
       refetchUsers();
