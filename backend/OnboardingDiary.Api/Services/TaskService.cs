@@ -30,22 +30,33 @@ public class TaskService : ITaskService
         Priority? priority = null,
         int? userId = null)
     {
-        int? filterUserId = currentUserRole switch
-        {
-            UserRole.Admin => userId,
-            UserRole.Manager => userId,
-            _ => currentUserId
-        };
+        int? filterUserId = null;
+        int? managerUserId = null;
 
-        if (currentUserRole == UserRole.Manager && userId.HasValue)
+        switch (currentUserRole)
         {
-            var targetUser = await _userRepository.GetByIdAsync(userId.Value);
-            if (targetUser == null || targetUser.ManagerId != currentUserId)
-                throw new UnauthorizedAccessException("You can only view tasks of recruits assigned to you.");
+            case UserRole.Admin:
+                filterUserId = userId;
+                break;
+
+            case UserRole.Manager:
+                if (userId.HasValue)
+                {
+                    var targetUser = await _userRepository.GetByIdAsync(userId.Value);
+                    if (targetUser == null || (targetUser.Id != currentUserId && targetUser.ManagerId != currentUserId))
+                        throw new UnauthorizedAccessException("You can only view tasks of recruits assigned to you.");
+                    filterUserId = userId.Value;
+                }
+                else
+                {
+                    managerUserId = currentUserId;
+                }
+                break;
+
+            default:
+                filterUserId = currentUserId;
+                break;
         }
-
-        if (currentUserRole == UserRole.Recruit)
-            filterUserId = currentUserId;
 
         var query = _taskRepository.GetFilteredQuery(
             userId: filterUserId,
@@ -53,7 +64,8 @@ public class TaskService : ITaskService
             dateTo: dateTo,
             category: category,
             status: status,
-            priority: priority);
+            priority: priority,
+            managerUserId: managerUserId);
 
         var sortBy = pagination.SortBy ?? "Date";
         query = query.OrderByProperty(sortBy, pagination.SortDescending);
@@ -136,7 +148,7 @@ public class TaskService : ITaskService
             task.Title = dto.Title;
 
         if (dto.Description != null)
-            task.Description = dto.Description;
+            task.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description;
 
         if (dto.Category != null)
             task.Category = dto.Category;

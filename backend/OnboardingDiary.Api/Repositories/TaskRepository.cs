@@ -14,11 +14,14 @@ public class TaskRepository : Repository<TaskEntry>, ITaskRepository
         DateTime? dateTo = null,
         string? category = null,
         TaskEntryStatus? status = null,
-        Priority? priority = null)
+        Priority? priority = null,
+        int? managerUserId = null)
     {
         var query = Query();
 
-        if (userId.HasValue)
+        if (managerUserId.HasValue)
+            query = query.Where(t => t.UserId == managerUserId.Value || t.User.ManagerId == managerUserId.Value);
+        else if (userId.HasValue)
             query = query.Where(t => t.UserId == userId.Value);
 
         if (dateFrom.HasValue)

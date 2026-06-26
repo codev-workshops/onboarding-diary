@@ -11,5 +11,6 @@ public interface ITaskRepository : IRepository<TaskEntry>
         DateTime? dateTo = null,
         string? category = null,
         TaskEntryStatus? status = null,
-        Priority? priority = null);
+        Priority? priority = null,
+        int? managerUserId = null);
 }

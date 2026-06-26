@@ -284,7 +284,7 @@ export default function TasksPage() {
         const updateData: UpdateTaskRequest = {
           date: formData.date,
           title: formData.title,
-          description: formData.description || undefined,
+          description: formData.description,
           category: formData.category,
           status: formData.status as TaskEntryStatus,
           priority: formData.priority as Priority,
