@@ -65,4 +65,24 @@ public class HtmlSanitizerTests
         Assert.DoesNotContain("\"hello\"", result);
         Assert.Contains("&amp;", result);
     }
+
+    [Fact]
+    public void Sanitize_IsIdempotent_NoDoubleEncoding()
+    {
+        var input = "AT&T <script>alert('xss')</script>";
+        var firstPass = _sanitizer.Sanitize(input);
+        var secondPass = _sanitizer.Sanitize(firstPass);
+
+        Assert.Equal(firstPass, secondPass);
+    }
+
+    [Fact]
+    public void Sanitize_AlreadyEncodedInput_RemainsStable()
+    {
+        var alreadyEncoded = "AT&amp;T O&#x27;Brien";
+        var result = _sanitizer.Sanitize(alreadyEncoded);
+        var resultAgain = _sanitizer.Sanitize(result);
+
+        Assert.Equal(result, resultAgain);
+    }
 }

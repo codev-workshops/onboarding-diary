@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Encodings.Web;
 
 namespace OnboardingDiary.Application.Common.Security;
@@ -11,6 +12,7 @@ public class HtmlSanitizer : ISanitizer
         if (string.IsNullOrEmpty(input))
             return input;
 
-        return _encoder.Encode(input);
+        var decoded = WebUtility.HtmlDecode(input);
+        return _encoder.Encode(decoded);
     }
 }

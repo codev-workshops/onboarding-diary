@@ -35,6 +35,7 @@ function AdminUsersContent() {
   const [deactivateTarget, setDeactivateTarget] = useState<UserListItemDto | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const deactivateDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!editRoleUser && !deactivateTarget) return;
@@ -42,7 +43,8 @@ function AdminUsersContent() {
       if (e.key === "Escape") { setEditRoleUser(null); setDeactivateTarget(null); }
     }
     document.addEventListener("keydown", onKeyDown);
-    dialogRef.current?.focus();
+    if (editRoleUser) dialogRef.current?.focus();
+    if (deactivateTarget) deactivateDialogRef.current?.focus();
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [editRoleUser, deactivateTarget]);
 
@@ -282,7 +284,7 @@ function AdminUsersContent() {
 
       {deactivateTarget && (
         <div className={styles.overlay} onClick={() => setDeactivateTarget(null)} role="presentation">
-          <div className={styles.dialog} onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true" aria-label="Confirm Deactivation" tabIndex={-1}>
+          <div ref={deactivateDialogRef} className={styles.dialog} onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true" aria-label="Confirm Deactivation" tabIndex={-1}>
             <h2>Confirm Deactivation</h2>
             <p>
               Are you sure you want to deactivate <strong>{deactivateTarget.name}</strong> ({deactivateTarget.email})?

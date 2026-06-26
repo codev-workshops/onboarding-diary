@@ -125,6 +125,7 @@ function IssuesContent() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const modalRef = useRef<HTMLDivElement>(null);
+  const escalateModalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!modalOpen && !escalateModal) return;
@@ -132,7 +133,8 @@ function IssuesContent() {
       if (e.key === "Escape") { setModalOpen(false); setEscalateModal(null); }
     }
     document.addEventListener("keydown", onKeyDown);
-    modalRef.current?.focus();
+    if (modalOpen) modalRef.current?.focus();
+    if (escalateModal) escalateModalRef.current?.focus();
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [modalOpen, escalateModal]);
 
@@ -398,7 +400,7 @@ function IssuesContent() {
       {/* Escalate Modal */}
       {escalateModal && (
         <div className={styles.overlay} onClick={() => setEscalateModal(null)} role="presentation">
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Escalate to Manager" tabIndex={-1}>
+          <div ref={escalateModalRef} className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Escalate to Manager" tabIndex={-1}>
             <h2>Escalate to Manager</h2>
             <div className={styles.form}>
               <div className={styles.field}>
