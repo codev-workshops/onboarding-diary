@@ -342,11 +342,12 @@ All unhandled exceptions are intercepted by `GlobalExceptionHandler` (`IExceptio
 |------------------------------|-------------|------------------------------------------|
 | `ValidationException`        | 400         | Includes `errors` dictionary (field → messages) |
 | FluentValidation failures    | 400         | Same `errors` dictionary format          |
-| `InvalidOperationException`  | 400         | Bad request detail                       |
+| `BusinessRuleException`      | 400         | Bad request detail (lockout, limits, invalid transitions) |
 | `UnauthorizedAccessException`| 401         | Missing/invalid authentication           |
 | `ForbiddenException`         | 403         | Insufficient permissions                 |
 | `NotFoundException`          | 404         | Resource not found                       |
 | `KeyNotFoundException`       | 404         | Resource not found                       |
+| `FileNotFoundException`      | 404         | File not found (e.g. report file)        |
 | `ConflictException`          | 409         | Duplicate resource                       |
 | Any other exception          | 500         | Generic message in Production; detail in Development |
 

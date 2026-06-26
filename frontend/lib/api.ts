@@ -151,13 +151,13 @@ export async function apiFetch<T>(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     let message: string;
-    if (body.detail) {
-      message = body.detail;
-    } else if (body.errors && typeof body.errors === "object" && !Array.isArray(body.errors)) {
+    if (body.errors && typeof body.errors === "object" && !Array.isArray(body.errors)) {
       const fieldErrors = Object.values(body.errors as Record<string, string[]>)
         .flat()
         .join("; ");
-      message = fieldErrors || body.title || `Request failed (${res.status})`;
+      message = fieldErrors || body.detail || body.title || `Request failed (${res.status})`;
+    } else if (body.detail) {
+      message = body.detail;
     } else if (body.error) {
       message = body.error;
     } else if (body.title) {
