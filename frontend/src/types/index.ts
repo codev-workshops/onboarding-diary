@@ -111,3 +111,28 @@ export interface ErrorResponse {
   message: string;
   errors?: string[];
 }
+
+export interface NoteResponse {
+  id: number;
+  userId: number;
+  date: string;
+  title: string;
+  content: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateNoteRequest {
+  date: string;
+  title: string;
+  content: string;
+  tags?: string[];
+}
+
+export interface UpdateNoteRequest {
+  date: string;
+  title: string;
+  content: string;
+  tags?: string[];
+}
