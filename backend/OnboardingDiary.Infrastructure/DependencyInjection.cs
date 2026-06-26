@@ -7,6 +7,7 @@ using OnboardingDiary.Application.Auth.Mapping;
 using OnboardingDiary.Application.Common.Auth;
 using OnboardingDiary.Infrastructure.Auth;
 using OnboardingDiary.Infrastructure.Persistence;
+using OnboardingDiary.Infrastructure.Feedback;
 using OnboardingDiary.Infrastructure.Tasks;
 
 namespace OnboardingDiary.Infrastructure;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         AuthMappingConfig.Configure();
 
         services.AddTaskModule();
+        services.AddFeedbackModule();
 
         return services;
     }
