@@ -137,7 +137,7 @@ public class IssueService : IIssueService
         var effectiveStatus = dto.Status ?? issue.Status;
         if (effectiveStatus is IssueStatus.Resolved or IssueStatus.Closed)
             issue.ResolutionNotes = dto.ResolutionNotes ?? issue.ResolutionNotes;
-        else
+        else if (dto.ResolutionNotes != null)
             issue.ResolutionNotes = dto.ResolutionNotes;
 
         ValidateResolutionNotes(effectiveStatus, issue.ResolutionNotes);
