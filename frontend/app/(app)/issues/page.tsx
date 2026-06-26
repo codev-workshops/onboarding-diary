@@ -72,7 +72,7 @@ function validateForm(data: IssueFormData, isEdit: boolean): FormErrors {
   if (!data.title.trim()) errs.title = "Title is required.";
   else if (data.title.trim().length < 3) errs.title = "Title must be at least 3 characters.";
   else if (data.title.trim().length > 150) errs.title = "Title must be at most 150 characters.";
-  if (data.title !== data.title.trim()) errs.title = "Title must not have leading or trailing whitespace.";
+  else if (data.title !== data.title.trim()) errs.title = "Title must not have leading or trailing whitespace.";
   if (!data.description.trim()) errs.description = "Description is required.";
   else if (data.description.trim().length < 10) errs.description = "Description must be at least 10 characters.";
   else if (data.description.length > 3000) errs.description = "Description must be at most 3000 characters.";

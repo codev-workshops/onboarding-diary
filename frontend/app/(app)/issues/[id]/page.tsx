@@ -83,7 +83,7 @@ function IssueDetailContent() {
     if (!title.trim()) errs.title = "Title is required.";
     else if (title.trim().length < 3) errs.title = "Title must be at least 3 characters.";
     else if (title.trim().length > 150) errs.title = "Title must be at most 150 characters.";
-    if (title !== title.trim()) errs.title = "Title must not have leading or trailing whitespace.";
+    else if (title !== title.trim()) errs.title = "Title must not have leading or trailing whitespace.";
     if (!description.trim()) errs.description = "Description is required.";
     else if (description.trim().length < 10) errs.description = "Description must be at least 10 characters.";
     else if (description.length > 3000) errs.description = "Description must be at most 3000 characters.";
