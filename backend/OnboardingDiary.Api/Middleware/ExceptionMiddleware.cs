@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using OnboardingDiary.Api.DTOs.Common;
+using OnboardingDiary.Api.Exceptions;
 
 namespace OnboardingDiary.Api.Middleware;
 
@@ -39,6 +40,12 @@ public class ExceptionMiddleware
             case InvalidOperationException:
                 context.Response.StatusCode = (int)HttpStatusCode.Conflict;
                 response.StatusCode = (int)HttpStatusCode.Conflict;
+                response.Message = exception.Message;
+                break;
+
+            case ForbiddenAccessException:
+                context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                response.StatusCode = (int)HttpStatusCode.Forbidden;
                 response.Message = exception.Message;
                 break;
 

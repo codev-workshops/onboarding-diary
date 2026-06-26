@@ -4,6 +4,7 @@ using OnboardingDiary.Api.Data;
 using OnboardingDiary.Api.DTOs.Common;
 using OnboardingDiary.Api.DTOs.Notes;
 using OnboardingDiary.Api.Entities;
+using OnboardingDiary.Api.Exceptions;
 using OnboardingDiary.Api.Extensions;
 using OnboardingDiary.Api.Repositories;
 
@@ -47,7 +48,7 @@ public class NoteService : INoteService
                 managedUserIds.Add(currentUserId);
 
                 if (!managedUserIds.Contains(userId.Value))
-                    throw new UnauthorizedAccessException("You do not have access to this user's notes.");
+                    throw new ForbiddenAccessException("You do not have access to this user's notes.");
 
                 query = query.Where(n => n.UserId == userId.Value);
             }
@@ -115,12 +116,12 @@ public class NoteService : INoteService
                 var isManaged = await _context.Users
                     .AnyAsync(u => u.Id == note.UserId && u.ManagerId == currentUserId);
                 if (!isManaged)
-                    throw new UnauthorizedAccessException("You do not have access to this note.");
+                    throw new ForbiddenAccessException("You do not have access to this note.");
             }
         }
         else if (note.UserId != currentUserId)
         {
-            throw new UnauthorizedAccessException("You do not have access to this note.");
+            throw new ForbiddenAccessException("You do not have access to this note.");
         }
 
         return MapToResponseDto(note);
@@ -157,7 +158,7 @@ public class NoteService : INoteService
             ?? throw new KeyNotFoundException("Note not found.");
 
         if (note.UserId != currentUserId)
-            throw new UnauthorizedAccessException("You can only edit your own notes.");
+            throw new ForbiddenAccessException("You can only edit your own notes.");
 
         ValidateDate(dto.Date);
         var processedTags = ProcessTags(dto.Tags);
@@ -185,7 +186,7 @@ public class NoteService : INoteService
             ?? throw new KeyNotFoundException("Note not found.");
 
         if (note.UserId != currentUserId)
-            throw new UnauthorizedAccessException("You can only delete your own notes.");
+            throw new ForbiddenAccessException("You can only delete your own notes.");
 
         await _noteRepository.DeleteAsync(note);
     }
