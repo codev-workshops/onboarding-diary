@@ -43,7 +43,7 @@ function validateForm(data: NoteFormData): FormErrors {
   if (!data.title.trim()) errs.title = "Title is required.";
   else if (data.title.trim().length < 3) errs.title = "Title must be at least 3 characters.";
   else if (data.title.trim().length > 200) errs.title = "Title must be at most 200 characters.";
-  if (data.title !== data.title.trim()) errs.title = "Title must not have leading or trailing whitespace.";
+  else if (data.title !== data.title.trim()) errs.title = "Title must not have leading or trailing whitespace.";
   if (!data.content.trim()) errs.content = "Content is required.";
   else if (data.content.length > 10000) errs.content = "Content must be at most 10000 characters.";
   if (!data.date) errs.date = "Date is required.";

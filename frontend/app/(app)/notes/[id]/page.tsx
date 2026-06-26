@@ -98,7 +98,7 @@ function NoteDetailContent() {
     if (!title.trim()) errs.title = "Title is required.";
     else if (title.trim().length < 3) errs.title = "Title must be at least 3 characters.";
     else if (title.trim().length > 200) errs.title = "Title must be at most 200 characters.";
-    if (title !== title.trim()) errs.title = "Title must not have leading or trailing whitespace.";
+    else if (title !== title.trim()) errs.title = "Title must not have leading or trailing whitespace.";
     if (!content.trim()) errs.content = "Content is required.";
     else if (content.length > 10000) errs.content = "Content must be at most 10000 characters.";
     if (tags.length > 10) errs.tags = "Maximum 10 tags allowed.";

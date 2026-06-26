@@ -11,7 +11,7 @@ public class UpdateNoteRequestValidator : AbstractValidator<UpdateNoteRequest>
             .NotEmpty()
             .MinimumLength(3)
             .MaximumLength(200)
-            .Must(t => t == t.Trim())
+            .Must(t => t is null || t == t.Trim())
             .WithMessage("Title must not have leading or trailing whitespace.");
 
         RuleFor(x => x.Content)
