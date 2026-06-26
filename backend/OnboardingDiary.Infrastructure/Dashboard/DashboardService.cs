@@ -108,7 +108,7 @@ public class DashboardService : IDashboardService
         }
         else
         {
-            recruitsQuery = _db.Users.Where(u => u.ManagerId == userId && u.IsActive);
+            recruitsQuery = _db.Users.Where(u => u.ManagerId == userId && u.Role == Role.Recruit && u.IsActive);
         }
 
         var recruitIds = await recruitsQuery.Select(u => u.Id).ToListAsync(ct);
