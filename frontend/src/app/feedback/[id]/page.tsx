@@ -70,6 +70,7 @@ export default function EditFeedbackPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError('');
     if (!validate()) return;
 
     setIsSubmitting(true);
