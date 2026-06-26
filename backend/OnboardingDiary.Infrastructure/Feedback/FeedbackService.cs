@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Feedback;
 using OnboardingDiary.Application.Feedback.Dtos;
@@ -68,7 +69,7 @@ public class FeedbackService : IFeedbackService
                 var recruit = await _context.Users.AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Id == query.RecruitId.Value, ct);
                 if (recruit is null || recruit.ManagerId != userId)
-                    throw new UnauthorizedAccessException("You do not have access to this recruit's feedback.");
+                    throw new ForbiddenException("You do not have access to this recruit's feedback.");
                 q = q.Where(f => f.UserId == query.RecruitId.Value);
             }
             else

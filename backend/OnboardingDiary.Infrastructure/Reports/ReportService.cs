@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Reports;
 using OnboardingDiary.Application.Reports.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -186,7 +187,7 @@ public class ReportService : IReportService
                 return;
         }
 
-        throw new UnauthorizedAccessException("You do not have access to generate a report for this recruit.");
+        throw new ForbiddenException("You do not have access to generate a report for this recruit.");
     }
 
     private async Task EnforceDownloadAccess(Guid currentUserId, Report report, string? role, CancellationToken ct)
@@ -208,6 +209,6 @@ public class ReportService : IReportService
                 return;
         }
 
-        throw new UnauthorizedAccessException("You do not have access to this report.");
+        throw new ForbiddenException("You do not have access to this report.");
     }
 }

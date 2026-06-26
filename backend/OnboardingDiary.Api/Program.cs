@@ -124,7 +124,7 @@ builder.Services.AddRateLimiter(options =>
             using var reader = new StreamReader(ctx.Request.Body, leaveOpen: true);
             var body = reader.ReadToEndAsync().GetAwaiter().GetResult();
             ctx.Request.Body.Position = 0;
-            var doc = System.Text.Json.JsonDocument.Parse(body);
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
             email = doc.RootElement.TryGetProperty("email", out var emailProp)
                 ? emailProp.GetString() ?? "unknown"
                 : "unknown";

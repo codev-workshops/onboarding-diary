@@ -141,6 +141,19 @@ public class GlobalExceptionHandlerTests
         Assert.Equal(404, context.Response.StatusCode);
     }
 
+    [Fact]
+    public async Task FileNotFoundException_Returns404()
+    {
+        var context = CreateContext();
+        var ex = new FileNotFoundException("Report file not found.");
+
+        await _handler.TryHandleAsync(context, ex, CancellationToken.None);
+
+        Assert.Equal(404, context.Response.StatusCode);
+        var problem = await ReadProblemDetails(context);
+        Assert.Equal(404, problem.Status);
+    }
+
     private class TestLogger : ILogger<GlobalExceptionHandler>
     {
         public bool ErrorLogged { get; private set; }
