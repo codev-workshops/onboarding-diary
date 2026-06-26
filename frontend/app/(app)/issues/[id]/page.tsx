@@ -101,7 +101,7 @@ function IssueDetailContent() {
         description: description.trim(),
         severity,
         status,
-        resolutionNotes: resolutionNotes.trim() || null,
+        resolutionNotes: isResolvedOrClosed(status) ? (resolutionNotes.trim() || null) : null,
       };
       await updateIssue(id, payload);
       showToast("Issue updated successfully.", "success");

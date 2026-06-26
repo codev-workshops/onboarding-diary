@@ -193,7 +193,7 @@ function IssuesContent() {
           description: formData.description.trim(),
           severity: formData.severity,
           status: formData.status,
-          resolutionNotes: formData.resolutionNotes.trim() || null,
+          resolutionNotes: isResolvedOrClosed(formData.status) ? (formData.resolutionNotes.trim() || null) : null,
         };
         await updateIssue(editingIssue.id, payload);
         showToast("Issue updated successfully.", "success");
@@ -204,7 +204,7 @@ function IssuesContent() {
           description: formData.description.trim(),
           severity: formData.severity,
           status: formData.status,
-          resolutionNotes: formData.resolutionNotes.trim() || null,
+          resolutionNotes: isResolvedOrClosed(formData.status) ? (formData.resolutionNotes.trim() || null) : null,
         };
         await createIssue(payload);
         showToast("Issue created successfully.", "success");
