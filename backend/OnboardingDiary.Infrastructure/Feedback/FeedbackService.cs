@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
 using OnboardingDiary.Application.Common.Exceptions;
-using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Feedback;
 using OnboardingDiary.Application.Feedback.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -16,14 +15,12 @@ public class FeedbackService : IFeedbackService
     private readonly IFeedbackRepository _repository;
     private readonly ICurrentUser _currentUser;
     private readonly AppDbContext _context;
-    private readonly ISanitizer _sanitizer;
 
-    public FeedbackService(IFeedbackRepository repository, ICurrentUser currentUser, AppDbContext context, ISanitizer sanitizer)
+    public FeedbackService(IFeedbackRepository repository, ICurrentUser currentUser, AppDbContext context)
     {
         _repository = repository;
         _currentUser = currentUser;
         _context = context;
-        _sanitizer = sanitizer;
     }
 
     public async Task<FeedbackDto> CreateAsync(CreateFeedbackRequest request, CancellationToken ct = default)
@@ -35,9 +32,9 @@ public class FeedbackService : IFeedbackService
         {
             UserId = userId,
             Date = request.Date,
-            Subject = _sanitizer.Sanitize(request.Subject.Trim()),
+            Subject = request.Subject.Trim(),
             Type = request.Type,
-            Details = _sanitizer.Sanitize(request.Details),
+            Details = request.Details,
         };
 
         _repository.Add(entity);
@@ -146,9 +143,9 @@ public class FeedbackService : IFeedbackService
         if (entity is null || entity.UserId != userId)
             return null;
 
-        entity.Subject = _sanitizer.Sanitize(request.Subject.Trim());
+        entity.Subject = request.Subject.Trim();
         entity.Type = request.Type;
-        entity.Details = _sanitizer.Sanitize(request.Details);
+        entity.Details = request.Details;
 
         _repository.Update(entity);
         await _repository.SaveChangesAsync(ct);

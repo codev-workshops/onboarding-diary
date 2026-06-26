@@ -387,11 +387,11 @@ Exceeded limits return `429 Too Many Requests` with a `ProblemDetails` body and 
 
 ### Input Sanitization / XSS Prevention
 
-All user-provided string inputs are HTML-entity-escaped via `ISanitizer` (`HtmlSanitizer` implementation using `System.Text.Encodings.Web.HtmlEncoder`). Applied in every service's create/update methods across Tasks, Issues, Feedback, Notes, and Users.
+XSS prevention uses **output-time encoding** (the industry standard):
 
-Characters escaped: `<`, `>`, `&`, `"`, `'` → HTML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`, `&#x27;`).
-
-The Notes markdown content is escaped server-side; the frontend markdown renderer also escapes HTML on display (defense in depth).
+- **React (frontend)**: JSX text interpolation automatically escapes `<`, `>`, `&`, `"`, `'` — this is the primary XSS defense for HTML contexts.
+- **Markdown notes**: The `simpleMarkdownToHtml` renderer escapes HTML before converting markdown syntax, preventing injection.
+- **Server-side**: All user-provided string inputs are **trimmed** on create/update. An `ISanitizer` abstraction (`HtmlSanitizer` using `System.Text.Encodings.Web.HtmlEncoder`) is registered in DI and available for contexts that need explicit HTML encoding (e.g. server-rendered HTML). Raw text is stored in the database so that non-HTML consumers (emails, CSV/PDF reports, search) work correctly without decoding.
 
 ### Pagination Caps
 

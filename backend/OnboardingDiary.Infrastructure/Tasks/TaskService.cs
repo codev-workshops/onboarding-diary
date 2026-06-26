@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
 using OnboardingDiary.Application.Common.Exceptions;
-using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Tasks;
 using OnboardingDiary.Application.Tasks.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -18,14 +17,12 @@ public class TaskService : ITaskService
     private readonly ITaskRepository _repository;
     private readonly ICurrentUser _currentUser;
     private readonly AppDbContext _context;
-    private readonly ISanitizer _sanitizer;
 
-    public TaskService(ITaskRepository repository, ICurrentUser currentUser, AppDbContext context, ISanitizer sanitizer)
+    public TaskService(ITaskRepository repository, ICurrentUser currentUser, AppDbContext context)
     {
         _repository = repository;
         _currentUser = currentUser;
         _context = context;
-        _sanitizer = sanitizer;
     }
 
     public async Task<TaskDto> CreateAsync(CreateTaskRequest request, CancellationToken ct = default)
@@ -37,8 +34,8 @@ public class TaskService : ITaskService
         {
             UserId = userId,
             Date = request.Date,
-            Title = _sanitizer.Sanitize(request.Title.Trim()),
-            Description = request.Description is not null ? _sanitizer.Sanitize(request.Description) : null,
+            Title = request.Title.Trim(),
+            Description = request.Description,
             Category = request.Category,
             Status = request.Status,
             Priority = request.Priority,
@@ -156,8 +153,8 @@ public class TaskService : ITaskService
         var previousStatus = entity.Status;
 
         entity.Date = request.Date;
-        entity.Title = _sanitizer.Sanitize(request.Title.Trim());
-        entity.Description = request.Description is not null ? _sanitizer.Sanitize(request.Description) : null;
+        entity.Title = request.Title.Trim();
+        entity.Description = request.Description;
         entity.Category = request.Category;
         entity.Status = request.Status;
         entity.Priority = request.Priority;

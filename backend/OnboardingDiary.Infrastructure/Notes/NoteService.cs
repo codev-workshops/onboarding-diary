@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
 using OnboardingDiary.Application.Common.Exceptions;
-using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Notes;
 using OnboardingDiary.Application.Notes.Dtos;
 using OnboardingDiary.Domain.Entities;
@@ -14,14 +13,12 @@ public class NoteService : INoteService
 {
     private readonly INoteRepository _repository;
     private readonly ICurrentUser _currentUser;
-    private readonly ISanitizer _sanitizer;
     private const int MaxPinnedNotes = 5;
 
-    public NoteService(INoteRepository repository, ICurrentUser currentUser, ISanitizer sanitizer)
+    public NoteService(INoteRepository repository, ICurrentUser currentUser)
     {
         _repository = repository;
         _currentUser = currentUser;
-        _sanitizer = sanitizer;
     }
 
     public async Task<NoteDto> CreateAsync(CreateNoteRequest request, CancellationToken ct = default)
@@ -41,9 +38,9 @@ public class NoteService : INoteService
         {
             UserId = userId,
             Date = request.Date,
-            Title = _sanitizer.Sanitize(request.Title.Trim()),
-            Content = _sanitizer.Sanitize(request.Content),
-            Tags = (request.Tags ?? new List<string>()).Select(t => _sanitizer.Sanitize(t)).ToList(),
+            Title = request.Title.Trim(),
+            Content = request.Content,
+            Tags = request.Tags ?? new List<string>(),
             IsPinned = request.IsPinned,
         };
 
@@ -168,9 +165,9 @@ public class NoteService : INoteService
                 throw new BusinessRuleException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
         }
 
-        entity.Title = _sanitizer.Sanitize(request.Title.Trim());
-        entity.Content = _sanitizer.Sanitize(request.Content);
-        entity.Tags = (request.Tags ?? new List<string>()).Select(t => _sanitizer.Sanitize(t)).ToList();
+        entity.Title = request.Title.Trim();
+        entity.Content = request.Content;
+        entity.Tags = request.Tags ?? new List<string>();
         entity.IsPinned = request.IsPinned;
 
         _repository.Update(entity);

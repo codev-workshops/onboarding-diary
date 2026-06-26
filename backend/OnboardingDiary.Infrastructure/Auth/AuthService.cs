@@ -5,7 +5,6 @@ using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Auth.Dtos;
 using OnboardingDiary.Application.Common.Auth;
 using OnboardingDiary.Application.Common.Exceptions;
-using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Domain.Entities;
 using OnboardingDiary.Domain.Enums;
 using OnboardingDiary.Infrastructure.Persistence;
@@ -19,22 +18,19 @@ public class AuthService : IAuthService
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IEmailSender _emailSender;
     private readonly SecurityOptions _securityOptions;
-    private readonly ISanitizer _sanitizer;
 
     public AuthService(
         AppDbContext context,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IEmailSender emailSender,
-        IOptions<SecurityOptions> securityOptions,
-        ISanitizer sanitizer)
+        IOptions<SecurityOptions> securityOptions)
     {
         _context = context;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
         _emailSender = emailSender;
         _securityOptions = securityOptions.Value;
-        _sanitizer = sanitizer;
     }
 
     public async Task<RegisterResponse> RegisterAsync(RegisterRequest request)
@@ -47,8 +43,8 @@ public class AuthService : IAuthService
         {
             Email = request.Email,
             PasswordHash = _passwordHasher.Hash(request.Password),
-            Name = _sanitizer.Sanitize(request.Name.Trim()),
-            Department = _sanitizer.Sanitize(request.Department.Trim()),
+            Name = request.Name.Trim(),
+            Department = request.Department.Trim(),
             StartDate = request.StartDate,
             Role = Role.Recruit,
             IsActive = true

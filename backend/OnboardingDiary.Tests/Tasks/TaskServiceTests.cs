@@ -5,7 +5,6 @@ using OnboardingDiary.Application.Tasks.Dtos;
 using OnboardingDiary.Application.Tasks.Mapping;
 using OnboardingDiary.Domain.Entities;
 using OnboardingDiary.Domain.Enums;
-using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Infrastructure.Persistence;
 using OnboardingDiary.Infrastructure.Tasks;
 using TaskStatus = OnboardingDiary.Domain.Enums.TaskStatus;
@@ -62,7 +61,7 @@ public class TaskServiceTests : IDisposable
     private TaskService CreateService(Guid? userId = null, string role = "Recruit")
     {
         var currentUser = new FakeCurrentUser(userId ?? _userId, role);
-        return new TaskService(_repository, currentUser, _context, new HtmlSanitizer());
+        return new TaskService(_repository, currentUser, _context);
     }
 
     [Fact]

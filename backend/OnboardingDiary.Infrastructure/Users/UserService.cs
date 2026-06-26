@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Auth.Dtos;
 using OnboardingDiary.Application.Common;
-using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Users;
 using OnboardingDiary.Application.Users.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -17,20 +16,17 @@ public class UserService : IUserService
     private readonly ICurrentUser _currentUser;
     private readonly IEmailSender _emailSender;
     private readonly IAuditLogger _auditLogger;
-    private readonly ISanitizer _sanitizer;
 
     public UserService(
         AppDbContext context,
         ICurrentUser currentUser,
         IEmailSender emailSender,
-        IAuditLogger auditLogger,
-        ISanitizer sanitizer)
+        IAuditLogger auditLogger)
     {
         _context = context;
         _currentUser = currentUser;
         _emailSender = emailSender;
         _auditLogger = auditLogger;
-        _sanitizer = sanitizer;
     }
 
     public async Task<UserDto> GetCurrentUserAsync()
@@ -52,8 +48,8 @@ public class UserService : IUserService
         var user = await _context.Users.FindAsync(userId)
             ?? throw new KeyNotFoundException("User not found.");
 
-        user.Name = _sanitizer.Sanitize(request.Name.Trim());
-        user.Department = _sanitizer.Sanitize(request.Department.Trim());
+        user.Name = request.Name.Trim();
+        user.Department = request.Department.Trim();
         user.StartDate = request.StartDate;
         user.AvatarUrl = request.AvatarUrl;
 
