@@ -238,3 +238,87 @@ export interface UpdateNoteRequest {
   content: string;
   tags?: string[];
 }
+
+// Admin types
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  department: string;
+  startDate: string;
+  managerId: number | null;
+  managerName: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  department: string;
+  startDate?: string;
+}
+
+export interface UpdateUserRequest {
+  name: string;
+  email: string;
+  role: UserRole;
+  department: string;
+  startDate?: string;
+}
+
+export interface UserStatusRequest {
+  isActive: boolean;
+}
+
+export interface AssignManagerRequest {
+  managerId: number;
+}
+
+export interface UserFilterParams {
+  role?: UserRole;
+  department?: string;
+  isActive?: boolean;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface Department {
+  id: number;
+  name: string;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface CreateDepartmentRequest {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateDepartmentRequest {
+  name: string;
+  description?: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateCategoryRequest {
+  name: string;
+  description?: string;
+}

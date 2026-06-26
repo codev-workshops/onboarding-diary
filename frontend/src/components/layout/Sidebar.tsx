@@ -11,6 +11,7 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   roles?: UserRole[];
+  children?: { href: string; label: string }[];
 }
 
 const navItems: NavItem[] = [
@@ -78,6 +79,11 @@ const navItems: NavItem[] = [
       </svg>
     ),
     roles: [UserRole.Admin],
+    children: [
+      { href: '/admin/users', label: 'Users' },
+      { href: '/admin/departments', label: 'Departments' },
+      { href: '/admin/categories', label: 'Categories' },
+    ],
   },
 ];
 
@@ -114,13 +120,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <ul className="space-y-1">
             {filteredItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isParentActive = item.children?.some(
+                (child) => pathname === child.href || pathname.startsWith(child.href + '/')
+              );
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     onClick={onClose}
                     className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive
+                      isActive || isParentActive
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
@@ -128,6 +137,28 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     {item.icon}
                     {item.label}
                   </Link>
+                  {item.children && (isActive || isParentActive) && (
+                    <ul className="ml-8 mt-1 space-y-1">
+                      {item.children.map((child) => {
+                        const isChildActive = pathname === child.href;
+                        return (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              onClick={onClose}
+                              className={`block rounded-md px-3 py-1.5 text-sm transition-colors ${
+                                isChildActive
+                                  ? 'text-blue-700 font-medium'
+                                  : 'text-gray-500 hover:text-gray-900'
+                              }`}
+                            >
+                              {child.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}
