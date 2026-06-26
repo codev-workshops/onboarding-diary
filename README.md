@@ -108,7 +108,7 @@ dotnet test
 - **Token storage**: access token in memory, refresh token in localStorage (trade-off: simpler setup vs. XSS risk; httpOnly cookies recommended for production).
 - **401 interceptor**: on 401, the API client automatically attempts one refresh; on failure, clears tokens and redirects to `/login`.
 - **Protected routes**: wrap pages with `<ProtectedRoute>` to enforce authentication.
-- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder).
+- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard`, `/team`.
 
 ## Task Log Endpoints (`/api/tasks/`) — Phase 4
 
@@ -144,36 +144,72 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 | `/tasks`          | Task list with filters, pagination, CRUD    |
 | `/tasks/[id]`     | Task detail/edit page                       |
 
-## Notes Endpoints (`/api/notes/`) — Phase 7
+## Feedback Endpoints (`/api/feedback/`) — Phase 6
 
-| Method | Path        | Auth   | Description                                       |
-|--------|-------------|--------|---------------------------------------------------|
-| GET    | `/`         | Bearer | List notes (paginated/filtered/searched) -> 200   |
-| POST   | `/`         | Bearer | Create note -> 201                                |
-| GET    | `/{id}`     | Bearer | Get note by ID -> 200 (404 if not found/not owner)|
-| PUT    | `/{id}`     | Bearer | Update note -> 200                                |
-| DELETE | `/{id}`     | Bearer | Soft delete note -> 204                           |
+| Method | Path        | Auth   | Description                                        |
+|--------|-------------|--------|----------------------------------------------------|
+| GET    | `/`         | Bearer | List feedback (paginated/filtered) -> 200          |
+| POST   | `/`         | Bearer | Create feedback -> 201                             |
+| GET    | `/{id}`     | Bearer | Get feedback by ID -> 200 (404 if not found)       |
+| PUT    | `/{id}`     | Bearer | Update feedback -> 200                             |
+| DELETE | `/{id}`     | Bearer | Soft delete feedback -> 204                        |
 
-### Query parameters (GET `/api/notes`)
+### Query parameters (GET `/api/feedback`)
 
-`page`, `limit` (max 100, default 20), `search` (full-text across title/content/tags), `tags` (comma-separated), `startDate`, `endDate`.
+`page`, `limit` (max 100, default 20), `type` (Positive/Suggestion/Concern), `startDate`, `endDate`, `recruitId`, `department` (admin only).
 
 ### Business rules
 
-- **Owner-only**: notes are private to the recruit; no manager/admin read access.
-- **Tags**: optional, max 10 per note, each 1–30 chars, alphanumeric and hyphens only; stored as JSON.
-- **Pinning**: `IsPinned` boolean; server enforces max 5 pinned notes per user (on create and on update toggle false→true); returns 400 when exceeded.
-- **Pinned-first ordering**: pinned notes appear first in list results, then by date descending.
-- **Search**: case-insensitive match across title, content, and tags.
-- **Soft delete**: notes are never physically removed; `IsDeleted = true`.
-- **Content**: supports Markdown (rendered in the frontend editor).
+- **Soft delete**: feedback is never physically removed; `IsDeleted = true`.
+- **Owner-only update**: only the feedback author can edit their feedback.
+- **Delete**: owner or admin can soft-delete.
+- **Manager read-only**: managers may list/get an assigned recruit's feedback (US-FEED-03) but cannot create/update/delete it.
+- **Admin aggregated view**: admins can list all feedback across users, filterable by department, type, and date range (US-FEED-04).
+- **Access control**: recruits see only own feedback; managers see own + assigned recruits'; admins see all.
+
+### Validation rules (section 7.4)
+
+- **Date**: required, valid, not in the future.
+- **Subject**: required, 3–150 chars, trimmed.
+- **Type**: required, defined FeedbackType enum value.
+- **Details**: required, 20–5000 chars.
 
 ### Frontend routes
 
-| Route             | Description                                          |
-|-------------------|------------------------------------------------------|
-| `/notes`          | Notes list with search, tag chips, pinned section    |
-| `/notes/[id]`     | Note detail/edit page with Markdown editor           |
+| Route             | Description                                 |
+|-------------------|---------------------------------------------|
+| `/feedback`       | Feedback list with filters, pagination, CRUD|
+| `/feedback/[id]`  | Feedback detail/edit page                   |
+
+## Dashboard Endpoints (`/api/dashboard/`) — Phase 8
+
+| Method | Path        | Auth              | Description                                               |
+|--------|-------------|-------------------|-----------------------------------------------------------|
+| GET    | `/`         | Bearer            | Per-user dashboard summary (stats, recent entries, open issues) -> 200 |
+| GET    | `/team`     | ManagerOrAdmin    | Team recruit progress (completion %, open/escalated issues) -> 200 |
+
+### GET `/api/dashboard`
+
+Returns for the authenticated user:
+- `taskStats` — total/completed/inProgress/pending/completionRate (reuses Phase 4 `GetStatsAsync`)
+- `issueStats` — total/open/inProgress/resolved/closed/critical/escalated
+- `feedbackStats` — total/positive/suggestion/concern
+- `noteStats` — total/pinned
+- `recentEntries` — last 5 entries per category (tasks/issues/feedback/notes) with badge
+- `openIssues` — all open/in-progress issues sorted Critical-first
+
+### GET `/api/dashboard/team`
+
+Query: `?department=` (optional, honored for admins; managers always scoped to assigned recruits).
+
+Returns `{ recruits: [...] }` with per-recruit: id, name, department, startDate, daysSinceStart, completionPercentage, openIssueCount, escalatedIssueCount.
+
+### Frontend routes
+
+| Route        | Description                                                    |
+|--------------|----------------------------------------------------------------|
+| `/dashboard` | Recruit dashboard — progress bar, stat tiles, recent entries, open issues, quick actions |
+| `/team`      | Manager/Admin team dashboard — recruit cards with progress, issue badges |
 
 ## Authorization Policies
 
