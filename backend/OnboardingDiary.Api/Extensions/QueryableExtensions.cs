@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Api.DTOs.Common;
 
@@ -35,7 +36,8 @@ public static class QueryableExtensions
             return query;
 
         var parameter = Expression.Parameter(typeof(T), "x");
-        var property = typeof(T).GetProperty(propertyName);
+        var property = typeof(T).GetProperty(propertyName,
+            BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
         if (property == null)
             return query;

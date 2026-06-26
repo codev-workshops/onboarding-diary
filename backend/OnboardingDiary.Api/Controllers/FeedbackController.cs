@@ -96,8 +96,9 @@ public class FeedbackController : ControllerBase
 
     private int GetCurrentUserId()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.Parse(userIdClaim!);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new UnauthorizedAccessException("User not authenticated.");
+        return int.Parse(userIdClaim);
     }
 
     private string GetCurrentUserRole()
