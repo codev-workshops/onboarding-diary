@@ -390,3 +390,309 @@ export async function updateNote(id: string, req: UpdateNoteRequest): Promise<{ 
 export async function deleteNote(id: string): Promise<void> {
   return apiFetch<void>(`/api/notes/${id}`, { method: "DELETE" });
 }
+
+// --- User Profile & Admin User Management ---
+
+export interface UpdateProfileRequest {
+  name: string;
+  department: string;
+  startDate: string;
+  avatarUrl: string | null;
+}
+
+export interface UpdateRoleRequest {
+  role: string;
+}
+
+export interface UserListItemDto {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  department: string;
+  startDate: string;
+  isActive: boolean;
+}
+
+export interface PagedUsersResponse {
+  users: UserListItemDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export async function getMyProfile(): Promise<{ user: UserDto }> {
+  return apiFetch("/api/users/me");
+}
+
+export async function updateMyProfile(req: UpdateProfileRequest): Promise<{ user: UserDto }> {
+  return apiFetch("/api/users/me", {
+    method: "PUT",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function listUsers(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  department?: string;
+}): Promise<PagedUsersResponse> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.search) qs.set("search", params.search);
+  if (params.role) qs.set("role", params.role);
+  if (params.department) qs.set("department", params.department);
+  return apiFetch(`/api/users?${qs.toString()}`);
+}
+
+export async function updateUserRole(userId: string, role: string): Promise<{ user: UserDto }> {
+  return apiFetch(`/api/users/${userId}/role`, {
+    method: "PUT",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function deactivateUser(userId: string): Promise<void> {
+  return apiFetch(`/api/users/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+// --- Issue Log types ---
+
+export interface IssueDto {
+  id: string;
+  userId: string;
+  date: string;
+  title: string;
+  description: string;
+  severity: string;
+  status: string;
+  resolutionNotes: string | null;
+  resolvedAt: string | null;
+  isEscalated: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateIssueRequest {
+  date: string;
+  title: string;
+  description: string;
+  severity: string;
+  status?: string;
+  resolutionNotes?: string | null;
+}
+
+export interface UpdateIssueRequest {
+  title: string;
+  description: string;
+  severity: string;
+  status: string;
+  resolutionNotes: string | null;
+}
+
+export interface EscalateIssueRequest {
+  message: string;
+}
+
+export interface IssueListParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  severity?: string;
+  startDate?: string;
+  endDate?: string;
+  recruitId?: string;
+}
+
+export interface IssueListResponse {
+  issues: IssueDto[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+// --- Issue Log API ---
+
+export async function listIssues(params: IssueListParams = {}): Promise<IssueListResponse> {
+  const qs = new URLSearchParams();
+  if (params.page != null) qs.set("page", String(params.page));
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.status) qs.set("status", params.status);
+  if (params.severity) qs.set("severity", params.severity);
+  if (params.startDate) qs.set("startDate", params.startDate);
+  if (params.endDate) qs.set("endDate", params.endDate);
+  if (params.recruitId) qs.set("recruitId", params.recruitId);
+  const query = qs.toString();
+  return apiFetch<IssueListResponse>(`/api/issues${query ? `?${query}` : ""}`);
+}
+
+export async function getIssue(id: string): Promise<{ issue: IssueDto }> {
+  return apiFetch<{ issue: IssueDto }>(`/api/issues/${id}`);
+}
+
+export async function createIssue(req: CreateIssueRequest): Promise<{ issue: IssueDto }> {
+  return apiFetch<{ issue: IssueDto }>("/api/issues", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function updateIssue(id: string, req: UpdateIssueRequest): Promise<{ issue: IssueDto }> {
+  return apiFetch<{ issue: IssueDto }>(`/api/issues/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteIssue(id: string): Promise<void> {
+  return apiFetch<void>(`/api/issues/${id}`, { method: "DELETE" });
+}
+
+export async function escalateIssue(id: string, req: EscalateIssueRequest): Promise<{ issue: IssueDto }> {
+  return apiFetch<{ issue: IssueDto }>(`/api/issues/${id}/escalate`, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+// --- Feedback types ---
+
+export interface FeedbackDto {
+  id: string;
+  userId: string;
+  date: string;
+  subject: string;
+  type: string;
+  details: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeedbackListItemDto extends FeedbackDto {
+  authorName: string | null;
+  authorDepartment: string | null;
+}
+
+export interface CreateFeedbackRequest {
+  date: string;
+  subject: string;
+  type: string;
+  details: string;
+}
+
+export interface UpdateFeedbackRequest {
+  subject: string;
+  type: string;
+  details: string;
+}
+
+export interface FeedbackListParams {
+  page?: number;
+  limit?: number;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+  recruitId?: string;
+  department?: string;
+}
+
+export interface FeedbackListResponse {
+  feedback: FeedbackListItemDto[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+// --- Feedback API ---
+
+export async function listFeedback(params: FeedbackListParams = {}): Promise<FeedbackListResponse> {
+  const qs = new URLSearchParams();
+  if (params.page != null) qs.set("page", String(params.page));
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.type) qs.set("type", params.type);
+  if (params.startDate) qs.set("startDate", params.startDate);
+  if (params.endDate) qs.set("endDate", params.endDate);
+  if (params.recruitId) qs.set("recruitId", params.recruitId);
+  if (params.department) qs.set("department", params.department);
+  const query = qs.toString();
+  return apiFetch<FeedbackListResponse>(`/api/feedback${query ? `?${query}` : ""}`);
+}
+
+export async function getFeedback(id: string): Promise<{ feedback: FeedbackDto }> {
+  return apiFetch<{ feedback: FeedbackDto }>(`/api/feedback/${id}`);
+}
+
+export async function createFeedback(req: CreateFeedbackRequest): Promise<{ feedback: FeedbackDto }> {
+  return apiFetch<{ feedback: FeedbackDto }>("/api/feedback", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function updateFeedback(id: string, req: UpdateFeedbackRequest): Promise<{ feedback: FeedbackDto }> {
+  return apiFetch<{ feedback: FeedbackDto }>(`/api/feedback/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteFeedback(id: string): Promise<void> {
+  return apiFetch<void>(`/api/feedback/${id}`, { method: "DELETE" });
+}
+
+// --- Reports types ---
+
+export interface GenerateReportPayload {
+  startDate: string;
+  endDate: string;
+  categories: string[];
+  recruitId?: string | null;
+  format: string;
+}
+
+export interface GenerateReportResponse {
+  reportId: string;
+  downloadUrl: string;
+}
+
+export interface ReportListItemDto {
+  id: string;
+  generatedBy: string;
+  recruitId: string;
+  recruitName: string;
+  startDate: string;
+  endDate: string;
+  categories: string[];
+  format: string;
+  fileUrl: string | null;
+  createdAt: string;
+}
+
+export interface ReportListResponse {
+  reports: ReportListItemDto[];
+  total: number;
+}
+
+// --- Reports API ---
+
+export async function generateReport(payload: GenerateReportPayload): Promise<GenerateReportResponse> {
+  return apiFetch<GenerateReportResponse>("/api/reports/generate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function downloadReportUrl(id: string, format?: string): string {
+  const qs = format ? `?format=${format}` : "";
+  return `${API_BASE_URL}/api/reports/${id}/download${qs}`;
+}
+
+export async function listReports(page = 1, limit = 20): Promise<ReportListResponse> {
+  return apiFetch<ReportListResponse>(`/api/reports?page=${page}&limit=${limit}`);
+}

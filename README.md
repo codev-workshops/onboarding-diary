@@ -103,12 +103,33 @@ cd backend
 dotnet test
 ```
 
+## User Profile & Admin User Management Endpoints (`/api/users/`)
+
+| Method | Path              | Auth          | Description                                              |
+|--------|-------------------|---------------|----------------------------------------------------------|
+| GET    | `/me`             | Bearer        | Returns the authenticated user's profile -> 200          |
+| PUT    | `/me`             | Bearer        | Updates the authenticated user's profile -> 200          |
+| GET    | `/`               | AdminOnly     | Lists users with pagination, search, role/department filters -> 200 |
+| PUT    | `/{id}/role`      | AdminOnly     | Updates a user's role (sends email notification, writes audit log) -> 200 |
+| DELETE | `/{id}`           | AdminOnly     | Soft-deactivates a user (sets IsActive=false, revokes refresh tokens, writes audit log) -> 204 |
+
+**Self-lockout prevention**: admins cannot deactivate themselves or remove their own Admin role (returns 400).
+
+**Validation (section 7.1)**:
+- Name: 2–100 chars, letters/spaces/hyphens/apostrophes only
+- Department: must be in the predefined `Departments` constant
+- StartDate: not more than 30 days future / 1 year past
+- AvatarUrl: optional; valid HTTP/HTTPS URL when present
+- Role: must be a defined `Role` enum value
+
+**Audit logging (NFR 8.2)**: `UpdateRoleAsync` and `DeactivateUserAsync` write `AuditLog` rows stamped with the acting admin's user ID.
+
 ## Frontend Auth
 
 - **Token storage**: access token in memory, refresh token in localStorage (trade-off: simpler setup vs. XSS risk; httpOnly cookies recommended for production).
 - **401 interceptor**: on 401, the API client automatically attempts one refresh; on failure, clears tokens and redirects to `/login`.
 - **Protected routes**: wrap pages with `<ProtectedRoute>` to enforce authentication.
-- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder).
+- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder), `/profile` (user profile editor), `/admin/users` (admin user management table — role-gated).
 
 ## Task Log Endpoints (`/api/tasks/`) — Phase 4
 
@@ -174,6 +195,134 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 |-------------------|------------------------------------------------------|
 | `/notes`          | Notes list with search, tag chips, pinned section    |
 | `/notes/[id]`     | Note detail/edit page with Markdown editor           |
+
+## Issue Log Endpoints (`/api/issues/`) — Phase 5
+
+| Method | Path               | Auth   | Description                                       |
+|--------|--------------------|--------|---------------------------------------------------|
+| GET    | `/`                | Bearer | List issues (paginated/filtered) -> 200           |
+| POST   | `/`                | Bearer | Create issue -> 201                               |
+| GET    | `/{id}`            | Bearer | Get issue by ID -> 200 (404 if not found)         |
+| PUT    | `/{id}`            | Bearer | Update issue -> 200                               |
+| DELETE | `/{id}`            | Bearer | Soft delete issue -> 204                          |
+| POST   | `/{id}/escalate`   | Bearer | Escalate issue to manager -> 200                  |
+
+### Query parameters (GET `/api/issues`)
+
+`page`, `limit` (max 100, default 20), `status`, `severity`, `startDate`, `endDate`, `recruitId`.
+
+### Business rules
+
+- **Resolution notes required**: when `Status` is `Resolved` or `Closed`, `ResolutionNotes` must be non-empty.
+- **ResolvedAt auto-set**: set automatically when status transitions to Resolved/Closed; cleared when moved back.
+- **Status transition validation**: `Closed` -> `Open` is not allowed.
+- **Soft delete**: issues are never physically removed; `IsDeleted = true`.
+- **Manager read-only**: managers may list/get an assigned recruit's issues but cannot create/update/delete them.
+- **Escalate**: sets `IsEscalated = true` and sends an email notification to the recruit's manager.
+- **Access control**: recruits see only own issues; managers see own + assigned recruits'; admins see all.
+
+### Frontend routes
+
+| Route             | Description                                 |
+|-------------------|---------------------------------------------|
+| `/issues`         | Issue list with filters, pagination, CRUD   |
+| `/issues/[id]`    | Issue detail/edit page                      |
+
+## Feedback Endpoints (`/api/feedback/`) — Phase 6
+
+| Method | Path        | Auth   | Description                                        |
+|--------|-------------|--------|----------------------------------------------------|
+| GET    | `/`         | Bearer | List feedback (paginated/filtered) -> 200          |
+| POST   | `/`         | Bearer | Create feedback -> 201                             |
+| GET    | `/{id}`     | Bearer | Get feedback by ID -> 200 (404 if not found)       |
+| PUT    | `/{id}`     | Bearer | Update feedback -> 200                             |
+| DELETE | `/{id}`     | Bearer | Soft delete feedback -> 204                        |
+
+### Query parameters (GET `/api/feedback`)
+
+`page`, `limit` (max 100, default 20), `type` (Positive/Suggestion/Concern), `startDate`, `endDate`, `recruitId`, `department` (admin only).
+
+### Business rules
+
+- **Soft delete**: feedback is never physically removed; `IsDeleted = true`.
+- **Owner-only update**: only the feedback author can edit their feedback.
+- **Delete**: owner or admin can soft-delete.
+- **Manager read-only**: managers may list/get an assigned recruit's feedback (US-FEED-03) but cannot create/update/delete it.
+- **Admin aggregated view**: admins can list all feedback across users, filterable by department, type, and date range (US-FEED-04).
+- **Access control**: recruits see only own feedback; managers see own + assigned recruits'; admins see all.
+
+### Validation rules (section 7.4)
+
+- **Date**: required, valid, not in the future.
+- **Subject**: required, 3–150 chars, trimmed.
+- **Type**: required, defined FeedbackType enum value.
+- **Details**: required, 20–5000 chars.
+
+### Frontend routes
+
+| Route             | Description                                 |
+|-------------------|---------------------------------------------|
+| `/feedback`       | Feedback list with filters, pagination, CRUD|
+| `/feedback/[id]`  | Feedback detail/edit page                   |
+
+## Report Endpoints (`/api/reports/`) — Phase 9
+
+| Method | Path                | Auth   | Description                                                    |
+|--------|---------------------|--------|----------------------------------------------------------------|
+| POST   | `/generate`         | Bearer | Generate a report (PDF/CSV) -> 200 `{ reportId, downloadUrl }`|
+| GET    | `/{id}/download`    | Bearer | Download generated report file -> 200 file stream              |
+| GET    | `/`                 | Bearer | List reports (paginated, role-scoped) -> 200 `{ reports[], total }` |
+
+### Query parameters
+
+**POST `/generate`** body:
+- `startDate` (required), `endDate` (required, >= startDate, range <= 365 days)
+- `categories` (required, at least one of: `tasks`, `issues`, `feedback`, `notes`, or `all`)
+- `format` (required, `Pdf` or `Csv`)
+- `recruitId` (optional; required for manager/admin generating for another user)
+
+**GET `/`**: `page`, `limit` (max 100, default 20).
+
+**GET `/{id}/download`**: `?format=pdf|csv` (optional; defaults to report's stored format).
+
+### Business rules
+
+- **PDF generation**: uses QuestPDF (Community license) with headers (recruit name, department, date range, generated-by, generated-on) and category sections with formatted tables.
+- **CSV generation**: uses CsvHelper with proper field escaping; category-delimited sections in a single CSV file.
+- **Soft-deleted entries excluded**: global query filters apply; deleted tasks/issues/feedback/notes are not included.
+- **Access control**:
+  - Recruits: can only generate/view reports for themselves.
+  - Managers: can generate/view for themselves and assigned recruits.
+  - Admins: can generate/view for any user.
+- **Download access**: caller must have generated the report, be the subject, be admin, or be the subject's assigned manager.
+
+### Configuration
+
+| Key                  | Default                        | Description                     |
+|----------------------|--------------------------------|---------------------------------|
+| `Reports:StoragePath`| `{AppContext.BaseDirectory}/reports` | Directory for generated report files |
+
+### Packages
+
+| Package    | License    | Description              |
+|------------|------------|--------------------------|
+| `QuestPDF` | Community  | PDF report generation    |
+| `CsvHelper`| Apache 2.0 | CSV report generation    |
+
+**Note**: `QuestPDF.Settings.License = LicenseType.Community` is set at startup via `AddReportModule()`.
+
+### Frontend routes
+
+| Route             | Description                                              |
+|-------------------|----------------------------------------------------------|
+| `/reports`        | Reports list with download links + generate new report   |
+
+### Validation rules (section 7.6)
+
+- **StartDate**: required, valid date.
+- **EndDate**: required, valid, >= StartDate, range <= 365 days.
+- **Categories**: at least one; each must be `tasks`, `issues`, `feedback`, `notes`, or `all`.
+- **Format**: required, `Pdf` or `Csv`.
 
 ## Authorization Policies
 
