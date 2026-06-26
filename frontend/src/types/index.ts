@@ -112,6 +112,7 @@ export interface ErrorResponse {
   errors?: string[];
 }
 
+<<<<<<< HEAD
 export interface TaskResponse {
   id: number;
   userId: number;
@@ -121,10 +122,20 @@ export interface TaskResponse {
   category: string;
   status: TaskEntryStatus;
   priority: Priority;
+=======
+export interface FeedbackEntry {
+  id: number;
+  userId: number;
+  date: string;
+  subject: string;
+  type: FeedbackType;
+  details: string;
+>>>>>>> origin/feature/feedback-entries
   createdAt: string;
   updatedAt: string;
 }
 
+<<<<<<< HEAD
 export interface CreateTaskRequest {
   date: string;
   title: string;
@@ -198,4 +209,18 @@ export interface IssueFilters {
   pageSize?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+}
+
+export interface CreateFeedbackRequest {
+  date: string;
+  subject: string;
+  type: FeedbackType;
+  details: string;
+}
+
+export interface UpdateFeedbackRequest {
+  date?: string;
+  subject?: string;
+  type?: FeedbackType;
+  details?: string;
 }

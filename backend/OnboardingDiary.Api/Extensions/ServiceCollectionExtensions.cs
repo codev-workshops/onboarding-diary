@@ -12,11 +12,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ITaskRepository, TaskRepository>();
         services.AddScoped<IIssueRepository, IssueRepository>();
+        services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ITaskService, TaskService>();
         services.AddScoped<IIssueService, IssueService>();
+        services.AddScoped<IFeedbackService, FeedbackService>();
 
         services.AddSingleton<JwtTokenGenerator>();
 
