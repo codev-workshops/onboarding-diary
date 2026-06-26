@@ -103,12 +103,33 @@ cd backend
 dotnet test
 ```
 
+## User Profile & Admin User Management Endpoints (`/api/users/`)
+
+| Method | Path              | Auth          | Description                                              |
+|--------|-------------------|---------------|----------------------------------------------------------|
+| GET    | `/me`             | Bearer        | Returns the authenticated user's profile -> 200          |
+| PUT    | `/me`             | Bearer        | Updates the authenticated user's profile -> 200          |
+| GET    | `/`               | AdminOnly     | Lists users with pagination, search, role/department filters -> 200 |
+| PUT    | `/{id}/role`      | AdminOnly     | Updates a user's role (sends email notification, writes audit log) -> 200 |
+| DELETE | `/{id}`           | AdminOnly     | Soft-deactivates a user (sets IsActive=false, revokes refresh tokens, writes audit log) -> 204 |
+
+**Self-lockout prevention**: admins cannot deactivate themselves or remove their own Admin role (returns 400).
+
+**Validation (section 7.1)**:
+- Name: 2–100 chars, letters/spaces/hyphens/apostrophes only
+- Department: must be in the predefined `Departments` constant
+- StartDate: not more than 30 days future / 1 year past
+- AvatarUrl: optional; valid HTTP/HTTPS URL when present
+- Role: must be a defined `Role` enum value
+
+**Audit logging (NFR 8.2)**: `UpdateRoleAsync` and `DeactivateUserAsync` write `AuditLog` rows stamped with the acting admin's user ID.
+
 ## Frontend Auth
 
 - **Token storage**: access token in memory, refresh token in localStorage (trade-off: simpler setup vs. XSS risk; httpOnly cookies recommended for production).
 - **401 interceptor**: on 401, the API client automatically attempts one refresh; on failure, clears tokens and redirects to `/login`.
 - **Protected routes**: wrap pages with `<ProtectedRoute>` to enforce authentication.
-- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder).
+- **Pages**: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (placeholder), `/profile` (user profile editor), `/admin/users` (admin user management table — role-gated).
 
 ## Task Log Endpoints (`/api/tasks/`) — Phase 4
 
