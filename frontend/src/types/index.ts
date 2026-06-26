@@ -200,6 +200,17 @@ export interface IssueFilters {
   sortOrder?: 'asc' | 'desc';
 }
 
+export interface FeedbackEntry {
+  id: number;
+  userId: number;
+  date: string;
+  subject: string;
+  type: FeedbackType;
+  details: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateFeedbackRequest {
   date: string;
   subject: string;
@@ -321,4 +332,50 @@ export interface CreateCategoryRequest {
 export interface UpdateCategoryRequest {
   name: string;
   description?: string;
+}
+
+// Report types
+
+export interface ReportFilters {
+  dateFrom: string;
+  dateTo: string;
+  category?: string;
+  userId?: number;
+}
+
+export interface ReportPeriod {
+  dateFrom: string;
+  dateTo: string;
+}
+
+export interface ReportEntry {
+  id: number;
+  date: string;
+  title: string;
+  description: string | null;
+  status: string | null;
+  priority: string | null;
+  severity: string | null;
+  type: string | null;
+  category: string | null;
+  tags: string | null;
+}
+
+export interface ReportSection {
+  total: number;
+  completed: number;
+  resolved: number;
+  entries: ReportEntry[];
+}
+
+export interface ReportResponse {
+  reportPeriod: ReportPeriod;
+  generatedAt: string;
+  generatedBy: string;
+  generatedForUserId: number;
+  generatedForUserName: string;
+  tasks: ReportSection | null;
+  issues: ReportSection | null;
+  feedback: ReportSection | null;
+  notes: ReportSection | null;
 }

@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFeedbackService, FeedbackService>();
         services.AddScoped<INoteService, NoteService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<IReportService, ReportService>();
 
         services.AddSingleton<JwtTokenGenerator>();
 
