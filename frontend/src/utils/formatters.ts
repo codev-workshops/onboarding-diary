@@ -17,7 +17,7 @@ export function formatDateTime(dateString: string): string {
 }
 
 export function formatDateForInput(dateString: string): string {
-  return new Date(dateString).toISOString().split('T')[0];
+  return dateString.substring(0, 10);
 }
 
 export function getTodayString(): string {

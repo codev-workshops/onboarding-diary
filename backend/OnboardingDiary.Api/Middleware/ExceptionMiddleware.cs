@@ -43,6 +43,12 @@ public class ExceptionMiddleware
                 response.Message = exception.Message;
                 break;
 
+            case ForbiddenAccessException:
+                context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                response.StatusCode = (int)HttpStatusCode.Forbidden;
+                response.Message = exception.Message;
+                break;
+
             case UnauthorizedAccessException:
                 context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
                 response.StatusCode = (int)HttpStatusCode.Unauthorized;
