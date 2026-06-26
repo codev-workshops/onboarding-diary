@@ -128,26 +128,26 @@ export default function ReportsPage() {
             label="From (required)"
             value={dateFrom}
             max={getTodayString()}
-            onChange={(e) => setDateFrom(e.target.value)}
+            onChange={(e) => { setDateFrom(e.target.value); setReport(null); }}
           />
           <DatePicker
             label="To (required)"
             value={dateTo}
             max={getTodayString()}
-            onChange={(e) => setDateTo(e.target.value)}
+            onChange={(e) => { setDateTo(e.target.value); setReport(null); }}
           />
           <Select
             label="Category"
             options={categoryOptions}
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => { setCategory(e.target.value); setReport(null); }}
           />
           {canSelectUser && (
             <Select
               label="Recruit"
               options={recruitOptions}
               value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
+              onChange={(e) => { setSelectedUserId(e.target.value); setReport(null); }}
             />
           )}
         </div>

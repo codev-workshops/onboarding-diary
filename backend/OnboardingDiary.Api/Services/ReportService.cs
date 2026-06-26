@@ -114,7 +114,7 @@ public class ReportService : IReportService
             case UserRole.Manager:
                 var targetUser = await _context.Users.FindAsync(targetUserId)
                     ?? throw new KeyNotFoundException("Target user not found.");
-                if (targetUser.ManagerId != currentUserId)
+                if (targetUser.Role != UserRole.Recruit || targetUser.ManagerId != currentUserId)
                     throw new UnauthorizedAccessException("You can only generate reports for recruits assigned to you.");
                 break;
 
