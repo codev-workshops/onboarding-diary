@@ -19,7 +19,7 @@ public class AuthService : IAuthService
 
     public async Task<RegisterResponse> RegisterAsync(RegisterRequest request)
     {
-        if (await _userRepository.EmailExistsAsync(request.Email))
+        if (await _userRepository.EmailExistsAsync(request.Email.ToLowerInvariant()))
             throw new InvalidOperationException("Email is already registered.");
 
         var user = new User

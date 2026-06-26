@@ -10,7 +10,7 @@ public class PaginationParams
     public int PageSize
     {
         get => _pageSize;
-        set => _pageSize = value > MaxPageSize ? MaxPageSize : value;
+        set => _pageSize = value < 1 ? 1 : value > MaxPageSize ? MaxPageSize : value;
     }
 
     public string? SortBy { get; set; }
