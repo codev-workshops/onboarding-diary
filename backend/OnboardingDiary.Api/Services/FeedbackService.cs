@@ -2,6 +2,7 @@ using OnboardingDiary.Api.DTOs.Common;
 using OnboardingDiary.Api.DTOs.Feedback;
 using OnboardingDiary.Api.Entities;
 using OnboardingDiary.Api.Entities.Enums;
+using OnboardingDiary.Api.Exceptions;
 using OnboardingDiary.Api.Extensions;
 using OnboardingDiary.Api.Repositories;
 
@@ -44,7 +45,7 @@ public class FeedbackService : IFeedbackService
                 }
                 else
                 {
-                    throw new UnauthorizedAccessException("You can only view feedback for your assigned recruits.");
+                    throw new ForbiddenAccessException("You can only view feedback for your assigned recruits.");
                 }
             }
             else
@@ -102,7 +103,7 @@ public class FeedbackService : IFeedbackService
                 return MapToDto(entry);
         }
 
-        throw new UnauthorizedAccessException("You do not have access to this feedback entry.");
+        throw new ForbiddenAccessException("You do not have access to this feedback entry.");
     }
 
     public async Task<FeedbackResponseDto> CreateAsync(CreateFeedbackDto dto, int userId)
@@ -133,7 +134,7 @@ public class FeedbackService : IFeedbackService
             throw new KeyNotFoundException("Feedback entry not found.");
 
         if (entry.UserId != userId)
-            throw new UnauthorizedAccessException("You can only update your own feedback entries.");
+            throw new ForbiddenAccessException("You can only update your own feedback entries.");
 
         if (dto.Date.HasValue)
         {
@@ -165,7 +166,7 @@ public class FeedbackService : IFeedbackService
             throw new KeyNotFoundException("Feedback entry not found.");
 
         if (entry.UserId != userId)
-            throw new UnauthorizedAccessException("You can only delete your own feedback entries.");
+            throw new ForbiddenAccessException("You can only delete your own feedback entries.");
 
         await _feedbackRepository.DeleteAsync(entry);
     }
