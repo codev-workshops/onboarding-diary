@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, use } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import Table from '@/components/ui/Table';
 import Pagination from '@/components/ui/Pagination';
@@ -55,6 +55,24 @@ function formatStatusLabel(status: string): string {
   return status;
 }
 
+async function loadIssues(
+  statusFilter: IssueStatus | '',
+  severityFilter: IssueSeverity | '',
+  page: number,
+  sortBy: string,
+  sortDesc: boolean,
+) {
+  const response = await issueApi.getIssues({
+    status: statusFilter || undefined,
+    severity: severityFilter || undefined,
+    page,
+    pageSize: 10,
+    sortBy,
+    sortOrder: sortDesc ? 'desc' : 'asc',
+  });
+  return response.data;
+}
+
 export default function IssuesPage() {
   const [issues, setIssues] = useState<IssueEntry[]>([]);
   const [page, setPage] = useState(1);
@@ -66,7 +84,7 @@ export default function IssuesPage() {
   const [severityFilter, setSeverityFilter] = useState<IssueSeverity | ''>('');
   const [sortBy, setSortBy] = useState('Date');
   const [sortDesc, setSortDesc] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<IssueEntry | null>(null);
   const [deletingIssue, setDeletingIssue] = useState<IssueEntry | null>(null);
@@ -74,29 +92,27 @@ export default function IssuesPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchIssues = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await issueApi.getIssues({
-        status: statusFilter || undefined,
-        severity: severityFilter || undefined,
-        page,
-        pageSize: 10,
-        sortBy,
-        sortOrder: sortDesc ? 'desc' : 'asc',
+  useEffect(() => {
+    let cancelled = false;
+    loadIssues(statusFilter, severityFilter, page, sortBy, sortDesc)
+      .then((data) => {
+        if (cancelled) return;
+        setIssues(data.items);
+        setTotalPages(data.totalPages);
+        setTotalCount(data.totalCount);
+        setHasPrevious(data.hasPrevious);
+        setHasNext(data.hasNext);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setToast({ message: 'Failed to load issues.', type: 'error' });
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoading(false);
       });
-      const data = response.data;
-      setIssues(data.items);
-      setTotalPages(data.totalPages);
-      setTotalCount(data.totalCount);
-      setHasPrevious(data.hasPrevious);
-      setHasNext(data.hasNext);
-    } catch {
-      setToast({ message: 'Failed to load issues.', type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [statusFilter, severityFilter, page, sortBy, sortDesc]);
+    return () => { cancelled = true; };
+  }, [statusFilter, severityFilter, page, sortBy, sortDesc, refreshKey]);
 
   const handleSort = (key: string) => {
     if (sortBy === key) {
@@ -123,12 +139,12 @@ export default function IssuesPage() {
     setEditingIssue(null);
   };
 
-  const handleFormSuccess = (message: string) => {
+  const handleFormSuccess = useCallback((message: string) => {
     setToast({ message, type: 'success' });
     setIsFormOpen(false);
     setEditingIssue(null);
     setRefreshKey((k) => k + 1);
-  };
+  }, []);
 
   const handleDelete = async () => {
     if (!deletingIssue) return;
@@ -197,15 +213,6 @@ export default function IssuesPage() {
 
   return (
     <ProtectedRoute>
-      <IssueDataLoader
-        fetchIssues={fetchIssues}
-        statusFilter={statusFilter}
-        severityFilter={severityFilter}
-        page={page}
-        sortBy={sortBy}
-        sortDesc={sortDesc}
-        refreshKey={refreshKey}
-      />
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -293,31 +300,4 @@ export default function IssuesPage() {
       </div>
     </ProtectedRoute>
   );
-}
-
-function IssueDataLoader({
-  fetchIssues,
-  statusFilter,
-  severityFilter,
-  page,
-  sortBy,
-  sortDesc,
-  refreshKey,
-}: {
-  fetchIssues: () => Promise<void>;
-  statusFilter: IssueStatus | '';
-  severityFilter: IssueSeverity | '';
-  page: number;
-  sortBy: string;
-  sortDesc: boolean;
-  refreshKey: number;
-}) {
-  use(
-    React.useMemo(
-      () => fetchIssues(),
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [statusFilter, severityFilter, page, sortBy, sortDesc, refreshKey]
-    )
-  );
-  return null;
 }

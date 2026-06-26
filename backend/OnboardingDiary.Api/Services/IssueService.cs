@@ -19,6 +19,11 @@ public class IssueService : IIssueService
         _userRepository = userRepository;
     }
 
+    private static readonly HashSet<string> AllowedSortProperties = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Date", "Title", "Severity", "Status", "CreatedAt", "UpdatedAt"
+    };
+
     public async Task<PaginatedResponse<IssueResponseDto>> GetAllAsync(
         int currentUserId,
         UserRole currentUserRole,
@@ -37,7 +42,9 @@ public class IssueService : IIssueService
         query = _issueRepository.QueryBySeverity(query, severity);
         query = _issueRepository.QueryByUserId(query, userId);
 
-        var sortBy = pagination.SortBy ?? "Date";
+        var sortBy = AllowedSortProperties.Contains(pagination.SortBy ?? "Date")
+            ? pagination.SortBy ?? "Date"
+            : "Date";
         query = query.OrderByProperty(sortBy, pagination.SortDescending);
 
         var paginatedResult = await query
@@ -127,12 +134,13 @@ public class IssueService : IIssueService
         if (dto.Status.HasValue)
             issue.Status = dto.Status.Value;
 
-        if (dto.ResolutionNotes != null)
+        var effectiveStatus = dto.Status ?? issue.Status;
+        if (effectiveStatus is IssueStatus.Resolved or IssueStatus.Closed)
+            issue.ResolutionNotes = dto.ResolutionNotes ?? issue.ResolutionNotes;
+        else
             issue.ResolutionNotes = dto.ResolutionNotes;
 
-        var effectiveStatus = dto.Status ?? issue.Status;
-        var effectiveResolutionNotes = dto.ResolutionNotes ?? issue.ResolutionNotes;
-        ValidateResolutionNotes(effectiveStatus, effectiveResolutionNotes);
+        ValidateResolutionNotes(effectiveStatus, issue.ResolutionNotes);
 
         issue.UpdatedAt = DateTime.UtcNow;
 
