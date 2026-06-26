@@ -309,6 +309,7 @@ export async function getTaskStats(recruitId?: string): Promise<TaskStatsDto> {
   const qs = recruitId ? `?recruitId=${recruitId}` : "";
   return apiFetch<TaskStatsDto>(`/api/tasks/stats${qs}`);
 }
+<<<<<<< HEAD
 
 // --- Notes types ---
 
@@ -459,5 +460,104 @@ export async function updateUserRole(userId: string, role: string): Promise<{ us
 export async function deactivateUser(userId: string): Promise<void> {
   return apiFetch(`/api/users/${userId}`, {
     method: "DELETE",
+  });
+}
+
+// --- Issue Log types ---
+
+export interface IssueDto {
+  id: string;
+  userId: string;
+  date: string;
+  title: string;
+  description: string;
+  severity: string;
+  status: string;
+  resolutionNotes: string | null;
+  resolvedAt: string | null;
+  isEscalated: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateIssueRequest {
+  date: string;
+  title: string;
+  description: string;
+  severity: string;
+  status?: string;
+  resolutionNotes?: string | null;
+}
+
+export interface UpdateIssueRequest {
+  title: string;
+  description: string;
+  severity: string;
+  status: string;
+  resolutionNotes: string | null;
+}
+
+export interface EscalateIssueRequest {
+  message: string;
+}
+
+export interface IssueListParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  severity?: string;
+  startDate?: string;
+  endDate?: string;
+  recruitId?: string;
+}
+
+export interface IssueListResponse {
+  issues: IssueDto[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+// --- Issue Log API ---
+
+export async function listIssues(params: IssueListParams = {}): Promise<IssueListResponse> {
+  const qs = new URLSearchParams();
+  if (params.page != null) qs.set("page", String(params.page));
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.status) qs.set("status", params.status);
+  if (params.severity) qs.set("severity", params.severity);
+  if (params.startDate) qs.set("startDate", params.startDate);
+  if (params.endDate) qs.set("endDate", params.endDate);
+  if (params.recruitId) qs.set("recruitId", params.recruitId);
+  const query = qs.toString();
+  return apiFetch<IssueListResponse>(`/api/issues${query ? `?${query}` : ""}`);
+}
+
+export async function getIssue(id: string): Promise<{ issue: IssueDto }> {
+  return apiFetch<{ issue: IssueDto }>(`/api/issues/${id}`);
+}
+
+export async function createIssue(req: CreateIssueRequest): Promise<{ issue: IssueDto }> {
+  return apiFetch<{ issue: IssueDto }>("/api/issues", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function updateIssue(id: string, req: UpdateIssueRequest): Promise<{ issue: IssueDto }> {
+  return apiFetch<{ issue: IssueDto }>(`/api/issues/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteIssue(id: string): Promise<void> {
+  return apiFetch<void>(`/api/issues/${id}`, { method: "DELETE" });
+}
+
+export async function escalateIssue(id: string, req: EscalateIssueRequest): Promise<{ issue: IssueDto }> {
+  return apiFetch<{ issue: IssueDto }>(`/api/issues/${id}/escalate`, {
+    method: "POST",
+    body: JSON.stringify(req),
   });
 }

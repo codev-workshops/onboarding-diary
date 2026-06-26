@@ -196,6 +196,38 @@ This Task Log slice (Controller → Service → Repository → DTOs → Validato
 | `/notes`          | Notes list with search, tag chips, pinned section    |
 | `/notes/[id]`     | Note detail/edit page with Markdown editor           |
 
+## Issue Log Endpoints (`/api/issues/`) — Phase 5
+
+| Method | Path               | Auth   | Description                                       |
+|--------|--------------------|--------|---------------------------------------------------|
+| GET    | `/`                | Bearer | List issues (paginated/filtered) -> 200           |
+| POST   | `/`                | Bearer | Create issue -> 201                               |
+| GET    | `/{id}`            | Bearer | Get issue by ID -> 200 (404 if not found)         |
+| PUT    | `/{id}`            | Bearer | Update issue -> 200                               |
+| DELETE | `/{id}`            | Bearer | Soft delete issue -> 204                          |
+| POST   | `/{id}/escalate`   | Bearer | Escalate issue to manager -> 200                  |
+
+### Query parameters (GET `/api/issues`)
+
+`page`, `limit` (max 100, default 20), `status`, `severity`, `startDate`, `endDate`, `recruitId`.
+
+### Business rules
+
+- **Resolution notes required**: when `Status` is `Resolved` or `Closed`, `ResolutionNotes` must be non-empty.
+- **ResolvedAt auto-set**: set automatically when status transitions to Resolved/Closed; cleared when moved back.
+- **Status transition validation**: `Closed` -> `Open` is not allowed.
+- **Soft delete**: issues are never physically removed; `IsDeleted = true`.
+- **Manager read-only**: managers may list/get an assigned recruit's issues but cannot create/update/delete them.
+- **Escalate**: sets `IsEscalated = true` and sends an email notification to the recruit's manager.
+- **Access control**: recruits see only own issues; managers see own + assigned recruits'; admins see all.
+
+### Frontend routes
+
+| Route             | Description                                 |
+|-------------------|---------------------------------------------|
+| `/issues`         | Issue list with filters, pagination, CRUD   |
+| `/issues/[id]`    | Issue detail/edit page                      |
+
 ## Authorization Policies
 
 | Policy                | Requirement                                         |
