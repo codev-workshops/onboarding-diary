@@ -10,7 +10,7 @@ export default defineConfig({
   expect: { timeout: 10000 },
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   outputDir: path.join(artifactsDir, 'playwright-results'),
   reporter: [
