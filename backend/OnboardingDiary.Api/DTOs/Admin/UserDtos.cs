@@ -67,13 +67,13 @@ public class UserResponseDto
 public class UserStatusDto
 {
     [Required]
-    public bool IsActive { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class AssignManagerDto
 {
     [Required]
-    public int ManagerId { get; set; }
+    public int? ManagerId { get; set; }
 }
 
 public class UserFilterParams
