@@ -53,7 +53,7 @@ public class ReportService : IReportService
             expandedCategories, ct);
 
         var renderer = _renderers.FirstOrDefault(r => r.Format == request.Format)
-            ?? throw new InvalidOperationException($"No renderer found for format {request.Format}.");
+            ?? throw new BusinessRuleException($"No renderer found for format {request.Format}.");
 
         var content = renderer.Render(data);
         var extension = request.Format == ReportFormat.Pdf ? "pdf" : "csv";
@@ -94,7 +94,7 @@ public class ReportService : IReportService
         await EnforceDownloadAccess(currentUserId, report, role, ct);
 
         if (report.FileUrl is null)
-            throw new InvalidOperationException("Report file not available.");
+            throw new BusinessRuleException("Report file not available.");
 
         var stream = await _fileStore.LoadAsync(report.FileUrl, ct);
 

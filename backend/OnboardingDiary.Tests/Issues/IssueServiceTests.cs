@@ -5,6 +5,7 @@ using OnboardingDiary.Application.Issues.Dtos;
 using OnboardingDiary.Application.Issues.Mapping;
 using OnboardingDiary.Domain.Entities;
 using OnboardingDiary.Domain.Enums;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Infrastructure.Issues;
 using OnboardingDiary.Infrastructure.Persistence;
@@ -163,7 +164,7 @@ public class IssueServiceTests : IDisposable
         var service = CreateService();
         var created = await service.CreateAsync(ValidCreate(IssueStatus.Closed));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             service.UpdateAsync(
                 created.Id,
                 new UpdateIssueRequest("Test Issue", "A valid description that meets the minimum length",

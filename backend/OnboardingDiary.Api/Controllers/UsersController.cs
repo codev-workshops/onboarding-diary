@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnboardingDiary.Application.Auth;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Users;
 using OnboardingDiary.Application.Users.Dtos;
 using OnboardingDiary.Domain.Enums;
@@ -67,7 +68,7 @@ public class UsersController : ControllerBase
             throw new FluentValidation.ValidationException(validation.Errors);
 
         if (_currentUser.UserId == id && request.Role != Role.Admin)
-            throw new InvalidOperationException("You cannot remove Admin role from yourself.");
+            throw new BusinessRuleException("You cannot remove Admin role from yourself.");
 
         var user = await _userService.UpdateRoleAsync(id, request.Role);
         return Ok(new { User = user });
@@ -78,7 +79,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> DeactivateUser(Guid id)
     {
         if (_currentUser.UserId == id)
-            throw new InvalidOperationException("You cannot deactivate yourself.");
+            throw new BusinessRuleException("You cannot deactivate yourself.");
 
         await _userService.DeactivateUserAsync(id);
         return NoContent();

@@ -32,7 +32,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, CreateProblem(StatusCodes.Status401Unauthorized, exception.Message)),
             KeyNotFoundException => (StatusCodes.Status404NotFound, CreateProblem(StatusCodes.Status404NotFound, exception.Message)),
             FileNotFoundException => (StatusCodes.Status404NotFound, CreateProblem(StatusCodes.Status404NotFound, exception.Message)),
-            InvalidOperationException => (StatusCodes.Status400BadRequest, CreateProblem(StatusCodes.Status400BadRequest, exception.Message)),
+            BusinessRuleException => (StatusCodes.Status400BadRequest, CreateProblem(StatusCodes.Status400BadRequest, exception.Message)),
             _ => (StatusCodes.Status500InternalServerError, CreateServerError(exception))
         };
 

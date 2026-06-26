@@ -154,6 +154,31 @@ public class GlobalExceptionHandlerTests
         Assert.Equal(404, problem.Status);
     }
 
+    [Fact]
+    public async Task BusinessRuleException_Returns400()
+    {
+        var context = CreateContext();
+        var ex = new BusinessRuleException("Maximum of 5 pinned notes reached.");
+
+        await _handler.TryHandleAsync(context, ex, CancellationToken.None);
+
+        Assert.Equal(400, context.Response.StatusCode);
+        var problem = await ReadProblemDetails(context);
+        Assert.Equal(400, problem.Status);
+    }
+
+    [Fact]
+    public async Task InvalidOperationException_Returns500_AndIsLogged()
+    {
+        var context = CreateContext();
+        var ex = new InvalidOperationException("EF Core tracking error");
+
+        await _handler.TryHandleAsync(context, ex, CancellationToken.None);
+
+        Assert.Equal(500, context.Response.StatusCode);
+        Assert.True(_logger.ErrorLogged);
+    }
+
     private class TestLogger : ILogger<GlobalExceptionHandler>
     {
         public bool ErrorLogged { get; private set; }

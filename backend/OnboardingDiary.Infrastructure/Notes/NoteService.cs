@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Application.Auth;
 using OnboardingDiary.Application.Common;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Application.Notes;
 using OnboardingDiary.Application.Notes.Dtos;
@@ -33,7 +34,7 @@ public class NoteService : INoteService
             var pinnedCount = await _repository.Query()
                 .CountAsync(n => n.UserId == userId && n.IsPinned, ct);
             if (pinnedCount >= MaxPinnedNotes)
-                throw new InvalidOperationException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
+                throw new BusinessRuleException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
         }
 
         var entity = new Note
@@ -164,7 +165,7 @@ public class NoteService : INoteService
             var pinnedCount = await _repository.Query()
                 .CountAsync(n => n.UserId == userId && n.IsPinned, ct);
             if (pinnedCount >= MaxPinnedNotes)
-                throw new InvalidOperationException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
+                throw new BusinessRuleException("Maximum of 5 pinned notes reached. Unpin a note before pinning another.");
         }
 
         entity.Title = _sanitizer.Sanitize(request.Title.Trim());

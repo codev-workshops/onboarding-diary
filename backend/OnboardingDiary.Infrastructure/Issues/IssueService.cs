@@ -160,7 +160,7 @@ public class IssueService : IIssueService
         var previousStatus = entity.Status;
 
         if (InvalidTransitions.Contains((previousStatus, request.Status)))
-            throw new InvalidOperationException($"Cannot transition from {previousStatus} to {request.Status}.");
+            throw new BusinessRuleException($"Cannot transition from {previousStatus} to {request.Status}.");
 
         entity.Title = _sanitizer.Sanitize(request.Title.Trim());
         entity.Description = _sanitizer.Sanitize(request.Description);

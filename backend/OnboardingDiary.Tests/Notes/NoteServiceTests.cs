@@ -5,6 +5,7 @@ using OnboardingDiary.Application.Notes.Dtos;
 using OnboardingDiary.Application.Notes.Mapping;
 using OnboardingDiary.Domain.Entities;
 using OnboardingDiary.Domain.Enums;
+using OnboardingDiary.Application.Common.Exceptions;
 using OnboardingDiary.Application.Common.Security;
 using OnboardingDiary.Infrastructure.Notes;
 using OnboardingDiary.Infrastructure.Persistence;
@@ -104,7 +105,7 @@ public class NoteServiceTests : IDisposable
             await service.CreateAsync(ValidRequest($"Pinned {i}", isPinned: true));
         }
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(
             () => service.CreateAsync(ValidRequest("Pinned 6", isPinned: true)));
         Assert.Contains("5", ex.Message);
     }
@@ -121,7 +122,7 @@ public class NoteServiceTests : IDisposable
 
         var unpinned = await service.CreateAsync(ValidRequest("Unpinned", isPinned: false));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(
             () => service.UpdateAsync(unpinned.Id, new UpdateNoteRequest("Unpinned", "Content", null, true)));
         Assert.Contains("5", ex.Message);
     }
