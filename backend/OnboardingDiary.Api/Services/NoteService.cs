@@ -75,7 +75,7 @@ public class NoteService : INoteService
         }
 
         var sortBy = paginationParams.SortBy;
-        if (string.IsNullOrWhiteSpace(sortBy))
+        if (string.IsNullOrWhiteSpace(sortBy) || !AllowedSortFields.Contains(sortBy))
             sortBy = "Date";
 
         query = query.OrderByProperty(sortBy, paginationParams.SortDescending);
@@ -139,22 +139,14 @@ public class NoteService : INoteService
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _noteRepository.AddAsync(note);
-
-        if (processedTags.Length > 0)
+        foreach (var tag in processedTags)
         {
-            foreach (var tag in processedTags)
-            {
-                _context.NoteTags.Add(new NoteTag
-                {
-                    NoteEntryId = note.Id,
-                    Tag = tag
-                });
-            }
-            await _context.SaveChangesAsync();
+            note.Tags.Add(new NoteTag { Tag = tag });
         }
 
-        return await GetByIdAsync(note.Id, userId, "Admin");
+        await _noteRepository.AddAsync(note);
+
+        return await GetByIdWithoutAuthCheckAsync(note.Id);
     }
 
     public async Task<NoteResponseDto> UpdateAsync(int id, int currentUserId, UpdateNoteDto dto)
@@ -187,7 +179,7 @@ public class NoteService : INoteService
 
         await _context.SaveChangesAsync();
 
-        return await GetByIdAsync(note.Id, currentUserId, "Admin");
+        return await GetByIdWithoutAuthCheckAsync(note.Id);
     }
 
     public async Task DeleteAsync(int id, int currentUserId)
@@ -199,6 +191,18 @@ public class NoteService : INoteService
             throw new UnauthorizedAccessException("You can only delete your own notes.");
 
         await _noteRepository.DeleteAsync(note);
+    }
+
+    private static readonly HashSet<string> AllowedSortFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Date", "Title", "CreatedAt", "UpdatedAt"
+    };
+
+    private async Task<NoteResponseDto> GetByIdWithoutAuthCheckAsync(int id)
+    {
+        var note = await _noteRepository.GetByIdWithTagsAsync(id)
+            ?? throw new KeyNotFoundException("Note not found.");
+        return MapToResponseDto(note);
     }
 
     private static void ValidateDate(DateTime date)
