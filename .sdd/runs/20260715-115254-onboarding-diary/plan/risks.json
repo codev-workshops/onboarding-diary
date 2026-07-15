@@ -1,0 +1,106 @@
+{
+  "run_id": "20260715-115254-onboarding-diary",
+  "spec_revision": null,
+  "status": "BLOCKED_CLARIFICATION",
+  "risks": [
+    {
+      "id": "RISK-001",
+      "title": "Data lifetime conflicts with user expectations",
+      "severity": "high",
+      "likelihood": "high",
+      "affected_ids": ["REQ-015", "E005", "E005-S001", "G-A"],
+      "description": "The BRD requires database persistence while the invocation mandates in-memory SQLite; restart durability is undefined.",
+      "mitigation": "Answer Q-001 and make restart/reset behavior explicit in tests and user-facing documentation.",
+      "owner_or_decision": "Human product/technical owner via Q-001 and ADR-001",
+      "generation_blocked": true
+    },
+    {
+      "id": "RISK-002",
+      "title": "Privilege escalation through undefined role assignment",
+      "severity": "critical",
+      "likelihood": "medium",
+      "affected_ids": ["REQ-001", "REQ-003", "REQ-004", "E001", "G-A", "G-B"],
+      "description": "Public sign-up could allow selection of Manager or Admin unless role assignment is defined.",
+      "mitigation": "Approve role provisioning and enforce server-side assignment with negative tests.",
+      "owner_or_decision": "Human security/product owner via Q-002 and ADR-002",
+      "generation_blocked": true
+    },
+    {
+      "id": "RISK-003",
+      "title": "Cross-user data exposure",
+      "severity": "critical",
+      "likelihood": "high",
+      "affected_ids": ["REQ-003", "REQ-004", "REQ-005", "REQ-006", "REQ-007", "REQ-008", "REQ-009", "REQ-011", "REQ-012", "REQ-013", "G-B", "G-C", "G-D", "G-E", "G-F"],
+      "description": "Record ownership, manager oversight, and admin edit powers are not defined.",
+      "mitigation": "Approve a role/ownership matrix and test every endpoint and download against it.",
+      "owner_or_decision": "Human product/security owner via Q-003 and Q-004",
+      "generation_blocked": true
+    },
+    {
+      "id": "RISK-004",
+      "title": "Inconsistent or untestable validation",
+      "severity": "high",
+      "likelihood": "high",
+      "affected_ids": ["REQ-002", "REQ-005", "REQ-006", "REQ-007", "REQ-008", "REQ-017", "E002", "E005", "G-C", "G-D", "G-G"],
+      "description": "Most required fields, enum values, lengths, date rules, and tags are unspecified.",
+      "mitigation": "Approve field-level validation tables before generation.",
+      "owner_or_decision": "Human product owner via Q-005 and Q-007",
+      "generation_blocked": true
+    },
+    {
+      "id": "RISK-005",
+      "title": "Weak or incompatible authentication implementation",
+      "severity": "high",
+      "likelihood": "medium",
+      "affected_ids": ["REQ-001", "REQ-003", "REQ-017", "E001-S001", "G-A"],
+      "description": "Session mechanism, password rules, expiration, logout, and failed-login behavior are unspecified.",
+      "mitigation": "Approve a simple authentication contract and required security acceptance tests.",
+      "owner_or_decision": "Human security/technical owner via Q-010 and ADR-003",
+      "generation_blocked": true
+    },
+    {
+      "id": "RISK-006",
+      "title": "Dashboard metrics do not match stakeholder meaning",
+      "severity": "medium",
+      "likelihood": "high",
+      "affected_ids": ["REQ-009", "REQ-010", "E003", "G-E"],
+      "description": "Scope, recent ordering/count, completion denominator, and open statuses are undefined.",
+      "mitigation": "Approve exact formulas and seeded examples before implementation.",
+      "owner_or_decision": "Human product owner via Q-008 and ADR-004",
+      "generation_blocked": true
+    },
+    {
+      "id": "RISK-007",
+      "title": "Downloaded reports are incomplete, inconsistent, or leak data",
+      "severity": "high",
+      "likelihood": "high",
+      "affected_ids": ["REQ-011", "REQ-012", "REQ-013", "E004", "G-F"],
+      "description": "Report columns, ordering, date boundaries, formatting, and empty/failure behavior are unspecified.",
+      "mitigation": "Approve a report contract per format and reuse the authorization scope of on-screen data.",
+      "owner_or_decision": "Human product/security owner via Q-009 and ADR-005",
+      "generation_blocked": true
+    },
+    {
+      "id": "RISK-008",
+      "title": "Responsive and recovery claims cannot be objectively evaluated",
+      "severity": "medium",
+      "likelihood": "high",
+      "affected_ids": ["REQ-014", "REQ-017", "E005", "G-G"],
+      "description": "No browser/viewport matrix or user-visible failure behavior is defined.",
+      "mitigation": "Approve Q-013 and convert it into a Playwright/failure test matrix.",
+      "owner_or_decision": "Human product/technical owner via Q-013",
+      "generation_blocked": true
+    },
+    {
+      "id": "RISK-009",
+      "title": "Extension scope causes uncontrolled feature growth",
+      "severity": "high",
+      "likelihood": "high",
+      "affected_ids": ["REQ-018", "E006", "G-H"],
+      "description": "The BRD requires two additional features but does not select them or define whether they belong in the current plan.",
+      "mitigation": "Select exactly two features, define exclusions, and revise E006 stories without renumbering.",
+      "owner_or_decision": "Human product owner via Q-012 and ADR-006",
+      "generation_blocked": true
+    }
+  ]
+}

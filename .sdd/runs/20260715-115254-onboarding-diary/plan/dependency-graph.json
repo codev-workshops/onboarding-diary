@@ -1,0 +1,53 @@
+{
+  "run_id": "20260715-115254-onboarding-diary",
+  "spec_revision": null,
+  "status": "BLOCKED_CLARIFICATION",
+  "graph_type": "DAG",
+  "nodes": [
+    {"id": "G-A", "story_ids": ["E005-S001", "E001-S001", "E001-S002"], "blocked": true},
+    {"id": "G-B", "story_ids": ["E001-S003", "E001-S004"], "blocked": true},
+    {"id": "G-C", "story_ids": ["E002-S001", "E002-S002"], "blocked": true},
+    {"id": "G-D", "story_ids": ["E002-S003", "E002-S004"], "blocked": true},
+    {"id": "G-E", "story_ids": ["E003-S001", "E003-S002"], "blocked": true},
+    {"id": "G-F", "story_ids": ["E004-S001", "E004-S002"], "blocked": true},
+    {"id": "G-G", "story_ids": ["E005-S002", "E005-S003"], "blocked": true},
+    {"id": "G-H", "story_ids": ["E006-S001", "E006-S002"], "blocked": true}
+  ],
+  "edges": [
+    {"from": "G-A", "to": "G-B", "type": "hard", "reason": "Role enforcement and administration require the authenticated user/profile foundation.", "required_contract_or_artifact": "Approved authentication, profile, and data-lifetime contracts"},
+    {"from": "G-B", "to": "G-C", "type": "hard", "reason": "Task and issue operations require approved ownership and role authorization.", "required_contract_or_artifact": "Authorization and oversight policy"},
+    {"from": "G-B", "to": "G-D", "type": "hard", "reason": "Feedback and note operations require approved ownership and role authorization.", "required_contract_or_artifact": "Authorization and oversight policy"},
+    {"from": "G-C", "to": "G-E", "type": "hard", "reason": "Dashboard progress and open-issue calculations consume task and issue contracts.", "required_contract_or_artifact": "Task/issue models and status definitions"},
+    {"from": "G-D", "to": "G-E", "type": "hard", "reason": "Dashboard counts and recent entries include feedback and notes.", "required_contract_or_artifact": "Feedback/note read contracts"},
+    {"from": "G-B", "to": "G-F", "type": "hard", "reason": "Manager reports must enforce oversight authorization.", "required_contract_or_artifact": "Manager-to-recruit relationship and authorization policy"},
+    {"from": "G-C", "to": "G-F", "type": "hard", "reason": "Task and issue report content consumes their stable data contracts.", "required_contract_or_artifact": "Task/issue schemas and query behavior"},
+    {"from": "G-D", "to": "G-F", "type": "hard", "reason": "Feedback and combined report content consumes the feedback contract.", "required_contract_or_artifact": "Feedback schema and query behavior"},
+    {"from": "G-B", "to": "G-G", "type": "hard", "reason": "Cross-feature authorization failures cannot be validated before role behavior exists.", "required_contract_or_artifact": "Stable protected navigation and API policy"},
+    {"from": "G-C", "to": "G-G", "type": "hard", "reason": "Responsive and failure validation covers task/issue flows.", "required_contract_or_artifact": "Completed task/issue UI and API"},
+    {"from": "G-D", "to": "G-G", "type": "hard", "reason": "Responsive and failure validation covers feedback/note flows.", "required_contract_or_artifact": "Completed feedback/note UI and API"},
+    {"from": "G-E", "to": "G-G", "type": "hard", "reason": "Dashboard responsive and empty/error behavior is part of hardening.", "required_contract_or_artifact": "Completed dashboard"},
+    {"from": "G-F", "to": "G-G", "type": "hard", "reason": "Report controls, downloads, and generation failures are part of hardening.", "required_contract_or_artifact": "Completed reporting slice"},
+    {"from": "G-G", "to": "G-H", "type": "hard", "reason": "The BRD places extensions after the working core application, and feature selection may touch any core component.", "required_contract_or_artifact": "Approved, regression-tested core and two selected extension specifications"}
+  ],
+  "execution_waves": [
+    ["G-A"],
+    ["G-B"],
+    ["G-C", "G-D"],
+    ["G-E", "G-F"],
+    ["G-G"],
+    ["G-H"]
+  ],
+  "parallel_ownership_notes": [
+    {"wave": 3, "groups": ["G-C", "G-D"], "condition": "Parallel-safe only after shared diary navigation, API conventions, and schema boundaries are fixed by contract; coordinate shared files."},
+    {"wave": 4, "groups": ["G-E", "G-F"], "condition": "Parallel-safe because both consume stable diary contracts; avoid concurrent edits to shared query/authorization modules."}
+  ],
+  "validation": {
+    "acyclic": true,
+    "all_group_nodes_present": true,
+    "all_edge_references_resolved": true,
+    "all_nodes_reachable_from_a_root": true,
+    "root_nodes": ["G-A"],
+    "hard_edges_have_concrete_reasons": true,
+    "known_parallel_ownership_conflicts_disclosed": true
+  }
+}
