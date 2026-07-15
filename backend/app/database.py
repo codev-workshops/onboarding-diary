@@ -24,6 +24,13 @@ CREATE TABLE sessions (
     expires_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE manager_assignments (
+    recruit_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    manager_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    CHECK (recruit_id != manager_id)
+);
 """
 
 
@@ -59,6 +66,14 @@ class Database:
     ) -> sqlite3.Row | None:
         with self.lock:
             return self.connection.execute(query, tuple(parameters)).fetchone()
+
+    def fetchall(
+        self,
+        query: str,
+        parameters: Iterable[object] = (),
+    ) -> list[sqlite3.Row]:
+        with self.lock:
+            return self.connection.execute(query, tuple(parameters)).fetchall()
 
     def bootstrap_admin(self, email: str, password: str) -> None:
         now = datetime.now(UTC)

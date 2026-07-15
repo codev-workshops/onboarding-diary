@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 
 test("signup, login, profile update, invalid login, and logout", async ({
   page,
-}) => {
+}, testInfo) => {
+  const email = `browser-${testInfo.project.name}@example.com`;
   await page.goto("/");
 
   await page.getByLabel("Email").fill("missing@example.com");
@@ -13,7 +14,7 @@ test("signup, login, profile update, invalid login, and logout", async ({
 
   await page.getByRole("button", { name: "Create a Recruit account" }).click();
   await page.getByLabel("Name").fill("Browser Recruit");
-  await page.getByLabel("Email").fill("browser@example.com");
+  await page.getByLabel("Email").fill(email);
   await page.getByLabel("Department").fill("Engineering");
   await page.getByLabel("Start date").fill("2026-07-15");
   await page.getByLabel("Password").fill("browser-password");
@@ -21,7 +22,7 @@ test("signup, login, profile update, invalid login, and logout", async ({
   await page.getByRole("button", { name: "Sign up" }).click();
   expect((await signupResponse).status()).toBe(201);
 
-  await expect(page.getByLabel("Email")).toHaveValue("browser@example.com");
+  await expect(page.getByLabel("Email")).toHaveValue(email);
   await page.getByLabel("Password").fill("browser-password");
   const loginResponse = page.waitForResponse("**/api/auth/login");
   await page.getByRole("button", { name: "Log in" }).click();
@@ -49,13 +50,16 @@ test("signup, login, profile update, invalid login, and logout", async ({
 });
 
 
-test("signup network failure remains visible and retryable", async ({ page }) => {
+test("signup network failure remains visible and retryable", async ({
+  page,
+}, testInfo) => {
+  const email = `signup-network-${testInfo.project.name}@example.com`;
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto("/");
   await page.getByRole("button", { name: "Create a Recruit account" }).click();
   await page.getByLabel("Name").fill("Network Recruit");
-  await page.getByLabel("Email").fill("signup-network@example.com");
+  await page.getByLabel("Email").fill(email);
   await page.getByLabel("Department").fill("Engineering");
   await page.getByLabel("Start date").fill("2026-07-15");
   await page.getByLabel("Password").fill("network-password");
@@ -71,21 +75,19 @@ test("signup network failure remains visible and retryable", async ({ page }) =>
   await expect(page.getByRole("alert")).toHaveText(
     "Unable to reach the server; please retry",
   );
-  await expect(page.getByLabel("Email")).toHaveValue(
-    "signup-network@example.com",
-  );
+  await expect(page.getByLabel("Email")).toHaveValue(email);
   expect(pageErrors).toEqual([]);
 });
 
 
 test("profile network failure preserves the form and application", async ({
   page,
-}) => {
+}, testInfo) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   const profile = {
     name: "Profile Network Recruit",
-    email: "profile-network@example.com",
+    email: `profile-network-${testInfo.project.name}@example.com`,
     department: "Engineering",
     start_date: "2026-07-15",
     password: "network-password",

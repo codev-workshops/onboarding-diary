@@ -81,5 +81,10 @@ The Playwright command starts both servers with isolated local bootstrap values.
 - `GET /api/profile`
 - `PATCH /api/profile`
 - `GET /api/health`
+- `GET/POST /api/admin/users`
+- `GET/PATCH/DELETE /api/admin/users/{user_id}`
+- `PUT/DELETE /api/admin/recruits/{recruit_id}/manager`
 
 Passwords are stored as salted PBKDF2-HMAC-SHA256 hashes with 310,000 iterations. Login uses an opaque server-side session in an eight-hour `HttpOnly`, `SameSite=Lax` cookie.
+
+Public sign-up always creates a Recruit. Admins create Manager/Admin users and maintain each Recruit's optional single Manager assignment. Role changes invalidate the affected user's sessions and remove invalid assignments.

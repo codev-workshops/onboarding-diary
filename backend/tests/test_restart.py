@@ -26,6 +26,40 @@ def test_restart_resets_users_and_sessions_and_rebootstraps_admin(
         )
         first_token = first.cookies.get("session_id")
         assert first_token is not None
+        first.cookies.clear()
+        assert (
+            first.post(
+                "/api/auth/login",
+                json={
+                    "email": "admin@example.com",
+                    "password": "bootstrap-password",
+                },
+            ).status_code
+            == 200
+        )
+        manager = first.post(
+            "/api/admin/users",
+            json={
+                "email": "manager@example.com",
+                "password": "manager-password",
+                "name": "Restart Manager",
+                "role": "Manager",
+                "department": "Engineering",
+                "start_date": "2026-07-15",
+            },
+        )
+        assert manager.status_code == 201
+        assignment = first.put(
+            "/api/admin/recruits/2/manager",
+            json={"manager_id": manager.json()["id"]},
+        )
+        assert assignment.status_code == 200
+        assert (
+            first.app.state.database.fetchone(
+                "SELECT COUNT(*) AS count FROM manager_assignments"
+            )["count"]
+            == 1
+        )
 
     with TestClient(app) as restarted:
         stale_session = restarted.get(
@@ -53,3 +87,7 @@ def test_restart_resets_users_and_sessions_and_rebootstraps_admin(
             "SELECT COUNT(*) AS count FROM users"
         )
         assert count["count"] == 1
+        assignments = restarted.app.state.database.fetchone(
+            "SELECT COUNT(*) AS count FROM manager_assignments"
+        )
+        assert assignments["count"] == 0

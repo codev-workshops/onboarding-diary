@@ -1,5 +1,6 @@
 import re
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -107,3 +108,61 @@ class ProfileResponse(BaseModel):
     role: str
     department: str
     start_date: date
+
+
+UserRole = Literal["Recruit", "Manager", "Admin"]
+
+
+class AdminUserCreate(SignupRequest):
+    role: UserRole
+
+
+class AdminUserPatch(StrictModel):
+    email: str | None = None
+    name: str | None = None
+    department: str | None = None
+    start_date: date | None = None
+    role: UserRole | None = None
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str | None) -> str | None:
+        if value is None:
+            raise ValueError("Email cannot be null")
+        return normalize_email(value)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str | None) -> str | None:
+        if value is None:
+            raise ValueError("Name cannot be null")
+        return normalize_bounded_text(value, "Name")
+
+    @field_validator("department")
+    @classmethod
+    def validate_department(cls, value: str | None) -> str | None:
+        if value is None:
+            raise ValueError("Department cannot be null")
+        return normalize_bounded_text(value, "Department")
+
+    @field_validator("start_date")
+    @classmethod
+    def validate_start_date(cls, value: date | None) -> date | None:
+        if value is None:
+            raise ValueError("Start date cannot be null")
+        return value
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: UserRole | None) -> UserRole | None:
+        if value is None:
+            raise ValueError("Role cannot be null")
+        return value
+
+
+class AdminUserResponse(ProfileResponse):
+    assigned_manager_id: int | None = None
+
+
+class ManagerAssignmentRequest(StrictModel):
+    manager_id: int
