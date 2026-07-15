@@ -1,7 +1,7 @@
 {
   "run_id": "20260715-115254-onboarding-diary",
   "spec_revision": null,
-  "status": "BLOCKED_CLARIFICATION",
+  "status": "READY_FOR_APPROVAL",
   "epics": [
     {
       "id": "E001",
@@ -11,9 +11,9 @@
       "requirement_ids": ["REQ-001", "REQ-002", "REQ-003", "REQ-004", "REQ-013"],
       "scope": ["Email/password access", "User profile", "Role enforcement", "Manager oversight relationship", "Admin user management"],
       "exclusions": ["External identity providers", "MFA", "Password reset unless approved"],
-      "dependencies": ["Approval of Q-002 through Q-005 and Q-010"],
+      "dependencies": ["Mandated stack and bootstrap Admin configuration"],
       "risk_ids": ["RISK-002", "RISK-003", "RISK-005"],
-      "completion_criteria": ["All E001 stories meet their acceptance criteria", "A complete role matrix is approved and tested", "No protected operation lacks an authorization test"]
+      "completion_criteria": ["All E001 stories meet their acceptance criteria", "The documented role/ownership matrix is tested", "No protected operation lacks an authorization test"]
     },
     {
       "id": "E002",
@@ -22,8 +22,8 @@
       "business_value": "Creates the primary record of the recruit's onboarding journey.",
       "requirement_ids": ["REQ-005", "REQ-006", "REQ-007", "REQ-008"],
       "scope": ["Task log", "Issue log", "Feedback", "Additional notes", "Specified filters"],
-      "exclusions": ["Search, attachments, comments, sharing, and unapproved lifecycle operations"],
-      "dependencies": ["E001 access rules", "Approval of Q-006 and Q-007"],
+      "exclusions": ["Search, attachments, comments, sharing, and any lifecycle operation outside the specified full CRUD contract"],
+      "dependencies": ["E001 access rules", "Approved field and lifecycle contract in specification.md"],
       "risk_ids": ["RISK-003", "RISK-004"],
       "completion_criteria": ["All four diary record types meet approved lifecycle and validation criteria", "Ownership and role restrictions are verified"]
     },
@@ -34,10 +34,10 @@
       "business_value": "Gives users an at-a-glance view of onboarding activity and blockers.",
       "requirement_ids": ["REQ-009", "REQ-010"],
       "scope": ["Counts", "Recent entries", "Task progress", "Open issues"],
-      "exclusions": ["Unapproved charts, trends, goals, or analytics"],
-      "dependencies": ["E002 diary data", "Approval of Q-008"],
+      "exclusions": ["Charts, trends, goals, and analytics"],
+      "dependencies": ["E002 diary data", "Approved calculations in specification.md"],
       "risk_ids": ["RISK-006"],
-      "completion_criteria": ["Calculations and visibility scope are approved", "Seeded boundary cases produce verified dashboard results"]
+      "completion_criteria": ["Specified calculations and visibility scope are implemented", "Seeded boundary cases produce verified dashboard results"]
     },
     {
       "id": "E004",
@@ -47,7 +47,7 @@
       "requirement_ids": ["REQ-011", "REQ-012", "REQ-013"],
       "scope": ["Task, issue, feedback, and combined reports", "PDF", "CSV", "Manager scope enforcement"],
       "exclusions": ["Scheduled reports", "Email delivery", "External BI integrations"],
-      "dependencies": ["E001 authorization", "E002 diary data", "Approval of Q-004 and Q-009"],
+      "dependencies": ["E001 authorization", "E002 diary data", "Approved report contract in specification.md"],
       "risk_ids": ["RISK-003", "RISK-007"],
       "completion_criteria": ["Each report type is content-verified in both formats", "Unauthorized and out-of-scope downloads are denied"]
     },
@@ -58,22 +58,25 @@
       "business_value": "Makes the application runnable, usable, and independently evaluable without unnecessary infrastructure.",
       "requirement_ids": ["REQ-014", "REQ-015", "REQ-016", "REQ-017"],
       "scope": ["React/Vite/Tailwind", "FastAPI", "In-memory SQLite", "Responsive behavior", "Approved errors"],
-      "exclusions": ["Production hosting", "Microservices", "Distributed persistence", "Unapproved observability systems"],
-      "dependencies": ["Approval of Q-001 and Q-013"],
+      "exclusions": ["Production hosting", "Microservices", "Distributed persistence", "External observability systems"],
+      "dependencies": ["Mandated single-process ephemeral lifecycle", "Approved viewport/error contract in specification.md"],
       "risk_ids": ["RISK-001", "RISK-004", "RISK-008"],
-      "completion_criteria": ["Mandated stack is verifiable", "Data lifetime is documented and tested", "Approved viewport and negative scenarios pass"]
+      "completion_criteria": ["Mandated stack is verifiable", "Ephemeral data lifetime is documented and tested", "Specified viewport and negative scenarios pass"]
     },
     {
       "id": "E006",
-      "title": "Approved extension features",
-      "objective": "Deliver exactly the additional feature scope approved for the exercise.",
-      "business_value": "Satisfies the BRD extension instruction without introducing unapproved scope.",
+      "title": "Deferred post-MVP extension features",
+      "objective": "Preserve stable planning placeholders for two extensions without including them in MVP generation scope.",
+      "business_value": "Keeps the BRD extension intent traceable while protecting the simple core MVP from unapproved scope.",
       "requirement_ids": ["REQ-018"],
-      "scope": ["Two features selected through Q-012"],
-      "exclusions": ["Any feature not explicitly selected and approved"],
-      "dependencies": ["Core application groups", "Approval of Q-012"],
+      "scope": ["Post-MVP selection and specification only after core proof"],
+      "exclusions": ["All extension implementation in this MVP"],
+      "dependencies": ["Human decision to begin a separate post-MVP planning revision after core evaluation"],
       "risk_ids": ["RISK-009"],
-      "completion_criteria": ["Two selected features have requirement, story, acceptance, and verification detail", "Both features pass independent evaluation"]
+      "completion_criteria": ["E006, its stories, and G-H are absent from MVP execution waves and generation payloads", "A future revision selects and fully specifies two features before implementation"],
+      "mvp_scope": false,
+      "generation_eligible": false,
+      "delivery_status": "deferred_post_mvp"
     }
   ]
 }

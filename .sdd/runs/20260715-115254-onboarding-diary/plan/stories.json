@@ -1,24 +1,24 @@
 {
   "run_id": "20260715-115254-onboarding-diary",
   "spec_revision": null,
-  "status": "BLOCKED_CLARIFICATION",
+  "status": "READY_FOR_APPROVAL",
   "stories": [
     {
       "id": "E001-S001",
       "epic_id": "E001",
       "group_id": "G-A",
       "title": "Sign up, log in, and end an authenticated session",
-      "outcome": "An eligible person can obtain and use an authenticated account under the approved authentication contract.",
+      "outcome": "A visitor can create a Recruit account, authenticate through an eight-hour opaque cookie session, and log out.",
       "requirement_ids": ["REQ-001"],
       "acceptance_criteria": [
-        {"id": "E001-S001-AC01", "scenario": "positive", "given": "an eligible unauthenticated person provides valid approved sign-up fields", "when": "the person submits sign-up", "then": "an account is created with the approved initial role and credential handling", "verification": "API integration and Playwright test", "blocked_by": ["Q-002", "Q-005", "Q-010"]},
-        {"id": "E001-S001-AC02", "scenario": "positive", "given": "an active account with valid credentials", "when": "the user logs in", "then": "the approved authenticated session is established and protected access succeeds", "verification": "API integration and Playwright test", "blocked_by": ["Q-010", "Q-011"]},
-        {"id": "E001-S001-AC03", "scenario": "negative_security", "given": "invalid, duplicate, or unauthorized sign-up/login input", "when": "the request is submitted", "then": "the approved safe error is returned without exposing credentials or protected data", "verification": "Parameterized API negative tests", "blocked_by": ["Q-002", "Q-010", "Q-013"]}
+        {"id": "E001-S001-AC01", "scenario": "positive", "given": "an unauthenticated visitor provides valid Recruit profile fields and an 8–128 character password", "when": "sign-up is submitted without role or assignment fields", "then": "a Recruit account is created with case-insensitive unique email and a PBKDF2-HMAC-SHA256 password hash", "verification": "API integration, credential-storage inspection, and Playwright test", "blocked_by": []},
+        {"id": "E001-S001-AC02", "scenario": "positive", "given": "an active account with valid email and password", "when": "the user logs in and later logs out", "then": "an HttpOnly SameSite=Lax opaque server session valid for eight hours is created, protected access succeeds, and logout invalidates and clears it", "verification": "API cookie/session assertions and Playwright test", "blocked_by": []},
+        {"id": "E001-S001-AC03", "scenario": "negative_security", "given": "duplicate email, client-supplied privileged role, invalid credentials, or an expired/missing session", "when": "the request is submitted", "then": "the specified 409, 422, or generic 401 error occurs without storing plaintext credentials or exposing account/protected data", "verification": "Parameterized API negative tests", "blocked_by": []}
       ],
       "expected_evidence": ["Authentication API tests", "Browser sign-up/login scenario", "Credential-storage inspection"],
       "dependencies": [],
-      "blockers": ["Q-002", "Q-010", "Q-011"],
-      "definition_of_ready": ["Authentication/session contract approved", "Role assignment at sign-up approved", "Input and error rules approved"]
+      "blockers": [],
+      "definition_of_ready": ["Section 5 authentication contract accepted with this plan", "Bootstrap Admin environment variables available to the implementation environment"]
     },
     {
       "id": "E001-S002",
@@ -28,14 +28,14 @@
       "outcome": "An authorized user can view and, where approved, update profile data.",
       "requirement_ids": ["REQ-002"],
       "acceptance_criteria": [
-        {"id": "E001-S002-AC01", "scenario": "positive", "given": "an authenticated authorized user", "when": "the profile is requested", "then": "name, role, department, and start date are returned without credential data", "verification": "API schema and Playwright test", "blocked_by": ["Q-003"]},
-        {"id": "E001-S002-AC02", "scenario": "authorization", "given": "a user attempts an approved or prohibited profile change", "when": "the change is submitted", "then": "the role and field-specific edit policy is enforced", "verification": "Role/field matrix API tests", "blocked_by": ["Q-005"]},
-        {"id": "E001-S002-AC03", "scenario": "validation_boundary", "given": "missing, malformed, or boundary profile values", "when": "the profile is created or updated", "then": "the approved validation result occurs and invalid data is not stored", "verification": "Parameterized validation tests", "blocked_by": ["Q-005", "Q-007"]}
+        {"id": "E001-S002-AC01", "scenario": "positive", "given": "an authenticated user", "when": "the own profile is requested", "then": "name, email, role, department, and start date are returned without password or session data", "verification": "API schema and Playwright test", "blocked_by": []},
+        {"id": "E001-S002-AC02", "scenario": "authorization", "given": "a user patches own name, email, department, or start date, or attempts role/assignment changes", "when": "the change is submitted", "then": "self-editable fields update while role and assignment fields are rejected unless changed through an Admin endpoint", "verification": "Role/field matrix API tests", "blocked_by": []},
+        {"id": "E001-S002-AC03", "scenario": "validation_boundary", "given": "duplicate/malformed email, invalid date, empty/overlength name or department, or an unknown field", "when": "the profile is created or updated", "then": "the specified 409 or 422 error occurs and invalid data is not stored", "verification": "Parameterized validation tests", "blocked_by": []}
       ],
       "expected_evidence": ["Profile API tests", "Profile browser scenario"],
       "dependencies": ["E001-S001"],
-      "blockers": ["Q-005"],
-      "definition_of_ready": ["Profile ownership/edit matrix approved", "Required fields and validation approved"]
+      "blockers": [],
+      "definition_of_ready": ["Profile ownership/edit matrix and section 6 field rules accepted with this plan"]
     },
     {
       "id": "E001-S003",
@@ -45,15 +45,15 @@
       "outcome": "Every protected operation and record is restricted by the approved role and ownership model.",
       "requirement_ids": ["REQ-003", "REQ-013"],
       "acceptance_criteria": [
-        {"id": "E001-S003-AC01", "scenario": "authorization", "given": "a recruit requests diary data", "when": "the request is evaluated", "then": "only the approved recruit scope and operations are allowed", "verification": "Role-matrix API tests", "blocked_by": ["Q-003"]},
-        {"id": "E001-S003-AC02", "scenario": "authorization", "given": "a manager requests recruit data", "when": "the request is evaluated", "then": "only approved operations for recruits in the manager's oversight scope are allowed", "verification": "Assigned/unassigned fixture tests", "blocked_by": ["Q-003", "Q-004"]},
-        {"id": "E001-S003-AC03", "scenario": "authorization", "given": "a manager requests a report for a recruit", "when": "the recruit is assigned or unassigned", "then": "generation succeeds only for the approved oversight relationship", "verification": "Report authorization API test", "blocked_by": ["Q-003", "Q-004"]},
-        {"id": "E001-S003-AC04", "scenario": "negative_security", "given": "an unauthenticated or unauthorized request", "when": "a protected operation is attempted", "then": "access is denied using the approved status and error shape without leaking data", "verification": "Cross-endpoint negative tests", "blocked_by": ["Q-010", "Q-011", "Q-013"]}
+        {"id": "E001-S003-AC01", "scenario": "authorization", "given": "a Recruit requests or mutates diary data", "when": "the request is evaluated", "then": "create/view/edit/delete succeeds only for records owned by that Recruit", "verification": "Role-matrix API tests", "blocked_by": []},
+        {"id": "E001-S003-AC02", "scenario": "authorization", "given": "a Manager requests or mutates diary data", "when": "the target is assigned or unassigned", "then": "create/view/edit/delete succeeds only for assigned recruits and is 403 otherwise", "verification": "Assigned/unassigned fixture tests", "blocked_by": []},
+        {"id": "E001-S003-AC03", "scenario": "authorization", "given": "a Manager requests a report for a recruit", "when": "the recruit is assigned or unassigned", "then": "generation succeeds only for the Admin-maintained assignment and is 403 otherwise", "verification": "Report authorization API test", "blocked_by": []},
+        {"id": "E001-S003-AC04", "scenario": "negative_security", "given": "an unauthenticated request or an authenticated request outside role scope", "when": "a protected operation is attempted", "then": "the API returns 401 or 403 in the specified error envelope without leaking record existence or data", "verification": "Cross-endpoint negative tests", "blocked_by": []}
       ],
       "expected_evidence": ["Complete endpoint/role matrix", "Authorization test suite"],
       "dependencies": ["E001-S001", "E001-S002"],
-      "blockers": ["Q-003", "Q-004"],
-      "definition_of_ready": ["Role matrix approved", "Ownership and oversight model approved"]
+      "blockers": [],
+      "definition_of_ready": ["Section 2 role, ownership, and one-manager-per-recruit model accepted with this plan"]
     },
     {
       "id": "E001-S004",
@@ -63,14 +63,14 @@
       "outcome": "An admin can perform the approved user-management operations and view all application data.",
       "requirement_ids": ["REQ-004"],
       "acceptance_criteria": [
-        {"id": "E001-S004-AC01", "scenario": "positive", "given": "an authenticated admin", "when": "the admin lists or views users and diary data", "then": "all data within the approved admin scope is available", "verification": "Admin API and Playwright tests", "blocked_by": ["Q-003"]},
-        {"id": "E001-S004-AC02", "scenario": "positive_boundary", "given": "an authenticated admin", "when": "an approved create/update/disable/delete user operation is attempted", "then": "the specifically approved operation and validation rules are enforced", "verification": "Admin operation matrix tests", "blocked_by": ["Q-004", "Q-005"]},
-        {"id": "E001-S004-AC03", "scenario": "authorization", "given": "a non-admin", "when": "an admin operation or all-data view is requested", "then": "access is denied without changing data", "verification": "API and UI denial tests", "blocked_by": ["Q-003"]}
+        {"id": "E001-S004-AC01", "scenario": "positive", "given": "an authenticated Admin", "when": "the Admin lists users or accesses diary data", "then": "all users and all diary records are visible and CRUD-capable", "verification": "Admin API and Playwright tests", "blocked_by": []},
+        {"id": "E001-S004-AC02", "scenario": "positive_boundary", "given": "an authenticated Admin", "when": "the Admin creates, patches, or deletes a user or puts/deletes a recruit's manager assignment", "then": "field/role rules and the zero-or-one-manager constraint apply; role changes invalidate sessions/invalid links; user deletion cascades owned records, sessions, and links; deleting self or the last Admin returns 409", "verification": "Admin operation matrix and cascade tests", "blocked_by": []},
+        {"id": "E001-S004-AC03", "scenario": "authorization", "given": "a non-admin", "when": "an admin operation or all-data view is requested", "then": "access is denied without changing data", "verification": "API and UI denial tests", "blocked_by": []}
       ],
       "expected_evidence": ["Admin user-management tests", "Non-admin denial tests"],
       "dependencies": ["E001-S003"],
-      "blockers": ["Q-003", "Q-004", "Q-005"],
-      "definition_of_ready": ["Admin operation list approved", "Admin data powers approved"]
+      "blockers": [],
+      "definition_of_ready": ["Admin endpoints and role powers in sections 2 and 7 accepted with this plan"]
     },
     {
       "id": "E002-S001",
@@ -80,16 +80,16 @@
       "outcome": "An authorized recruit can create, view, edit, delete, and filter task entries.",
       "requirement_ids": ["REQ-005"],
       "acceptance_criteria": [
-        {"id": "E002-S001-AC01", "scenario": "positive", "given": "valid approved task values", "when": "an authorized recruit creates a task", "then": "the task is stored with date, title, description, category, status, and priority and is returned in the recruit's task log", "verification": "API and Playwright test", "blocked_by": ["Q-003", "Q-007"]},
-        {"id": "E002-S001-AC02", "scenario": "positive", "given": "an existing authorized task", "when": "the recruit edits approved fields", "then": "the updated values are stored and displayed", "verification": "API and Playwright test", "blocked_by": ["Q-003", "Q-007"]},
-        {"id": "E002-S001-AC03", "scenario": "positive", "given": "an existing authorized task", "when": "the recruit confirms deletion", "then": "the task is no longer returned under the approved deletion semantics", "verification": "API and Playwright test", "blocked_by": ["Q-003", "Q-013"]},
-        {"id": "E002-S001-AC04", "scenario": "filter_boundary", "given": "tasks spanning approved dates, categories, and statuses", "when": "one or more supported filters are applied", "then": "only matching authorized tasks are returned with approved boundary behavior", "verification": "Parameterized API filter tests", "blocked_by": ["Q-007", "Q-011"]},
-        {"id": "E002-S001-AC05", "scenario": "negative_validation_authorization", "given": "invalid values or a task outside the caller's scope", "when": "create, edit, delete, or view is attempted", "then": "the request is rejected and no unauthorized mutation occurs", "verification": "Negative API tests", "blocked_by": ["Q-003", "Q-007", "Q-013"]}
+        {"id": "E002-S001-AC01", "scenario": "positive", "given": "task fields satisfying section 6", "when": "an authorized actor creates a task in role scope", "then": "the task is stored with owner, date, title, description, category, status, and priority and appears in the scoped task log", "verification": "API and Playwright test", "blocked_by": []},
+        {"id": "E002-S001-AC02", "scenario": "positive", "given": "an existing in-scope task", "when": "an authorized actor partially edits mutable fields", "then": "only supplied valid fields update and immutable ID/owner changes are rejected", "verification": "API and Playwright test", "blocked_by": []},
+        {"id": "E002-S001-AC03", "scenario": "positive", "given": "an existing in-scope task", "when": "an authorized actor confirms deletion", "then": "the API returns 204 and the permanently deleted task is no longer returned", "verification": "API and Playwright test", "blocked_by": []},
+        {"id": "E002-S001-AC04", "scenario": "filter_boundary", "given": "tasks spanning dates and the specified category/status enums", "when": "date, category, and/or status filters are applied", "then": "AND-combined filters return only authorized matches ordered by date, created_at, and ID descending", "verification": "Parameterized API filter tests", "blocked_by": []},
+        {"id": "E002-S001-AC05", "scenario": "negative_validation_authorization", "given": "invalid/unknown fields or a task outside caller scope", "when": "create, edit, delete, or view is attempted", "then": "422 or 403 occurs and no unauthorized mutation occurs", "verification": "Negative API tests", "blocked_by": []}
       ],
       "expected_evidence": ["Task CRUD/filter API tests", "Task-log Playwright scenario"],
       "dependencies": ["E001-S003"],
-      "blockers": ["Q-003", "Q-007", "Q-011"],
-      "definition_of_ready": ["Task enum/validation rules approved", "Ownership rules approved", "Filter contract approved"]
+      "blockers": [],
+      "definition_of_ready": ["Task enums, field rules, ownership, sorting, and filters in sections 6–7 accepted with this plan"]
     },
     {
       "id": "E002-S002",
@@ -99,15 +99,15 @@
       "outcome": "An authorized recruit can record issues and use the approved lifecycle and filters.",
       "requirement_ids": ["REQ-006"],
       "acceptance_criteria": [
-        {"id": "E002-S002-AC01", "scenario": "positive", "given": "valid approved issue values", "when": "an authorized recruit logs an issue", "then": "date, title, description, severity, status, and resolution notes are stored and displayed as approved", "verification": "API and Playwright test", "blocked_by": ["Q-006", "Q-007"]},
-        {"id": "E002-S002-AC02", "scenario": "lifecycle", "given": "an existing issue", "when": "an approved status/resolution/edit/delete operation is attempted", "then": "the approved lifecycle and role rules are enforced", "verification": "Lifecycle matrix API tests", "blocked_by": ["Q-003", "Q-006", "Q-007"]},
-        {"id": "E002-S002-AC03", "scenario": "filter_boundary", "given": "issues with multiple approved statuses and severities", "when": "status or severity filters are applied", "then": "only matching authorized issues are returned", "verification": "Parameterized filter tests", "blocked_by": ["Q-007"]},
-        {"id": "E002-S002-AC04", "scenario": "negative_validation_authorization", "given": "invalid values or an out-of-scope issue", "when": "an operation is attempted", "then": "the approved safe rejection occurs without unauthorized mutation", "verification": "Negative API tests", "blocked_by": ["Q-003", "Q-007", "Q-013"]}
+        {"id": "E002-S002-AC01", "scenario": "positive", "given": "issue fields satisfying section 6", "when": "an authorized actor creates an issue in role scope", "then": "the issue is stored with the specified fields and appears in the scoped issue log", "verification": "API and Playwright test", "blocked_by": []},
+        {"id": "E002-S002-AC02", "scenario": "lifecycle", "given": "an existing in-scope issue", "when": "an authorized actor views, patches, or deletes it", "then": "full CRUD succeeds, 204 permanent delete is used, and resolution notes are required for Resolved or Closed", "verification": "Lifecycle matrix API tests", "blocked_by": []},
+        {"id": "E002-S002-AC03", "scenario": "filter_boundary", "given": "issues spanning the specified statuses and severities", "when": "status and/or severity filters are applied", "then": "AND-combined filters return only authorized matches in the specified descending order", "verification": "Parameterized filter tests", "blocked_by": []},
+        {"id": "E002-S002-AC04", "scenario": "negative_validation_authorization", "given": "invalid fields, missing resolution notes, or an out-of-scope issue", "when": "an operation is attempted", "then": "422 or 403 occurs without unauthorized mutation", "verification": "Negative API tests", "blocked_by": []}
       ],
       "expected_evidence": ["Issue lifecycle/filter API tests", "Issue-log Playwright scenario"],
       "dependencies": ["E001-S003"],
-      "blockers": ["Q-003", "Q-006", "Q-007"],
-      "definition_of_ready": ["Issue lifecycle approved", "Enums and validation approved"]
+      "blockers": [],
+      "definition_of_ready": ["Issue lifecycle, enums, validation, ownership, and filters in sections 6–7 accepted with this plan"]
     },
     {
       "id": "E002-S003",
@@ -117,14 +117,14 @@
       "outcome": "An authorized recruit can submit feedback classified as Positive, Suggestion, or Concern.",
       "requirement_ids": ["REQ-007"],
       "acceptance_criteria": [
-        {"id": "E002-S003-AC01", "scenario": "positive", "given": "valid date, subject, approved type, and details", "when": "an authorized recruit submits feedback", "then": "the feedback is stored and displayed within the approved visibility scope", "verification": "API and Playwright test", "blocked_by": ["Q-003", "Q-007"]},
-        {"id": "E002-S003-AC02", "scenario": "validation_boundary", "given": "a type outside Positive, Suggestion, or Concern or other invalid field values", "when": "feedback is submitted", "then": "the approved validation error occurs and no record is stored", "verification": "Parameterized API tests", "blocked_by": ["Q-007", "Q-013"]},
-        {"id": "E002-S003-AC03", "scenario": "lifecycle_authorization", "given": "existing feedback", "when": "view, edit, or delete is attempted", "then": "only the approved role and lifecycle operations are permitted", "verification": "Role/lifecycle matrix tests", "blocked_by": ["Q-003", "Q-006"]}
+        {"id": "E002-S003-AC01", "scenario": "positive", "given": "valid date, 1–120 subject, Positive/Suggestion/Concern type, and 1–2000 details", "when": "an authorized actor submits feedback in role scope", "then": "the feedback is stored and displayed within that scope", "verification": "API and Playwright test", "blocked_by": []},
+        {"id": "E002-S003-AC02", "scenario": "validation_boundary", "given": "an unsupported type or missing/overlength field", "when": "feedback is submitted", "then": "422 occurs and no record is stored", "verification": "Parameterized API tests", "blocked_by": []},
+        {"id": "E002-S003-AC03", "scenario": "lifecycle_authorization", "given": "existing feedback", "when": "view, partial edit, or permanent delete is attempted", "then": "full CRUD succeeds only within Recruit/assigned-Manager/Admin scope and is 403 otherwise", "verification": "Role/lifecycle matrix tests", "blocked_by": []}
       ],
       "expected_evidence": ["Feedback validation/lifecycle tests", "Feedback Playwright scenario"],
       "dependencies": ["E001-S003"],
-      "blockers": ["Q-003", "Q-006", "Q-007"],
-      "definition_of_ready": ["Feedback lifecycle and validation approved"]
+      "blockers": [],
+      "definition_of_ready": ["Feedback lifecycle and section 6 validation accepted with this plan"]
     },
     {
       "id": "E002-S004",
@@ -134,14 +134,14 @@
       "outcome": "An authorized recruit can capture free-form dated notes with titles and tags.",
       "requirement_ids": ["REQ-008"],
       "acceptance_criteria": [
-        {"id": "E002-S004-AC01", "scenario": "positive", "given": "valid date, title, content, and tags", "when": "an authorized recruit saves a note", "then": "the note and approved tag representation are stored and displayed in scope", "verification": "API and Playwright test", "blocked_by": ["Q-003", "Q-007"]},
-        {"id": "E002-S004-AC02", "scenario": "validation_boundary", "given": "empty, malformed, duplicate, excessive, or boundary tag/content values", "when": "the note is submitted", "then": "the approved normalization or validation result occurs", "verification": "Parameterized API tests", "blocked_by": ["Q-007"]},
-        {"id": "E002-S004-AC03", "scenario": "lifecycle_authorization", "given": "an existing note", "when": "view, edit, or delete is attempted", "then": "only approved role and lifecycle operations are permitted", "verification": "Role/lifecycle matrix tests", "blocked_by": ["Q-003", "Q-006"]}
+        {"id": "E002-S004-AC01", "scenario": "positive", "given": "valid date, 1–120 title, 1–5000 content, and zero to ten tags", "when": "an authorized actor saves a note in role scope", "then": "the note is stored and tags are trimmed, lowercased, and de-duplicated", "verification": "API and Playwright test", "blocked_by": []},
+        {"id": "E002-S004-AC02", "scenario": "validation_boundary", "given": "empty required data, more than ten tags, or a tag outside 1–30 characters after trimming", "when": "the note is submitted", "then": "422 occurs and no invalid note is stored", "verification": "Parameterized API tests", "blocked_by": []},
+        {"id": "E002-S004-AC03", "scenario": "lifecycle_authorization", "given": "an existing note", "when": "view, partial edit, or permanent delete is attempted", "then": "full CRUD succeeds only within Recruit/assigned-Manager/Admin scope and is 403 otherwise", "verification": "Role/lifecycle matrix tests", "blocked_by": []}
       ],
       "expected_evidence": ["Note/tag tests", "Notes Playwright scenario"],
       "dependencies": ["E001-S003"],
-      "blockers": ["Q-003", "Q-006", "Q-007"],
-      "definition_of_ready": ["Note lifecycle and tag rules approved"]
+      "blockers": [],
+      "definition_of_ready": ["Note lifecycle and tag rules in section 6 accepted with this plan"]
     },
     {
       "id": "E003-S001",
@@ -151,14 +151,14 @@
       "outcome": "An authorized user sees accurate, scoped counts and recent entries across diary categories.",
       "requirement_ids": ["REQ-009"],
       "acceptance_criteria": [
-        {"id": "E003-S001-AC01", "scenario": "positive", "given": "known authorized diary fixtures", "when": "the dashboard loads", "then": "summary counts match the approved categories and scope", "verification": "Seeded aggregation test", "blocked_by": ["Q-003", "Q-008"]},
-        {"id": "E003-S001-AC02", "scenario": "ordering_boundary", "given": "entries with known dates and ties", "when": "recent entries are requested", "then": "the approved number, category mix, and deterministic ordering are returned", "verification": "Boundary aggregation test", "blocked_by": ["Q-008"]},
-        {"id": "E003-S001-AC03", "scenario": "authorization_empty", "given": "an unauthorized user or an authorized user with no visible entries", "when": "the dashboard loads", "then": "access is denied or an approved empty state is shown without leaking other users' data", "verification": "API and Playwright tests", "blocked_by": ["Q-003", "Q-008", "Q-013"]}
+        {"id": "E003-S001-AC01", "scenario": "positive", "given": "known fixtures for one recruit", "when": "self, assigned Manager, or Admin loads that recruit's dashboard", "then": "task, issue, feedback, and note counts match only that recruit's records", "verification": "Seeded aggregation test", "blocked_by": []},
+        {"id": "E003-S001-AC02", "scenario": "ordering_boundary", "given": "more than ten mixed diary records with date/timestamp ties", "when": "recent activity is requested", "then": "exactly ten are returned by date, created_at, and ID descending", "verification": "Boundary aggregation test", "blocked_by": []},
+        {"id": "E003-S001-AC03", "scenario": "authorization_empty", "given": "an out-of-scope target or an in-scope recruit with no entries", "when": "the dashboard loads", "then": "403 occurs for out-of-scope access or zero counts and a clear empty state appear without data leakage", "verification": "API and Playwright tests", "blocked_by": []}
       ],
       "expected_evidence": ["Dashboard aggregation tests", "Dashboard Playwright scenario"],
       "dependencies": ["E002-S001", "E002-S002", "E002-S003", "E002-S004"],
-      "blockers": ["Q-003", "Q-008"],
-      "definition_of_ready": ["Dashboard scope/count/recent rules approved"]
+      "blockers": [],
+      "definition_of_ready": ["Dashboard scope/count/recent rules in section 8 accepted with this plan"]
     },
     {
       "id": "E003-S002",
@@ -168,14 +168,14 @@
       "outcome": "An authorized user sees the approved task-completion calculation and open-issue summary.",
       "requirement_ids": ["REQ-010"],
       "acceptance_criteria": [
-        {"id": "E003-S002-AC01", "scenario": "calculation", "given": "tasks in each approved status", "when": "progress is calculated", "then": "the displayed numerator, denominator, and percentage follow the approved formula", "verification": "Parameterized calculation tests", "blocked_by": ["Q-007", "Q-008"]},
-        {"id": "E003-S002-AC02", "scenario": "calculation", "given": "issues in each approved status", "when": "open issues are summarized", "then": "only statuses defined as open and records within scope are included", "verification": "Parameterized aggregation tests", "blocked_by": ["Q-003", "Q-007", "Q-008"]},
-        {"id": "E003-S002-AC03", "scenario": "boundary_empty", "given": "zero tasks or zero open issues", "when": "the dashboard loads", "then": "the approved zero-state result is displayed without divide-by-zero or stale data", "verification": "API and Playwright boundary tests", "blocked_by": ["Q-008", "Q-013"]}
+        {"id": "E003-S002-AC01", "scenario": "calculation", "given": "tasks in all four specified statuses", "when": "progress is calculated", "then": "Completed divided by all tasks times 100 is rounded to the nearest whole percent", "verification": "Parameterized calculation tests", "blocked_by": []},
+        {"id": "E003-S002-AC02", "scenario": "calculation", "given": "issues in all four specified statuses", "when": "open issues are summarized", "then": "only Open and In Progress issues for the selected recruit are included", "verification": "Parameterized aggregation tests", "blocked_by": []},
+        {"id": "E003-S002-AC03", "scenario": "boundary_empty", "given": "zero tasks or zero open issues", "when": "the dashboard loads", "then": "progress is 0%, open count is zero, and no divide-by-zero or stale data appears", "verification": "API and Playwright boundary tests", "blocked_by": []}
       ],
       "expected_evidence": ["Progress/open-issue tests", "Dashboard zero-state scenario"],
       "dependencies": ["E003-S001"],
-      "blockers": ["Q-007", "Q-008"],
-      "definition_of_ready": ["Task completion and open-status definitions approved"]
+      "blockers": [],
+      "definition_of_ready": ["Task completion and open-status definitions in section 8 accepted with this plan"]
     },
     {
       "id": "E004-S001",
@@ -185,15 +185,15 @@
       "outcome": "An authorized user can request task, issue, feedback, or combined data for an approved date range.",
       "requirement_ids": ["REQ-011", "REQ-013"],
       "acceptance_criteria": [
-        {"id": "E004-S001-AC01", "scenario": "positive", "given": "authorized records inside and outside a requested date range", "when": "a task, issue, feedback, or combined report is requested", "then": "the report contains exactly the approved in-range records and fields", "verification": "Parameterized report-content tests", "blocked_by": ["Q-009"]},
-        {"id": "E004-S001-AC02", "scenario": "boundary_validation", "given": "equal, reversed, missing, or boundary dates", "when": "a report is requested", "then": "the approved inclusivity and validation behavior occurs", "verification": "Date-boundary API tests", "blocked_by": ["Q-009", "Q-013"]},
-        {"id": "E004-S001-AC03", "scenario": "authorization", "given": "a manager and an assigned recruit", "when": "the manager requests the recruit's report", "then": "generation succeeds within the approved scope", "verification": "Assigned-recruit integration test", "blocked_by": ["Q-003", "Q-004"]},
-        {"id": "E004-S001-AC04", "scenario": "negative_authorization", "given": "a manager and an unassigned recruit or other unauthorized target", "when": "a report is requested", "then": "generation is denied and no report data is returned", "verification": "Unassigned-recruit integration test", "blocked_by": ["Q-003", "Q-004", "Q-013"]}
+        {"id": "E004-S001-AC01", "scenario": "positive", "given": "authorized records inside and outside a date range", "when": "tasks, issues, feedback, or combined type is requested", "then": "only inclusive in-range records appear with section 9 columns ordered by date, record type, and ID ascending", "verification": "Parameterized report-content tests", "blocked_by": []},
+        {"id": "E004-S001-AC02", "scenario": "boundary_validation", "given": "equal, reversed, missing, or valid boundary dates", "when": "a report is requested", "then": "equal dates include that day, reversed/missing dates return 422, and both valid endpoints are inclusive", "verification": "Date-boundary API tests", "blocked_by": []},
+        {"id": "E004-S001-AC03", "scenario": "authorization", "given": "a manager and an assigned recruit", "when": "the manager requests the recruit's report", "then": "generation succeeds within the approved scope", "verification": "Assigned-recruit integration test", "blocked_by": []},
+        {"id": "E004-S001-AC04", "scenario": "negative_authorization", "given": "a manager and an unassigned recruit or other unauthorized target", "when": "a report is requested", "then": "generation is denied and no report data is returned", "verification": "Unassigned-recruit integration test", "blocked_by": []}
       ],
       "expected_evidence": ["Report query/content test matrix", "Manager report Playwright scenario"],
       "dependencies": ["E001-S003", "E002-S001", "E002-S002", "E002-S003"],
-      "blockers": ["Q-003", "Q-004", "Q-009", "Q-011"],
-      "definition_of_ready": ["Report selection/date/content contract approved", "Oversight relationship approved"]
+      "blockers": [],
+      "definition_of_ready": ["Report selection/date/content and oversight contracts in sections 2 and 9 accepted with this plan"]
     },
     {
       "id": "E004-S002",
@@ -203,15 +203,15 @@
       "outcome": "An authorized report request produces a parseable PDF or CSV containing the approved content.",
       "requirement_ids": ["REQ-012"],
       "acceptance_criteria": [
-        {"id": "E004-S002-AC01", "scenario": "positive_pdf", "given": "an authorized report result", "when": "PDF is selected", "then": "a parseable PDF with the approved title, metadata, rows, ordering, and filename is downloaded", "verification": "PDF parser/content integration test", "blocked_by": ["Q-009"]},
-        {"id": "E004-S002-AC02", "scenario": "positive_csv", "given": "an authorized report result", "when": "CSV is selected", "then": "a parseable CSV with approved encoding, columns, escaping, rows, ordering, and filename is downloaded", "verification": "CSV parser/content integration test", "blocked_by": ["Q-009"]},
-        {"id": "E004-S002-AC03", "scenario": "empty_boundary", "given": "an authorized date range with no matching data", "when": "either format is requested", "then": "the approved empty-report behavior and artifact content occur", "verification": "Empty report tests", "blocked_by": ["Q-009", "Q-013"]},
-        {"id": "E004-S002-AC04", "scenario": "failure_authorization", "given": "an unauthorized request or generation failure", "when": "a download is attempted", "then": "no partial or protected file is exposed and the approved error is shown", "verification": "Negative API and Playwright tests", "blocked_by": ["Q-003", "Q-013"]}
+        {"id": "E004-S002-AC01", "scenario": "positive_pdf", "given": "an authorized report result", "when": "PDF is selected", "then": "a parseable PDF contains title, recruit, inclusive dates, UTC generation timestamp, readable logical columns, ordered rows, and the specified filename", "verification": "PDF parser/content integration test", "blocked_by": []},
+        {"id": "E004-S002-AC02", "scenario": "positive_csv", "given": "an authorized report result", "when": "CSV is selected", "then": "a UTF-8 RFC 4180 CSV contains the section 9 header and ordered rows with the specified filename", "verification": "CSV parser/content integration test", "blocked_by": []},
+        {"id": "E004-S002-AC03", "scenario": "empty_boundary", "given": "an authorized range with no matching data", "when": "either format is requested", "then": "a valid artifact downloads with CSV headers or PDF metadata plus No records found", "verification": "Empty report tests", "blocked_by": []},
+        {"id": "E004-S002-AC04", "scenario": "failure_authorization", "given": "an unauthorized request or simulated generation failure", "when": "a download is attempted", "then": "403 or safe 500 occurs, no partial/protected file is exposed, criteria remain entered, and retry is available", "verification": "Negative API and Playwright tests", "blocked_by": []}
       ],
       "expected_evidence": ["Parsed PDF assertions", "Parsed CSV assertions", "Download Playwright scenario"],
       "dependencies": ["E004-S001"],
-      "blockers": ["Q-009", "Q-013"],
-      "definition_of_ready": ["PDF/CSV schema and failure contract approved"]
+      "blockers": [],
+      "definition_of_ready": ["PDF/CSV schema, filename, empty, and failure contract in sections 9–10 accepted with this plan"]
     },
     {
       "id": "E005-S001",
@@ -221,14 +221,14 @@
       "outcome": "The frontend, backend, and database use the mandated technologies with an approved data lifetime.",
       "requirement_ids": ["REQ-015", "REQ-016"],
       "acceptance_criteria": [
-        {"id": "E005-S001-AC01", "scenario": "startup", "given": "documented local prerequisites", "when": "the approved startup command is run", "then": "the React/Vite/Tailwind frontend and Python FastAPI backend start successfully", "verification": "Dependency inspection and startup smoke test", "blocked_by": []},
+        {"id": "E005-S001-AC01", "scenario": "startup", "given": "documented local prerequisites and bootstrap Admin email/password environment variables", "when": "the startup commands run", "then": "the React/Vite/Tailwind frontend and single-process FastAPI backend start and bootstrap one Admin; missing variables fail startup clearly", "verification": "Dependency inspection and startup smoke tests", "blocked_by": []},
         {"id": "E005-S001-AC02", "scenario": "integration", "given": "the running application", "when": "the frontend performs a supported operation", "then": "it communicates with FastAPI and the operation uses SQLite configured in-memory", "verification": "End-to-end smoke test and configuration inspection", "blocked_by": []},
-        {"id": "E005-S001-AC03", "scenario": "data_lifecycle", "given": "stored application data and an approved reset/restart event", "when": "that event occurs", "then": "data retention or loss exactly matches the approved lifetime contract", "verification": "Restart/reset integration test", "blocked_by": ["Q-001"]}
+        {"id": "E005-S001-AC03", "scenario": "data_lifecycle", "given": "stored users, sessions, assignments, and diary data", "when": "the backend process restarts", "then": "all prior in-memory data may be absent and a new empty database plus bootstrap Admin is created", "verification": "Restart/reset integration test", "blocked_by": []}
       ],
       "expected_evidence": ["Dependency/config inspection", "Startup smoke test", "Data-lifecycle test"],
       "dependencies": [],
-      "blockers": ["Q-001"],
-      "definition_of_ready": ["Data lifetime/reset behavior approved"]
+      "blockers": [],
+      "definition_of_ready": ["Single-process ephemeral lifecycle and bootstrap behavior in section 4 accepted with this plan"]
     },
     {
       "id": "E005-S002",
@@ -238,14 +238,14 @@
       "outcome": "Approved core pages remain usable at approved desktop and mobile viewport sizes.",
       "requirement_ids": ["REQ-014"],
       "acceptance_criteria": [
-        {"id": "E005-S002-AC01", "scenario": "responsive", "given": "each core page at an approved narrow viewport", "when": "the user views and operates the page", "then": "content, navigation, forms, tables/lists, and downloads remain usable without unintended clipping", "verification": "Playwright viewport suite", "blocked_by": ["Q-013"]},
-        {"id": "E005-S002-AC02", "scenario": "responsive", "given": "each core page at an approved wide viewport", "when": "the user views and operates the page", "then": "the approved layout is usable and no required control is hidden", "verification": "Playwright viewport suite", "blocked_by": ["Q-013"]},
-        {"id": "E005-S002-AC03", "scenario": "boundary", "given": "approved minimum viewport and representative long content", "when": "forms, tags, errors, and report controls render", "then": "all required information and actions remain accessible", "verification": "Playwright long-content scenario", "blocked_by": ["Q-007", "Q-013"]}
+        {"id": "E005-S002-AC01", "scenario": "responsive", "given": "each core page in current Playwright Chromium at 390x844", "when": "the user operates it", "then": "navigation, forms, lists, and downloads remain reachable with no page-level horizontal overflow", "verification": "Playwright viewport suite", "blocked_by": []},
+        {"id": "E005-S002-AC02", "scenario": "responsive", "given": "each core page in current Playwright Chromium at 1280x720", "when": "the user operates it", "then": "all required data and controls are visible or reachable and no required action is hidden", "verification": "Playwright viewport suite", "blocked_by": []},
+        {"id": "E005-S002-AC03", "scenario": "boundary", "given": "390x844 and maximum-length representative content", "when": "forms, tags, errors, and report controls render", "then": "content remains accessible using responsive cards or a bounded table scroll region", "verification": "Playwright long-content scenario", "blocked_by": []}
       ],
       "expected_evidence": ["Full-page screenshots at approved viewports", "Responsive Playwright results"],
       "dependencies": ["E001-S004", "E002-S001", "E002-S002", "E002-S003", "E002-S004", "E003-S002", "E004-S002"],
-      "blockers": ["Q-013"],
-      "definition_of_ready": ["Browser and viewport matrix approved"]
+      "blockers": [],
+      "definition_of_ready": ["Chromium viewport and overflow rules in section 10 accepted with this plan"]
     },
     {
       "id": "E005-S003",
@@ -255,47 +255,53 @@
       "outcome": "Users receive approved, safe, recoverable behavior when core operations cannot succeed.",
       "requirement_ids": ["REQ-017"],
       "acceptance_criteria": [
-        {"id": "E005-S003-AC01", "scenario": "validation", "given": "invalid input in any core form or API", "when": "the operation is submitted", "then": "approved field/general errors are shown and invalid data is not stored", "verification": "Cross-feature validation tests", "blocked_by": ["Q-007", "Q-011", "Q-013"]},
-        {"id": "E005-S003-AC02", "scenario": "authorization", "given": "expired, missing, or insufficient authorization", "when": "a protected operation is attempted", "then": "the approved reauthentication or denial behavior occurs without data exposure", "verification": "Cross-feature authorization tests", "blocked_by": ["Q-003", "Q-010", "Q-013"]},
-        {"id": "E005-S003-AC03", "scenario": "not_found_conflict", "given": "a missing or concurrently changed target", "when": "an operation is attempted", "then": "the approved not-found/conflict behavior occurs without corrupting data", "verification": "API negative tests", "blocked_by": ["Q-011", "Q-013"]},
-        {"id": "E005-S003-AC04", "scenario": "server_report_failure", "given": "an approved simulated backend or report-generation failure", "when": "the user performs an operation", "then": "a safe recoverable error is shown, secrets/private data are not logged, and retry behavior matches the approved contract", "verification": "Fault-injection API and Playwright tests", "blocked_by": ["Q-013"]}
+        {"id": "E005-S003-AC01", "scenario": "validation", "given": "invalid input in any core form or API", "when": "the operation is submitted", "then": "422 uses the specified envelope, inline field errors preserve other values, and invalid data is not stored", "verification": "Cross-feature validation tests", "blocked_by": []},
+        {"id": "E005-S003-AC02", "scenario": "authorization", "given": "expired, missing, or insufficient authorization", "when": "a protected operation is attempted", "then": "401 clears client state and redirects to login or 403 shows access denied without data exposure", "verification": "Cross-feature authorization tests", "blocked_by": []},
+        {"id": "E005-S003-AC03", "scenario": "not_found_conflict", "given": "a missing resource, duplicate email, or invalid state transition", "when": "an operation is attempted", "then": "404 or 409 uses the specified safe envelope without corrupting data", "verification": "API negative tests", "blocked_by": []},
+        {"id": "E005-S003-AC04", "scenario": "server_report_failure", "given": "a simulated backend/network or report-generation failure", "when": "the user performs an operation", "then": "a generic retryable banner appears, no password/session/diary content is logged, successful data remains, and no partial report downloads", "verification": "Fault-injection API and Playwright tests", "blocked_by": []}
       ],
       "expected_evidence": ["Cross-feature negative test suite", "Failure-state screenshots"],
       "dependencies": ["E005-S002"],
-      "blockers": ["Q-003", "Q-007", "Q-010", "Q-011", "Q-013"],
-      "definition_of_ready": ["Error/status/envelope and recovery behavior approved"]
+      "blockers": [],
+      "definition_of_ready": ["Error/status/envelope, logging, and recovery behavior in sections 7, 10, and 11 accepted with this plan"]
     },
     {
       "id": "E006-S001",
       "epic_id": "E006",
       "group_id": "G-H",
-      "title": "Deliver approved extension feature one",
-      "outcome": "The first human-selected extension provides one independently testable user outcome.",
+      "title": "Defer extension feature one until post-MVP planning",
+      "outcome": "The first extension remains outside MVP generation until a future approved specification selects it.",
       "requirement_ids": ["REQ-018"],
       "acceptance_criteria": [
-        {"id": "E006-S001-AC01", "scenario": "scope", "given": "Q-012 has an approved first feature", "when": "the feature specification is revised", "then": "its actors, behavior, validation, authorization, data, and exclusions are explicit", "verification": "Planning artifact review", "blocked_by": ["Q-012"]},
-        {"id": "E006-S001-AC02", "scenario": "feature", "given": "the approved feature specification", "when": "the feature is evaluated", "then": "all approved positive, negative, boundary, authorization, and failure criteria pass", "verification": "Feature-specific automated and Playwright tests", "blocked_by": ["Q-012"]}
+        {"id": "E006-S001-AC01", "scenario": "scope", "given": "the current MVP plan", "when": "generation scope and execution waves are inspected", "then": "E006-S001 is marked deferred and absent from generation payloads and MVP waves", "verification": "Planning artifact and manifest review", "blocked_by": []},
+        {"id": "E006-S001-AC02", "scenario": "future_gate", "given": "the core MVP has been implemented and proven", "when": "feature-one planning begins", "then": "a future revision must select and specify actors, behavior, validation, authorization, data, tests, and exclusions before implementation", "verification": "Future planning approval gate", "blocked_by": []}
       ],
-      "expected_evidence": ["Revised traceability", "Feature-specific test evidence"],
-      "dependencies": ["E005-S003"],
-      "blockers": ["Q-012"],
-      "definition_of_ready": ["First extension feature selected and fully specified"]
+      "expected_evidence": ["Current manifest exclusion", "Future approved revision before implementation"],
+      "dependencies": [],
+      "blockers": [],
+      "definition_of_ready": ["Not applicable to MVP; future planning approval required"],
+      "mvp_scope": false,
+      "generation_eligible": false,
+      "delivery_status": "deferred_post_mvp"
     },
     {
       "id": "E006-S002",
       "epic_id": "E006",
       "group_id": "G-H",
-      "title": "Deliver approved extension feature two",
-      "outcome": "The second human-selected extension provides one independently testable user outcome.",
+      "title": "Defer extension feature two until post-MVP planning",
+      "outcome": "The second extension remains outside MVP generation until a future approved specification selects it.",
       "requirement_ids": ["REQ-018"],
       "acceptance_criteria": [
-        {"id": "E006-S002-AC01", "scenario": "scope", "given": "Q-012 has an approved second feature", "when": "the feature specification is revised", "then": "its actors, behavior, validation, authorization, data, and exclusions are explicit", "verification": "Planning artifact review", "blocked_by": ["Q-012"]},
-        {"id": "E006-S002-AC02", "scenario": "feature", "given": "the approved feature specification", "when": "the feature is evaluated", "then": "all approved positive, negative, boundary, authorization, and failure criteria pass", "verification": "Feature-specific automated and Playwright tests", "blocked_by": ["Q-012"]}
+        {"id": "E006-S002-AC01", "scenario": "scope", "given": "the current MVP plan", "when": "generation scope and execution waves are inspected", "then": "E006-S002 is marked deferred and absent from generation payloads and MVP waves", "verification": "Planning artifact and manifest review", "blocked_by": []},
+        {"id": "E006-S002-AC02", "scenario": "future_gate", "given": "the core MVP has been implemented and proven", "when": "feature-two planning begins", "then": "a future revision must select and specify actors, behavior, validation, authorization, data, tests, and exclusions before implementation", "verification": "Future planning approval gate", "blocked_by": []}
       ],
-      "expected_evidence": ["Revised traceability", "Feature-specific test evidence"],
-      "dependencies": ["E006-S001"],
-      "blockers": ["Q-012"],
-      "definition_of_ready": ["Second extension feature selected and fully specified"]
+      "expected_evidence": ["Current manifest exclusion", "Future approved revision before implementation"],
+      "dependencies": [],
+      "blockers": [],
+      "definition_of_ready": ["Not applicable to MVP; future planning approval required"],
+      "mvp_scope": false,
+      "generation_eligible": false,
+      "delivery_status": "deferred_post_mvp"
     }
   ],
   "validation_summary": {
@@ -303,6 +309,9 @@
     "stories_without_one_epic": [],
     "stories_without_one_group": [],
     "stories_without_requirements": [],
-    "criteria_without_verification": []
+    "criteria_without_verification": [],
+    "mvp_story_count": 15,
+    "deferred_story_ids": ["E006-S001", "E006-S002"],
+    "unresolved_blockers": []
   }
 }
