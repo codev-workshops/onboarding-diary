@@ -1,0 +1,29 @@
+{
+  "run_id": "20260715-115254-onboarding-diary",
+  "spec_revision": null,
+  "repository": "codev-workshops/onboarding-diary",
+  "control_branch": "sdd/20260715-115254-onboarding-diary/control",
+  "status": "PLANNING_PENDING",
+  "input": {
+    "brd_path": ".sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf",
+    "brd_sha256": "afd140b884b1b029f7775e94a0c802a93a4db16c1f070e803369b191954d24c8",
+    "invocation_path": ".sdd/runs/20260715-115254-onboarding-diary/input/invocation.json"
+  },
+  "planning": {
+    "status": "PENDING",
+    "planner_session_id": null,
+    "artifacts": [],
+    "validation_attempts": 0,
+    "approval_status": "PENDING"
+  },
+  "groups": {},
+  "system_evaluation": {
+    "status": "PENDING",
+    "evaluator_session_ids": [],
+    "attempts": []
+  },
+  "limits": {
+    "maximum_failed_evaluation_cycles_per_group": 3
+  },
+  "updated_at": "2026-07-15T11:52:54Z"
+}
