@@ -13,14 +13,19 @@ const fieldClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm";
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(path, {
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
+  } catch {
+    throw new Error("Unable to reach the server; please retry");
+  }
   if (response.status === 204) {
     return null;
   }
@@ -159,7 +164,7 @@ function Signup({ onCreated, onShowLogin }) {
       });
       onCreated(form.email.trim().toLowerCase());
     } catch (requestError) {
-      setErrors(requestError.fields);
+      setErrors(requestError.fields || {});
       setMessage(requestError.message);
     }
   }
@@ -312,7 +317,7 @@ function Profile({ user, onUpdated }) {
       onUpdated(updated);
       setStatus("Profile saved");
     } catch (requestError) {
-      setErrors(requestError.fields);
+      setErrors(requestError.fields || {});
       setStatus(requestError.message);
     }
   }

@@ -1,9 +1,12 @@
 import os
 import secrets
 import sqlite3
+from collections import deque
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+from threading import Lock
+from time import monotonic
 
 from fastapi import Cookie, Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -17,6 +20,50 @@ from .security import hash_password, verify_password
 SESSION_COOKIE = "session_id"
 SESSION_DURATION = timedelta(hours=8)
 GENERIC_LOGIN_ERROR = "Invalid email or password"
+LOGIN_FAILURE_LIMIT = 5
+LOGIN_FAILURE_WINDOW_SECONDS = 60
+
+
+class LoginThrottle:
+    def __init__(
+        self,
+        limit: int = LOGIN_FAILURE_LIMIT,
+        window_seconds: int = LOGIN_FAILURE_WINDOW_SECONDS,
+    ) -> None:
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self.failures: dict[str, deque[float]] = {}
+        self.lock = Lock()
+
+    def _active_failures(self, client_key: str, now: float) -> deque[float] | None:
+        failures = self.failures.get(client_key)
+        if failures is None:
+            return None
+        cutoff = now - self.window_seconds
+        while failures and failures[0] <= cutoff:
+            failures.popleft()
+        if not failures:
+            self.failures.pop(client_key, None)
+            return None
+        return failures
+
+    def is_limited(self, client_key: str) -> bool:
+        with self.lock:
+            failures = self._active_failures(client_key, monotonic())
+            return failures is not None and len(failures) >= self.limit
+
+    def record_failure(self, client_key: str) -> None:
+        with self.lock:
+            now = monotonic()
+            failures = self._active_failures(client_key, now)
+            if failures is None:
+                failures = deque()
+                self.failures[client_key] = failures
+            failures.append(now)
+
+    def clear(self, client_key: str) -> None:
+        with self.lock:
+            self.failures.pop(client_key, None)
 
 
 class ApiError(Exception):
@@ -114,11 +161,13 @@ def create_app() -> FastAPI:
         database = Database()
         database.bootstrap_admin(signup.email, signup.password)
         app.state.database = database
+        app.state.login_throttle = LoginThrottle()
         try:
             yield
         finally:
             database.close()
             app.state.database = None
+            app.state.login_throttle = None
 
     app = FastAPI(title="Onboarding Diary API", lifespan=lifespan)
 
@@ -198,9 +247,16 @@ def create_app() -> FastAPI:
         response: Response,
         database: Database = Depends(get_database),
     ) -> ProfileResponse:
+        client_key = request.client.host if request.client else "unknown"
+        throttle: LoginThrottle = request.app.state.login_throttle
+        if throttle.is_limited(client_key):
+            raise ApiError(401, "invalid_credentials", GENERIC_LOGIN_ERROR)
+
         row = database.fetchone("SELECT * FROM users WHERE email = ?", (payload.email,))
         if row is None or not verify_password(payload.password, row["password_hash"]):
+            throttle.record_failure(client_key)
             raise ApiError(401, "invalid_credentials", GENERIC_LOGIN_ERROR)
+        throttle.clear(client_key)
 
         token = secrets.token_urlsafe(32)
         now = datetime.now(UTC)
@@ -229,6 +285,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/auth/logout", status_code=204)
     def logout(
+        request: Request,
         response: Response,
         database: Database = Depends(get_database),
         session_id: str | None = Cookie(default=None, alias=SESSION_COOKIE),
@@ -238,6 +295,7 @@ def create_app() -> FastAPI:
         response.delete_cookie(
             key=SESSION_COOKIE,
             httponly=True,
+            secure=request.url.scheme == "https",
             samesite="lax",
             path="/",
         )

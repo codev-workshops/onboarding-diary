@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
+from app.main import LOGIN_FAILURE_LIMIT, LoginThrottle
 from app.security import PBKDF2_ITERATIONS
 
 
@@ -194,6 +195,14 @@ def test_https_login_marks_cookie_secure(
     )
     assert response.status_code == 200
     assert "secure" in response.headers["set-cookie"].lower()
+    logout = client.post("https://testserver/api/auth/logout")
+    delete_cookie = logout.headers["set-cookie"].lower()
+    assert logout.status_code == 204
+    assert "max-age=0" in delete_cookie
+    assert "httponly" in delete_cookie
+    assert "path=/" in delete_cookie
+    assert "samesite=lax" in delete_cookie
+    assert "secure" in delete_cookie
 
 
 def test_invalid_credentials_use_same_generic_response(
@@ -220,6 +229,56 @@ def test_invalid_credentials_use_same_generic_response(
             }
         }
     )
+
+
+def test_login_throttle_preserves_generic_failure_and_creates_no_session(
+    client: TestClient,
+    recruit_payload: dict[str, str],
+) -> None:
+    signup(client, recruit_payload)
+    expected = {
+        "error": {
+            "code": "invalid_credentials",
+            "message": "Invalid email or password",
+        }
+    }
+    for attempt in range(LOGIN_FAILURE_LIMIT):
+        email = (
+            recruit_payload["email"]
+            if attempt % 2
+            else f"unknown-{attempt}@example.com"
+        )
+        response = client.post(
+            "/api/auth/login",
+            json={"email": email, "password": "wrong-password"},
+        )
+        assert response.status_code == 401
+        assert response.json() == expected
+
+    throttled = client.post(
+        "/api/auth/login",
+        json={
+            "email": recruit_payload["email"],
+            "password": recruit_payload["password"],
+        },
+    )
+    assert throttled.status_code == 401
+    assert throttled.json() == expected
+    sessions = client.app.state.database.fetchone(
+        "SELECT COUNT(*) AS count FROM sessions"
+    )
+    assert sessions["count"] == 0
+
+
+def test_login_throttle_is_per_client_and_not_an_account_lockout() -> None:
+    throttle = LoginThrottle(limit=2, window_seconds=60)
+    throttle.record_failure("client-a")
+    throttle.record_failure("client-a")
+    assert throttle.is_limited("client-a")
+    assert not throttle.is_limited("client-b")
+
+    throttle.clear("client-a")
+    assert not throttle.is_limited("client-a")
 
 
 def test_missing_and_expired_sessions_are_rejected(
