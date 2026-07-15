@@ -3,18 +3,18 @@
   "spec_revision": null,
   "repository": "codev-workshops/onboarding-diary",
   "control_branch": "sdd/20260715-115254-onboarding-diary/control",
-  "control_checkpoint_commit": "71058c6d7a943e30e6a6c8df1618b8b459c42fda",
-  "status": "PLANNING",
+  "control_checkpoint_commit": "41fe30d4cf6370467df90328bde83d3d65642c50",
+  "status": "AWAITING_PLAN_APPROVAL",
   "input": {
     "brd_path": ".sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf",
     "brd_sha256": "afd140b884b1b029f7775e94a0c802a93a4db16c1f070e803369b191954d24c8",
     "invocation_path": ".sdd/runs/20260715-115254-onboarding-diary/input/invocation.json"
   },
   "planning": {
-    "status": "CORRECTION_REQUESTED",
+    "status": "READY_FOR_APPROVAL",
     "planner_session_id": "devin-0e1880e88e4f4b89a43b0340e35953b8",
     "planner_branch": "sdd/20260715-115254-onboarding-diary/planner",
-    "planner_commit_sha": "7ce7a5cf7063764fe5ebb4348141a193bc01a234",
+    "planner_commit_sha": "ef4af20389bc6f2f3e90af6cc61c26bac57f68aa",
     "artifacts": [
       ".sdd/runs/20260715-115254-onboarding-diary/plan/specification.md",
       ".sdd/runs/20260715-115254-onboarding-diary/plan/requirements.json",
@@ -27,6 +27,15 @@
       ".sdd/runs/20260715-115254-onboarding-diary/plan/plan-manifest.json"
     ],
     "validation_attempts": 1,
+    "validation": {
+      "status": "PASSED",
+      "checked_at": "2026-07-15T12:39:00Z",
+      "artifact_hash_scope": "git_blob_content",
+      "json_parse": "PASSED",
+      "artifact_hashes": "PASSED",
+      "dependency_graph_acyclic": true,
+      "unresolved_questions": []
+    },
     "approval_status": "PENDING"
   },
   "groups": {},
@@ -38,5 +47,5 @@
   "limits": {
     "maximum_failed_evaluation_cycles_per_group": 3
   },
-  "updated_at": "2026-07-15T12:23:57Z"
+  "updated_at": "2026-07-15T12:39:00Z"
 }
