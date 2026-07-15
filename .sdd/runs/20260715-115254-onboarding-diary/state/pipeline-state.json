@@ -11,8 +11,8 @@
     "invocation_path": ".sdd/runs/20260715-115254-onboarding-diary/input/invocation.json"
   },
   "planning": {
-    "status": "STARTING",
-    "planner_session_id": null,
+    "status": "RUNNING",
+    "planner_session_id": "devin-0e1880e88e4f4b89a43b0340e35953b8",
     "planner_branch": "sdd/20260715-115254-onboarding-diary/planner",
     "artifacts": [],
     "validation_attempts": 0,
@@ -27,5 +27,5 @@
   "limits": {
     "maximum_failed_evaluation_cycles_per_group": 3
   },
-  "updated_at": "2026-07-15T11:56:12Z"
+  "updated_at": "2026-07-15T11:56:56Z"
 }
