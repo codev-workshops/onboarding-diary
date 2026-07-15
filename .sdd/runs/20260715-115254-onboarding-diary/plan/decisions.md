@@ -1,8 +1,8 @@
 # Planning Decisions
 
 - **run_id:** `20260715-115254-onboarding-diary`
-- **spec_revision:** `null`
-- **status:** `READY_FOR_APPROVAL`
+- **spec_revision:** `sdd-v1-ef4af20389bc`
+- **status:** `APPROVED_FROZEN`
 - **clarification source:** `.sdd/runs/20260715-115254-onboarding-diary/plan/clarifications.json`
 
 All material choices are resolved. Planner judgments below are limited to choices expressly authorized by Q-002 and Q-007 through Q-013.

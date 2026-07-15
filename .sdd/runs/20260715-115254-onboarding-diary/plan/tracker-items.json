@@ -1,0 +1,1057 @@
+{
+  "run_id": "20260715-115254-onboarding-diary",
+  "spec_revision": "sdd-v1-ef4af20389bc",
+  "package_status": "APPROVED_FROZEN",
+  "status": "PUBLISHED",
+  "provider": "Linear",
+  "published_at": "2026-07-15T19:15:15.505Z",
+  "publication_mode": "idempotent_create_or_reuse",
+  "team": {
+    "external_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+    "name": "Devin-Connect"
+  },
+  "project": {
+    "external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+    "identifier": "onboarding-diary-mvp-20260715-115254-fcafb34e92e0",
+    "name": "Onboarding Diary MVP — 20260715-115254",
+    "url": "https://linear.app/devin-connect/project/onboarding-diary-mvp-20260715-115254-fcafb34e92e0",
+    "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:project",
+    "disposition": "created"
+  },
+  "parent_epic_issues": [
+    {
+      "plan_id": "E001",
+      "type": "epic",
+      "external_id": "DEV-5",
+      "identifier": "DEV-5",
+      "title": "[E001] Identity, profiles, and role-governed access",
+      "url": "https://linear.app/devin-connect/issue/DEV-5/e001-identity-profiles-and-role-governed-access",
+      "parent_plan_id": null,
+      "parent_identifier": null,
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:epic:E001",
+      "disposition": "created",
+      "traceability": {
+        "requirement_ids": [
+          "REQ-001",
+          "REQ-002",
+          "REQ-003",
+          "REQ-004",
+          "REQ-013"
+        ],
+        "group_ids": [
+          "G-A",
+          "G-B"
+        ],
+        "dependencies": [
+          "Mandated stack and bootstrap Admin configuration"
+        ],
+        "risk_ids": [
+          "RISK-002",
+          "RISK-003",
+          "RISK-005"
+        ],
+        "completion_criteria": [
+          "All E001 stories meet their acceptance criteria",
+          "The documented role/ownership matrix is tested",
+          "No protected operation lacks an authorization test"
+        ]
+      }
+    },
+    {
+      "plan_id": "E002",
+      "type": "epic",
+      "external_id": "DEV-6",
+      "identifier": "DEV-6",
+      "title": "[E002] Recruit onboarding diary",
+      "url": "https://linear.app/devin-connect/issue/DEV-6/e002-recruit-onboarding-diary",
+      "parent_plan_id": null,
+      "parent_identifier": null,
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:epic:E002",
+      "disposition": "created",
+      "traceability": {
+        "requirement_ids": [
+          "REQ-005",
+          "REQ-006",
+          "REQ-007",
+          "REQ-008"
+        ],
+        "group_ids": [
+          "G-C",
+          "G-D"
+        ],
+        "dependencies": [
+          "E001 access rules",
+          "Approved field and lifecycle contract in specification.md"
+        ],
+        "risk_ids": [
+          "RISK-003",
+          "RISK-004"
+        ],
+        "completion_criteria": [
+          "All four diary record types meet approved lifecycle and validation criteria",
+          "Ownership and role restrictions are verified"
+        ]
+      }
+    },
+    {
+      "plan_id": "E003",
+      "type": "epic",
+      "external_id": "DEV-7",
+      "identifier": "DEV-7",
+      "title": "[E003] Onboarding dashboard",
+      "url": "https://linear.app/devin-connect/issue/DEV-7/e003-onboarding-dashboard",
+      "parent_plan_id": null,
+      "parent_identifier": null,
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:epic:E003",
+      "disposition": "created",
+      "traceability": {
+        "requirement_ids": [
+          "REQ-009",
+          "REQ-010"
+        ],
+        "group_ids": [
+          "G-E"
+        ],
+        "dependencies": [
+          "E002 diary data",
+          "Approved calculations in specification.md"
+        ],
+        "risk_ids": [
+          "RISK-006"
+        ],
+        "completion_criteria": [
+          "Specified calculations and visibility scope are implemented",
+          "Seeded boundary cases produce verified dashboard results"
+        ]
+      }
+    },
+    {
+      "plan_id": "E004",
+      "type": "epic",
+      "external_id": "DEV-8",
+      "identifier": "DEV-8",
+      "title": "[E004] Authorized downloadable reporting",
+      "url": "https://linear.app/devin-connect/issue/DEV-8/e004-authorized-downloadable-reporting",
+      "parent_plan_id": null,
+      "parent_identifier": null,
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:epic:E004",
+      "disposition": "created",
+      "traceability": {
+        "requirement_ids": [
+          "REQ-011",
+          "REQ-012",
+          "REQ-013"
+        ],
+        "group_ids": [
+          "G-F"
+        ],
+        "dependencies": [
+          "E001 authorization",
+          "E002 diary data",
+          "Approved report contract in specification.md"
+        ],
+        "risk_ids": [
+          "RISK-003",
+          "RISK-007"
+        ],
+        "completion_criteria": [
+          "Each report type is content-verified in both formats",
+          "Unauthorized and out-of-scope downloads are denied"
+        ]
+      }
+    },
+    {
+      "plan_id": "E005",
+      "type": "epic",
+      "external_id": "DEV-9",
+      "identifier": "DEV-9",
+      "title": "[E005] Simple platform, responsive UX, and failure behavior",
+      "url": "https://linear.app/devin-connect/issue/DEV-9/e005-simple-platform-responsive-ux-and-failure-behavior",
+      "parent_plan_id": null,
+      "parent_identifier": null,
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:epic:E005",
+      "disposition": "created",
+      "traceability": {
+        "requirement_ids": [
+          "REQ-014",
+          "REQ-015",
+          "REQ-016",
+          "REQ-017"
+        ],
+        "group_ids": [
+          "G-A",
+          "G-G"
+        ],
+        "dependencies": [
+          "Mandated single-process ephemeral lifecycle",
+          "Approved viewport/error contract in specification.md"
+        ],
+        "risk_ids": [
+          "RISK-001",
+          "RISK-004",
+          "RISK-008"
+        ],
+        "completion_criteria": [
+          "Mandated stack is verifiable",
+          "Ephemeral data lifetime is documented and tested",
+          "Specified viewport and negative scenarios pass"
+        ]
+      }
+    }
+  ],
+  "child_story_issues": [
+    {
+      "plan_id": "E001-S001",
+      "type": "story",
+      "external_id": "DEV-10",
+      "identifier": "DEV-10",
+      "title": "[E001-S001] Sign up, log in, and end an authenticated session",
+      "url": "https://linear.app/devin-connect/issue/DEV-10/e001-s001-sign-up-log-in-and-end-an-authenticated-session",
+      "parent_plan_id": "E001",
+      "parent_identifier": "DEV-5",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E001-S001",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E001",
+        "group_id": "G-A",
+        "group_prerequisite_ids": [],
+        "requirement_ids": [
+          "REQ-001"
+        ],
+        "dependency_story_ids": [],
+        "dependency_identifiers": [],
+        "acceptance_criterion_ids": [
+          "E001-S001-AC01",
+          "E001-S001-AC02",
+          "E001-S001-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E001-S001-AC01",
+            "verification": "API integration, credential-storage inspection, and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E001-S001-AC02",
+            "verification": "API cookie/session assertions and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E001-S001-AC03",
+            "verification": "Parameterized API negative tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E001-S002",
+      "type": "story",
+      "external_id": "DEV-11",
+      "identifier": "DEV-11",
+      "title": "[E001-S002] View and maintain an approved user profile",
+      "url": "https://linear.app/devin-connect/issue/DEV-11/e001-s002-view-and-maintain-an-approved-user-profile",
+      "parent_plan_id": "E001",
+      "parent_identifier": "DEV-5",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E001-S002",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E001",
+        "group_id": "G-A",
+        "group_prerequisite_ids": [],
+        "requirement_ids": [
+          "REQ-002"
+        ],
+        "dependency_story_ids": [
+          "E001-S001"
+        ],
+        "dependency_identifiers": [
+          "DEV-10"
+        ],
+        "acceptance_criterion_ids": [
+          "E001-S002-AC01",
+          "E001-S002-AC02",
+          "E001-S002-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E001-S002-AC01",
+            "verification": "API schema and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E001-S002-AC02",
+            "verification": "Role/field matrix API tests"
+          },
+          {
+            "acceptance_criterion_id": "E001-S002-AC03",
+            "verification": "Parameterized validation tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E001-S003",
+      "type": "story",
+      "external_id": "DEV-12",
+      "identifier": "DEV-12",
+      "title": "[E001-S003] Enforce recruit, manager, and admin access boundaries",
+      "url": "https://linear.app/devin-connect/issue/DEV-12/e001-s003-enforce-recruit-manager-and-admin-access-boundaries",
+      "parent_plan_id": "E001",
+      "parent_identifier": "DEV-5",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E001-S003",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E001",
+        "group_id": "G-B",
+        "group_prerequisite_ids": [
+          "G-A"
+        ],
+        "requirement_ids": [
+          "REQ-003",
+          "REQ-013"
+        ],
+        "dependency_story_ids": [
+          "E001-S001",
+          "E001-S002"
+        ],
+        "dependency_identifiers": [
+          "DEV-10",
+          "DEV-11"
+        ],
+        "acceptance_criterion_ids": [
+          "E001-S003-AC01",
+          "E001-S003-AC02",
+          "E001-S003-AC03",
+          "E001-S003-AC04"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E001-S003-AC01",
+            "verification": "Role-matrix API tests"
+          },
+          {
+            "acceptance_criterion_id": "E001-S003-AC02",
+            "verification": "Assigned/unassigned fixture tests"
+          },
+          {
+            "acceptance_criterion_id": "E001-S003-AC03",
+            "verification": "Report authorization API test"
+          },
+          {
+            "acceptance_criterion_id": "E001-S003-AC04",
+            "verification": "Cross-endpoint negative tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E001-S004",
+      "type": "story",
+      "external_id": "DEV-13",
+      "identifier": "DEV-13",
+      "title": "[E001-S004] Administer users and inspect all authorized data",
+      "url": "https://linear.app/devin-connect/issue/DEV-13/e001-s004-administer-users-and-inspect-all-authorized-data",
+      "parent_plan_id": "E001",
+      "parent_identifier": "DEV-5",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E001-S004",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E001",
+        "group_id": "G-B",
+        "group_prerequisite_ids": [
+          "G-A"
+        ],
+        "requirement_ids": [
+          "REQ-004"
+        ],
+        "dependency_story_ids": [
+          "E001-S003"
+        ],
+        "dependency_identifiers": [
+          "DEV-12"
+        ],
+        "acceptance_criterion_ids": [
+          "E001-S004-AC01",
+          "E001-S004-AC02",
+          "E001-S004-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E001-S004-AC01",
+            "verification": "Admin API and Playwright tests"
+          },
+          {
+            "acceptance_criterion_id": "E001-S004-AC02",
+            "verification": "Admin operation matrix and cascade tests"
+          },
+          {
+            "acceptance_criterion_id": "E001-S004-AC03",
+            "verification": "API and UI denial tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E002-S001",
+      "type": "story",
+      "external_id": "DEV-14",
+      "identifier": "DEV-14",
+      "title": "[E002-S001] Maintain and filter task entries",
+      "url": "https://linear.app/devin-connect/issue/DEV-14/e002-s001-maintain-and-filter-task-entries",
+      "parent_plan_id": "E002",
+      "parent_identifier": "DEV-6",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E002-S001",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E002",
+        "group_id": "G-C",
+        "group_prerequisite_ids": [
+          "G-B"
+        ],
+        "requirement_ids": [
+          "REQ-005"
+        ],
+        "dependency_story_ids": [
+          "E001-S003"
+        ],
+        "dependency_identifiers": [
+          "DEV-12"
+        ],
+        "acceptance_criterion_ids": [
+          "E002-S001-AC01",
+          "E002-S001-AC02",
+          "E002-S001-AC03",
+          "E002-S001-AC04",
+          "E002-S001-AC05"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E002-S001-AC01",
+            "verification": "API and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E002-S001-AC02",
+            "verification": "API and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E002-S001-AC03",
+            "verification": "API and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E002-S001-AC04",
+            "verification": "Parameterized API filter tests"
+          },
+          {
+            "acceptance_criterion_id": "E002-S001-AC05",
+            "verification": "Negative API tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E002-S002",
+      "type": "story",
+      "external_id": "DEV-15",
+      "identifier": "DEV-15",
+      "title": "[E002-S002] Log and filter issues or blockers",
+      "url": "https://linear.app/devin-connect/issue/DEV-15/e002-s002-log-and-filter-issues-or-blockers",
+      "parent_plan_id": "E002",
+      "parent_identifier": "DEV-6",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E002-S002",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E002",
+        "group_id": "G-C",
+        "group_prerequisite_ids": [
+          "G-B"
+        ],
+        "requirement_ids": [
+          "REQ-006"
+        ],
+        "dependency_story_ids": [
+          "E001-S003"
+        ],
+        "dependency_identifiers": [
+          "DEV-12"
+        ],
+        "acceptance_criterion_ids": [
+          "E002-S002-AC01",
+          "E002-S002-AC02",
+          "E002-S002-AC03",
+          "E002-S002-AC04"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E002-S002-AC01",
+            "verification": "API and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E002-S002-AC02",
+            "verification": "Lifecycle matrix API tests"
+          },
+          {
+            "acceptance_criterion_id": "E002-S002-AC03",
+            "verification": "Parameterized filter tests"
+          },
+          {
+            "acceptance_criterion_id": "E002-S002-AC04",
+            "verification": "Negative API tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E002-S003",
+      "type": "story",
+      "external_id": "DEV-16",
+      "identifier": "DEV-16",
+      "title": "[E002-S003] Submit onboarding feedback",
+      "url": "https://linear.app/devin-connect/issue/DEV-16/e002-s003-submit-onboarding-feedback",
+      "parent_plan_id": "E002",
+      "parent_identifier": "DEV-6",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E002-S003",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E002",
+        "group_id": "G-D",
+        "group_prerequisite_ids": [
+          "G-B"
+        ],
+        "requirement_ids": [
+          "REQ-007"
+        ],
+        "dependency_story_ids": [
+          "E001-S003"
+        ],
+        "dependency_identifiers": [
+          "DEV-12"
+        ],
+        "acceptance_criterion_ids": [
+          "E002-S003-AC01",
+          "E002-S003-AC02",
+          "E002-S003-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E002-S003-AC01",
+            "verification": "API and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E002-S003-AC02",
+            "verification": "Parameterized API tests"
+          },
+          {
+            "acceptance_criterion_id": "E002-S003-AC03",
+            "verification": "Role/lifecycle matrix tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E002-S004",
+      "type": "story",
+      "external_id": "DEV-17",
+      "identifier": "DEV-17",
+      "title": "[E002-S004] Capture tagged additional notes",
+      "url": "https://linear.app/devin-connect/issue/DEV-17/e002-s004-capture-tagged-additional-notes",
+      "parent_plan_id": "E002",
+      "parent_identifier": "DEV-6",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E002-S004",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E002",
+        "group_id": "G-D",
+        "group_prerequisite_ids": [
+          "G-B"
+        ],
+        "requirement_ids": [
+          "REQ-008"
+        ],
+        "dependency_story_ids": [
+          "E001-S003"
+        ],
+        "dependency_identifiers": [
+          "DEV-12"
+        ],
+        "acceptance_criterion_ids": [
+          "E002-S004-AC01",
+          "E002-S004-AC02",
+          "E002-S004-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E002-S004-AC01",
+            "verification": "API and Playwright test"
+          },
+          {
+            "acceptance_criterion_id": "E002-S004-AC02",
+            "verification": "Parameterized API tests"
+          },
+          {
+            "acceptance_criterion_id": "E002-S004-AC03",
+            "verification": "Role/lifecycle matrix tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E003-S001",
+      "type": "story",
+      "external_id": "DEV-18",
+      "identifier": "DEV-18",
+      "title": "[E003-S001] View dashboard counts and recent diary entries",
+      "url": "https://linear.app/devin-connect/issue/DEV-18/e003-s001-view-dashboard-counts-and-recent-diary-entries",
+      "parent_plan_id": "E003",
+      "parent_identifier": "DEV-7",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E003-S001",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E003",
+        "group_id": "G-E",
+        "group_prerequisite_ids": [
+          "G-C",
+          "G-D"
+        ],
+        "requirement_ids": [
+          "REQ-009"
+        ],
+        "dependency_story_ids": [
+          "E002-S001",
+          "E002-S002",
+          "E002-S003",
+          "E002-S004"
+        ],
+        "dependency_identifiers": [
+          "DEV-14",
+          "DEV-15",
+          "DEV-16",
+          "DEV-17"
+        ],
+        "acceptance_criterion_ids": [
+          "E003-S001-AC01",
+          "E003-S001-AC02",
+          "E003-S001-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E003-S001-AC01",
+            "verification": "Seeded aggregation test"
+          },
+          {
+            "acceptance_criterion_id": "E003-S001-AC02",
+            "verification": "Boundary aggregation test"
+          },
+          {
+            "acceptance_criterion_id": "E003-S001-AC03",
+            "verification": "API and Playwright tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E003-S002",
+      "type": "story",
+      "external_id": "DEV-19",
+      "identifier": "DEV-19",
+      "title": "[E003-S002] View task progress and open issues",
+      "url": "https://linear.app/devin-connect/issue/DEV-19/e003-s002-view-task-progress-and-open-issues",
+      "parent_plan_id": "E003",
+      "parent_identifier": "DEV-7",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E003-S002",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E003",
+        "group_id": "G-E",
+        "group_prerequisite_ids": [
+          "G-C",
+          "G-D"
+        ],
+        "requirement_ids": [
+          "REQ-010"
+        ],
+        "dependency_story_ids": [
+          "E003-S001"
+        ],
+        "dependency_identifiers": [
+          "DEV-18"
+        ],
+        "acceptance_criterion_ids": [
+          "E003-S002-AC01",
+          "E003-S002-AC02",
+          "E003-S002-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E003-S002-AC01",
+            "verification": "Parameterized calculation tests"
+          },
+          {
+            "acceptance_criterion_id": "E003-S002-AC02",
+            "verification": "Parameterized aggregation tests"
+          },
+          {
+            "acceptance_criterion_id": "E003-S002-AC03",
+            "verification": "API and Playwright boundary tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E004-S001",
+      "type": "story",
+      "external_id": "DEV-20",
+      "identifier": "DEV-20",
+      "title": "[E004-S001] Generate scoped date-range reports",
+      "url": "https://linear.app/devin-connect/issue/DEV-20/e004-s001-generate-scoped-date-range-reports",
+      "parent_plan_id": "E004",
+      "parent_identifier": "DEV-8",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E004-S001",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E004",
+        "group_id": "G-F",
+        "group_prerequisite_ids": [
+          "G-B",
+          "G-C",
+          "G-D"
+        ],
+        "requirement_ids": [
+          "REQ-011",
+          "REQ-013"
+        ],
+        "dependency_story_ids": [
+          "E001-S003",
+          "E002-S001",
+          "E002-S002",
+          "E002-S003"
+        ],
+        "dependency_identifiers": [
+          "DEV-12",
+          "DEV-14",
+          "DEV-15",
+          "DEV-16"
+        ],
+        "acceptance_criterion_ids": [
+          "E004-S001-AC01",
+          "E004-S001-AC02",
+          "E004-S001-AC03",
+          "E004-S001-AC04"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E004-S001-AC01",
+            "verification": "Parameterized report-content tests"
+          },
+          {
+            "acceptance_criterion_id": "E004-S001-AC02",
+            "verification": "Date-boundary API tests"
+          },
+          {
+            "acceptance_criterion_id": "E004-S001-AC03",
+            "verification": "Assigned-recruit integration test"
+          },
+          {
+            "acceptance_criterion_id": "E004-S001-AC04",
+            "verification": "Unassigned-recruit integration test"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E004-S002",
+      "type": "story",
+      "external_id": "DEV-21",
+      "identifier": "DEV-21",
+      "title": "[E004-S002] Download report output as PDF or CSV",
+      "url": "https://linear.app/devin-connect/issue/DEV-21/e004-s002-download-report-output-as-pdf-or-csv",
+      "parent_plan_id": "E004",
+      "parent_identifier": "DEV-8",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E004-S002",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E004",
+        "group_id": "G-F",
+        "group_prerequisite_ids": [
+          "G-B",
+          "G-C",
+          "G-D"
+        ],
+        "requirement_ids": [
+          "REQ-012"
+        ],
+        "dependency_story_ids": [
+          "E004-S001"
+        ],
+        "dependency_identifiers": [
+          "DEV-20"
+        ],
+        "acceptance_criterion_ids": [
+          "E004-S002-AC01",
+          "E004-S002-AC02",
+          "E004-S002-AC03",
+          "E004-S002-AC04"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E004-S002-AC01",
+            "verification": "PDF parser/content integration test"
+          },
+          {
+            "acceptance_criterion_id": "E004-S002-AC02",
+            "verification": "CSV parser/content integration test"
+          },
+          {
+            "acceptance_criterion_id": "E004-S002-AC03",
+            "verification": "Empty report tests"
+          },
+          {
+            "acceptance_criterion_id": "E004-S002-AC04",
+            "verification": "Negative API and Playwright tests"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E005-S001",
+      "type": "story",
+      "external_id": "DEV-22",
+      "identifier": "DEV-22",
+      "title": "[E005-S001] Run the application on the mandated simple stack",
+      "url": "https://linear.app/devin-connect/issue/DEV-22/e005-s001-run-the-application-on-the-mandated-simple-stack",
+      "parent_plan_id": "E005",
+      "parent_identifier": "DEV-9",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E005-S001",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E005",
+        "group_id": "G-A",
+        "group_prerequisite_ids": [],
+        "requirement_ids": [
+          "REQ-015",
+          "REQ-016"
+        ],
+        "dependency_story_ids": [],
+        "dependency_identifiers": [],
+        "acceptance_criterion_ids": [
+          "E005-S001-AC01",
+          "E005-S001-AC02",
+          "E005-S001-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E005-S001-AC01",
+            "verification": "Dependency inspection and startup smoke tests"
+          },
+          {
+            "acceptance_criterion_id": "E005-S001-AC02",
+            "verification": "End-to-end smoke test and configuration inspection"
+          },
+          {
+            "acceptance_criterion_id": "E005-S001-AC03",
+            "verification": "Restart/reset integration test"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E005-S002",
+      "type": "story",
+      "external_id": "DEV-23",
+      "identifier": "DEV-23",
+      "title": "[E005-S002] Use core flows responsively",
+      "url": "https://linear.app/devin-connect/issue/DEV-23/e005-s002-use-core-flows-responsively",
+      "parent_plan_id": "E005",
+      "parent_identifier": "DEV-9",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E005-S002",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E005",
+        "group_id": "G-G",
+        "group_prerequisite_ids": [
+          "G-B",
+          "G-C",
+          "G-D",
+          "G-E",
+          "G-F"
+        ],
+        "requirement_ids": [
+          "REQ-014"
+        ],
+        "dependency_story_ids": [
+          "E001-S004",
+          "E002-S001",
+          "E002-S002",
+          "E002-S003",
+          "E002-S004",
+          "E003-S002",
+          "E004-S002"
+        ],
+        "dependency_identifiers": [
+          "DEV-13",
+          "DEV-14",
+          "DEV-15",
+          "DEV-16",
+          "DEV-17",
+          "DEV-19",
+          "DEV-21"
+        ],
+        "acceptance_criterion_ids": [
+          "E005-S002-AC01",
+          "E005-S002-AC02",
+          "E005-S002-AC03"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E005-S002-AC01",
+            "verification": "Playwright viewport suite"
+          },
+          {
+            "acceptance_criterion_id": "E005-S002-AC02",
+            "verification": "Playwright viewport suite"
+          },
+          {
+            "acceptance_criterion_id": "E005-S002-AC03",
+            "verification": "Playwright long-content scenario"
+          }
+        ]
+      }
+    },
+    {
+      "plan_id": "E005-S003",
+      "type": "story",
+      "external_id": "DEV-24",
+      "identifier": "DEV-24",
+      "title": "[E005-S003] Handle validation, authorization, and operational failures",
+      "url": "https://linear.app/devin-connect/issue/DEV-24/e005-s003-handle-validation-authorization-and-operational-failures",
+      "parent_plan_id": "E005",
+      "parent_identifier": "DEV-9",
+      "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+      "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+      "team_name": "Devin-Connect",
+      "idempotency_key": "sdd:20260715-115254-onboarding-diary:sdd-v1-ef4af20389bc:story:E005-S003",
+      "disposition": "created",
+      "traceability": {
+        "epic_id": "E005",
+        "group_id": "G-G",
+        "group_prerequisite_ids": [
+          "G-B",
+          "G-C",
+          "G-D",
+          "G-E",
+          "G-F"
+        ],
+        "requirement_ids": [
+          "REQ-017"
+        ],
+        "dependency_story_ids": [
+          "E005-S002"
+        ],
+        "dependency_identifiers": [
+          "DEV-23"
+        ],
+        "acceptance_criterion_ids": [
+          "E005-S003-AC01",
+          "E005-S003-AC02",
+          "E005-S003-AC03",
+          "E005-S003-AC04"
+        ],
+        "verification_methods": [
+          {
+            "acceptance_criterion_id": "E005-S003-AC01",
+            "verification": "Cross-feature validation tests"
+          },
+          {
+            "acceptance_criterion_id": "E005-S003-AC02",
+            "verification": "Cross-feature authorization tests"
+          },
+          {
+            "acceptance_criterion_id": "E005-S003-AC03",
+            "verification": "API negative tests"
+          },
+          {
+            "acceptance_criterion_id": "E005-S003-AC04",
+            "verification": "Fault-injection API and Playwright tests"
+          }
+        ]
+      }
+    }
+  ],
+  "deferred_not_published": {
+    "epic_ids": [
+      "E006"
+    ],
+    "story_ids": [
+      "E006-S001",
+      "E006-S002"
+    ],
+    "group_ids": [
+      "G-H"
+    ]
+  },
+  "validation": {
+    "expected_parent_issue_count": 5,
+    "actual_parent_issue_count": 5,
+    "expected_child_issue_count": 15,
+    "actual_child_issue_count": 15,
+    "all_active_epics_published_once": true,
+    "all_active_stories_published_once": true,
+    "all_child_parent_references_resolved": true,
+    "all_story_dependencies_recorded": true,
+    "all_acceptance_criteria_recorded": true,
+    "deferred_scope_excluded": true
+  }
+}

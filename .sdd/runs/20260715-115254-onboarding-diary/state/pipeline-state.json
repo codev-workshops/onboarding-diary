@@ -4,14 +4,14 @@
   "repository": "codev-workshops/onboarding-diary",
   "control_branch": "sdd/20260715-115254-onboarding-diary/control",
   "control_checkpoint_commit": "41fe30d4cf6370467df90328bde83d3d65642c50",
-  "status": "FREEZING_APPROVED_PLAN",
+  "status": "READY_FOR_GENERATION",
   "input": {
     "brd_path": ".sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf",
     "brd_sha256": "afd140b884b1b029f7775e94a0c802a93a4db16c1f070e803369b191954d24c8",
     "invocation_path": ".sdd/runs/20260715-115254-onboarding-diary/input/invocation.json"
   },
   "planning": {
-    "status": "READY_FOR_APPROVAL",
+    "status": "READY_FOR_GENERATION",
     "planner_session_id": "devin-0e1880e88e4f4b89a43b0340e35953b8",
     "planner_branch": "sdd/20260715-115254-onboarding-diary/planner",
     "planner_commit_sha": "ef4af20389bc6f2f3e90af6cc61c26bac57f68aa",
@@ -24,7 +24,9 @@
       ".sdd/runs/20260715-115254-onboarding-diary/plan/dependency-graph.json",
       ".sdd/runs/20260715-115254-onboarding-diary/plan/risks.json",
       ".sdd/runs/20260715-115254-onboarding-diary/plan/decisions.md",
-      ".sdd/runs/20260715-115254-onboarding-diary/plan/plan-manifest.json"
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/plan-manifest.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/approval.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/tracker-items.json"
     ],
     "validation_attempts": 1,
     "validation": {
@@ -36,7 +38,7 @@
       "dependency_graph_acyclic": true,
       "unresolved_questions": []
     },
-    "approval_status": "APPROVED",
+    "approval_status": "APPROVED_FROZEN",
     "approved_at": "2026-07-15T19:05:24Z",
     "approved_planner_commit_sha": "ef4af20389bc6f2f3e90af6cc61c26bac57f68aa",
     "approval_artifact": ".sdd/runs/20260715-115254-onboarding-diary/plan/approval.json"
@@ -51,8 +53,14 @@
     "provider": "Linear",
     "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
     "team_name": "Devin-Connect",
-    "publish_status": "PENDING",
-    "artifacts": []
+    "publish_status": "PUBLISHED",
+    "project_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+    "project_url": "https://linear.app/devin-connect/project/onboarding-diary-mvp-20260715-115254-fcafb34e92e0",
+    "parent_epic_issue_count": 5,
+    "child_story_issue_count": 15,
+    "artifacts": [
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/tracker-items.json"
+    ]
   },
   "groups": {},
   "system_evaluation": {
@@ -63,5 +71,5 @@
   "limits": {
     "maximum_failed_evaluation_cycles_per_group": 3
   },
-  "updated_at": "2026-07-15T19:05:24Z"
+  "updated_at": "2026-07-15T19:15:15Z"
 }

@@ -1,7 +1,7 @@
 {
   "run_id": "20260715-115254-onboarding-diary",
-  "spec_revision": null,
-  "status": "READY_FOR_APPROVAL",
+  "spec_revision": "sdd-v1-ef4af20389bc",
+  "status": "APPROVED_FROZEN",
   "groups": [
     {
       "id": "G-A",
