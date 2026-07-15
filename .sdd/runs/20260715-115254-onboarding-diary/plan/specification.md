@@ -2,153 +2,181 @@
 
 - **run_id:** `20260715-115254-onboarding-diary`
 - **spec_revision:** `null`
-- **status:** `BLOCKED_CLARIFICATION`
+- **status:** `READY_FOR_APPROVAL`
 - **source BRD:** `.sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf`
-- **source BRD SHA-256:** `afd140b884b1b029f7775e94a0c802a93a4db16c1f070e803369b191954d24c8`
-- **approval policy:** Human approval required
+- **source clarifications:** `.sdd/runs/20260715-115254-onboarding-diary/plan/clarifications.json`
+- **approval policy:** Human approval required before generation
 
 ## 1. Problem and outcomes
 
-New recruits need one responsive web application in which to document their onboarding work, blockers, feedback, and notes. Managers need visibility into recruits they oversee and downloadable reports. Administrators need user-management capability and visibility across all data.
+New recruits need a responsive web application for recording onboarding tasks, issues, feedback, and notes. Managers need to maintain and report on diary entries for assigned recruits. Administrators need full diary access, user management, and assignment management.
 
-The intended outcomes are:
+The MVP outcomes are:
 
-1. Recruits can maintain the diary information explicitly described by the BRD.
-2. Authorized managers can review relevant diary information and generate reports.
-3. Authorized administrators can manage users and view all application data.
-4. Users can see a dashboard summarizing onboarding activity.
-5. The application uses the mandated React/Vite/Tailwind, FastAPI, and in-memory SQLite stack.
+1. Recruits maintain only their own profile and diary entries.
+2. Managers maintain diary entries and generate reports only for recruits assigned to them.
+3. Administrators maintain users, assignments, and all diary entries.
+4. Authorized users see scoped dashboard summaries.
+5. Authorized users download scoped task, issue, feedback, or combined reports.
+6. The application runs on React/Vite/Tailwind, FastAPI, and intentionally ephemeral in-memory SQLite.
 
-## 2. Actors
+## 2. Actors and authorization
 
-| Actor | Explicit BRD capability | Unresolved boundary |
-|---|---|---|
-| New Recruit | Log tasks, issues, feedback, and notes | Whether access is restricted to owned records; who assigns the role |
-| Manager | View recruit entries and generate reports for recruits they oversee | How oversight relationships are created; whether managers may edit data |
-| Admin | Manage users and view all data | Exact user-management operations; whether admins may edit diary data |
-| Unauthenticated visitor | Sign up and log in | Permitted sign-up roles and account activation policy |
+| Actor | Account provisioning | Profile access | Diary access | Reporting |
+|---|---|---|---|---|
+| Recruit | Public sign-up always creates a Recruit | View/edit own name, email, department, and start date; cannot change role or assignments | Create/view/edit/delete own entries | Own records |
+| Manager | Created by an Admin | Same self-profile rules; cannot change role or assignments | Create/view/edit/delete entries owned by assigned recruits | Assigned recruits |
+| Admin | Initial Admin is bootstrapped from required environment variables; later Admin accounts are created by an Admin | View/edit users, roles, and assignments | Create/view/edit/delete all entries | Any recruit |
+| Unauthenticated visitor | Sign up as Recruit or log in | None | None | None |
+
+Admins create, replace, or remove manager-to-recruit assignments. A recruit may have zero or one assigned manager in the MVP. The backend enforces authorization on every resource and download; UI visibility is not an authorization control.
 
 ## 3. Scope
 
-### In scope from the BRD
+### MVP scope
 
-- Email/password sign-up and login.
-- User profile containing name, role, department, and start date.
-- Task entries with create, edit, delete, and filtering behavior.
-- Issue/blocker entries with filtering.
-- Feedback entries.
-- Additional free-form notes with tags.
-- Dashboard summary counts, recent entries, task-completion progress, and open-issue visibility.
-- Date-range reports for tasks, issues, feedback, or a combined report.
+- Email-as-username/password sign-up, login, logout, and eight-hour server-side sessions.
+- Profiles containing name, email, role, department, and start date.
+- Full CRUD for tasks, issues, feedback, and notes under the role rules above.
+- Task filters by date, category, and status; issue filters by status and severity.
+- Scoped dashboard counts, recent entries, task progress, and open issues.
+- Inclusive date-range reports for tasks, issues, feedback, or combined data.
 - PDF and CSV report downloads.
-- Manager report access for recruits they oversee.
-- Responsive web behavior.
-- Database-backed data handling.
-- Two additional features, after their identity and scope are approved.
+- Responsive Chromium behavior at mobile and desktop viewports.
+- Consistent validation, authorization, empty, and failure states.
 
-### Mandated implementation constraints
+### Explicitly deferred post-MVP
 
-- Frontend: React + Vite.
+`REQ-018`, `E006`, `E006-S001`, `E006-S002`, and `G-H` are retained as stable planning IDs but are not generation scope, are not prerequisites for MVP completion, and are absent from MVP execution waves. The two extension features will be selected and specified only after the core MVP is implemented, evaluated, and approved.
+
+### Non-goals
+
+- Production deployment, durable storage, microservices, queues, caches, scheduled reports, or third-party integrations.
+- MFA, password reset, email verification, external identity providers, account lockout, or audit export.
+- Search, charts, onboarding checklists, or any other extension until post-MVP planning.
+
+## 4. Mandated architecture
+
+- Frontend: React with Vite.
 - Styling: Tailwind CSS.
-- Backend: Python FastAPI.
-- Database: SQLite configured as in-memory.
-- Keep the solution simple and avoid over-engineering.
+- Backend: Python FastAPI exposing a JSON REST API under `/api`.
+- Database: one SQLite in-memory database owned by the backend process.
+- Data lifetime: all users, sessions, assignments, and diary records may be lost whenever the backend restarts.
+- Process model: one backend process for the MVP; multi-worker operation is out of scope because independent in-memory databases would diverge.
+- Initial Admin: on each empty startup, create one Admin from `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD`; fail startup with a clear configuration error if either is absent.
 
-### Non-goals unless separately approved
+## 5. Authentication and security contract
 
-- Production deployment, cloud infrastructure, distributed services, queues, caches, or microservices.
-- External identity providers, email delivery, password reset, MFA, audit export, or third-party integrations.
-- Tracker publication or implementation work during planning.
-- Any extension feature not selected through clarification and approval.
+- Email is the unique, case-insensitive login identifier.
+- Public sign-up accepts Recruit profile fields and always assigns role `Recruit`; client-supplied role or assignment fields are rejected.
+- Admin-created users require the same profile fields and password rules; the Admin selects the role.
+- Passwords are 8–128 characters and stored using PBKDF2-HMAC-SHA256 with a per-password random salt and at least 310,000 iterations; plaintext passwords are never stored, returned, or logged.
+- Login creates a cryptographically random opaque session ID stored server-side and sent in an `HttpOnly`, `SameSite=Lax` cookie. The cookie is `Secure` when HTTPS is used and expires after eight hours.
+- Logout invalidates the server-side session and clears the cookie.
+- Invalid credentials always return the same generic `401` response. No lockout is required for this local MVP.
+- Mutating requests are same-origin. Cross-origin credentialed access is disabled; Vite development uses a same-origin proxy to FastAPI.
 
-## 4. Functional requirements summary
+## 6. Data and validation contract
 
-The normative requirement catalog is in `requirements.json`. The core behavior is divided into identity/access (`REQ-001`–`REQ-004`), diary records (`REQ-005`–`REQ-008`), dashboard (`REQ-009`–`REQ-010`), reporting (`REQ-011`–`REQ-013`), platform qualities (`REQ-014`–`REQ-017`), and extension scope (`REQ-018`).
+All IDs are backend-generated integer IDs. Dates use ISO `YYYY-MM-DD`; timestamps use UTC ISO-8601. Leading/trailing whitespace is trimmed before validation. Dates need only be valid calendar dates; past and future dates are allowed.
 
-No unresolved behavior is presented as approved. Stories that depend on an unresolved answer are explicitly blocked in `stories.json`.
+| Entity | Required fields and rules |
+|---|---|
+| User | email: valid basic email pattern, unique case-insensitively, max 254; name: 1–100; department: 1–100; start_date: valid date; role: `Recruit`, `Manager`, or `Admin`, server/admin controlled |
+| Task | date; title 1–120; description 0–2000; category `Training`, `Setup`, `Meeting`, `Project`, or `Other`; status `Not Started`, `In Progress`, `Completed`, or `Blocked`; priority `Low`, `Medium`, or `High` |
+| Issue | date; title 1–120; description 1–2000; severity `Low`, `Medium`, `High`, or `Critical`; status `Open`, `In Progress`, `Resolved`, or `Closed`; resolution_notes 0–2000 and required for `Resolved` or `Closed` |
+| Feedback | date; subject 1–120; type `Positive`, `Suggestion`, or `Concern`; details 1–2000 |
+| Note | date; title 1–120; content 1–5000; zero to ten tags; each tag trimmed, lowercased, case-insensitively unique, and 1–30 characters |
 
-## 5. Proposed system boundary
+PATCH updates are partial. Unknown fields and immutable IDs/owner IDs are rejected. Deletion is permanent because the database is ephemeral and no audit requirement exists.
 
-The mandated stack establishes a browser frontend, a FastAPI backend, and an in-memory SQLite database. The following details are deliberately not fixed pending clarification:
+## 7. Minimal JSON REST API
 
-- Authentication session mechanism and password-security policy.
-- REST resource paths and request/response contracts.
-- Database lifetime, reset behavior, process model, and seed behavior.
-- Role assignment and manager-to-recruit relationship model.
-- Enumerated field values and field-level validation.
-- Report schemas and dashboard calculations.
+Successful JSON responses return the resource directly; collections return arrays without pagination. Validation errors use `422`; unauthenticated requests `401`; authenticated but unauthorized requests `403`; absent resources `404`; duplicate email or invalid state conflicts `409`; successful deletion/logout `204`; unexpected failures `500`.
 
-These decisions affect architecture, security, data, and acceptance behavior and therefore cannot be safely inferred under the invocation policy.
+Errors use:
 
-## 6. Data and integration contracts
+```json
+{"error":{"code":"stable_code","message":"safe user-facing message","fields":{"field":"message"}}}
+```
 
-### Explicit data shapes
+`fields` is optional. `500` responses never expose stack traces.
 
-- **User profile:** email, password credential, name, role, department, start date.
-- **Task:** date, title, description, category, status, priority.
-- **Issue:** date, title, description, severity, status, resolution notes.
-- **Feedback:** date, subject, type (`Positive`, `Suggestion`, or `Concern`), details.
-- **Note:** date, title, content, tags.
-- **Report request:** date range and content selection of tasks, issues, feedback, or combined.
+### Endpoints
 
-### Contracts requiring approval
+- `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`
+- `GET /api/profile`, `PATCH /api/profile`
+- Admin: `GET/POST /api/admin/users`, `GET/PATCH/DELETE /api/admin/users/{user_id}`, `PUT/DELETE /api/admin/recruits/{recruit_id}/manager`
+- CRUD: `/api/tasks`, `/api/issues`, `/api/feedback`, `/api/notes` with collection `GET/POST` and item `GET/PATCH/DELETE`
+- `GET /api/dashboard`
+- `GET /api/reports?recruit_id={id}&type={tasks|issues|feedback|combined}&start_date={date}&end_date={date}&format={pdf|csv}`
 
-- Identifier type and representation.
-- Required/optional fields, length limits, date/timezone handling, uniqueness rules, and enumerated values other than feedback type.
-- Ownership fields and manager-to-recruit assignment representation.
-- API endpoints, error envelope, pagination, sort order, and filtering query syntax.
-- CSV columns/escaping/encoding and PDF layout/content.
+Recruit collection operations are implicitly scoped to self. Manager/Admin create requests include `owner_id`; manager ownership must be an assigned recruit. Manager/Admin dashboard requests may include `recruit_id`; recruit dashboards ignore/reject any other target. Collection results sort by `date DESC`, then `created_at DESC`, then `id DESC`. Task and issue filters are optional query parameters and combine with AND.
 
-## 7. Security and privacy
+An Admin cannot delete the currently authenticated Admin or the last Admin account; either attempt returns `409`. Deleting any other user permanently deletes that user's owned diary records, sessions, and assignment links. Changing a role invalidates that user's sessions and removes assignment links that are no longer valid. Diary records otherwise remain owned by the user ID.
 
-The BRD establishes roles but does not fully define authorization. Planning is blocked until role assignment, record ownership, manager oversight, admin powers, and authentication/session behavior are clarified. At minimum, approval must make it possible to verify:
+### UI flows
 
-- Unauthenticated users cannot access protected diary or reporting data.
-- Each role can access only the data and operations authorized for that role.
-- Passwords are not stored or returned in plaintext.
-- Report downloads enforce the same visibility rules as on-screen data.
+- Unauthenticated users see Login and Recruit Sign-up. Successful authentication opens the Dashboard.
+- The authenticated shell exposes Dashboard, Tasks, Issues, Feedback, Notes, Reports, Profile, and Logout; Admin additionally sees Users & Assignments.
+- Recruit diary pages show the user's own sorted list, supported filters, an Add form, and Edit/Delete actions.
+- Manager/Admin diary and dashboard pages first require a permitted recruit selection; all lists/forms then remain scoped to that recruit.
+- Create/Edit uses one page or modal with inline validation. Delete requires confirmation and returns to the refreshed list.
+- Profile displays role read-only for self-service and allows only name, email, department, and start date edits.
+- Admin Users & Assignments supports user create/edit/delete and manager assignment replacement/removal with the section 7 safeguards.
+- Reports requires recruit selection where applicable, report type, inclusive dates, and PDF/CSV format before download.
+- Empty lists/dashboard/report results show explicit empty states; authentication and failure navigation follows section 10.
 
-No specific hashing library, token format, cookie policy, or session duration is selected in this draft.
+## 8. Dashboard contract
 
-## 8. Failure and recovery behavior
+- Scope is one recruit: self for Recruit, a selected assigned recruit for Manager, and a selected recruit for Admin.
+- Summary counts show total tasks, issues, feedback entries, and notes in scope.
+- Recent activity contains the latest ten records across all four diary types, ordered by `date DESC`, `created_at DESC`, then `id DESC`.
+- Task completion is `Completed tasks / all tasks * 100`, rounded to the nearest whole percent; zero tasks displays `0%`.
+- Open issues are those with status `Open` or `In Progress`.
+- Empty scope displays zero counts and a clear empty state.
 
-The BRD does not define validation errors, authentication failures, missing records, unauthorized operations, report-generation failures, database reset behavior, or recovery after a backend restart. `REQ-017` and `E005-S003` capture the need for approved, testable behavior without selecting it.
+## 9. Report contract
 
-## 9. Observability
+- Reports target exactly one recruit and apply the same authorization scope as dashboard/diary access.
+- Start and end dates are inclusive; start after end is `422`.
+- Type-specific reports contain:
+  - Tasks: date, title, description, category, status, priority.
+  - Issues: date, title, description, severity, status, resolution notes.
+  - Feedback: date, subject, type, details.
+- Combined reports use the superset columns: date, record_type, title_or_subject, details, category, status, priority, severity, resolution_notes, feedback_type.
+- Rows sort by `date ASC`, then `record_type ASC`, then `id ASC`.
+- CSV is UTF-8 with a header row and RFC 4180 quoting.
+- PDF contains the app/report title, recruit name, inclusive date range, generation timestamp, and a readable table using the same logical columns.
+- Empty results still download a valid artifact with headers/metadata and `No records found` in PDF.
+- Filename: `onboarding-diary-{recruit-id}-{type}-{start-date}-to-{end-date}.{pdf|csv}`.
 
-No production observability requirement is stated. For implementation evaluation, the minimum proposed evidence is backend request/error logging without credentials or diary content, deterministic automated tests, and visible user-facing error states. This remains unapproved because log retention, sensitive-data treatment, and operational environment are unspecified.
+## 10. Responsive and failure behavior
 
-## 10. Deployment assumptions
+- Required browser: current Playwright Chromium.
+- Required viewports: mobile `390x844` and desktop `1280x720`.
+- Core pages must have no page-level horizontal overflow; required controls remain reachable. Wide data tables may use a clearly bounded horizontal scroll region or mobile cards.
+- Field validation appears next to the field and preserves other entered values.
+- `401` clears local user state and sends the user to login; `403` shows an access-denied state; `404` shows a not-found state.
+- Network or `500` failures show a generic retryable banner without clearing successful persisted state.
+- Report failure produces no partial download and leaves report criteria available for retry.
 
-No public deployment is in scope. The BRD calls the project greenfield and the invocation mandates an in-memory database. Whether the application is expected to retain data across process restarts is unresolved and materially affects acceptance.
+## 11. Observability and recovery
 
-## 11. Acceptance strategy
+The backend logs request method, route, status, and an opaque request ID. It must not log passwords, session IDs, report contents, or diary field values. Recovery from restart is to bootstrap a new empty database and Admin; durable restore is explicitly out of scope.
 
-- API tests for authentication, authorization, validation, CRUD/filter behavior, dashboard calculations, and report generation.
-- Frontend component/integration tests for forms, filtering, role-gated navigation, summaries, and errors.
-- Playwright scenarios for each independently evaluable implementation group.
-- Artifact-level checks for PDF/CSV downloads.
-- Responsive checks at approved viewport breakpoints.
-- Negative and authorization scenarios for every protected operation.
+## 12. Acceptance strategy
 
-Specific expected results remain blocked where the BRD does not define the relevant rule.
+- Backend integration tests for authentication, role/ownership authorization, validation, CRUD/filtering, dashboard calculations, restart loss, and report content.
+- Frontend integration tests for forms, filters, role-gated navigation, empty states, and safe failures.
+- Playwright scenarios for each active implementation group at both required viewports.
+- Parser-based PDF/CSV content tests.
+- Startup test proving missing bootstrap credentials fail clearly and configured startup creates an Admin.
 
-## 12. Open clarification questions
+Every normative requirement maps through epic, story, acceptance criterion, implementation group, and verification method in the JSON artifacts.
 
-1. **Q-001 — Persistence:** Must data survive a backend restart? If yes, the mandated in-memory SQLite database conflicts with that lifetime unless an approved snapshot/restore mechanism is added.
-2. **Q-002 — Sign-up and roles:** Which role may a public sign-up select, if any? Are manager/admin accounts created only by an admin or seed process?
-3. **Q-003 — Authorization:** Are recruits limited to their own records? Can managers only view, or also edit, records of assigned recruits? Can admins edit/delete diary records or only view them?
-4. **Q-004 — Oversight relationship:** How is a manager linked to the recruits they oversee, and who may create or change that relationship?
-5. **Q-005 — Profile management:** Who may edit name, department, start date, role, and email? Which fields are required and what validation applies?
-6. **Q-006 — Diary lifecycle:** The BRD explicitly grants full CRUD only for tasks. May issues, feedback, and notes also be viewed, edited, or deleted after creation, and by whom?
-7. **Q-007 — Field rules:** What are the allowed task categories/statuses/priorities and issue severities/statuses, and what length/date/tag validation is required?
-8. **Q-008 — Dashboard:** What scope, ordering, “recent” limit, and task-completion formula should the dashboard use?
-9. **Q-009 — Reports:** What rows/columns, ordering, summary calculations, timezone/date inclusivity, filenames, and formatting are required for each PDF/CSV report type?
-10. **Q-010 — Authentication contract:** Should authentication use a server session/cookie or bearer token, and what password rules, session duration, logout, and failed-login behavior are required?
-11. **Q-011 — API contract:** Is a JSON REST API the approved interface, and are there mandated endpoint names, status codes, pagination, or error shapes?
-12. **Q-012 — Additional features:** Which two additional features are required, and are they part of this implementation plan or a later approved extension?
-13. **Q-013 — Responsive/error acceptance:** Which browser/viewports must pass, and what user-visible behavior is required for validation, authorization, server, and report-generation failures?
+## 13. Decisions, assumptions, and approval
 
-## 13. Approval gate
+All material clarification questions are resolved in `clarifications.json`. Planner-selected details are limited to the expressly authorized simple judgments and are recorded in `decisions.md`. No undisclosed material assumption remains.
 
-This package is `BLOCKED_CLARIFICATION`. Human answers to the material questions above must be incorporated without renumbering existing IDs, followed by revalidation and approval before generation or tracker publication.
+This package is `READY_FOR_APPROVAL`. Human plan approval is still required before generation, implementation, or tracker publication.

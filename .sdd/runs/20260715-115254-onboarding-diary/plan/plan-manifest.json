@@ -1,56 +1,63 @@
 {
   "run_id": "20260715-115254-onboarding-diary",
   "spec_revision": null,
-  "status": "BLOCKED_CLARIFICATION",
+  "status": "READY_FOR_APPROVAL",
   "repository": "codev-workshops/onboarding-diary",
   "control_branch": "sdd/20260715-115254-onboarding-diary/control",
+  "control_commit": "e9ef225f7bd4bb270962e378a5cb4f210ca67011",
   "planner_branch": "sdd/20260715-115254-onboarding-diary/planner",
   "source": {
     "brd_path": ".sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf",
     "brd_sha256": "afd140b884b1b029f7775e94a0c802a93a4db16c1f070e803369b191954d24c8",
-    "invocation_path": ".sdd/runs/20260715-115254-onboarding-diary/input/invocation.json"
+    "invocation_path": ".sdd/runs/20260715-115254-onboarding-diary/input/invocation.json",
+    "clarifications_path": ".sdd/runs/20260715-115254-onboarding-diary/plan/clarifications.json",
+    "clarifications_sha256": "1a801316109079ebced8d4e8491b24accb253ac6dad17dd23d0f377142a149f6"
   },
   "counts": {
     "requirements": 18,
     "epics": 6,
+    "mvp_epics": 5,
     "stories": 17,
+    "mvp_stories": 15,
     "acceptance_criteria": 56,
     "groups": 8,
+    "mvp_groups": 7,
     "risks": 9,
-    "open_decisions": 6
+    "accepted_decisions": 8,
+    "open_decisions": 0
   },
   "artifacts": [
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/specification.md",
-      "sha256": "e158a042694f1f373e6f1581a7c7e1c0776dbc260456530dcfcc403110ef0c5e"
+      "sha256": "0fc6c4be1ffa467ce245a0b6918e335d5d661d2d20349c1980ef3663e877dcb0"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/requirements.json",
-      "sha256": "e865eac22733bc1f0a6fea37cdd7ee392a000f0bd31466cf0083d65358b98b41"
+      "sha256": "cdacb34c202a98101a1d3551e4997bee4da70a0ebbcf577065878f372ddb6ba6"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/epics.json",
-      "sha256": "0d9955275fe12f81b8f9bd651da10e40cb484ec42f494a8021f6cc0bba328cdd"
+      "sha256": "afd41f908fa4dfbf9ca696ca379b86465aab124c50e2ece0441bea99f311f9f7"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/stories.json",
-      "sha256": "ad351a33db601fbc1217ca4e415f5ab3369ff7c2376be5ba0fc59b96f2aeb9ae"
+      "sha256": "02bb4c31b4c98d61e105e824ef674d6fe1af6721ad9ed83a063013f9234a5564"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/groups.json",
-      "sha256": "9a8eeb55afef6b83b3e201c6e7fb9e61d18f472bb77e2f0347631a0fbcbbe95b"
+      "sha256": "2eb7a2d909f08b344e8afacfa30e283f13e30ea438b026571539e5690dd910cb"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/dependency-graph.json",
-      "sha256": "baa9ec4b2d5ee708c3fcd1373f8e94e079e51bafa581519a321a693c94a79ce5"
+      "sha256": "f40e3d3cfe632e09bb835fafb1841aad6c0bae362c1b667b760cc39590c67efd"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/risks.json",
-      "sha256": "1aae2d964e4372903432b3f3c421d06dde69c07ac0a4db6ae394817a0d868aca"
+      "sha256": "8eb67a1390c9d142b11a9f0282a9adf44e939e48c864ece4d698cb35bc39de47"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/decisions.md",
-      "sha256": "3a34e8e286d308428f042bfab21eb7233025fba06bc24603825dffe269defa69"
+      "sha256": "b0a4580e418693b1beb188a20ecdda43aa382a48171dfa92d730310a032f5acc"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/plan-manifest.json",
@@ -68,34 +75,30 @@
     "stories_without_requirements": [],
     "criteria_without_verification": [],
     "groups_without_measurable_exit": [],
+    "unresolved_story_or_group_blockers": [],
+    "unapproved_or_ambiguous_requirements": [],
     "dependency_graph_acyclic": true,
-    "all_groups_in_execution_waves_once": true,
-    "unapproved_scope_disclosed": true,
-    "material_ambiguity_disclosed": true
+    "all_mvp_groups_in_execution_waves_once": true,
+    "deferred_groups_excluded_from_execution_waves": ["G-H"],
+    "material_ambiguity_disclosed_or_resolved": true,
+    "artifact_hashes_verified": true
   },
   "recommended_execution_waves": [
     ["G-A"],
     ["G-B"],
     ["G-C", "G-D"],
     ["G-E", "G-F"],
-    ["G-G"],
-    ["G-H"]
+    ["G-G"]
   ],
-  "unresolved_questions": [
-    "Q-001: Must data survive a backend restart, and how should that reconcile with in-memory SQLite?",
-    "Q-002: Which roles may sign up or be provisioned, and by whom?",
-    "Q-003: What are the exact per-role ownership, view, edit, and delete boundaries?",
-    "Q-004: How are managers linked to recruits they oversee?",
-    "Q-005: Who may edit each profile field and what validation applies?",
-    "Q-006: What lifecycle operations are allowed for issues, feedback, and notes?",
-    "Q-007: What field enums, requiredness, lengths, dates, and tag rules apply?",
-    "Q-008: What exact dashboard scopes, recent ordering/count, completion formula, and open-status definition apply?",
-    "Q-009: What exact report content, date boundaries, ordering, PDF/CSV schemas, filenames, and empty behavior apply?",
-    "Q-010: What authentication/session and password-security contract is required?",
-    "Q-011: What API endpoint, pagination, status, and error-envelope contract is required?",
-    "Q-012: Which two extension features are selected and are they in this plan's implementation scope?",
-    "Q-013: What browser/viewport and user-visible failure behavior must pass?"
-  ],
+  "deferred_post_mvp": {
+    "requirement_ids": ["REQ-018"],
+    "epic_ids": ["E006"],
+    "story_ids": ["E006-S001", "E006-S002"],
+    "group_ids": ["G-H"],
+    "generation_eligible": false,
+    "reason": "Q-012 explicitly defers the two extension features until the core MVP is complete and proven."
+  },
+  "unresolved_questions": [],
   "approval": {
     "required": true,
     "status": "pending",

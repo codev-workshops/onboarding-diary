@@ -1,187 +1,187 @@
 {
   "run_id": "20260715-115254-onboarding-diary",
   "spec_revision": null,
-  "status": "BLOCKED_CLARIFICATION",
+  "status": "READY_FOR_APPROVAL",
   "requirements": [
     {
       "id": "REQ-001",
-      "statement": "The system shall allow a user to sign up and log in using email and password.",
-      "classification": "explicit",
+      "statement": "The system shall allow public sign-up as Recruit only, email/password login, and logout using the approved eight-hour opaque server-session contract.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 1, Features > Authentication",
       "verification_method": "API and Playwright tests for successful and rejected sign-up/login flows",
       "epic_ids": ["E001"],
       "story_ids": ["E001-S001"],
       "acceptance_criteria_ids": ["E001-S001-AC01", "E001-S001-AC02", "E001-S001-AC03"],
       "group_ids": ["G-A"],
-      "open_questions": ["Q-002", "Q-010", "Q-011"]
+      "open_questions": []
     },
     {
       "id": "REQ-002",
-      "statement": "The system shall maintain a user profile containing name, role, department, and start date.",
-      "classification": "explicit",
+      "statement": "The system shall maintain a profile containing name, email, role, department, and start date; users may edit their own non-role fields while role and assignment changes remain Admin-managed.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 1, Features > Authentication",
-      "verification_method": "API schema tests and Playwright profile display/edit tests after edit rules are approved",
+      "verification_method": "API schema/authorization tests and Playwright own-profile display/edit tests",
       "epic_ids": ["E001"],
       "story_ids": ["E001-S002"],
       "acceptance_criteria_ids": ["E001-S002-AC01", "E001-S002-AC02", "E001-S002-AC03"],
       "group_ids": ["G-A"],
-      "open_questions": ["Q-005", "Q-007"]
+      "open_questions": []
     },
     {
       "id": "REQ-003",
-      "statement": "The system shall enforce distinct New Recruit, Manager, and Admin capabilities.",
-      "classification": "explicit_with_undefined_boundaries",
+      "statement": "The system shall enforce Recruit access to owned records, Manager access to assigned recruits' records, and Admin access to all records, with create/view/edit/delete permitted within each scope.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 1, User Roles",
       "verification_method": "Role-matrix authorization tests for every protected API and UI operation",
       "epic_ids": ["E001"],
       "story_ids": ["E001-S003"],
       "acceptance_criteria_ids": ["E001-S003-AC01", "E001-S003-AC02", "E001-S003-AC03", "E001-S003-AC04"],
       "group_ids": ["G-B"],
-      "open_questions": ["Q-002", "Q-003", "Q-004", "Q-010"]
+      "open_questions": []
     },
     {
       "id": "REQ-004",
-      "statement": "The system shall allow an Admin to manage users and view all data.",
-      "classification": "explicit_with_undefined_operations",
+      "statement": "The system shall allow an Admin to create, view, edit, and delete users, manage roles and manager-to-recruit assignments, and create, view, edit, and delete all diary data.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 1, User Roles",
       "verification_method": "Admin API and Playwright tests plus non-admin denial tests",
       "epic_ids": ["E001"],
       "story_ids": ["E001-S004"],
       "acceptance_criteria_ids": ["E001-S004-AC01", "E001-S004-AC02", "E001-S004-AC03"],
       "group_ids": ["G-B"],
-      "open_questions": ["Q-003", "Q-004", "Q-005"]
+      "open_questions": []
     },
     {
       "id": "REQ-005",
-      "statement": "A New Recruit shall be able to create, edit, and delete task entries with date, title, description, category, status, and priority, and filter tasks by date, category, or status.",
-      "classification": "explicit",
+      "statement": "Authorized actors shall create, view, edit, and delete scoped task entries with date, title, description, category, status, and priority, and filter tasks by date, category, or status.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 1, Features > Task Log",
       "verification_method": "Task API CRUD/filter tests and Playwright task-log scenarios",
       "epic_ids": ["E002"],
       "story_ids": ["E002-S001"],
       "acceptance_criteria_ids": ["E002-S001-AC01", "E002-S001-AC02", "E002-S001-AC03", "E002-S001-AC04", "E002-S001-AC05"],
       "group_ids": ["G-C"],
-      "open_questions": ["Q-003", "Q-007", "Q-011"]
+      "open_questions": []
     },
     {
       "id": "REQ-006",
-      "statement": "A New Recruit shall be able to log issues or blockers with date, title, description, severity, status, and resolution notes, and filter issues by status or severity.",
-      "classification": "explicit_with_undefined_lifecycle",
+      "statement": "Authorized users shall create, view, edit, and delete scoped issues with date, title, description, severity, status, and resolution notes, and filter issues by status or severity.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 1, Features > Issue Log",
-      "verification_method": "Issue API/filter tests and Playwright issue-log scenarios after lifecycle rules are approved",
+      "verification_method": "Issue CRUD/filter/authorization tests and Playwright issue-log scenarios",
       "epic_ids": ["E002"],
       "story_ids": ["E002-S002"],
       "acceptance_criteria_ids": ["E002-S002-AC01", "E002-S002-AC02", "E002-S002-AC03", "E002-S002-AC04"],
       "group_ids": ["G-C"],
-      "open_questions": ["Q-003", "Q-006", "Q-007"]
+      "open_questions": []
     },
     {
       "id": "REQ-007",
-      "statement": "A New Recruit shall be able to submit onboarding feedback with date, subject, type, and details, where type is Positive, Suggestion, or Concern.",
-      "classification": "explicit_with_undefined_lifecycle",
+      "statement": "Authorized users shall create, view, edit, and delete scoped onboarding feedback with date, subject, type, and details, where type is Positive, Suggestion, or Concern.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 1, Features > Feedback Notes",
       "verification_method": "Feedback API validation tests and Playwright submission scenarios",
       "epic_ids": ["E002"],
       "story_ids": ["E002-S003"],
       "acceptance_criteria_ids": ["E002-S003-AC01", "E002-S003-AC02", "E002-S003-AC03"],
       "group_ids": ["G-D"],
-      "open_questions": ["Q-003", "Q-006", "Q-007"]
+      "open_questions": []
     },
     {
       "id": "REQ-008",
-      "statement": "A New Recruit shall be able to capture additional notes with date, title, content, and tags.",
-      "classification": "explicit_with_undefined_lifecycle",
+      "statement": "Authorized users shall create, view, edit, and delete scoped additional notes with date, title, content, and zero to ten normalized tags.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 1, Features > Additional Notes",
       "verification_method": "Note API/tag validation tests and Playwright note-entry scenarios",
       "epic_ids": ["E002"],
       "story_ids": ["E002-S004"],
       "acceptance_criteria_ids": ["E002-S004-AC01", "E002-S004-AC02", "E002-S004-AC03"],
       "group_ids": ["G-D"],
-      "open_questions": ["Q-003", "Q-006", "Q-007"]
+      "open_questions": []
     },
     {
       "id": "REQ-009",
-      "statement": "The dashboard shall show summary counts and recent entries across all diary categories.",
-      "classification": "explicit_with_undefined_calculation",
+      "statement": "The dashboard shall show scoped counts for all four diary categories and the ten most recent scoped entries using the approved deterministic order.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 2, Dashboard",
       "verification_method": "Seeded API aggregation tests and Playwright dashboard display tests",
       "epic_ids": ["E003"],
       "story_ids": ["E003-S001"],
       "acceptance_criteria_ids": ["E003-S001-AC01", "E003-S001-AC02", "E003-S001-AC03"],
       "group_ids": ["G-E"],
-      "open_questions": ["Q-003", "Q-008"]
+      "open_questions": []
     },
     {
       "id": "REQ-010",
-      "statement": "The dashboard shall show task-completion progress and open issues at a glance.",
-      "classification": "explicit_with_undefined_calculation",
+      "statement": "The dashboard shall show completed tasks divided by all tasks as a rounded whole percent and shall treat Open and In Progress issues as open.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 2, Dashboard",
       "verification_method": "Seeded boundary tests for progress/open-issue calculations and Playwright display tests",
       "epic_ids": ["E003"],
       "story_ids": ["E003-S002"],
       "acceptance_criteria_ids": ["E003-S002-AC01", "E003-S002-AC02", "E003-S002-AC03"],
       "group_ids": ["G-E"],
-      "open_questions": ["Q-007", "Q-008"]
+      "open_questions": []
     },
     {
       "id": "REQ-011",
-      "statement": "The system shall generate reports for an inclusive or exclusive date range as approved, containing tasks, issues, feedback, or a combined selection.",
-      "classification": "explicit_with_undefined_contract",
+      "statement": "The system shall generate one-recruit reports over an inclusive date range containing tasks, issues, feedback, or the approved combined superset contract.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 2, Reports",
       "verification_method": "Report query tests with boundary dates and each content selection",
       "epic_ids": ["E004"],
       "story_ids": ["E004-S001"],
       "acceptance_criteria_ids": ["E004-S001-AC01", "E004-S001-AC02", "E004-S001-AC03", "E004-S001-AC04"],
       "group_ids": ["G-F"],
-      "open_questions": ["Q-003", "Q-009", "Q-011"]
+      "open_questions": []
     },
     {
       "id": "REQ-012",
-      "statement": "The system shall provide generated reports as downloadable PDF or CSV files.",
-      "classification": "explicit_with_undefined_contract",
+      "statement": "The system shall provide authorized reports as parseable UTF-8 RFC 4180 CSV or readable PDF files using the approved columns, metadata, ordering, empty-result behavior, and filename.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 2, Reports",
       "verification_method": "Artifact tests for media type, filename, parseability, content, and authorization",
       "epic_ids": ["E004"],
       "story_ids": ["E004-S002"],
       "acceptance_criteria_ids": ["E004-S002-AC01", "E004-S002-AC02", "E004-S002-AC03", "E004-S002-AC04"],
       "group_ids": ["G-F"],
-      "open_questions": ["Q-009", "Q-013"]
+      "open_questions": []
     },
     {
       "id": "REQ-013",
-      "statement": "A Manager shall be able to generate reports for recruits the Manager oversees.",
-      "classification": "explicit_with_undefined_relationship",
+      "statement": "A Manager shall generate reports only for recruits assigned by an Admin; an Admin may report on any recruit and a Recruit only on self.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 2, Reports",
       "verification_method": "Authorization tests using assigned and unassigned recruit fixtures",
       "epic_ids": ["E001", "E004"],
       "story_ids": ["E001-S003", "E004-S001"],
       "acceptance_criteria_ids": ["E001-S003-AC03", "E004-S001-AC03", "E004-S001-AC04"],
       "group_ids": ["G-B", "G-F"],
-      "open_questions": ["Q-003", "Q-004"]
+      "open_questions": []
     },
     {
       "id": "REQ-014",
-      "statement": "The application shall be a responsive web application.",
-      "classification": "explicit_with_undefined_acceptance",
+      "statement": "The application shall keep all core flows usable in current Playwright Chromium at 390x844 and 1280x720 under the approved overflow and control-access rules.",
+      "classification": "explicit_and_clarified",
       "source": "BRD page 2, Technical Notes",
-      "verification_method": "Playwright viewport tests at approved browser and viewport matrix",
+      "verification_method": "Playwright tests in current Chromium at 390x844 and 1280x720",
       "epic_ids": ["E005"],
       "story_ids": ["E005-S002"],
       "acceptance_criteria_ids": ["E005-S002-AC01", "E005-S002-AC02", "E005-S002-AC03"],
       "group_ids": ["G-G"],
-      "open_questions": ["Q-013"]
+      "open_questions": []
     },
     {
       "id": "REQ-015",
-      "statement": "Application data shall be stored in the mandated in-memory SQLite database with an approved data-lifetime contract.",
-      "classification": "mandated_with_lifetime_conflict",
+      "statement": "Application data shall be stored in a single-process in-memory SQLite database and may be lost on every backend restart.",
+      "classification": "mandated_and_clarified",
       "source": "Invocation requested_stack.database and BRD page 2, Technical Notes",
-      "verification_method": "Integration tests for storage and approved restart/reset behavior",
+      "verification_method": "Integration tests for in-process storage and restart data loss/bootstrap behavior",
       "epic_ids": ["E005"],
       "story_ids": ["E005-S001"],
       "acceptance_criteria_ids": ["E005-S001-AC01", "E005-S001-AC02", "E005-S001-AC03"],
       "group_ids": ["G-A"],
-      "open_questions": ["Q-001"]
+      "open_questions": []
     },
     {
       "id": "REQ-016",
@@ -197,33 +197,36 @@
     },
     {
       "id": "REQ-017",
-      "statement": "The system shall provide approved validation, authorization, and recoverable user-facing failure behavior for all core flows.",
-      "classification": "inferred_required_for_acceptance_unapproved",
+      "statement": "The system shall enforce the approved validation and authorization contracts and show the approved field, login, access-denied, not-found, retryable server, and report-failure states.",
+      "classification": "planner_defined_authorized",
       "source": "Derived from the need for testable authentication, forms, APIs, and report generation",
-      "verification_method": "Negative API tests and Playwright failure-state scenarios after behavior is approved",
+      "verification_method": "Negative API tests and Playwright field/login/access/not-found/server/report failure scenarios",
       "epic_ids": ["E005"],
       "story_ids": ["E005-S003"],
       "acceptance_criteria_ids": ["E005-S003-AC01", "E005-S003-AC02", "E005-S003-AC03", "E005-S003-AC04"],
       "group_ids": ["G-G"],
-      "open_questions": ["Q-007", "Q-010", "Q-011", "Q-013"]
+      "open_questions": []
     },
     {
       "id": "REQ-018",
-      "statement": "The delivered application shall include at least two additional approved features beyond the core application.",
-      "classification": "explicit_with_undefined_scope",
+      "statement": "Two additional features are explicitly deferred from this MVP and shall receive a separate post-MVP specification after the core application is implemented and proven.",
+      "classification": "explicit_deferred_post_mvp",
       "source": "BRD page 2, Exercise Instructions > Step 3",
-      "verification_method": "Feature-specific automated and Playwright tests to be defined after selection",
+      "verification_method": "Manifest and scope review proving E006/G-H are excluded from MVP generation and execution waves",
       "epic_ids": ["E006"],
       "story_ids": ["E006-S001", "E006-S002"],
       "acceptance_criteria_ids": ["E006-S001-AC01", "E006-S001-AC02", "E006-S002-AC01", "E006-S002-AC02"],
       "group_ids": ["G-H"],
-      "open_questions": ["Q-012"]
+      "open_questions": [],
+      "mvp_scope": false,
+      "generation_eligible": false
     }
   ],
   "coverage_summary": {
     "requirement_count": 18,
     "requirements_without_stories": [],
     "requirements_without_verification": [],
-    "unapproved_or_ambiguous_requirements": ["REQ-003", "REQ-004", "REQ-006", "REQ-007", "REQ-008", "REQ-009", "REQ-010", "REQ-011", "REQ-012", "REQ-013", "REQ-014", "REQ-015", "REQ-017", "REQ-018"]
+    "unapproved_or_ambiguous_requirements": [],
+    "deferred_requirements": ["REQ-018"]
   }
 }
