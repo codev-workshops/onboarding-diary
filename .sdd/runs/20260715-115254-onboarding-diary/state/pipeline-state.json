@@ -4,7 +4,7 @@
   "repository": "codev-workshops/onboarding-diary",
   "control_branch": "sdd/20260715-115254-onboarding-diary/control",
   "control_checkpoint_commit": "bc9c081d042409a60253f4d6690bf18b83ffa0ac",
-  "status": "SCHEDULING",
+  "status": "GENERATING",
   "input": {
     "brd_path": ".sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf",
     "brd_sha256": "afd140b884b1b029f7775e94a0c802a93a4db16c1f070e803369b191954d24c8",
@@ -47,7 +47,9 @@
     "name": "integration_branch",
     "integration_branch": "sdd/20260715-115254-onboarding-diary/integration",
     "group_pull_request_base": "sdd/20260715-115254-onboarding-diary/integration",
-    "final_pull_request_base": "main"
+    "final_pull_request_base": "main",
+    "integration_branch_created_at": "2026-07-15T19:20:30Z",
+    "integration_branch_base_commit": "41f480a"
   },
   "tracker": {
     "provider": "Linear",
@@ -236,5 +238,5 @@
   "limits": {
     "maximum_failed_evaluation_cycles_per_group": 3
   },
-  "updated_at": "2026-07-15T19:18:30Z"
+  "updated_at": "2026-07-15T19:20:30Z"
 }
