@@ -1,17 +1,20 @@
 {
   "run_id": "20260715-115254-onboarding-diary",
-  "spec_revision": null,
-  "status": "READY_FOR_APPROVAL",
+  "spec_revision": "sdd-v1-ef4af20389bc",
+  "status": "READY_FOR_GENERATION",
   "repository": "codev-workshops/onboarding-diary",
   "control_branch": "sdd/20260715-115254-onboarding-diary/control",
-  "control_commit": "e9ef225f7bd4bb270962e378a5cb4f210ca67011",
+  "control_commit": "a60a0e617ee228d65fe4cc94ca5169c6e3ff46a7",
   "planner_branch": "sdd/20260715-115254-onboarding-diary/planner",
   "source": {
     "brd_path": ".sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf",
     "brd_sha256": "afd140b884b1b029f7775e94a0c802a93a4db16c1f070e803369b191954d24c8",
     "invocation_path": ".sdd/runs/20260715-115254-onboarding-diary/input/invocation.json",
     "clarifications_path": ".sdd/runs/20260715-115254-onboarding-diary/plan/clarifications.json",
-    "clarifications_sha256": "1a801316109079ebced8d4e8491b24accb253ac6dad17dd23d0f377142a149f6"
+    "clarifications_sha256": "1a801316109079ebced8d4e8491b24accb253ac6dad17dd23d0f377142a149f6",
+    "approval_path": ".sdd/runs/20260715-115254-onboarding-diary/plan/approval.json",
+    "approval_sha256": "e131e41ad11e704b87791cf0b4d0fbab7067964b75bb015e3e60aabbdeb78907",
+    "tracker_items_path": ".sdd/runs/20260715-115254-onboarding-diary/plan/tracker-items.json"
   },
   "counts": {
     "requirements": 18,
@@ -24,40 +27,51 @@
     "mvp_groups": 7,
     "risks": 9,
     "accepted_decisions": 8,
-    "open_decisions": 0
+    "open_decisions": 0,
+    "published_projects": 1,
+    "published_epic_issues": 5,
+    "published_story_issues": 15
   },
   "artifacts": [
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/specification.md",
-      "sha256": "0fc6c4be1ffa467ce245a0b6918e335d5d661d2d20349c1980ef3663e877dcb0"
+      "sha256": "adeabd4e81eed138e5b758f5aef0f6ab6f076be54d78a7b3b5b33b4bfcfaad2c"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/requirements.json",
-      "sha256": "cdacb34c202a98101a1d3551e4997bee4da70a0ebbcf577065878f372ddb6ba6"
+      "sha256": "f1514e1d5a3ecf761aeb03cf0672cc3f38fabc0b4404c81a1ffe1a89585c76c0"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/epics.json",
-      "sha256": "afd41f908fa4dfbf9ca696ca379b86465aab124c50e2ece0441bea99f311f9f7"
+      "sha256": "9e42e131b6b6291f1c45204997ffa0f21243f979bb532fc36304ef8cd789be22"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/stories.json",
-      "sha256": "02bb4c31b4c98d61e105e824ef674d6fe1af6721ad9ed83a063013f9234a5564"
+      "sha256": "41bbd2fdf55c160953286b083711a06896c3d7bddf42f4ec7e85482fc076f011"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/groups.json",
-      "sha256": "2eb7a2d909f08b344e8afacfa30e283f13e30ea438b026571539e5690dd910cb"
+      "sha256": "7e16bf0a47786e4e913b4542156026591f5b75c8e86f5054b8e4dbde411d0883"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/dependency-graph.json",
-      "sha256": "f40e3d3cfe632e09bb835fafb1841aad6c0bae362c1b667b760cc39590c67efd"
+      "sha256": "98a2891cb08cfb0a9daec1bb1c8bf43a3322311ee01accc84e0a5606da5edcb9"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/risks.json",
-      "sha256": "8eb67a1390c9d142b11a9f0282a9adf44e939e48c864ece4d698cb35bc39de47"
+      "sha256": "ee79793c64a5d610fb1462ef644888bb43074e1e326336f9e5dbc6423db2ceae"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/decisions.md",
-      "sha256": "b0a4580e418693b1beb188a20ecdda43aa382a48171dfa92d730310a032f5acc"
+      "sha256": "c55e471b35338d68f8392802a3fcedd8239cd02405fa90a9c18d0f7ab26d3bee"
+    },
+    {
+      "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/approval.json",
+      "sha256": "e131e41ad11e704b87791cf0b4d0fbab7067964b75bb015e3e60aabbdeb78907"
+    },
+    {
+      "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/tracker-items.json",
+      "sha256": "319276618c369a1642b4152f21899c63d33c80619ad6acc42fbcd74e6df0419d"
     },
     {
       "path": ".sdd/runs/20260715-115254-onboarding-diary/plan/plan-manifest.json",
@@ -79,30 +93,76 @@
     "unapproved_or_ambiguous_requirements": [],
     "dependency_graph_acyclic": true,
     "all_mvp_groups_in_execution_waves_once": true,
-    "deferred_groups_excluded_from_execution_waves": ["G-H"],
+    "deferred_groups_excluded_from_execution_waves": [
+      "G-H"
+    ],
     "material_ambiguity_disclosed_or_resolved": true,
-    "artifact_hashes_verified": true
+    "artifact_hashes_verified": true,
+    "approved_scope_unchanged": true,
+    "acceptance_behavior_unchanged": true,
+    "spec_revision_frozen": true,
+    "tracker_publication_succeeded": true,
+    "tracker_active_epic_coverage": "5/5",
+    "tracker_active_story_coverage": "15/15",
+    "tracker_deferred_scope_excluded": true
   },
   "recommended_execution_waves": [
-    ["G-A"],
-    ["G-B"],
-    ["G-C", "G-D"],
-    ["G-E", "G-F"],
-    ["G-G"]
+    [
+      "G-A"
+    ],
+    [
+      "G-B"
+    ],
+    [
+      "G-C",
+      "G-D"
+    ],
+    [
+      "G-E",
+      "G-F"
+    ],
+    [
+      "G-G"
+    ]
   ],
   "deferred_post_mvp": {
-    "requirement_ids": ["REQ-018"],
-    "epic_ids": ["E006"],
-    "story_ids": ["E006-S001", "E006-S002"],
-    "group_ids": ["G-H"],
+    "requirement_ids": [
+      "REQ-018"
+    ],
+    "epic_ids": [
+      "E006"
+    ],
+    "story_ids": [
+      "E006-S001",
+      "E006-S002"
+    ],
+    "group_ids": [
+      "G-H"
+    ],
     "generation_eligible": false,
     "reason": "Q-012 explicitly defers the two extension features until the core MVP is complete and proven."
   },
   "unresolved_questions": [],
   "approval": {
     "required": true,
-    "status": "pending",
-    "generation_allowed": false,
-    "tracker_publish_allowed": false
+    "status": "APPROVED_FROZEN",
+    "approved_at": "2026-07-15T19:05:24Z",
+    "approved_by": "hasbee.firthouse",
+    "approved_planner_commit_sha": "ef4af20389bc6f2f3e90af6cc61c26bac57f68aa",
+    "spec_revision": "sdd-v1-ef4af20389bc",
+    "generation_allowed": true,
+    "tracker_publish_allowed": true
+  },
+  "package_status": "APPROVED_FROZEN",
+  "tracker": {
+    "provider": "Linear",
+    "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+    "team_name": "Devin-Connect",
+    "status": "PUBLISHED",
+    "project_external_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+    "project_url": "https://linear.app/devin-connect/project/onboarding-diary-mvp-20260715-115254-fcafb34e92e0",
+    "parent_epic_issue_count": 5,
+    "child_story_issue_count": 15,
+    "artifact": ".sdd/runs/20260715-115254-onboarding-diary/plan/tracker-items.json"
   }
 }

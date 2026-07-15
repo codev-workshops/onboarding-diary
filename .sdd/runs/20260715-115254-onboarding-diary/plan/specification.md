@@ -1,11 +1,11 @@
 # Onboarding Diary Application Specification
 
 - **run_id:** `20260715-115254-onboarding-diary`
-- **spec_revision:** `null`
-- **status:** `READY_FOR_APPROVAL`
+- **spec_revision:** `sdd-v1-ef4af20389bc`
+- **status:** `APPROVED_FROZEN`
 - **source BRD:** `.sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf`
 - **source clarifications:** `.sdd/runs/20260715-115254-onboarding-diary/plan/clarifications.json`
-- **approval policy:** Human approval required before generation
+- **approval policy:** Human-approved and frozen; generation is authorized for active MVP scope
 
 ## 1. Problem and outcomes
 
@@ -179,4 +179,4 @@ Every normative requirement maps through epic, story, acceptance criterion, impl
 
 All material clarification questions are resolved in `clarifications.json`. Planner-selected details are limited to the expressly authorized simple judgments and are recorded in `decisions.md`. No undisclosed material assumption remains.
 
-This package is `READY_FOR_APPROVAL`. Human plan approval is still required before generation, implementation, or tracker publication.
+This package is `APPROVED_FROZEN` at immutable spec revision `sdd-v1-ef4af20389bc`. Human approval is recorded in `approval.json`, Linear publication is recorded in `tracker-items.json`, and only active MVP scope is `READY_FOR_GENERATION`.

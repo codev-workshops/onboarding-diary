@@ -1,7 +1,7 @@
 {
   "run_id": "20260715-115254-onboarding-diary",
-  "spec_revision": null,
-  "status": "READY_FOR_APPROVAL",
+  "spec_revision": "sdd-v1-ef4af20389bc",
+  "status": "APPROVED_FROZEN",
   "graph_type": "DAG",
   "nodes": [
     {"id": "G-A", "story_ids": ["E005-S001", "E001-S001", "E001-S002"], "blocked": false, "mvp_scope": true},
