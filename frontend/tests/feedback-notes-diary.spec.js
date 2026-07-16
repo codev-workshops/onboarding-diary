@@ -342,6 +342,50 @@ test("note tag editor round-trips commas and supports zero to ten tags", async (
 });
 
 
+test("note tag editor preserves embedded newlines", async ({
+  page,
+}, testInfo) => {
+  const suffix = testInfo.project.name;
+  const email = `newline-tag-${suffix}@example.com`;
+  const recruit = await signupRecruit(page, email, `Newline Tag Recruit ${suffix}`);
+  await login(page, email);
+
+  const note = await page.evaluate(async (ownerId) => {
+    const response = await fetch("/api/notes", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        owner_id: ownerId,
+        date: "2026-07-16",
+        title: "Newline tag note",
+        content: "Round-trip an embedded newline.",
+        tags: ["line\nbreak"],
+      }),
+    });
+    return response.json();
+  }, recruit.id);
+
+  await page.getByRole("button", { name: "Notes" }).click();
+  await page.getByRole("button", { name: "Edit Newline tag note" }).click();
+  const tag = page.getByLabel("Note tag 1");
+  await expect(tag).toHaveValue("line\nbreak");
+  await expect(page.getByLabel(/^Note tag /)).toHaveCount(1);
+  await tag.press("End");
+  await tag.type("!");
+  await page.getByRole("button", { name: "Save Note" }).click();
+  await expect(page.getByRole("status")).toHaveText("Note saved");
+
+  const saved = await page.evaluate(async (noteId) => {
+    const response = await fetch(`/api/notes/${noteId}`, {
+      credentials: "same-origin",
+    });
+    return response.json();
+  }, note.id);
+  expect(saved.tags).toEqual(["line\nbreak!"]);
+});
+
+
 function payloadFor(resource, ownerId) {
   return resource === "feedback"
     ? {

@@ -201,10 +201,17 @@ function TagsField({ tags, onChange, error }) {
         <div key={index} className="flex flex-wrap items-end gap-2">
           <label className="min-w-0 flex-1 text-sm text-slate-700">
             Tag {index + 1}
-            <input
+            <textarea
               className={fieldClass}
+              rows={2}
               value={tag}
               onChange={(event) => updateTag(index, event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "End") {
+                  event.preventDefault();
+                  event.currentTarget.setSelectionRange(tag.length, tag.length);
+                }
+              }}
               aria-label={`Note tag ${index + 1}`}
               aria-invalid={Boolean(error)}
               aria-describedby={error ? "tags-error" : undefined}
