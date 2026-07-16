@@ -124,22 +124,28 @@ function dashboardResponse(id, name, taskCount = 0) {
 }
 
 
-async function mockAdminProfile(page) {
+function profileResponse(role, id, name = `Mock ${role}`) {
+  return {
+    id,
+    email: `mock-${role.toLowerCase()}-${id}@example.com`,
+    name,
+    role,
+    department: role === "Admin" ? "Administration" : "Engineering",
+    start_date: "2026-07-15",
+    assigned_manager_id: null,
+  };
+}
+
+
+async function mockProfile(page, profile) {
   await page.route("**/api/profile", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        id: 900,
-        email: "mock-admin@example.com",
-        name: "Mock Admin",
-        role: "Admin",
-        department: "Administration",
-        start_date: "2026-07-15",
-        assigned_manager_id: null,
-      }),
-    }),
+    fulfillJson(route, 200, profile),
   );
+}
+
+
+async function mockAdminProfile(page) {
+  await mockProfile(page, profileResponse("Admin", 900, "Mock Admin"));
 }
 
 
@@ -150,6 +156,198 @@ async function fulfillJson(route, status, body) {
     body: JSON.stringify(body),
   });
 }
+
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((settled) => {
+    resolve = settled;
+  });
+  return { promise, resolve };
+}
+
+
+test("Admin mount issues one logical Recruit-list request under StrictMode", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  const releaseList = deferred();
+  let listRequests = 0;
+  await page.route("**/api/diary/recruits", async (route) => {
+    listRequests += 1;
+    await releaseList.promise;
+    await fulfillJson(route, 200, [{ id: 10, name: "Single List Recruit" }]);
+  });
+  await page.route("**/api/dashboard?owner_id=10", (route) =>
+    fulfillJson(route, 200, dashboardResponse(10, "Single List Recruit", 10)),
+  );
+
+  await page.goto("/");
+  await expect.poll(() => listRequests).toBe(1);
+  await page.waitForTimeout(100);
+  expect(listRequests).toBe(1);
+
+  releaseList.resolve();
+  await expect(page.getByLabel("Tasks count")).toHaveText("10");
+});
+
+
+test("Recruit mount issues one logical dashboard request under StrictMode", async ({
+  page,
+}) => {
+  await mockProfile(page, profileResponse("Recruit", 42, "Single Dashboard Recruit"));
+  const releaseDashboard = deferred();
+  let dashboardRequests = 0;
+  await page.route("**/api/dashboard?owner_id=42", async (route) => {
+    dashboardRequests += 1;
+    await releaseDashboard.promise;
+    await fulfillJson(
+      route,
+      200,
+      dashboardResponse(42, "Single Dashboard Recruit", 42),
+    );
+  });
+
+  await page.goto("/");
+  await expect.poll(() => dashboardRequests).toBe(1);
+  await page.waitForTimeout(100);
+  expect(dashboardRequests).toBe(1);
+
+  releaseDashboard.resolve();
+  await expect(page.getByLabel("Tasks count")).toHaveText("42");
+});
+
+
+test("dashboard selection issues one logical request per selected owner", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [
+      { id: 11, name: "Initial Owner" },
+      { id: 12, name: "Selected Owner" },
+    ]),
+  );
+  const releases = {
+    11: deferred(),
+    12: deferred(),
+  };
+  const dashboardRequests = { 11: 0, 12: 0 };
+  await page.route("**/api/dashboard?owner_id=*", async (route) => {
+    const ownerId = new URL(route.request().url()).searchParams.get("owner_id");
+    dashboardRequests[ownerId] += 1;
+    await releases[ownerId].promise;
+    await fulfillJson(
+      route,
+      200,
+      dashboardResponse(Number(ownerId), `${ownerId} Owner`, Number(ownerId)),
+    );
+  });
+
+  await page.goto("/");
+  await expect.poll(() => dashboardRequests[11]).toBe(1);
+  await page.waitForTimeout(100);
+  expect(dashboardRequests[11]).toBe(1);
+  releases[11].resolve();
+  await expect(page.getByLabel("Tasks count")).toHaveText("11");
+
+  await page.getByLabel("Dashboard Recruit").selectOption("12");
+  await expect.poll(() => dashboardRequests[12]).toBe(1);
+  await page.waitForTimeout(100);
+  expect(dashboardRequests[12]).toBe(1);
+  releases[12].resolve();
+  await expect(page.getByLabel("Tasks count")).toHaveText("12");
+  expect(dashboardRequests).toEqual({ 11: 1, 12: 1 });
+});
+
+
+test("dashboard retries canceled and failed requests after navigation", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [
+      { id: 13, name: "Canceled Owner" },
+      { id: 14, name: "Current Owner" },
+    ]),
+  );
+  await page.route("**/api/tasks**", (route) => fulfillJson(route, 200, []));
+  const releaseCanceled = deferred();
+  let canceledRequests = 0;
+  let failedRequests = 0;
+  await page.route("**/api/dashboard?owner_id=*", async (route) => {
+    const ownerId = new URL(route.request().url()).searchParams.get("owner_id");
+    if (ownerId === "13") {
+      canceledRequests += 1;
+      if (canceledRequests === 1) {
+        await releaseCanceled.promise;
+      }
+      await fulfillJson(route, 200, dashboardResponse(13, "Canceled Owner", 13))
+        .catch(() => {});
+      return;
+    }
+    failedRequests += 1;
+    if (failedRequests === 1) {
+      await fulfillJson(route, 500, {
+        error: { code: "dashboard_failed", message: "Retryable dashboard failed" },
+      });
+      return;
+    }
+    await fulfillJson(route, 200, dashboardResponse(14, "Current Owner", 14));
+  });
+
+  await page.goto("/");
+  await expect.poll(() => canceledRequests).toBe(1);
+  await page.getByLabel("Dashboard Recruit").selectOption("14");
+  await expect(page.getByRole("status")).toHaveText("Retryable dashboard failed");
+  await page.getByRole("button", { name: "Tasks", exact: true }).click();
+  releaseCanceled.resolve();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await expect(page.getByLabel("Tasks count")).toHaveText("13");
+  await page.getByLabel("Dashboard Recruit").selectOption("14");
+  await expect(page.getByLabel("Tasks count")).toHaveText("14");
+  expect(canceledRequests).toBe(2);
+  expect(failedRequests).toBe(2);
+});
+
+
+test("logout and login do not reuse prior in-flight dashboard data", async ({
+  page,
+}) => {
+  await page.route("**/api/profile", (route) =>
+    fulfillJson(route, 200, profileResponse("Recruit", 42, "Prior Recruit")),
+  );
+  await page.route("**/api/auth/logout", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/api/auth/login", (route) =>
+    fulfillJson(route, 200, profileResponse("Recruit", 42, "Next Recruit")),
+  );
+  const releasePrior = deferred();
+  let dashboardRequests = 0;
+  await page.route("**/api/dashboard?owner_id=42", async (route) => {
+    dashboardRequests += 1;
+    if (dashboardRequests === 1) {
+      await releasePrior.promise;
+      await fulfillJson(route, 200, dashboardResponse(42, "Prior Recruit", 111))
+        .catch(() => {});
+      return;
+    }
+    await fulfillJson(route, 200, dashboardResponse(42, "Next Recruit", 222));
+  });
+
+  await page.goto("/");
+  await expect.poll(() => dashboardRequests).toBe(1);
+  await page.getByRole("button", { name: "Logout" }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await page.getByLabel("Email").fill("next-recruit@example.com");
+  await page.getByLabel("Password").fill("browser-password");
+  await page.getByRole("button", { name: "Log in" }).click();
+
+  await expect(page.getByLabel("Tasks count")).toHaveText("222");
+  expect(dashboardRequests).toBe(2);
+  releasePrior.resolve();
+  await page.waitForTimeout(100);
+  await expect(page.getByLabel("Tasks count")).toHaveText("222");
+});
 
 
 test("Recruit dashboard shows scoped metrics and refreshes after task CRUD", async ({

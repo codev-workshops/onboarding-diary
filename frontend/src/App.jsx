@@ -89,6 +89,7 @@ const fieldClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm";
 const tagLiteralError =
   'Each tag must be a valid JSON string, for example "release"';
+const inFlightGetRequests = new Map();
 
 function parseTagLiterals(tags) {
   return tags.map((literal) => {
@@ -130,6 +131,62 @@ async function api(path, options = {}) {
     throw error;
   }
   return body;
+}
+
+function getRequestKey(scope, path) {
+  return `${scope}:${path}`;
+}
+
+function acquireInFlightGet(path, scope) {
+  const key = getRequestKey(scope, path);
+  const existing = inFlightGetRequests.get(key);
+  if (existing && !existing.controller.signal.aborted) {
+    existing.consumers += 1;
+    clearTimeout(existing.abortTimer);
+    existing.abortTimer = null;
+    return existing;
+  }
+  if (existing) {
+    inFlightGetRequests.delete(key);
+  }
+  const controller = new AbortController();
+  const entry = {
+    abortTimer: null,
+    consumers: 1,
+    controller,
+    promise: null,
+  };
+  entry.promise = api(path, { signal: controller.signal }).finally(() => {
+    if (inFlightGetRequests.get(key) === entry) {
+      inFlightGetRequests.delete(key);
+    }
+  });
+  inFlightGetRequests.set(key, entry);
+  return entry;
+}
+
+function releaseInFlightGet(path, scope, entry) {
+  const key = getRequestKey(scope, path);
+  if (inFlightGetRequests.get(key) !== entry) {
+    return;
+  }
+  entry.consumers -= 1;
+  if (entry.consumers > 0) {
+    return;
+  }
+  entry.abortTimer = setTimeout(() => {
+    if (inFlightGetRequests.get(key) === entry && entry.consumers <= 0) {
+      entry.controller.abort();
+    }
+  }, 0);
+}
+
+function clearInFlightGetRequests() {
+  inFlightGetRequests.forEach((entry) => {
+    clearTimeout(entry.abortTimer);
+    entry.controller.abort();
+  });
+  inFlightGetRequests.clear();
 }
 
 function Field({
@@ -980,7 +1037,7 @@ function DiaryPage({ kind, user, onUnauthorized }) {
   );
 }
 
-function Dashboard({ user, onUnauthorized }) {
+function Dashboard({ user, onUnauthorized, requestScope }) {
   const [recruits, setRecruits] = useState([]);
   const [ownerId, setOwnerId] = useState(
     user.role === "Recruit" ? String(user.id) : "",
@@ -997,9 +1054,10 @@ function Dashboard({ user, onUnauthorized }) {
       return;
     }
     let active = true;
-    const controller = new AbortController();
     setRecruitsLoading(true);
-    api("/api/diary/recruits", { signal: controller.signal })
+    const path = "/api/diary/recruits";
+    const request = acquireInFlightGet(path, requestScope);
+    request.promise
       .then((records) => {
         if (!active) {
           return;
@@ -1024,9 +1082,9 @@ function Dashboard({ user, onUnauthorized }) {
       });
     return () => {
       active = false;
-      controller.abort();
+      releaseInFlightGet(path, requestScope, request);
     };
-  }, [onUnauthorized, user.role]);
+  }, [onUnauthorized, requestScope, user.role]);
 
   useEffect(() => {
     if (!ownerId) {
@@ -1035,10 +1093,11 @@ function Dashboard({ user, onUnauthorized }) {
       return;
     }
     let active = true;
-    const controller = new AbortController();
     setLoading(true);
     setMessage("");
-    api(`/api/dashboard?owner_id=${ownerId}`, { signal: controller.signal })
+    const path = `/api/dashboard?owner_id=${ownerId}`;
+    const request = acquireInFlightGet(path, requestScope);
+    request.promise
       .then((response) => {
         if (active) {
           setDashboard(response);
@@ -1062,9 +1121,9 @@ function Dashboard({ user, onUnauthorized }) {
       });
     return () => {
       active = false;
-      controller.abort();
+      releaseInFlightGet(path, requestScope, request);
     };
-  }, [onUnauthorized, ownerId]);
+  }, [onUnauthorized, ownerId, requestScope]);
 
   const countCards = dashboard
     ? [
@@ -1623,8 +1682,11 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [page, setPage] = useState("loading");
   const [loginEmail, setLoginEmail] = useState("");
+  const [requestScope, setRequestScope] = useState(0);
 
   const clearSession = useCallback(() => {
+    clearInFlightGetRequests();
+    setRequestScope((current) => current + 1);
     setUser(null);
     setPage("login");
   }, []);
@@ -1662,6 +1724,8 @@ export default function App() {
       <Login
         initialEmail={loginEmail}
         onLogin={(profile) => {
+          clearInFlightGetRequests();
+          setRequestScope((current) => current + 1);
           setUser(profile);
           setPage("dashboard");
         }}
@@ -1714,7 +1778,11 @@ export default function App() {
       ) : page === "profile" ? (
         <Profile user={user} onUpdated={setUser} onUnauthorized={clearSession} />
       ) : (
-        <Dashboard user={user} onUnauthorized={clearSession} />
+        <Dashboard
+          user={user}
+          onUnauthorized={clearSession}
+          requestScope={requestScope}
+        />
       )}
     </Shell>
   );
