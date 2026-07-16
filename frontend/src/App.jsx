@@ -87,6 +87,23 @@ const diaryConfigs = {
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm";
+const tagLiteralError =
+  'Each tag must be a valid JSON string, for example "release"';
+
+function parseTagLiterals(tags) {
+  return tags.map((literal) => {
+    let tag;
+    try {
+      tag = JSON.parse(literal);
+    } catch {
+      throw new Error(tagLiteralError);
+    }
+    if (typeof tag !== "string") {
+      throw new Error(tagLiteralError);
+    }
+    return tag;
+  });
+}
 
 async function api(path, options = {}) {
   let response;
@@ -201,20 +218,14 @@ function TagsField({ tags, onChange, error }) {
         <div key={index} className="flex flex-wrap items-end gap-2">
           <label className="min-w-0 flex-1 text-sm text-slate-700">
             Tag {index + 1}
-            <textarea
+            <input
               className={fieldClass}
-              rows={2}
+              type="text"
               value={tag}
               onChange={(event) => updateTag(index, event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "End") {
-                  event.preventDefault();
-                  event.currentTarget.setSelectionRange(tag.length, tag.length);
-                }
-              }}
               aria-label={`Note tag ${index + 1}`}
               aria-invalid={Boolean(error)}
-              aria-describedby={error ? "tags-error" : undefined}
+              aria-describedby={error ? "tags-help tags-error" : "tags-help"}
             />
           </label>
           <button
@@ -227,10 +238,15 @@ function TagsField({ tags, onChange, error }) {
           </button>
         </div>
       ))}
+      <p id="tags-help" className="text-sm text-slate-600">
+        Each tag is a JSON string literal. Example:{" "}
+        <code>{JSON.stringify("release")}</code>. Use JSON escapes for line
+        breaks, tabs, quotes, and backslashes.
+      </p>
       <button
         className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
         type="button"
-        onClick={() => onChange([...tags, ""])}
+        onClick={() => onChange([...tags, JSON.stringify("")])}
         disabled={tags.length >= 10}
       >
         Add tag
@@ -589,9 +605,18 @@ function DiaryPage({ kind, user, onUnauthorized }) {
     event.preventDefault();
     setErrors({});
     setMessage("");
+    let submissionForm = form;
+    if (kind === "notes") {
+      try {
+        submissionForm = { ...form, tags: parseTagLiterals(form.tags) };
+      } catch (tagError) {
+        setErrors({ tags: tagError.message });
+        return;
+      }
+    }
     const payload = editingId
-      ? form
-      : { ...form, owner_id: Number(ownerId) };
+      ? submissionForm
+      : { ...submissionForm, owner_id: Number(ownerId) };
     try {
       await api(
         editingId ? `${config.endpoint}/${editingId}` : config.endpoint,
@@ -620,6 +645,9 @@ function DiaryPage({ kind, user, onUnauthorized }) {
     delete editable.id;
     delete editable.owner_id;
     delete editable.created_at;
+    if (kind === "notes") {
+      editable.tags = editable.tags.map((tag) => JSON.stringify(tag));
+    }
     setForm(editable);
     setEditingId(entry.id);
     setErrors({});

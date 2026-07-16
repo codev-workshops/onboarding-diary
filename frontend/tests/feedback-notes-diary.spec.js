@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 
+function tagLiteral(value) {
+  return JSON.stringify(value);
+}
+
+
 async function login(page, email, password = "browser-password") {
   await page.goto("/");
   await page.getByLabel("Email").fill(email);
@@ -119,11 +124,11 @@ async function exerciseNoteUi(page, title, recruitName) {
   await page.getByLabel("Note title").fill(title);
   await page.getByLabel("Note content").fill("Review the deployment checklist.");
   await page.getByRole("button", { name: "Add tag" }).click();
-  await page.getByLabel("Note tag 1").fill(" Release ");
+  await page.getByLabel("Note tag 1").fill(tagLiteral(" Release "));
   await page.getByRole("button", { name: "Add tag" }).click();
-  await page.getByLabel("Note tag 2").fill("TEAM");
+  await page.getByLabel("Note tag 2").fill(tagLiteral("TEAM"));
   await page.getByRole("button", { name: "Add tag" }).click();
-  await page.getByLabel("Note tag 3").fill("release");
+  await page.getByLabel("Note tag 3").fill(tagLiteral("release"));
   await page.getByRole("button", { name: "Create Note" }).click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Note created");
@@ -131,9 +136,9 @@ async function exerciseNoteUi(page, title, recruitName) {
 
   await page.getByRole("button", { name: `Edit ${title}` }).click();
   await page.getByRole("button", { name: "Remove tag 1" }).click();
-  await page.getByLabel("Note tag 1").fill("Updated");
+  await page.getByLabel("Note tag 1").fill(tagLiteral("Updated"));
   await page.getByRole("button", { name: "Add tag" }).click();
-  await page.getByLabel("Note tag 2").fill("Follow Up");
+  await page.getByLabel("Note tag 2").fill(tagLiteral("Follow Up"));
   await page.getByRole("button", { name: "Save Note" }).click();
   await expect(page.getByRole("status")).toHaveText("Note saved");
   await expect(page.getByText("updated, follow up", { exact: true })).toBeVisible();
@@ -243,31 +248,45 @@ test("post-create reload failures do not show false confirmations", async ({
 });
 
 
-test("note tag editor round-trips commas and supports zero to ten tags", async ({
+test("note tag editor losslessly round-trips JSON string literals", async ({
   page,
 }, testInfo) => {
   const suffix = testInfo.project.name;
-  const email = `comma-tag-${suffix}@example.com`;
-  const recruit = await signupRecruit(page, email, `Comma Tag Recruit ${suffix}`);
+  const email = `lossless-tag-${suffix}@example.com`;
+  const recruit = await signupRecruit(page, email, `Lossless Tag Recruit ${suffix}`);
   await login(page, email);
 
-  const note = await page.evaluate(async (ownerId) => {
-    const response = await fetch("/api/notes", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        owner_id: ownerId,
-        date: "2026-07-16",
-        title: "Comma tag note",
-        content: "Round-trip every backend-valid tag.",
-        tags: ["a,b"],
-      }),
-    });
-    return response.json();
-  }, recruit.id);
+  const seededTags = [
+    " Comma,Tag ",
+    'Quote"Slash\\',
+    "Line\nBreak",
+    "Carriage\rReturn",
+    "CRLF\r\nBreak",
+    "Tab\tValue",
+  ];
+  const normalizedTags = seededTags.map((tag) => tag.trim().toLowerCase());
+  const note = await page.evaluate(
+    async ({ ownerId, tags }) => {
+      const response = await fetch("/api/notes", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner_id: ownerId,
+          date: "2026-07-16",
+          title: "Lossless tag note",
+          content: "Round-trip every backend-valid tag.",
+          tags,
+        }),
+      });
+      return response.json();
+    },
+    { ownerId: recruit.id, tags: seededTags },
+  );
+  expect(note.tags).toEqual(normalizedTags);
 
   let listLoads = 0;
+  let patchRequests = 0;
   page.on("request", (request) => {
     if (
       request.method() === "GET" &&
@@ -275,20 +294,34 @@ test("note tag editor round-trips commas and supports zero to ten tags", async (
     ) {
       listLoads += 1;
     }
+    if (
+      request.method() === "PATCH" &&
+      request.url().endsWith(`/api/notes/${note.id}`)
+    ) {
+      patchRequests += 1;
+    }
   });
   await page.getByRole("button", { name: "Notes" }).click();
-  await expect(page.getByRole("heading", { name: "Comma tag note" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lossless tag note" })).toBeVisible();
   const initialListLoads = listLoads;
 
-  await page.getByRole("button", { name: "Edit Comma tag note" }).click();
-  await expect(page.getByLabel("Note tag 1")).toHaveValue("a,b");
-  await expect(page.getByLabel(/^Note tag /)).toHaveCount(1);
-  await page.getByRole("button", { name: "Add tag" }).click();
-  await page.getByLabel("Note tag 2").fill("temporary");
-  await page.getByRole("button", { name: "Remove tag 2" }).click();
+  await page.getByRole("button", { name: "Edit Lossless tag note" }).click();
+  await expect(page.getByLabel(/^Note tag /)).toHaveCount(normalizedTags.length);
+  for (const [index, tag] of normalizedTags.entries()) {
+    await expect(
+      page.getByLabel(`Note tag ${index + 1}`, { exact: true }),
+    ).toHaveValue(tagLiteral(tag));
+  }
+  const editedTags = normalizedTags.map((tag) => `${tag}!`);
+  for (const [index, tag] of editedTags.entries()) {
+    await page
+      .getByLabel(`Note tag ${index + 1}`, { exact: true })
+      .fill(tagLiteral(tag));
+  }
   await page.getByRole("button", { name: "Save Note" }).click();
   await expect(page.getByRole("status")).toHaveText("Note saved");
   expect(listLoads).toBe(initialListLoads + 1);
+  expect(patchRequests).toBe(1);
 
   let saved = await page.evaluate(async (noteId) => {
     const response = await fetch(`/api/notes/${noteId}`, {
@@ -296,15 +329,25 @@ test("note tag editor round-trips commas and supports zero to ten tags", async (
     });
     return response.json();
   }, note.id);
-  expect(saved.tags).toEqual(["a,b"]);
+  expect(saved.tags).toEqual(editedTags);
 
-  await page.getByRole("button", { name: "Edit Comma tag note" }).click();
-  await expect(page.getByLabel("Note tag 1")).toHaveValue("a,b");
+  await page.getByRole("button", { name: "Edit Lossless tag note" }).click();
+  await page
+    .getByLabel("Note tag 1", { exact: true })
+    .fill(tagLiteral("cancelled"));
   await page.screenshot({
-    path: testInfo.outputPath("comma-tag-roundtrip.png"),
+    path: testInfo.outputPath("lossless-tag-roundtrip.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Remove tag 1" }).click();
+  await page.getByRole("button", { name: "Cancel edit" }).click();
+  await expect(page.getByLabel(/^Note tag /)).toHaveCount(0);
+  await page.getByRole("button", { name: "Edit Lossless tag note" }).click();
+  await expect(page.getByLabel("Note tag 1", { exact: true })).toHaveValue(
+    tagLiteral(editedTags[0]),
+  );
+  for (let index = 0; index < editedTags.length; index += 1) {
+    await page.getByRole("button", { name: "Remove tag 1" }).click();
+  }
   await expect(page.getByText("No tags added.")).toBeVisible();
   await page.getByRole("button", { name: "Save Note" }).click();
   await expect(page.getByRole("status")).toHaveText("Note saved");
@@ -316,18 +359,36 @@ test("note tag editor round-trips commas and supports zero to ten tags", async (
   }, note.id);
   expect(saved.tags).toEqual([]);
 
-  await page.getByRole("button", { name: "Edit Comma tag note" }).click();
+  await page.getByRole("button", { name: "Edit Lossless tag note" }).click();
   for (let index = 1; index <= 10; index += 1) {
     await page.getByRole("button", { name: "Add tag" }).click();
-    await page.getByLabel(`Note tag ${index}`).fill(` Tag ${index} `);
+    await page
+      .getByLabel(`Note tag ${index}`, { exact: true })
+      .fill(tagLiteral(` Tag ${index} `));
   }
   await expect(page.getByRole("button", { name: "Add tag" })).toBeDisabled();
-  await page.getByLabel("Note tag 10").fill("x".repeat(31));
+  const patchRequestsBeforeInvalidSubmit = patchRequests;
+  await page.getByLabel("Note tag 10", { exact: true }).fill("{malformed");
   await page.getByRole("button", { name: "Save Note" }).click();
   await expect(
-    page.getByText("Each tag must be between 1 and 30 characters"),
+    page.getByText(
+      'Each tag must be a valid JSON string, for example "release"',
+    ),
   ).toBeVisible();
-  await page.getByLabel("Note tag 10").fill(" Tag 10 ");
+  expect(patchRequests).toBe(patchRequestsBeforeInvalidSubmit);
+  saved = await page.evaluate(async (noteId) => {
+    const response = await fetch(`/api/notes/${noteId}`, {
+      credentials: "same-origin",
+    });
+    return response.json();
+  }, note.id);
+  expect(saved.tags).toEqual([]);
+  await expect(page.getByLabel("Note tag 1", { exact: true })).toHaveValue(
+    tagLiteral(" Tag 1 "),
+  );
+  await page
+    .getByLabel("Note tag 10", { exact: true })
+    .fill(tagLiteral(" Tag 10 "));
   await page.getByRole("button", { name: "Save Note" }).click();
   await expect(page.getByRole("status")).toHaveText("Note saved");
   saved = await page.evaluate(async (noteId) => {
@@ -342,47 +403,40 @@ test("note tag editor round-trips commas and supports zero to ten tags", async (
 });
 
 
-test("note tag editor preserves embedded newlines", async ({
+test("note and feedback form state stay isolated", async ({
   page,
 }, testInfo) => {
   const suffix = testInfo.project.name;
-  const email = `newline-tag-${suffix}@example.com`;
-  const recruit = await signupRecruit(page, email, `Newline Tag Recruit ${suffix}`);
+  const email = `tag-isolation-${suffix}@example.com`;
+  await signupRecruit(page, email, `Tag Isolation Recruit ${suffix}`);
   await login(page, email);
 
-  const note = await page.evaluate(async (ownerId) => {
-    const response = await fetch("/api/notes", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        owner_id: ownerId,
-        date: "2026-07-16",
-        title: "Newline tag note",
-        content: "Round-trip an embedded newline.",
-        tags: ["line\nbreak"],
-      }),
-    });
-    return response.json();
-  }, recruit.id);
+  await page.getByRole("button", { name: "Notes" }).click();
+  await page.getByLabel("Note date").fill("2026-07-16");
+  await page.getByLabel("Note title").fill("Unsaved note");
+  await page.getByLabel("Note content").fill("Unsaved note content.");
+  await page.getByRole("button", { name: "Add tag" }).click();
+  await page.getByLabel("Note tag 1").fill("{malformed");
+  await page.getByRole("button", { name: "Create Note" }).click();
+  await expect(page.getByText("Each tag must be a valid JSON string")).toBeVisible();
+
+  await page.getByRole("button", { name: "Feedback" }).click();
+  await expect(page.getByLabel(/^Note tag /)).toHaveCount(0);
+  await expect(page.getByText("Each tag must be a valid JSON string")).toHaveCount(0);
+  await page.getByLabel("Feedback date").fill("2026-07-16");
+  await page.getByLabel("Feedback subject").fill("Isolated feedback");
+  await page.getByLabel("Feedback details").fill("Feedback state is independent.");
+  await page.getByRole("button", { name: "Create Feedback" }).click();
+  await expect(page.getByRole("status")).toHaveText("Feedback created");
 
   await page.getByRole("button", { name: "Notes" }).click();
-  await page.getByRole("button", { name: "Edit Newline tag note" }).click();
-  const tag = page.getByLabel("Note tag 1");
-  await expect(tag).toHaveValue("line\nbreak");
-  await expect(page.getByLabel(/^Note tag /)).toHaveCount(1);
-  await tag.press("End");
-  await tag.type("!");
-  await page.getByRole("button", { name: "Save Note" }).click();
-  await expect(page.getByRole("status")).toHaveText("Note saved");
-
-  const saved = await page.evaluate(async (noteId) => {
-    const response = await fetch(`/api/notes/${noteId}`, {
-      credentials: "same-origin",
-    });
+  await expect(page.getByLabel("Note title")).toHaveValue("");
+  await expect(page.getByLabel(/^Note tag /)).toHaveCount(0);
+  const notes = await page.evaluate(async () => {
+    const response = await fetch("/api/notes");
     return response.json();
-  }, note.id);
-  expect(saved.tags).toEqual(["line\nbreak!"]);
+  });
+  expect(notes).toEqual([]);
 });
 
 
