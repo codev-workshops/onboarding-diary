@@ -1,0 +1,61 @@
+{
+  "run_id": "20260715-115254-onboarding-diary",
+  "spec_revision": null,
+  "status": "APPROVED_INPUT_FOR_PLANNER_CORRECTION",
+  "received_at": "2026-07-15T12:23:57Z",
+  "answers": [
+    {
+      "question_id": "Q-001",
+      "decision": "Data is intentionally ephemeral and may be lost whenever the backend restarts."
+    },
+    {
+      "question_id": "Q-002",
+      "decision": "Use the simplest safe role-provisioning approach; the Planner is authorized to choose and document it."
+    },
+    {
+      "question_id": "Q-003",
+      "decision": "A recruit may create, view, edit, and delete only their own diary entries. A manager may create, view, edit, and delete diary entries for assigned recruits. An admin may create, view, edit, and delete all diary entries and manage users."
+    },
+    {
+      "question_id": "Q-004",
+      "decision": "Admins create and change manager-to-recruit assignments."
+    },
+    {
+      "question_id": "Q-005",
+      "decision": "Users may edit their own profile. Use basic email-pattern and date validation. Role and oversight changes remain admin-managed."
+    },
+    {
+      "question_id": "Q-006",
+      "decision": "Issues, feedback, and notes support create, view, edit, and delete. Recruits operate on their own records; managers operate on assigned recruits' records; admins operate on all records."
+    },
+    {
+      "question_id": "Q-007",
+      "decision": "The Planner is authorized to define minimal enums, required fields, lengths, date rules, and tag rules using simple judgment."
+    },
+    {
+      "question_id": "Q-008",
+      "decision": "The Planner is authorized to define minimal dashboard scope, ordering, limits, completion calculation, and open-status rules using simple judgment."
+    },
+    {
+      "question_id": "Q-009",
+      "decision": "The Planner is authorized to define a minimal report contract, including columns, ordering, inclusive date behavior, filenames, CSV/PDF formatting, and empty results."
+    },
+    {
+      "question_id": "Q-010",
+      "decision": "Use simple username/password authentication. The Planner is authorized to select the simplest reasonable session, password, logout, and failed-login behavior."
+    },
+    {
+      "question_id": "Q-011",
+      "decision": "The Planner is authorized to define a minimal JSON REST API contract without unnecessary complexity."
+    },
+    {
+      "question_id": "Q-012",
+      "decision": "Do not implement the two additional features in this MVP. Record them as explicitly deferred until the core MVP is complete and proven."
+    },
+    {
+      "question_id": "Q-013",
+      "decision": "The Planner is authorized to define a minimal responsive-browser/viewport matrix and simple user-visible failure behavior."
+    }
+  ],
+  "approval_policy": "The corrected plan still requires human approval before generation."
+}

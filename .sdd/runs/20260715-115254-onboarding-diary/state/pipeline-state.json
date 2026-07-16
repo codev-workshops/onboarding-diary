@@ -1,0 +1,242 @@
+{
+  "run_id": "20260715-115254-onboarding-diary",
+  "spec_revision": "sdd-v1-ef4af20389bc",
+  "repository": "codev-workshops/onboarding-diary",
+  "control_branch": "sdd/20260715-115254-onboarding-diary/control",
+  "control_checkpoint_commit": "bc9c081d042409a60253f4d6690bf18b83ffa0ac",
+  "status": "GENERATING",
+  "input": {
+    "brd_path": ".sdd/runs/20260715-115254-onboarding-diary/input/Onboarding_Diary_App_Requirements.pdf",
+    "brd_sha256": "afd140b884b1b029f7775e94a0c802a93a4db16c1f070e803369b191954d24c8",
+    "invocation_path": ".sdd/runs/20260715-115254-onboarding-diary/input/invocation.json"
+  },
+  "planning": {
+    "status": "READY_FOR_GENERATION",
+    "planner_session_id": "devin-0e1880e88e4f4b89a43b0340e35953b8",
+    "planner_branch": "sdd/20260715-115254-onboarding-diary/planner",
+    "planner_commit_sha": "e88dc1fc5a98cd49879a4fbfdc005d6c9bedf835",
+    "artifacts": [
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/specification.md",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/requirements.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/epics.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/stories.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/groups.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/dependency-graph.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/risks.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/decisions.md",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/plan-manifest.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/approval.json",
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/tracker-items.json"
+    ],
+    "validation_attempts": 1,
+    "validation": {
+      "status": "PASSED",
+      "checked_at": "2026-07-15T19:18:30Z",
+      "artifact_hash_scope": "git_blob_content",
+      "json_parse": "PASSED",
+      "artifact_hashes": "PASSED",
+      "dependency_graph_acyclic": true,
+      "unresolved_questions": []
+    },
+    "approval_status": "APPROVED_FROZEN",
+    "approved_at": "2026-07-15T19:05:24Z",
+    "approved_planner_commit_sha": "ef4af20389bc6f2f3e90af6cc61c26bac57f68aa",
+    "approval_artifact": ".sdd/runs/20260715-115254-onboarding-diary/plan/approval.json"
+  },
+  "delivery_mode": {
+    "name": "integration_branch",
+    "integration_branch": "sdd/20260715-115254-onboarding-diary/integration",
+    "group_pull_request_base": "sdd/20260715-115254-onboarding-diary/integration",
+    "final_pull_request_base": "main",
+    "integration_branch_created_at": "2026-07-15T19:20:30Z",
+    "integration_branch_base_commit": "41f480a"
+  },
+  "tracker": {
+    "provider": "Linear",
+    "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+    "team_name": "Devin-Connect",
+    "publish_status": "PUBLISHED",
+    "project_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+    "project_url": "https://linear.app/devin-connect/project/onboarding-diary-mvp-20260715-115254-fcafb34e92e0",
+    "parent_epic_issue_count": 5,
+    "child_story_issue_count": 15,
+    "artifacts": [
+      ".sdd/runs/20260715-115254-onboarding-diary/plan/tracker-items.json"
+    ]
+  },
+  "groups": {
+    "G-A": {
+      "status": "READY",
+      "generation_eligible": true,
+      "story_ids": [
+        "E005-S001",
+        "E001-S001",
+        "E001-S002"
+      ],
+      "prerequisite_group_ids": [],
+      "candidate_branch": null,
+      "candidate_commit": null,
+      "generator_session_ids": [],
+      "evaluator_session_ids": [],
+      "evaluation_attempts": [],
+      "repair_count": 0,
+      "pr_urls": [],
+      "accepted_commit": null,
+      "completed_at": null
+    },
+    "G-B": {
+      "status": "BLOCKED_BY_DEPENDENCY",
+      "generation_eligible": true,
+      "story_ids": [
+        "E001-S003",
+        "E001-S004"
+      ],
+      "prerequisite_group_ids": [
+        "G-A"
+      ],
+      "candidate_branch": null,
+      "candidate_commit": null,
+      "generator_session_ids": [],
+      "evaluator_session_ids": [],
+      "evaluation_attempts": [],
+      "repair_count": 0,
+      "pr_urls": [],
+      "accepted_commit": null,
+      "completed_at": null
+    },
+    "G-C": {
+      "status": "BLOCKED_BY_DEPENDENCY",
+      "generation_eligible": true,
+      "story_ids": [
+        "E002-S001",
+        "E002-S002"
+      ],
+      "prerequisite_group_ids": [
+        "G-B"
+      ],
+      "candidate_branch": null,
+      "candidate_commit": null,
+      "generator_session_ids": [],
+      "evaluator_session_ids": [],
+      "evaluation_attempts": [],
+      "repair_count": 0,
+      "pr_urls": [],
+      "accepted_commit": null,
+      "completed_at": null
+    },
+    "G-D": {
+      "status": "BLOCKED_BY_DEPENDENCY",
+      "generation_eligible": true,
+      "story_ids": [
+        "E002-S003",
+        "E002-S004"
+      ],
+      "prerequisite_group_ids": [
+        "G-B"
+      ],
+      "candidate_branch": null,
+      "candidate_commit": null,
+      "generator_session_ids": [],
+      "evaluator_session_ids": [],
+      "evaluation_attempts": [],
+      "repair_count": 0,
+      "pr_urls": [],
+      "accepted_commit": null,
+      "completed_at": null
+    },
+    "G-E": {
+      "status": "BLOCKED_BY_DEPENDENCY",
+      "generation_eligible": true,
+      "story_ids": [
+        "E003-S001",
+        "E003-S002"
+      ],
+      "prerequisite_group_ids": [
+        "G-C",
+        "G-D"
+      ],
+      "candidate_branch": null,
+      "candidate_commit": null,
+      "generator_session_ids": [],
+      "evaluator_session_ids": [],
+      "evaluation_attempts": [],
+      "repair_count": 0,
+      "pr_urls": [],
+      "accepted_commit": null,
+      "completed_at": null
+    },
+    "G-F": {
+      "status": "BLOCKED_BY_DEPENDENCY",
+      "generation_eligible": true,
+      "story_ids": [
+        "E004-S001",
+        "E004-S002"
+      ],
+      "prerequisite_group_ids": [
+        "G-B",
+        "G-C",
+        "G-D"
+      ],
+      "candidate_branch": null,
+      "candidate_commit": null,
+      "generator_session_ids": [],
+      "evaluator_session_ids": [],
+      "evaluation_attempts": [],
+      "repair_count": 0,
+      "pr_urls": [],
+      "accepted_commit": null,
+      "completed_at": null
+    },
+    "G-G": {
+      "status": "BLOCKED_BY_DEPENDENCY",
+      "generation_eligible": true,
+      "story_ids": [
+        "E005-S002",
+        "E005-S003"
+      ],
+      "prerequisite_group_ids": [
+        "G-B",
+        "G-C",
+        "G-D",
+        "G-E",
+        "G-F"
+      ],
+      "candidate_branch": null,
+      "candidate_commit": null,
+      "generator_session_ids": [],
+      "evaluator_session_ids": [],
+      "evaluation_attempts": [],
+      "repair_count": 0,
+      "pr_urls": [],
+      "accepted_commit": null,
+      "completed_at": null
+    },
+    "G-H": {
+      "status": "PENDING",
+      "generation_eligible": false,
+      "story_ids": [
+        "E006-S001",
+        "E006-S002"
+      ],
+      "prerequisite_group_ids": [],
+      "candidate_branch": null,
+      "candidate_commit": null,
+      "generator_session_ids": [],
+      "evaluator_session_ids": [],
+      "evaluation_attempts": [],
+      "repair_count": 0,
+      "pr_urls": [],
+      "accepted_commit": null,
+      "completed_at": null
+    }
+  },
+  "system_evaluation": {
+    "status": "PENDING",
+    "evaluator_session_ids": [],
+    "attempts": []
+  },
+  "limits": {
+    "maximum_failed_evaluation_cycles_per_group": 3
+  },
+  "updated_at": "2026-07-15T19:20:30Z"
+}

@@ -1,0 +1,47 @@
+{
+  "run_id": "20260715-115254-onboarding-diary",
+  "spec_revision": "sdd-v1-ef4af20389bc",
+  "status": "APPROVED_FROZEN",
+  "approved_planner_commit_sha": "ef4af20389bc6f2f3e90af6cc61c26bac57f68aa",
+  "approved_at": "2026-07-15T19:05:24Z",
+  "approved_by": "hasbee.firthouse",
+  "approval_source": "Explicit user selection: Approve plan and continue",
+  "scope": {
+    "mvp_group_ids": [
+      "G-A",
+      "G-B",
+      "G-C",
+      "G-D",
+      "G-E",
+      "G-F",
+      "G-G"
+    ],
+    "deferred_group_ids": [
+      "G-H"
+    ]
+  },
+  "delivery_mode": {
+    "name": "integration_branch",
+    "integration_branch": "sdd/20260715-115254-onboarding-diary/integration",
+    "group_pull_request_base": "sdd/20260715-115254-onboarding-diary/integration",
+    "final_pull_request_base": "main",
+    "rationale": "Allows accepted dependency groups to continue through the autonomous pipeline while preserving a final independently evaluated integration gate before the default-branch PR."
+  },
+  "tracker": {
+    "provider": "Linear",
+    "team_id": "5b443708-ea2b-415b-bd78-93bec332aeae",
+    "team_name": "Devin-Connect",
+    "publish_status": "PUBLISHED",
+    "project_id": "b5e911d0-7156-49ed-aeaf-19fb8696cdac",
+    "project_url": "https://linear.app/devin-connect/project/onboarding-diary-mvp-20260715-115254-fcafb34e92e0",
+    "artifact": ".sdd/runs/20260715-115254-onboarding-diary/plan/tracker-items.json"
+  },
+  "freeze": {
+    "status": "FROZEN",
+    "spec_revision": "sdd-v1-ef4af20389bc",
+    "approved_planner_commit_sha": "ef4af20389bc6f2f3e90af6cc61c26bac57f68aa",
+    "control_commit": "a60a0e617ee228d65fe4cc94ca5169c6e3ff46a7",
+    "scope_change_allowed": false,
+    "acceptance_behavior_change_allowed": false
+  }
+}

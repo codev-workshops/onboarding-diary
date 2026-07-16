@@ -1,0 +1,106 @@
+{
+  "run_id": "20260715-115254-onboarding-diary",
+  "spec_revision": "sdd-v1-ef4af20389bc",
+  "status": "APPROVED_FROZEN",
+  "risks": [
+    {
+      "id": "RISK-001",
+      "title": "Data lifetime conflicts with user expectations",
+      "severity": "high",
+      "likelihood": "high",
+      "affected_ids": ["REQ-015", "E005", "E005-S001", "G-A"],
+      "description": "Users may mistake database-backed storage for restart durability even though the MVP is intentionally ephemeral.",
+      "mitigation": "Document restart loss, use one backend process, test reset behavior, and show the limitation in setup guidance.",
+      "owner_or_decision": "Accepted by Q-001 and ADR-001",
+      "generation_blocked": false
+    },
+    {
+      "id": "RISK-002",
+      "title": "Privilege escalation through undefined role assignment",
+      "severity": "critical",
+      "likelihood": "medium",
+      "affected_ids": ["REQ-001", "REQ-003", "REQ-004", "E001", "G-A", "G-B"],
+      "description": "A defect could allow public sign-up to obtain Manager or Admin privileges.",
+      "mitigation": "Public sign-up always assigns Recruit server-side; privileged accounts and role changes are Admin-only; test rejected role fields.",
+      "owner_or_decision": "Resolved contract in Q-002 and ADR-002",
+      "generation_blocked": false
+    },
+    {
+      "id": "RISK-003",
+      "title": "Cross-user data exposure",
+      "severity": "critical",
+      "likelihood": "high",
+      "affected_ids": ["REQ-003", "REQ-004", "REQ-005", "REQ-006", "REQ-007", "REQ-008", "REQ-009", "REQ-011", "REQ-012", "REQ-013", "G-B", "G-C", "G-D", "G-E", "G-F"],
+      "description": "Incorrect ownership or assignment checks could expose or mutate another recruit's data.",
+      "mitigation": "Enforce the documented role/ownership matrix server-side on every endpoint and download using assigned/unassigned fixtures.",
+      "owner_or_decision": "Resolved contract in Q-003, Q-004, and ADR-002",
+      "generation_blocked": false
+    },
+    {
+      "id": "RISK-004",
+      "title": "Inconsistent or untestable validation",
+      "severity": "high",
+      "likelihood": "high",
+      "affected_ids": ["REQ-002", "REQ-005", "REQ-006", "REQ-007", "REQ-008", "REQ-017", "E002", "E005", "G-C", "G-D", "G-G"],
+      "description": "Frontend and backend validation may drift from the specified field table.",
+      "mitigation": "Use the section 6 contract as one test matrix and verify backend rejection independently of the UI.",
+      "owner_or_decision": "Resolved contract in Q-005, Q-007, and specification section 6",
+      "generation_blocked": false
+    },
+    {
+      "id": "RISK-005",
+      "title": "Weak or incompatible authentication implementation",
+      "severity": "high",
+      "likelihood": "medium",
+      "affected_ids": ["REQ-001", "REQ-003", "REQ-017", "E001-S001", "G-A"],
+      "description": "Authentication defects could expose credentials or leave invalid sessions active.",
+      "mitigation": "Use the specified PBKDF2 password storage, opaque HttpOnly sessions, eight-hour expiry, logout invalidation, same-origin policy, and negative tests.",
+      "owner_or_decision": "Resolved contract in Q-010 and ADR-003",
+      "generation_blocked": false
+    },
+    {
+      "id": "RISK-006",
+      "title": "Dashboard metrics do not match stakeholder meaning",
+      "severity": "medium",
+      "likelihood": "high",
+      "affected_ids": ["REQ-009", "REQ-010", "E003", "G-E"],
+      "description": "Aggregation implementation may produce incorrect scoped counts, tie ordering, or zero-task progress.",
+      "mitigation": "Use the exact section 8 formulas and seeded boundary/tie fixtures.",
+      "owner_or_decision": "Resolved contract in Q-008 and ADR-004",
+      "generation_blocked": false
+    },
+    {
+      "id": "RISK-007",
+      "title": "Downloaded reports are incomplete, inconsistent, or leak data",
+      "severity": "high",
+      "likelihood": "high",
+      "affected_ids": ["REQ-011", "REQ-012", "REQ-013", "E004", "G-F"],
+      "description": "Report generation could omit required fields, mishandle inclusive dates, or leak out-of-scope data.",
+      "mitigation": "Use the section 9 schema, parser-based artifact tests, inclusive boundary fixtures, and shared authorization checks.",
+      "owner_or_decision": "Resolved contract in Q-009 and ADR-005",
+      "generation_blocked": false
+    },
+    {
+      "id": "RISK-008",
+      "title": "Responsive and recovery claims cannot be objectively evaluated",
+      "severity": "medium",
+      "likelihood": "high",
+      "affected_ids": ["REQ-014", "REQ-017", "E005", "G-G"],
+      "description": "Long content or failures may make core flows unusable at the required mobile viewport.",
+      "mitigation": "Run all core Playwright journeys in current Chromium at 390x844 and 1280x720 with long-content and failure fixtures.",
+      "owner_or_decision": "Resolved contract in Q-013 and specification section 10",
+      "generation_blocked": false
+    },
+    {
+      "id": "RISK-009",
+      "title": "Extension scope causes uncontrolled feature growth",
+      "severity": "high",
+      "likelihood": "high",
+      "affected_ids": ["REQ-018", "E006", "G-H"],
+      "description": "Extension work could re-enter MVP generation despite being explicitly deferred.",
+      "mitigation": "Mark REQ-018/E006/G-H non-MVP and generation-ineligible, exclude G-H from execution waves, and require a separate approved post-MVP revision.",
+      "owner_or_decision": "Resolved deferral in Q-012 and ADR-006",
+      "generation_blocked": false
+    }
+  ]
+}

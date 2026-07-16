@@ -1,0 +1,154 @@
+import sqlite3
+import threading
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
+from datetime import UTC, datetime
+
+from .security import hash_password
+
+
+SCHEMA = """
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('Recruit', 'Manager', 'Admin')),
+    department TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE manager_assignments (
+    recruit_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    manager_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    CHECK (recruit_id != manager_id)
+);
+
+CREATE TABLE tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL CHECK (
+        category IN ('Training', 'Setup', 'Meeting', 'Project', 'Other')
+    ),
+    status TEXT NOT NULL CHECK (
+        status IN ('Not Started', 'In Progress', 'Completed', 'Blocked')
+    ),
+    priority TEXT NOT NULL CHECK (priority IN ('Low', 'Medium', 'High')),
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    severity TEXT NOT NULL CHECK (
+        severity IN ('Low', 'Medium', 'High', 'Critical')
+    ),
+    status TEXT NOT NULL CHECK (
+        status IN ('Open', 'In Progress', 'Resolved', 'Closed')
+    ),
+    resolution_notes TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (
+        type IN ('Positive', 'Suggestion', 'Concern')
+    ),
+    details TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tags TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+"""
+
+
+class Database:
+    def __init__(self) -> None:
+        self.connection = sqlite3.connect(
+            ":memory:",
+            check_same_thread=False,
+        )
+        self.connection.row_factory = sqlite3.Row
+        self.connection.execute("PRAGMA foreign_keys = ON")
+        self.connection.executescript(SCHEMA)
+        self.lock = threading.RLock()
+
+    def close(self) -> None:
+        with self.lock:
+            self.connection.close()
+
+    @contextmanager
+    def atomic(self) -> Iterator[None]:
+        with self.lock:
+            yield
+
+    def execute(
+        self,
+        query: str,
+        parameters: Iterable[object] = (),
+    ) -> sqlite3.Cursor:
+        with self.lock:
+            cursor = self.connection.execute(query, tuple(parameters))
+            self.connection.commit()
+            return cursor
+
+    def fetchone(
+        self,
+        query: str,
+        parameters: Iterable[object] = (),
+    ) -> sqlite3.Row | None:
+        with self.lock:
+            return self.connection.execute(query, tuple(parameters)).fetchone()
+
+    def fetchall(
+        self,
+        query: str,
+        parameters: Iterable[object] = (),
+    ) -> list[sqlite3.Row]:
+        with self.lock:
+            return self.connection.execute(query, tuple(parameters)).fetchall()
+
+    def bootstrap_admin(self, email: str, password: str) -> None:
+        now = datetime.now(UTC)
+        self.execute(
+            """
+            INSERT INTO users (
+                email, name, role, department, start_date, password_hash, created_at
+            ) VALUES (?, ?, 'Admin', ?, ?, ?, ?)
+            """,
+            (
+                email,
+                "Bootstrap Admin",
+                "Administration",
+                now.date().isoformat(),
+                hash_password(password),
+                now.isoformat(),
+            ),
+        )
