@@ -474,3 +474,37 @@ class NoteResponse(BaseModel):
     content: str
     tags: list[str]
     created_at: DateTimeValue
+
+
+class DashboardRecruit(BaseModel):
+    id: int
+    name: str
+
+
+class DashboardCounts(BaseModel):
+    tasks: int
+    issues: int
+    feedback: int
+    notes: int
+
+
+class DashboardActivity(BaseModel):
+    id: int
+    kind: Literal["task", "issue", "feedback", "note"]
+    date: DateValue
+    created_at: DateTimeValue
+    title: str
+    status: str | None = None
+    priority: TaskPriority | None = None
+    severity: IssueSeverity | None = None
+    feedback_type: FeedbackType | None = None
+    tags: list[str] = Field(default_factory=list)
+
+
+class DashboardResponse(BaseModel):
+    recruit: DashboardRecruit
+    counts: DashboardCounts
+    task_progress_percent: int
+    open_issue_count: int
+    open_issues: list[IssueResponse]
+    recent_activity: list[DashboardActivity]

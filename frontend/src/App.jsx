@@ -980,15 +980,212 @@ function DiaryPage({ kind, user, onUnauthorized }) {
   );
 }
 
-function Dashboard({ user }) {
+function Dashboard({ user, onUnauthorized }) {
+  const [recruits, setRecruits] = useState([]);
+  const [ownerId, setOwnerId] = useState(
+    user.role === "Recruit" ? String(user.id) : "",
+  );
+  const [dashboard, setDashboard] = useState(null);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(user.role === "Recruit");
+
+  useEffect(() => {
+    if (user.role === "Recruit") {
+      return;
+    }
+    api("/api/diary/recruits")
+      .then((records) => {
+        setRecruits(records);
+        setOwnerId((current) => current || (records[0] ? String(records[0].id) : ""));
+      })
+      .catch((requestError) => {
+        if (requestError.status === 401) {
+          onUnauthorized();
+          return;
+        }
+        setMessage(requestError.message);
+      });
+  }, [onUnauthorized, user.role]);
+
+  useEffect(() => {
+    if (!ownerId) {
+      setDashboard(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    api(`/api/dashboard?owner_id=${ownerId}`)
+      .then((response) => setDashboard(response))
+      .catch((requestError) => {
+        setDashboard(null);
+        if (requestError.status === 401) {
+          onUnauthorized();
+          return;
+        }
+        setMessage(requestError.message);
+      })
+      .finally(() => setLoading(false));
+  }, [onUnauthorized, ownerId]);
+
+  const countCards = dashboard
+    ? [
+        ["Tasks", dashboard.counts.tasks],
+        ["Issues", dashboard.counts.issues],
+        ["Feedback", dashboard.counts.feedback],
+        ["Notes", dashboard.counts.notes],
+      ]
+    : [];
+
   return (
-    <section>
+    <section className="space-y-8">
       <p className="text-sm font-semibold text-teal-700">{user.role}</p>
       <h1 className="mt-2 text-4xl font-bold">Welcome, {user.name}</h1>
       <p className="mt-3 max-w-2xl text-slate-600">
-        Your account is ready. Open your profile to review or update your
-        onboarding details.
+        Review authorized onboarding activity, progress, and open issues.
       </p>
+
+      {user.role !== "Recruit" ? (
+        <div className="max-w-sm">
+          <SelectField
+            label="Dashboard Recruit"
+            name="owner_id"
+            value={ownerId}
+            onChange={(event) => setOwnerId(event.target.value)}
+          >
+            {recruits.length === 0 ? (
+              <option value="">No recruits available</option>
+            ) : null}
+            {recruits.map((recruit) => (
+              <option key={recruit.id} value={recruit.id}>
+                {recruit.name}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+      ) : null}
+
+      <StatusMessage
+        message={message}
+        tone={message === "Access denied" ? "error" : "neutral"}
+      />
+
+      {loading ? (
+        <p className="rounded-2xl bg-white p-6 text-slate-600 shadow">
+          Loading dashboard.
+        </p>
+      ) : !ownerId ? (
+        <p className="rounded-2xl bg-white p-6 text-slate-600 shadow">
+          No recruits are available for your dashboard.
+        </p>
+      ) : dashboard ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {countCards.map(([label, count]) => (
+              <article key={label} className="rounded-2xl bg-white p-5 shadow">
+                <p className="text-sm font-semibold text-slate-600">{label}</p>
+                <p className="mt-2 text-3xl font-bold" aria-label={`${label} count`}>
+                  {count}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <article className="rounded-2xl bg-white p-6 shadow">
+              <h2 className="text-xl font-semibold">Task progress</h2>
+              <p className="mt-4 text-4xl font-bold text-teal-700">
+                {dashboard.task_progress_percent}%
+              </p>
+              <div
+                className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200"
+                role="progressbar"
+                aria-label="Task completion"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow={dashboard.task_progress_percent}
+              >
+                <div
+                  className="h-full bg-teal-600"
+                  style={{ width: `${dashboard.task_progress_percent}%` }}
+                />
+              </div>
+            </article>
+
+            <article className="rounded-2xl bg-white p-6 shadow">
+              <h2 className="text-xl font-semibold">Open issues</h2>
+              <p className="mt-4 text-4xl font-bold text-amber-700">
+                {dashboard.open_issue_count}
+              </p>
+              {dashboard.open_issues.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-600">No open issues.</p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {dashboard.open_issues.map((issue) => (
+                    <li key={issue.id} className="rounded-lg bg-amber-50 p-3">
+                      <p className="font-semibold">{issue.title}</p>
+                      <p className="text-sm text-slate-600">
+                        {issue.status} · {issue.severity}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          </div>
+
+          <section>
+            <h2 className="text-2xl font-semibold">Recent activity</h2>
+            {dashboard.recent_activity.length === 0 ? (
+              <p className="mt-4 rounded-2xl bg-white p-6 text-slate-600 shadow">
+                No diary activity yet.
+              </p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {dashboard.recent_activity.map((activity) => (
+                  <article
+                    key={`${activity.kind}-${activity.id}`}
+                    className="rounded-2xl bg-white p-5 shadow"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold capitalize text-teal-700">
+                          {activity.kind} · {activity.date}
+                        </p>
+                        <h3 className="mt-1 text-lg font-semibold">{activity.title}</h3>
+                      </div>
+                      <p className="text-sm text-slate-600">
+                        {activity.status ||
+                          activity.feedback_type ||
+                          (activity.tags.length > 0 ? "Tagged note" : "Note")}
+                      </p>
+                    </div>
+                    {activity.priority || activity.severity ? (
+                      <p className="mt-2 text-sm text-slate-600">
+                        {activity.priority
+                          ? `Priority: ${activity.priority}`
+                          : `Severity: ${activity.severity}`}
+                      </p>
+                    ) : null}
+                    {activity.tags.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2" aria-label="Note tags">
+                        {activity.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="whitespace-pre-wrap rounded-full bg-slate-100 px-3 py-1 text-xs"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      ) : null}
     </section>
   );
 }
@@ -1477,7 +1674,7 @@ export default function App() {
       ) : page === "profile" ? (
         <Profile user={user} onUpdated={setUser} onUnauthorized={clearSession} />
       ) : (
-        <Dashboard user={user} />
+        <Dashboard user={user} onUnauthorized={clearSession} />
       )}
     </Shell>
   );

@@ -19,6 +19,10 @@ from .schemas import (
     AdminUserCreate,
     AdminUserPatch,
     AdminUserResponse,
+    DashboardActivity,
+    DashboardCounts,
+    DashboardRecruit,
+    DashboardResponse,
     FeedbackCreate,
     FeedbackPatch,
     FeedbackResponse,
@@ -172,6 +176,12 @@ def note_response(row: sqlite3.Row) -> NoteResponse:
     values = dict(row)
     values["tags"] = json.loads(row["tags"])
     return NoteResponse.model_validate(values)
+
+
+def dashboard_activity_response(row: sqlite3.Row) -> DashboardActivity:
+    values = dict(row)
+    values["tags"] = json.loads(row["tags"]) if row["tags"] is not None else []
+    return DashboardActivity.model_validate(values)
 
 
 def get_database(request: Request) -> Database:
@@ -541,6 +551,97 @@ def create_app() -> FastAPI:
                 """
             )
         return [user_response(row) for row in rows]
+
+    @app.get("/api/dashboard", response_model=DashboardResponse)
+    def get_dashboard(
+        owner_id: int | None = None,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> DashboardResponse:
+        owner = resolve_diary_owner(database, actor, owner_id)
+        counts_row = database.fetchone(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM tasks WHERE owner_id = ?) AS tasks,
+                (SELECT COUNT(*) FROM issues WHERE owner_id = ?) AS issues,
+                (SELECT COUNT(*) FROM feedback WHERE owner_id = ?) AS feedback,
+                (SELECT COUNT(*) FROM notes WHERE owner_id = ?) AS notes
+            """,
+            (owner["id"], owner["id"], owner["id"], owner["id"]),
+        )
+        task_counts = database.fetchone(
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed
+            FROM tasks
+            WHERE owner_id = ?
+            """,
+            (owner["id"],),
+        )
+        total_tasks = int(task_counts["total"]) if task_counts else 0
+        completed_tasks = int(task_counts["completed"] or 0) if task_counts else 0
+        task_progress = (
+            int((completed_tasks * 100 / total_tasks) + 0.5) if total_tasks else 0
+        )
+        open_issue_rows = database.fetchall(
+            """
+            SELECT * FROM issues
+            WHERE owner_id = ? AND status IN ('Open', 'In Progress')
+            ORDER BY date DESC, created_at DESC, id DESC
+            """,
+            (owner["id"],),
+        )
+        activity_rows = database.fetchall(
+            """
+            SELECT
+                id, 'task' AS kind, date, created_at, title, status, priority,
+                NULL AS severity, NULL AS feedback_type, NULL AS tags
+            FROM tasks
+            WHERE owner_id = ?
+            UNION ALL
+            SELECT
+                id, 'issue' AS kind, date, created_at, title, status,
+                NULL AS priority, severity, NULL AS feedback_type, NULL AS tags
+            FROM issues
+            WHERE owner_id = ?
+            UNION ALL
+            SELECT
+                id, 'feedback' AS kind, date, created_at, subject AS title,
+                NULL AS status, NULL AS priority, NULL AS severity,
+                type AS feedback_type, NULL AS tags
+            FROM feedback
+            WHERE owner_id = ?
+            UNION ALL
+            SELECT
+                id, 'note' AS kind, date, created_at, title, NULL AS status,
+                NULL AS priority, NULL AS severity, NULL AS feedback_type, tags
+            FROM notes
+            WHERE owner_id = ?
+            ORDER BY date DESC, created_at DESC, id DESC, kind ASC
+            LIMIT 10
+            """,
+            (owner["id"], owner["id"], owner["id"], owner["id"]),
+        )
+        counts = counts_row or {
+            "tasks": 0,
+            "issues": 0,
+            "feedback": 0,
+            "notes": 0,
+        }
+        return DashboardResponse(
+            recruit=DashboardRecruit(id=owner["id"], name=owner["name"]),
+            counts=DashboardCounts(
+                tasks=counts["tasks"],
+                issues=counts["issues"],
+                feedback=counts["feedback"],
+                notes=counts["notes"],
+            ),
+            task_progress_percent=task_progress,
+            open_issue_count=len(open_issue_rows),
+            open_issues=[issue_response(row) for row in open_issue_rows],
+            recent_activity=[dashboard_activity_response(row) for row in activity_rows],
+        )
 
     @app.get("/api/tasks", response_model=list[TaskResponse])
     def list_tasks(
