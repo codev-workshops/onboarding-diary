@@ -1,6 +1,7 @@
 import sqlite3
 import threading
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 
 from .security import hash_password
@@ -48,6 +49,11 @@ class Database:
     def close(self) -> None:
         with self.lock:
             self.connection.close()
+
+    @contextmanager
+    def atomic(self) -> Iterator[None]:
+        with self.lock:
+            yield
 
     def execute(
         self,

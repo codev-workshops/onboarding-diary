@@ -1,10 +1,13 @@
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 import pytest
+from fastapi import Depends
 from fastapi.testclient import TestClient
 
 from app.authorization import authorize_recruit_scope, authorize_report_scope
-from app.main import ApiError
+from app.main import ApiError, require_admin, require_user
 
 
 def login_token(client: TestClient, email: str, password: str) -> str:
@@ -77,6 +80,61 @@ def row_for(client: TestClient, user_id: int) -> sqlite3.Row:
     )
     assert row is not None
     return row
+
+
+def run_concurrent_admin_operations(
+    client: TestClient,
+    operations: list[tuple[str, str, str, dict[str, str] | None]],
+) -> list[tuple[int, dict[str, object] | None]]:
+    barrier = Barrier(len(operations))
+
+    def synchronized_admin(
+        user: sqlite3.Row = Depends(require_user),
+    ) -> sqlite3.Row:
+        admin = require_admin(user)
+        barrier.wait(timeout=5)
+        return admin
+
+    client.app.dependency_overrides[require_admin] = synchronized_admin
+
+    def request(
+        operation: tuple[str, str, str, dict[str, str] | None],
+    ) -> tuple[int, dict[str, object] | None]:
+        method, path, token, body = operation
+        response = client.request(
+            method,
+            path,
+            headers=auth_headers(token),
+            json=body,
+        )
+        return response.status_code, response.json() if response.content else None
+
+    try:
+        with ThreadPoolExecutor(max_workers=len(operations)) as executor:
+            return list(executor.map(request, operations))
+    finally:
+        client.app.dependency_overrides.pop(require_admin, None)
+
+
+def assert_concurrent_last_admin_result(
+    client: TestClient,
+    results: list[tuple[int, dict[str, object] | None]],
+    success_status: int,
+    conflict_message: str,
+) -> None:
+    assert sorted(status for status, _ in results) == [success_status, 409]
+    conflict = next(body for status, body in results if status == 409)
+    assert conflict == {
+        "error": {
+            "code": "invalid_state",
+            "message": conflict_message,
+        }
+    }
+    remaining = client.app.state.database.fetchone(
+        "SELECT COUNT(*) AS count FROM users WHERE role = 'Admin'"
+    )
+    assert remaining is not None
+    assert remaining["count"] == 1
 
 
 @pytest.mark.parametrize(
@@ -447,3 +505,82 @@ def test_admin_self_last_admin_and_role_change_conflicts(
         json={"role": "Recruit"},
     )
     assert last_admin_self_role.status_code == 409
+
+
+def test_concurrent_cross_demotions_preserve_an_admin(client: TestClient) -> None:
+    first_token = admin_token(client)
+    second = create_user(client, first_token, "admin2@example.com", "Admin")
+    second_token = login_token(client, "admin2@example.com", "created-password")
+
+    results = run_concurrent_admin_operations(
+        client,
+        [
+            (
+                "PATCH",
+                f"/api/admin/users/{second['id']}",
+                first_token,
+                {"role": "Recruit"},
+            ),
+            ("PATCH", "/api/admin/users/1", second_token, {"role": "Recruit"}),
+        ],
+    )
+
+    assert_concurrent_last_admin_result(
+        client,
+        results,
+        200,
+        "Cannot remove the last Admin",
+    )
+
+
+def test_concurrent_cross_deletes_preserve_an_admin(client: TestClient) -> None:
+    first_token = admin_token(client)
+    second = create_user(client, first_token, "admin2@example.com", "Admin")
+    second_token = login_token(client, "admin2@example.com", "created-password")
+
+    results = run_concurrent_admin_operations(
+        client,
+        [
+            ("DELETE", f"/api/admin/users/{second['id']}", first_token, None),
+            ("DELETE", "/api/admin/users/1", second_token, None),
+        ],
+    )
+
+    assert_concurrent_last_admin_result(
+        client,
+        results,
+        204,
+        "Cannot delete the last Admin",
+    )
+
+
+def test_concurrent_delete_and_demotion_preserve_an_admin(
+    client: TestClient,
+) -> None:
+    first_token = admin_token(client)
+    second = create_user(client, first_token, "admin2@example.com", "Admin")
+    second_token = login_token(client, "admin2@example.com", "created-password")
+
+    results = run_concurrent_admin_operations(
+        client,
+        [
+            ("DELETE", f"/api/admin/users/{second['id']}", first_token, None),
+            ("PATCH", "/api/admin/users/1", second_token, {"role": "Recruit"}),
+        ],
+    )
+
+    assert sorted(status for status, _ in results) in ([200, 409], [204, 409])
+    conflict = next(body for status, body in results if status == 409)
+    assert conflict is not None
+    error = conflict["error"]
+    assert isinstance(error, dict)
+    assert error["code"] == "invalid_state"
+    assert error["message"] in {
+        "Cannot delete the last Admin",
+        "Cannot remove the last Admin",
+    }
+    remaining = client.app.state.database.fetchone(
+        "SELECT COUNT(*) AS count FROM users WHERE role = 'Admin'"
+    )
+    assert remaining is not None
+    assert remaining["count"] == 1

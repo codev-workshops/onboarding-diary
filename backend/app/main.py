@@ -477,36 +477,43 @@ def create_app() -> FastAPI:
         admin: sqlite3.Row = Depends(require_admin),
         database: Database = Depends(get_database),
     ) -> AdminUserResponse:
-        target = get_user_or_404(database, user_id)
-        updates = payload.model_dump(exclude_unset=True)
-        if not updates:
-            return admin_user_response(database, target)
-        next_role = updates.get("role", target["role"])
-        role_changed = "role" in updates and next_role != target["role"]
-        if role_changed and user_id == admin["id"]:
-            raise ApiError(
-                409, "invalid_state", "An Admin cannot change their own role"
-            )
-        if role_changed and target["role"] == "Admin" and admin_count(database) == 1:
-            raise ApiError(409, "invalid_state", "Cannot remove the last Admin")
-        if "start_date" in updates and updates["start_date"] is not None:
-            updates["start_date"] = updates["start_date"].isoformat()
-        assignments = ", ".join(f"{field} = ?" for field in updates)
-        parameters = [*updates.values(), user_id]
-        try:
-            database.execute(f"UPDATE users SET {assignments} WHERE id = ?", parameters)
-        except sqlite3.IntegrityError as exc:
-            raise ApiError(
-                409,
-                "email_conflict",
-                "An account with this email already exists",
-                {"email": "Email is already in use"},
-            ) from exc
-        if role_changed:
-            invalidate_user_sessions(database, user_id)
-            remove_invalid_assignments(database, user_id, str(next_role))
-        updated = get_user_or_404(database, user_id)
-        return admin_user_response(database, updated)
+        with database.atomic():
+            target = get_user_or_404(database, user_id)
+            updates = payload.model_dump(exclude_unset=True)
+            if not updates:
+                return admin_user_response(database, target)
+            next_role = updates.get("role", target["role"])
+            role_changed = "role" in updates and next_role != target["role"]
+            if role_changed and user_id == admin["id"]:
+                raise ApiError(
+                    409, "invalid_state", "An Admin cannot change their own role"
+                )
+            if (
+                role_changed
+                and target["role"] == "Admin"
+                and admin_count(database) == 1
+            ):
+                raise ApiError(409, "invalid_state", "Cannot remove the last Admin")
+            if "start_date" in updates and updates["start_date"] is not None:
+                updates["start_date"] = updates["start_date"].isoformat()
+            assignments = ", ".join(f"{field} = ?" for field in updates)
+            parameters = [*updates.values(), user_id]
+            try:
+                database.execute(
+                    f"UPDATE users SET {assignments} WHERE id = ?", parameters
+                )
+            except sqlite3.IntegrityError as exc:
+                raise ApiError(
+                    409,
+                    "email_conflict",
+                    "An account with this email already exists",
+                    {"email": "Email is already in use"},
+                ) from exc
+            if role_changed:
+                invalidate_user_sessions(database, user_id)
+                remove_invalid_assignments(database, user_id, str(next_role))
+            updated = get_user_or_404(database, user_id)
+            return admin_user_response(database, updated)
 
     @app.delete("/api/admin/users/{user_id}", status_code=204)
     def delete_admin_user(
@@ -514,12 +521,15 @@ def create_app() -> FastAPI:
         admin: sqlite3.Row = Depends(require_admin),
         database: Database = Depends(get_database),
     ) -> None:
-        target = get_user_or_404(database, user_id)
-        if user_id == admin["id"]:
-            raise ApiError(409, "invalid_state", "An Admin cannot delete themselves")
-        if target["role"] == "Admin" and admin_count(database) == 1:
-            raise ApiError(409, "invalid_state", "Cannot delete the last Admin")
-        database.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        with database.atomic():
+            target = get_user_or_404(database, user_id)
+            if user_id == admin["id"]:
+                raise ApiError(
+                    409, "invalid_state", "An Admin cannot delete themselves"
+                )
+            if target["role"] == "Admin" and admin_count(database) == 1:
+                raise ApiError(409, "invalid_state", "Cannot delete the last Admin")
+            database.execute("DELETE FROM users WHERE id = ?", (user_id,))
 
     @app.put(
         "/api/admin/recruits/{recruit_id}/manager",
