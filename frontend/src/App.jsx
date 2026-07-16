@@ -79,7 +79,7 @@ const diaryConfigs = {
       date: "",
       title: "",
       content: "",
-      tags: "",
+      tags: [],
     },
     emptyFilters: {},
   },
@@ -179,6 +179,61 @@ function SelectField({ label, name, value, onChange, children, error }) {
         <span className="mt-1 block text-sm text-red-700">{error}</span>
       ) : null}
     </label>
+  );
+}
+
+function TagsField({ tags, onChange, error }) {
+  function updateTag(index, value) {
+    onChange(tags.map((tag, tagIndex) => (tagIndex === index ? value : tag)));
+  }
+
+  function removeTag(index) {
+    onChange(tags.filter((_, tagIndex) => tagIndex !== index));
+  }
+
+  return (
+    <fieldset className="space-y-3">
+      <legend className="text-sm font-medium text-slate-700">Note tags</legend>
+      {tags.length === 0 ? (
+        <p className="text-sm text-slate-600">No tags added.</p>
+      ) : null}
+      {tags.map((tag, index) => (
+        <div key={index} className="flex flex-wrap items-end gap-2">
+          <label className="min-w-0 flex-1 text-sm text-slate-700">
+            Tag {index + 1}
+            <input
+              className={fieldClass}
+              value={tag}
+              onChange={(event) => updateTag(index, event.target.value)}
+              aria-label={`Note tag ${index + 1}`}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "tags-error" : undefined}
+            />
+          </label>
+          <button
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold"
+            type="button"
+            onClick={() => removeTag(index)}
+            aria-label={`Remove tag ${index + 1}`}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+      <button
+        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+        type="button"
+        onClick={() => onChange([...tags, ""])}
+        disabled={tags.length >= 10}
+      >
+        Add tag
+      </button>
+      {error ? (
+        <p id="tags-error" className="text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
+    </fieldset>
   );
 }
 
@@ -527,19 +582,9 @@ function DiaryPage({ kind, user, onUnauthorized }) {
     event.preventDefault();
     setErrors({});
     setMessage("");
-    const formPayload =
-      kind === "notes"
-        ? {
-            ...form,
-            tags: form.tags
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean),
-          }
-        : form;
     const payload = editingId
-      ? formPayload
-      : { ...formPayload, owner_id: Number(ownerId) };
+      ? form
+      : { ...form, owner_id: Number(ownerId) };
     try {
       await api(
         editingId ? `${config.endpoint}/${editingId}` : config.endpoint,
@@ -568,9 +613,6 @@ function DiaryPage({ kind, user, onUnauthorized }) {
     delete editable.id;
     delete editable.owner_id;
     delete editable.created_at;
-    if (kind === "notes") {
-      editable.tags = editable.tags.join(", ");
-    }
     setForm(editable);
     setEditingId(entry.id);
     setErrors({});
@@ -746,13 +788,10 @@ function DiaryPage({ kind, user, onUnauthorized }) {
             ))}
           </SelectField>
         ) : (
-          <Field
-            label="Note tags"
-            name="tags"
-            value={form.tags}
-            onChange={changeForm}
+          <TagsField
+            tags={form.tags}
+            onChange={(tags) => setForm({ ...form, tags })}
             error={errors.tags}
-            required={false}
           />
         )}
         <div className="flex flex-wrap gap-3 md:col-span-2">

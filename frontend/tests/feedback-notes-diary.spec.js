@@ -118,14 +118,22 @@ async function exerciseNoteUi(page, title, recruitName) {
   await page.getByLabel("Note date").fill("2026-07-16");
   await page.getByLabel("Note title").fill(title);
   await page.getByLabel("Note content").fill("Review the deployment checklist.");
-  await page.getByLabel("Note tags").fill(" Release, TEAM, release ");
+  await page.getByRole("button", { name: "Add tag" }).click();
+  await page.getByLabel("Note tag 1").fill(" Release ");
+  await page.getByRole("button", { name: "Add tag" }).click();
+  await page.getByLabel("Note tag 2").fill("TEAM");
+  await page.getByRole("button", { name: "Add tag" }).click();
+  await page.getByLabel("Note tag 3").fill("release");
   await page.getByRole("button", { name: "Create Note" }).click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Note created");
   await expect(page.getByText("release, team", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: `Edit ${title}` }).click();
-  await page.getByLabel("Note tags").fill("Updated, Follow Up");
+  await page.getByRole("button", { name: "Remove tag 1" }).click();
+  await page.getByLabel("Note tag 1").fill("Updated");
+  await page.getByRole("button", { name: "Add tag" }).click();
+  await page.getByLabel("Note tag 2").fill("Follow Up");
   await page.getByRole("button", { name: "Save Note" }).click();
   await expect(page.getByRole("status")).toHaveText("Note saved");
   await expect(page.getByText("updated, follow up", { exact: true })).toBeVisible();
@@ -232,6 +240,105 @@ test("post-create reload failures do not show false confirmations", async ({
   await page.getByRole("button", { name: "Create Note" }).click();
   await expect(page.getByRole("status")).toHaveText("Notes reload failed");
   await expect(page.getByRole("status")).not.toHaveText("Note created");
+});
+
+
+test("note tag editor round-trips commas and supports zero to ten tags", async ({
+  page,
+}, testInfo) => {
+  const suffix = testInfo.project.name;
+  const email = `comma-tag-${suffix}@example.com`;
+  const recruit = await signupRecruit(page, email, `Comma Tag Recruit ${suffix}`);
+  await login(page, email);
+
+  const note = await page.evaluate(async (ownerId) => {
+    const response = await fetch("/api/notes", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        owner_id: ownerId,
+        date: "2026-07-16",
+        title: "Comma tag note",
+        content: "Round-trip every backend-valid tag.",
+        tags: ["a,b"],
+      }),
+    });
+    return response.json();
+  }, recruit.id);
+
+  let listLoads = 0;
+  page.on("request", (request) => {
+    if (
+      request.method() === "GET" &&
+      request.url().includes("/api/notes?")
+    ) {
+      listLoads += 1;
+    }
+  });
+  await page.getByRole("button", { name: "Notes" }).click();
+  await expect(page.getByRole("heading", { name: "Comma tag note" })).toBeVisible();
+  const initialListLoads = listLoads;
+
+  await page.getByRole("button", { name: "Edit Comma tag note" }).click();
+  await expect(page.getByLabel("Note tag 1")).toHaveValue("a,b");
+  await expect(page.getByLabel(/^Note tag /)).toHaveCount(1);
+  await page.getByRole("button", { name: "Add tag" }).click();
+  await page.getByLabel("Note tag 2").fill("temporary");
+  await page.getByRole("button", { name: "Remove tag 2" }).click();
+  await page.getByRole("button", { name: "Save Note" }).click();
+  await expect(page.getByRole("status")).toHaveText("Note saved");
+  expect(listLoads).toBe(initialListLoads + 1);
+
+  let saved = await page.evaluate(async (noteId) => {
+    const response = await fetch(`/api/notes/${noteId}`, {
+      credentials: "same-origin",
+    });
+    return response.json();
+  }, note.id);
+  expect(saved.tags).toEqual(["a,b"]);
+
+  await page.getByRole("button", { name: "Edit Comma tag note" }).click();
+  await expect(page.getByLabel("Note tag 1")).toHaveValue("a,b");
+  await page.screenshot({
+    path: testInfo.outputPath("comma-tag-roundtrip.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Remove tag 1" }).click();
+  await expect(page.getByText("No tags added.")).toBeVisible();
+  await page.getByRole("button", { name: "Save Note" }).click();
+  await expect(page.getByRole("status")).toHaveText("Note saved");
+  saved = await page.evaluate(async (noteId) => {
+    const response = await fetch(`/api/notes/${noteId}`, {
+      credentials: "same-origin",
+    });
+    return response.json();
+  }, note.id);
+  expect(saved.tags).toEqual([]);
+
+  await page.getByRole("button", { name: "Edit Comma tag note" }).click();
+  for (let index = 1; index <= 10; index += 1) {
+    await page.getByRole("button", { name: "Add tag" }).click();
+    await page.getByLabel(`Note tag ${index}`).fill(` Tag ${index} `);
+  }
+  await expect(page.getByRole("button", { name: "Add tag" })).toBeDisabled();
+  await page.getByLabel("Note tag 10").fill("x".repeat(31));
+  await page.getByRole("button", { name: "Save Note" }).click();
+  await expect(
+    page.getByText("Each tag must be between 1 and 30 characters"),
+  ).toBeVisible();
+  await page.getByLabel("Note tag 10").fill(" Tag 10 ");
+  await page.getByRole("button", { name: "Save Note" }).click();
+  await expect(page.getByRole("status")).toHaveText("Note saved");
+  saved = await page.evaluate(async (noteId) => {
+    const response = await fetch(`/api/notes/${noteId}`, {
+      credentials: "same-origin",
+    });
+    return response.json();
+  }, note.id);
+  expect(saved.tags).toEqual(
+    Array.from({ length: 10 }, (_, index) => `tag ${index + 1}`),
+  );
 });
 
 
