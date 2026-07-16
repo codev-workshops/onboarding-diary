@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from httpx import Response
 
 
 TASK_PAYLOAD = {
@@ -19,6 +20,22 @@ ISSUE_PAYLOAD = {
     "status": "Open",
     "resolution_notes": "",
 }
+
+INVALID_DIARY_DATE_INPUTS = [
+    0,
+    1784073600,
+    "2026-07-15T00:00:00",
+    "2026-7-15",
+    "2026/07/15",
+    " 2026-07-15",
+    "2026-07-15 ",
+    "",
+    None,
+    "2026-02-29",
+    "2026-04-31",
+    "2026-00-01",
+    "2026-13-01",
+]
 
 
 def login_token(client: TestClient, email: str, password: str) -> str:
@@ -122,6 +139,14 @@ def assert_access_denied(response: object) -> None:
             "message": "Access denied",
         }
     }
+
+
+def assert_validation_error(response: Response) -> None:
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "validation_error"
+    assert error["message"] == "Request validation failed"
+    assert "date" in error["fields"]
 
 
 @pytest.mark.parametrize("resource", ["tasks", "issues"])
@@ -421,6 +446,72 @@ def test_task_crud_validation_immutable_fields_and_and_combined_filters(
         params={"owner_id": owner_id},
     ).json()
     assert tasks[0]["id"] not in [entry["id"] for entry in remaining]
+
+
+def test_task_and_issue_dates_require_exact_iso_strings_without_mutation(
+    client: TestClient,
+) -> None:
+    fixtures = role_fixtures(client)
+    token = str(fixtures["recruit_token"])
+    owner_id = int(fixtures["recruit"]["id"])
+    headers = auth_headers(token)
+    task = create_entry(client, "tasks", token, owner_id, "strict-date")
+    issue = create_entry(client, "issues", token, owner_id, "strict-date")
+    baseline_tasks = client.get(
+        "/api/tasks", headers=headers, params={"owner_id": owner_id}
+    ).json()
+    baseline_issues = client.get(
+        "/api/issues", headers=headers, params={"owner_id": owner_id}
+    ).json()
+
+    for value in INVALID_DIARY_DATE_INPUTS:
+        assert_validation_error(
+            client.post(
+                "/api/tasks",
+                headers=headers,
+                json={**TASK_PAYLOAD, "owner_id": owner_id, "date": value},
+            )
+        )
+        assert_validation_error(
+            client.patch(
+                f"/api/tasks/{task['id']}",
+                headers=headers,
+                json={"date": value},
+            )
+        )
+        if value is not None:
+            assert_validation_error(
+                client.get(
+                    "/api/tasks",
+                    headers=headers,
+                    params={"owner_id": owner_id, "date": value},
+                )
+            )
+        assert_validation_error(
+            client.post(
+                "/api/issues",
+                headers=headers,
+                json={**ISSUE_PAYLOAD, "owner_id": owner_id, "date": value},
+            )
+        )
+        assert_validation_error(
+            client.patch(
+                f"/api/issues/{issue['id']}",
+                headers=headers,
+                json={"date": value},
+            )
+        )
+
+    assert (
+        client.get("/api/tasks", headers=headers, params={"owner_id": owner_id}).json()
+        == baseline_tasks
+    )
+    assert client.get(f"/api/tasks/{task['id']}", headers=headers).json() == task
+    assert (
+        client.get("/api/issues", headers=headers, params={"owner_id": owner_id}).json()
+        == baseline_issues
+    )
+    assert client.get(f"/api/issues/{issue['id']}", headers=headers).json() == issue
 
 
 def test_issue_lifecycle_validation_immutable_fields_and_filters(

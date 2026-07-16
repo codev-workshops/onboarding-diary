@@ -1,12 +1,13 @@
 import re
 from datetime import date as DateValue
 from datetime import datetime as DateTimeValue
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator
 
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+ISO_DATE_PATTERN = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 
 def normalize_email(value: str) -> str:
@@ -183,9 +184,21 @@ def normalize_text(value: str, field: str, minimum: int, maximum: int) -> str:
     return normalized
 
 
+def parse_strict_date(value: object) -> DateValue:
+    if not isinstance(value, str) or ISO_DATE_PATTERN.fullmatch(value) is None:
+        raise ValueError("Date must use YYYY-MM-DD format")
+    try:
+        return DateValue.fromisoformat(value)
+    except ValueError as error:
+        raise ValueError("Date must be a valid calendar date") from error
+
+
+StrictDateValue = Annotated[DateValue, BeforeValidator(parse_strict_date)]
+
+
 class TaskCreate(StrictModel):
     owner_id: int | None = None
-    date: DateValue
+    date: StrictDateValue
     title: str
     description: str
     category: TaskCategory
@@ -204,7 +217,7 @@ class TaskCreate(StrictModel):
 
 
 class TaskPatch(StrictModel):
-    date: DateValue | None = None
+    date: StrictDateValue | None = None
     title: str | None = None
     description: str | None = None
     category: TaskCategory | None = None
@@ -247,7 +260,7 @@ class TaskResponse(BaseModel):
 
 class IssueCreate(StrictModel):
     owner_id: int | None = None
-    date: DateValue
+    date: StrictDateValue
     title: str
     description: str
     severity: IssueSeverity
@@ -271,7 +284,7 @@ class IssueCreate(StrictModel):
 
 
 class IssuePatch(StrictModel):
-    date: DateValue | None = None
+    date: StrictDateValue | None = None
     title: str | None = None
     description: str | None = None
     severity: IssueSeverity | None = None

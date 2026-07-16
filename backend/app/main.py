@@ -4,8 +4,7 @@ import sqlite3
 from collections import deque
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, date as DateValue
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from threading import Lock
 from time import monotonic
 
@@ -29,6 +28,7 @@ from .schemas import (
     ProfileResponse,
     ProfileUpdate,
     SignupRequest,
+    StrictDateValue,
     TaskCategory,
     TaskCreate,
     TaskPatch,
@@ -528,7 +528,7 @@ def create_app() -> FastAPI:
     @app.get("/api/tasks", response_model=list[TaskResponse])
     def list_tasks(
         owner_id: int | None = None,
-        date: DateValue | None = None,
+        date: StrictDateValue | None = None,
         category: TaskCategory | None = None,
         status: TaskStatus | None = None,
         actor: sqlite3.Row = Depends(require_user),
