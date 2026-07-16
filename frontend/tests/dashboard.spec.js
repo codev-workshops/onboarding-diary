@@ -829,3 +829,277 @@ test("other Recruit and unassigned Manager denials reveal no target existence", 
   expect(managerKnown).toEqual(managerUnknown);
   expect(managerKnown).toEqual(recruitKnown);
 });
+
+
+async function mockRoleProfile(page, role) {
+  const id = role === "Admin" ? 951 : 851;
+  await mockProfile(page, profileResponse(role, id, `Mock ${role}`));
+}
+
+
+const retryButton = (page) =>
+  page.getByRole("button", { name: "Retry dashboard" });
+
+
+for (const role of ["Manager", "Admin"]) {
+  test(`${role} retry stays visible when the dashboard failure settles after recruit-list success on retry`, async ({
+    page,
+  }) => {
+    await mockRoleProfile(page, role);
+    let listCalls = 0;
+    const heldListSuccess = deferred();
+    await page.route("**/api/diary/recruits", async (route) => {
+      listCalls += 1;
+      if (listCalls >= 2) {
+        await heldListSuccess.promise;
+      }
+      await fulfillJson(route, 200, [{ id: 21, name: "Race Recruit" }]);
+    });
+    let dashboardCalls = 0;
+    const heldDashboardFailure = deferred();
+    await page.route("**/api/dashboard?owner_id=21", async (route) => {
+      dashboardCalls += 1;
+      if (dashboardCalls >= 2) {
+        await heldDashboardFailure.promise;
+      }
+      await fulfillJson(route, 500, {
+        error: { code: "dashboard_failed", message: "Dashboard failed" },
+      });
+    });
+
+    await page.goto("/");
+    await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+    await expect(retryButton(page)).toBeVisible();
+
+    await retryButton(page).click();
+    await expect.poll(() => dashboardCalls).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => listCalls).toBeGreaterThanOrEqual(2);
+
+    heldDashboardFailure.resolve();
+    await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+    heldListSuccess.resolve();
+
+    await expect(page.getByLabel("Dashboard Recruit")).toHaveValue("21");
+    await expect(retryButton(page)).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+    await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+  });
+
+
+  test(`${role} retry stays visible when the dashboard failure settles before recruit-list success on retry`, async ({
+    page,
+  }) => {
+    await mockRoleProfile(page, role);
+    let listCalls = 0;
+    const heldListSuccess = deferred();
+    await page.route("**/api/diary/recruits", async (route) => {
+      listCalls += 1;
+      if (listCalls >= 2) {
+        await heldListSuccess.promise;
+      }
+      await fulfillJson(route, 200, [{ id: 21, name: "Race Recruit" }]);
+    });
+    let dashboardCalls = 0;
+    const heldDashboardFailure = deferred();
+    await page.route("**/api/dashboard?owner_id=21", async (route) => {
+      dashboardCalls += 1;
+      if (dashboardCalls >= 2) {
+        await heldDashboardFailure.promise;
+      }
+      await fulfillJson(route, 500, {
+        error: { code: "dashboard_failed", message: "Dashboard failed" },
+      });
+    });
+
+    await page.goto("/");
+    await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+    await expect(retryButton(page)).toBeVisible();
+
+    await retryButton(page).click();
+    await expect.poll(() => dashboardCalls).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => listCalls).toBeGreaterThanOrEqual(2);
+
+    heldListSuccess.resolve();
+    heldDashboardFailure.resolve();
+
+    await expect(page.getByLabel("Dashboard Recruit")).toHaveValue("21");
+    await expect(retryButton(page)).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+    await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+  });
+
+
+  test(`${role} retry remains available through repeated dashboard failures`, async ({
+    page,
+  }) => {
+    await mockRoleProfile(page, role);
+    await page.route("**/api/diary/recruits", (route) =>
+      fulfillJson(route, 200, [{ id: 21, name: "Race Recruit" }]),
+    );
+    let dashboardCalls = 0;
+    await page.route("**/api/dashboard?owner_id=21", (route) => {
+      dashboardCalls += 1;
+      return fulfillJson(route, 500, {
+        error: { code: "dashboard_failed", message: "Dashboard failed" },
+      });
+    });
+
+    await page.goto("/");
+    await expect(retryButton(page)).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const before = dashboardCalls;
+      await retryButton(page).click();
+      await expect.poll(() => dashboardCalls).toBeGreaterThan(before);
+      await expect(retryButton(page)).toBeVisible();
+      await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+      await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+    }
+  });
+}
+
+
+test("Admin recruit-list failure keeps its own retry while no dashboard request runs", async ({
+  page,
+}) => {
+  await mockRoleProfile(page, "Admin");
+  let listCalls = 0;
+  await page.route("**/api/diary/recruits", (route) => {
+    listCalls += 1;
+    return fulfillJson(route, 500, {
+      error: { code: "list_failed", message: "Recruit list failed" },
+    });
+  });
+  let dashboardCalls = 0;
+  await page.route("**/api/dashboard?owner_id=*", (route) => {
+    dashboardCalls += 1;
+    return fulfillJson(route, 200, dashboardResponse(21, "Race Recruit", 21));
+  });
+
+  await page.goto("/");
+  await expect(page.getByRole("status")).toHaveText("Recruit list failed");
+  await expect(retryButton(page)).toBeVisible();
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+  await page.waitForTimeout(100);
+  expect(dashboardCalls).toBe(0);
+  expect(listCalls).toBeGreaterThanOrEqual(1);
+});
+
+
+test("Manager retry stays visible when both recruit-list and dashboard fail on retry", async ({
+  page,
+}) => {
+  await mockRoleProfile(page, "Manager");
+  let listCalls = 0;
+  await page.route("**/api/diary/recruits", (route) => {
+    listCalls += 1;
+    if (listCalls === 1) {
+      return fulfillJson(route, 200, [{ id: 21, name: "Race Recruit" }]);
+    }
+    return fulfillJson(route, 500, {
+      error: { code: "list_failed", message: "Recruit list failed" },
+    });
+  });
+  await page.route("**/api/dashboard?owner_id=21", (route) =>
+    fulfillJson(route, 500, {
+      error: { code: "dashboard_failed", message: "Dashboard failed" },
+    }),
+  );
+
+  await page.goto("/");
+  await expect(retryButton(page)).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+
+  await retryButton(page).click();
+  await expect.poll(() => listCalls).toBeGreaterThanOrEqual(2);
+  await expect(retryButton(page)).toBeVisible();
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+});
+
+
+test("Admin successful retry clears the dashboard retry affordance", async ({
+  page,
+}) => {
+  await mockRoleProfile(page, "Admin");
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [{ id: 21, name: "Race Recruit" }]),
+  );
+  let dashboardCalls = 0;
+  await page.route("**/api/dashboard?owner_id=21", (route) => {
+    dashboardCalls += 1;
+    if (dashboardCalls === 1) {
+      return fulfillJson(route, 500, {
+        error: { code: "dashboard_failed", message: "Dashboard failed" },
+      });
+    }
+    return fulfillJson(route, 200, dashboardResponse(21, "Race Recruit", 21));
+  });
+
+  await page.goto("/");
+  await expect(retryButton(page)).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+
+  await retryButton(page).click();
+  await expect(page.getByLabel("Tasks count")).toHaveText("21");
+  await expect(retryButton(page)).toHaveCount(0);
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+});
+
+
+test("Admin owner change to a healthy Recruit clears a prior dashboard retry", async ({
+  page,
+}) => {
+  await mockRoleProfile(page, "Admin");
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [
+      { id: 21, name: "Failing Recruit" },
+      { id: 22, name: "Healthy Recruit" },
+    ]),
+  );
+  await page.route("**/api/dashboard?owner_id=21", (route) =>
+    fulfillJson(route, 500, {
+      error: { code: "dashboard_failed", message: "Dashboard failed" },
+    }),
+  );
+  await page.route("**/api/dashboard?owner_id=22", (route) =>
+    fulfillJson(route, 200, dashboardResponse(22, "Healthy Recruit", 22)),
+  );
+
+  await page.goto("/");
+  await expect(retryButton(page)).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+
+  await page.getByLabel("Dashboard Recruit").selectOption("22");
+  await expect(page.getByLabel("Tasks count")).toHaveText("22");
+  await expect(retryButton(page)).toHaveCount(0);
+});
+
+
+test("Admin dashboard 401 on retry clears the session", async ({ page }) => {
+  await mockRoleProfile(page, "Admin");
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [{ id: 21, name: "Race Recruit" }]),
+  );
+  let dashboardCalls = 0;
+  await page.route("**/api/dashboard?owner_id=21", (route) => {
+    dashboardCalls += 1;
+    if (dashboardCalls === 1) {
+      return fulfillJson(route, 500, {
+        error: { code: "dashboard_failed", message: "Dashboard failed" },
+      });
+    }
+    return fulfillJson(route, 401, {
+      error: { code: "not_authenticated", message: "Authentication required" },
+    });
+  });
+
+  await page.goto("/");
+  await expect(retryButton(page)).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+
+  await retryButton(page).click();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+});
+

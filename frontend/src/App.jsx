@@ -1508,7 +1508,8 @@ function Dashboard({ user, onUnauthorized, requestScope }) {
     user.role !== "Recruit",
   );
   const [retryVersion, setRetryVersion] = useState(0);
-  const [retryable, setRetryable] = useState(false);
+  const [recruitsRetryable, setRecruitsRetryable] = useState(false);
+  const [dashboardRetryable, setDashboardRetryable] = useState(false);
 
   useEffect(() => {
     if (user.role === "Recruit") {
@@ -1524,7 +1525,7 @@ function Dashboard({ user, onUnauthorized, requestScope }) {
           return;
         }
         setRecruits(records);
-        setRetryable(false);
+        setRecruitsRetryable(false);
         setOwnerId((current) => current || (records[0] ? String(records[0].id) : ""));
       })
       .catch((requestError) => {
@@ -1536,7 +1537,7 @@ function Dashboard({ user, onUnauthorized, requestScope }) {
           return;
         }
         setMessage(requestError.message);
-        setRetryable(!requestError.status || requestError.status >= 500);
+        setRecruitsRetryable(!requestError.status || requestError.status >= 500);
       })
       .finally(() => {
         if (active) {
@@ -1564,7 +1565,7 @@ function Dashboard({ user, onUnauthorized, requestScope }) {
       .then((response) => {
         if (active) {
           setDashboard(response);
-          setRetryable(false);
+          setDashboardRetryable(false);
         }
       })
       .catch((requestError) => {
@@ -1579,7 +1580,7 @@ function Dashboard({ user, onUnauthorized, requestScope }) {
           setDashboard(null);
         }
         setMessage(requestError.message);
-        setRetryable(!requestError.status || requestError.status >= 500);
+        setDashboardRetryable(!requestError.status || requestError.status >= 500);
       })
       .finally(() => {
         if (active) {
@@ -1595,7 +1596,7 @@ function Dashboard({ user, onUnauthorized, requestScope }) {
   function changeOwner(event) {
     setDashboard(null);
     setMessage("");
-    setRetryable(false);
+    setDashboardRetryable(false);
     setOwnerId(event.target.value);
   }
 
@@ -1644,7 +1645,7 @@ function Dashboard({ user, onUnauthorized, requestScope }) {
         message={message}
         tone={message === "Access denied" ? "error" : "neutral"}
       />
-      {retryable ? (
+      {recruitsRetryable || dashboardRetryable ? (
         <button
           className="rounded-lg border border-teal-700 px-4 py-2 text-sm font-semibold text-teal-800"
           type="button"
