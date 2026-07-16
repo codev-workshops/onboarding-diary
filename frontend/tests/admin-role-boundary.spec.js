@@ -111,6 +111,50 @@ test("Admin creates users, replaces assignments, and non-Admin is denied", async
 });
 
 
+test("Admin self-save triggers one intentional user-list refresh", async ({
+  page,
+}) => {
+  await login(page, "admin@example.com", "bootstrap-password");
+  const initialUsers = page.waitForResponse(
+    (candidate) =>
+      candidate.url().endsWith("/api/admin/users") &&
+      candidate.request().method() === "GET",
+  );
+  await page.getByRole("button", { name: "Users & Assignments" }).click();
+  expect((await initialUsers).status()).toBe(200);
+
+  let listRequests = 0;
+  page.on("request", (request) => {
+    if (
+      request.url().endsWith("/api/admin/users") &&
+      request.method() === "GET"
+    ) {
+      listRequests += 1;
+    }
+  });
+
+  const adminCard = page
+    .locator("article")
+    .filter({ hasText: "admin@example.com" });
+  const selfSave = page.waitForResponse(
+    (candidate) =>
+      candidate.url().includes("/api/admin/users/") &&
+      candidate.request().method() === "PATCH",
+  );
+  const intentionalRefresh = page.waitForResponse(
+    (candidate) =>
+      candidate.url().endsWith("/api/admin/users") &&
+      candidate.request().method() === "GET",
+  );
+  await adminCard.getByRole("button", { name: /Save user/ }).click();
+
+  expect((await selfSave).status()).toBe(200);
+  expect((await intentionalRefresh).status()).toBe(200);
+  await page.waitForLoadState("networkidle");
+  expect(listRequests).toBe(1);
+});
+
+
 test("Admin role change invalidates the affected user's session and link", async ({
   browser,
   page,

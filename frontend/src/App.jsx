@@ -724,10 +724,10 @@ export default function App() {
   const [page, setPage] = useState("loading");
   const [loginEmail, setLoginEmail] = useState("");
 
-  function clearSession() {
+  const clearSession = useCallback(() => {
     setUser(null);
     setPage("login");
-  }
+  }, []);
 
   useEffect(() => {
     api("/api/profile")
