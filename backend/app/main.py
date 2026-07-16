@@ -65,7 +65,8 @@ SESSION_DURATION = timedelta(hours=8)
 GENERIC_LOGIN_ERROR = "Invalid email or password"
 LOGIN_FAILURE_LIMIT = 5
 LOGIN_FAILURE_WINDOW_SECONDS = 60
-REQUEST_LOGGER = logging.getLogger("onboarding_diary.requests")
+REQUEST_LOGGER = logging.getLogger("uvicorn.error.onboarding_diary.requests")
+logging.getLogger("uvicorn.access").disabled = True
 
 
 class LoginThrottle:

@@ -81,7 +81,10 @@ def test_request_logs_are_structured_and_exclude_sensitive_values(
         "password": password,
     }
 
-    with caplog.at_level(logging.INFO, logger="onboarding_diary.requests"):
+    with caplog.at_level(
+        logging.INFO,
+        logger="uvicorn.error.onboarding_diary.requests",
+    ):
         assert client.post("/api/auth/signup", json=payload).status_code == 201
         login = client.post(
             "/api/auth/login",
@@ -106,10 +109,10 @@ def test_request_logs_are_structured_and_exclude_sensitive_values(
     request_logs = "\n".join(
         record.getMessage()
         for record in caplog.records
-        if record.name == "onboarding_diary.requests"
+        if record.name == "uvicorn.error.onboarding_diary.requests"
     )
     for record in caplog.records:
-        if record.name == "onboarding_diary.requests":
+        if record.name == "uvicorn.error.onboarding_diary.requests":
             assert re.fullmatch(
                 r"request method=[A-Z]+ route=/\S* status=\d{3} "
                 r"request_id=[0-9a-f]{32}",
