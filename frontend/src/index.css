@@ -3,12 +3,28 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body,
+  #root {
+    @apply min-h-full min-w-0 max-w-full;
+  }
+
   body {
     @apply min-h-screen bg-slate-50 text-slate-900 antialiased;
   }
 
   button,
-  input {
+  input,
+  select,
+  textarea,
+  a {
     @apply focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    @apply max-w-full disabled:cursor-not-allowed disabled:opacity-60;
   }
 }

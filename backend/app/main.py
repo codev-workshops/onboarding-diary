@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import secrets
 import sqlite3
@@ -64,6 +65,7 @@ SESSION_DURATION = timedelta(hours=8)
 GENERIC_LOGIN_ERROR = "Invalid email or password"
 LOGIN_FAILURE_LIMIT = 5
 LOGIN_FAILURE_WINDOW_SECONDS = 60
+REQUEST_LOGGER = logging.getLogger("onboarding_diary.requests")
 
 
 class LoginThrottle:
@@ -369,6 +371,24 @@ def create_app() -> FastAPI:
             app.state.login_throttle = None
 
     app = FastAPI(title="Onboarding Diary API", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def log_request(request: Request, call_next):
+        request_id = secrets.token_hex(16)
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            response.headers["X-Request-ID"] = request_id
+            return response
+        finally:
+            REQUEST_LOGGER.info(
+                "request method=%s route=%s status=%s request_id=%s",
+                request.method,
+                request.url.path,
+                status_code,
+                request_id,
+            )
 
     @app.exception_handler(ApiError)
     async def handle_api_error(_: Request, exc: ApiError) -> JSONResponse:
