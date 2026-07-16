@@ -88,10 +88,12 @@ async function createTaskThroughUi(page, title, recruitName) {
   await page.getByLabel("Task priority").selectOption("High");
   await page.getByRole("button", { name: "Create Task" }).click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Task created");
 
   await page.getByRole("button", { name: `Edit ${title}` }).click();
   await page.locator('form select[name="status"]').selectOption("Completed");
   await page.getByRole("button", { name: "Save Task" }).click();
+  await expect(page.getByRole("status")).toHaveText("Task saved");
   await page.getByLabel("Filter task status").selectOption("Completed");
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(page.getByText("Training · Completed · High")).toBeVisible();
@@ -99,6 +101,7 @@ async function createTaskThroughUi(page, title, recruitName) {
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: `Delete ${title}` }).click();
   await expect(page.getByRole("heading", { name: title })).toHaveCount(0);
+  await expect(page.getByRole("status")).toHaveText("Task deleted");
 }
 
 
@@ -115,11 +118,13 @@ async function createIssueThroughUi(page, title, recruitName) {
   await page.locator('form select[name="status"]').selectOption("Open");
   await page.getByRole("button", { name: "Create Issue" }).click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Issue created");
 
   await page.getByRole("button", { name: `Edit ${title}` }).click();
   await page.locator('form select[name="status"]').selectOption("Resolved");
   await page.getByLabel("Resolution notes").fill("Certificate was replaced");
   await page.getByRole("button", { name: "Save Issue" }).click();
+  await expect(page.getByRole("status")).toHaveText("Issue saved");
   await page.getByLabel("Filter issue status").selectOption("Resolved");
   await page.getByLabel("Filter severity").selectOption("Critical");
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
@@ -128,6 +133,7 @@ async function createIssueThroughUi(page, title, recruitName) {
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: `Delete ${title}` }).click();
   await expect(page.getByRole("heading", { name: title })).toHaveCount(0);
+  await expect(page.getByRole("status")).toHaveText("Issue deleted");
 }
 
 
@@ -200,6 +206,30 @@ test("assigned Manager and Admin maintain a Recruit's tasks and issues", async (
     `Manager issue ${suffix}`,
     fixtures.recruit.name,
   );
+});
+
+
+test("a failed post-create reload shows the reload error", async ({
+  page,
+}, testInfo) => {
+  const email = `diary-reload-${testInfo.project.name}@example.com`;
+  await signupRecruit(page, email, `Diary Reload ${testInfo.project.name}`);
+  await login(page, email, "browser-password");
+  await page.getByRole("button", { name: "Tasks" }).click();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
+
+  await page.route("**/api/tasks?*", async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { message: "Reload failed" } }),
+    });
+  });
+  await page.getByLabel("Task date").fill("2026-07-16");
+  await page.getByLabel("Task title").fill(`Reload task ${testInfo.project.name}`);
+  await page.getByRole("button", { name: "Create Task" }).click();
+
+  await expect(page.getByRole("status")).toHaveText("Reload failed");
 });
 
 

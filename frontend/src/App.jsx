@@ -415,7 +415,7 @@ function DiaryPage({ kind, user, onUnauthorized }) {
   const loadEntries = useCallback(async () => {
     if (!ownerId) {
       setEntries([]);
-      return;
+      return true;
     }
     const parameters = new URLSearchParams({ owner_id: ownerId });
     Object.entries(filters).forEach(([name, value]) => {
@@ -427,13 +427,15 @@ function DiaryPage({ kind, user, onUnauthorized }) {
       const records = await api(`${config.endpoint}?${parameters}`);
       setEntries(records);
       setMessage("");
+      return true;
     } catch (requestError) {
       if (requestError.status === 401) {
         onUnauthorized();
-        return;
+        return false;
       }
       setEntries([]);
       setMessage(requestError.message);
+      return false;
     }
   }, [config.endpoint, filters, onUnauthorized, ownerId]);
 
@@ -487,9 +489,11 @@ function DiaryPage({ kind, user, onUnauthorized }) {
           body: JSON.stringify(payload),
         },
       );
-      setMessage(`${config.singular} ${editingId ? "saved" : "created"}`);
+      const confirmation = `${config.singular} ${editingId ? "saved" : "created"}`;
       resetForm();
-      await loadEntries();
+      if (await loadEntries()) {
+        setMessage(confirmation);
+      }
     } catch (requestError) {
       if (requestError.status === 401) {
         onUnauthorized();
@@ -517,11 +521,12 @@ function DiaryPage({ kind, user, onUnauthorized }) {
     }
     try {
       await api(`${config.endpoint}/${entry.id}`, { method: "DELETE" });
-      setMessage(`${config.singular} deleted`);
       if (editingId === entry.id) {
         resetForm();
       }
-      await loadEntries();
+      if (await loadEntries()) {
+        setMessage(`${config.singular} deleted`);
+      }
     } catch (requestError) {
       if (requestError.status === 401) {
         onUnauthorized();
