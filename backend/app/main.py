@@ -8,13 +8,23 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from threading import Lock
 from time import monotonic
+from typing import Annotated
 
-from fastapi import Cookie, Depends, FastAPI, Request, Response
+from fastapi import Cookie, Depends, FastAPI, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from .authorization import authorize_recruit_scope, ensure_admin
+from .authorization import authorize_recruit_scope, authorize_report_scope, ensure_admin
 from .database import Database
+from .reports import (
+    REPORT_COLUMNS,
+    ReportFormat,
+    ReportType,
+    render_csv,
+    render_pdf,
+    report_filename,
+    report_rows,
+)
 from .schemas import (
     AdminUserCreate,
     AdminUserPatch,
@@ -641,6 +651,75 @@ def create_app() -> FastAPI:
             open_issue_count=len(open_issue_rows),
             open_issues=[issue_response(row) for row in open_issue_rows],
             recent_activity=[dashboard_activity_response(row) for row in activity_rows],
+        )
+
+    @app.get("/api/reports")
+    def download_report(
+        recruit_id: int,
+        report_type: Annotated[ReportType, Query(alias="type")],
+        start_date: StrictDateValue,
+        end_date: StrictDateValue,
+        report_format: Annotated[ReportFormat, Query(alias="format")],
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> Response:
+        if start_date > end_date:
+            raise ApiError(
+                422,
+                "validation_error",
+                "Request validation failed",
+                {"start_date": "Start date must be on or before end date"},
+            )
+        recruit = authorize_report_scope(
+            database,
+            actor,
+            recruit_id,
+            api_error,
+            conceal_unknown=True,
+        )
+        columns = REPORT_COLUMNS[report_type]
+        rows = report_rows(
+            database,
+            recruit_id,
+            report_type,
+            start_date,
+            end_date,
+        )
+        try:
+            if report_format == "csv":
+                content = render_csv(columns, rows)
+                media_type = "text/csv"
+            else:
+                content = render_pdf(
+                    recruit["name"],
+                    report_type,
+                    start_date,
+                    end_date,
+                    datetime.now(UTC),
+                    columns,
+                    rows,
+                )
+                media_type = "application/pdf"
+        except Exception as exc:
+            raise ApiError(
+                500,
+                "server_error",
+                "An unexpected error occurred; please retry",
+            ) from exc
+        filename = report_filename(
+            recruit_id,
+            report_type,
+            start_date,
+            end_date,
+            report_format,
+        )
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
         )
 
     @app.get("/api/tasks", response_model=list[TaskResponse])

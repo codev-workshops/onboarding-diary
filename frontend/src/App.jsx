@@ -551,6 +551,14 @@ function Shell({ user, page, onNavigate, onLogout, children }) {
             >
               Notes
             </button>
+            <button
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                page === "reports" ? "bg-teal-50 text-teal-800" : "text-slate-600"
+              }`}
+              onClick={() => onNavigate("reports")}
+            >
+              Reports
+            </button>
             {user.role === "Admin" ? (
               <button
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${
@@ -1033,6 +1041,210 @@ function DiaryPage({ kind, user, onUnauthorized }) {
           ))
         )}
       </section>
+    </section>
+  );
+}
+
+function Reports({ user, onUnauthorized, requestScope }) {
+  const [recruits, setRecruits] = useState([]);
+  const [recruitId, setRecruitId] = useState(
+    user.role === "Recruit" ? String(user.id) : "",
+  );
+  const [criteria, setCriteria] = useState({
+    type: "combined",
+    start_date: "",
+    end_date: "",
+    format: "csv",
+  });
+  const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [recruitsLoading, setRecruitsLoading] = useState(
+    user.role !== "Recruit",
+  );
+
+  useEffect(() => {
+    if (user.role === "Recruit") {
+      return;
+    }
+    let active = true;
+    const path = "/api/diary/recruits";
+    const request = acquireInFlightGet(path, requestScope);
+    request.promise
+      .then((records) => {
+        if (!active) {
+          return;
+        }
+        setRecruits(records);
+        setRecruitId((current) => current || (records[0] ? String(records[0].id) : ""));
+      })
+      .catch((requestError) => {
+        if (!active) {
+          return;
+        }
+        if (requestError.status === 401) {
+          onUnauthorized();
+          return;
+        }
+        setMessage(requestError.message);
+      })
+      .finally(() => {
+        if (active) {
+          setRecruitsLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+      releaseInFlightGet(path, requestScope, request);
+    };
+  }, [onUnauthorized, requestScope, user.role]);
+
+  function changeCriteria(event) {
+    setCriteria({ ...criteria, [event.target.name]: event.target.value });
+  }
+
+  async function download(event) {
+    event.preventDefault();
+    setErrors({});
+    setMessage("");
+    setDownloading(true);
+    const parameters = new URLSearchParams({
+      recruit_id: recruitId,
+      type: criteria.type,
+      start_date: criteria.start_date,
+      end_date: criteria.end_date,
+      format: criteria.format,
+    });
+    try {
+      const response = await fetch(`/api/reports?${parameters}`, {
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        const body = await response.json();
+        const requestError = new Error(body.error?.message || "Request failed");
+        requestError.fields = body.error?.fields || {};
+        requestError.status = response.status;
+        throw requestError;
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const filenameMatch = disposition.match(/filename="?([^";]+)"?/);
+      const filename =
+        filenameMatch?.[1] ||
+        `onboarding-diary-report.${criteria.format}`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      setMessage(`${criteria.format.toUpperCase()} report downloaded`);
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        onUnauthorized();
+        return;
+      }
+      setErrors(requestError.fields || {});
+      setMessage(
+        requestError.status
+          ? requestError.message
+          : "Unable to reach the server; please retry",
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <section className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Reports</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Download authorized diary records for an inclusive date range.
+        </p>
+      </div>
+      <form
+        className="grid gap-4 rounded-2xl bg-white p-6 shadow md:grid-cols-2"
+        onSubmit={download}
+      >
+        {user.role !== "Recruit" ? (
+          <div className="md:col-span-2">
+            <SelectField
+              label="Report Recruit"
+              name="recruit_id"
+              value={recruitId}
+              onChange={(event) => setRecruitId(event.target.value)}
+              error={errors.recruit_id}
+            >
+              {recruits.length === 0 ? (
+                <option value="">
+                  {recruitsLoading ? "Loading recruits" : "No recruits available"}
+                </option>
+              ) : null}
+              {recruits.map((recruit) => (
+                <option key={recruit.id} value={recruit.id}>
+                  {recruit.name}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+        ) : null}
+        <SelectField
+          label="Report type"
+          name="type"
+          value={criteria.type}
+          onChange={changeCriteria}
+          error={errors.type}
+        >
+          <option value="tasks">Tasks</option>
+          <option value="issues">Issues</option>
+          <option value="feedback">Feedback</option>
+          <option value="combined">Combined</option>
+        </SelectField>
+        <SelectField
+          label="Report format"
+          name="format"
+          value={criteria.format}
+          onChange={changeCriteria}
+          error={errors.format}
+        >
+          <option value="csv">CSV</option>
+          <option value="pdf">PDF</option>
+        </SelectField>
+        <Field
+          label="Report start date"
+          name="start_date"
+          type="date"
+          value={criteria.start_date}
+          onChange={changeCriteria}
+          error={errors.start_date}
+        />
+        <Field
+          label="Report end date"
+          name="end_date"
+          type="date"
+          value={criteria.end_date}
+          onChange={changeCriteria}
+          error={errors.end_date}
+        />
+        <div className="md:col-span-2">
+          <StatusMessage
+            message={message}
+            tone={
+              message.endsWith("downloaded") ? "neutral" : message ? "error" : "neutral"
+            }
+          />
+        </div>
+        <button
+          className="rounded-lg bg-teal-700 px-4 py-2.5 font-semibold text-white disabled:bg-slate-400 md:col-span-2"
+          type="submit"
+          disabled={!recruitId || recruitsLoading || downloading}
+        >
+          {downloading ? "Preparing report" : "Download report"}
+        </button>
+      </form>
     </section>
   );
 }
@@ -1774,6 +1986,12 @@ export default function App() {
           kind="notes"
           user={user}
           onUnauthorized={clearSession}
+        />
+      ) : page === "reports" ? (
+        <Reports
+          user={user}
+          onUnauthorized={clearSession}
+          requestScope={requestScope}
         />
       ) : page === "profile" ? (
         <Profile user={user} onUpdated={setUser} onUnauthorized={clearSession} />

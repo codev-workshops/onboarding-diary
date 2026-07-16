@@ -1,6 +1,6 @@
 # Onboarding Diary
 
-Runnable account, administration, task, issue, feedback, and note slices for the Onboarding Diary application.
+Runnable account, administration, diary, dashboard, and reporting slices for the Onboarding Diary application.
 
 ## Prerequisites
 
@@ -85,6 +85,8 @@ The Playwright command starts both servers with isolated local bootstrap values.
 - `GET/PATCH/DELETE /api/admin/users/{user_id}`
 - `PUT/DELETE /api/admin/recruits/{recruit_id}/manager`
 - `GET /api/diary/recruits`
+- `GET /api/dashboard`
+- `GET /api/reports?recruit_id={id}&type={tasks|issues|feedback|combined}&start_date={date}&end_date={date}&format={pdf|csv}`
 - `GET/POST /api/tasks`
 - `GET/PATCH/DELETE /api/tasks/{task_id}`
 - `GET/POST /api/issues`
@@ -99,3 +101,5 @@ Passwords are stored as salted PBKDF2-HMAC-SHA256 hashes with 310,000 iterations
 Public sign-up always creates a Recruit. Admins create Manager/Admin users and maintain each Recruit's optional single Manager assignment. Role changes invalidate the affected user's sessions and remove invalid assignments.
 
 Recruit diary operations are scoped to self. Managers select an assigned Recruit, and Admins may select any Recruit. Task filters support date, category, and status; issue filters support status and severity. Feedback types are Positive, Suggestion, or Concern; note tags are normalized to trimmed, lowercase, unique values.
+
+Reports cover one authorized Recruit over an inclusive date range. Recruits can export their own data, Managers can export assigned Recruit data, and Admins can export any Recruit data as CSV or PDF.

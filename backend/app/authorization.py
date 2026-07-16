@@ -71,5 +71,13 @@ def authorize_report_scope(
     actor: sqlite3.Row,
     recruit_id: int,
     error_factory: ErrorFactory,
+    *,
+    conceal_unknown: bool = False,
 ) -> sqlite3.Row:
-    return authorize_recruit_scope(database, actor, recruit_id, error_factory)
+    return authorize_recruit_scope(
+        database,
+        actor,
+        recruit_id,
+        error_factory,
+        conceal_unknown=conceal_unknown,
+    )
