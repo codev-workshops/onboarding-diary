@@ -1,6 +1,6 @@
 # Onboarding Diary
 
-Runnable account, administration, task, and issue slices for the Onboarding Diary application.
+Runnable account, administration, task, issue, feedback, and note slices for the Onboarding Diary application.
 
 ## Prerequisites
 
@@ -89,9 +89,13 @@ The Playwright command starts both servers with isolated local bootstrap values.
 - `GET/PATCH/DELETE /api/tasks/{task_id}`
 - `GET/POST /api/issues`
 - `GET/PATCH/DELETE /api/issues/{issue_id}`
+- `GET/POST /api/feedback`
+- `GET/PATCH/DELETE /api/feedback/{feedback_id}`
+- `GET/POST /api/notes`
+- `GET/PATCH/DELETE /api/notes/{note_id}`
 
 Passwords are stored as salted PBKDF2-HMAC-SHA256 hashes with 310,000 iterations. Login uses an opaque server-side session in an eight-hour `HttpOnly`, `SameSite=Lax` cookie.
 
 Public sign-up always creates a Recruit. Admins create Manager/Admin users and maintain each Recruit's optional single Manager assignment. Role changes invalidate the affected user's sessions and remove invalid assignments.
 
-Recruit task and issue operations are scoped to self. Managers select an assigned Recruit, and Admins may select any Recruit. Task filters support date, category, and status; issue filters support status and severity.
+Recruit diary operations are scoped to self. Managers select an assigned Recruit, and Admins may select any Recruit. Task filters support date, category, and status; issue filters support status and severity. Feedback types are Positive, Suggestion, or Concern; note tags are normalized to trimmed, lowercase, unique values.

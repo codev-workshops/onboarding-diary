@@ -3,7 +3,7 @@ from datetime import date as DateValue
 from datetime import datetime as DateTimeValue
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
 
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -175,6 +175,7 @@ TaskStatus = Literal["Not Started", "In Progress", "Completed", "Blocked"]
 TaskPriority = Literal["Low", "Medium", "High"]
 IssueSeverity = Literal["Low", "Medium", "High", "Critical"]
 IssueStatus = Literal["Open", "In Progress", "Resolved", "Closed"]
+FeedbackType = Literal["Positive", "Suggestion", "Concern"]
 
 
 def normalize_text(value: str, field: str, minimum: int, maximum: int) -> str:
@@ -329,4 +330,147 @@ class IssueResponse(BaseModel):
     severity: IssueSeverity
     status: IssueStatus
     resolution_notes: str
+    created_at: DateTimeValue
+
+
+class FeedbackCreate(StrictModel):
+    owner_id: int | None = None
+    date: StrictDateValue
+    subject: str
+    type: FeedbackType
+    details: str
+
+    @field_validator("subject")
+    @classmethod
+    def validate_subject(cls, value: str) -> str:
+        return normalize_text(value, "Subject", 1, 120)
+
+    @field_validator("details")
+    @classmethod
+    def validate_details(cls, value: str) -> str:
+        return normalize_text(value, "Details", 1, 2000)
+
+
+class FeedbackPatch(StrictModel):
+    date: StrictDateValue | None = None
+    subject: str | None = None
+    type: FeedbackType | None = None
+    details: str | None = None
+
+    @field_validator("date", "type")
+    @classmethod
+    def reject_null(cls, value: object | None) -> object:
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
+
+    @field_validator("subject")
+    @classmethod
+    def validate_subject(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Subject cannot be null")
+        return normalize_text(value, "Subject", 1, 120)
+
+    @field_validator("details")
+    @classmethod
+    def validate_details(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Details cannot be null")
+        return normalize_text(value, "Details", 1, 2000)
+
+
+class FeedbackResponse(BaseModel):
+    id: int
+    owner_id: int
+    date: DateValue
+    subject: str
+    type: FeedbackType
+    details: str
+    created_at: DateTimeValue
+
+
+def normalize_tags(value: object) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError("Tags must be a list")
+    if len(value) > 10:
+        raise ValueError("Tags must contain at most 10 items")
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for tag in value:
+        if not isinstance(tag, str):
+            raise ValueError("Each tag must be text")
+        cleaned = tag.strip().lower()
+        if not 1 <= len(cleaned) <= 30:
+            raise ValueError("Each tag must be between 1 and 30 characters")
+        if cleaned not in seen:
+            normalized.append(cleaned)
+            seen.add(cleaned)
+    return normalized
+
+
+class NoteCreate(StrictModel):
+    owner_id: int | None = None
+    date: StrictDateValue
+    title: str
+    content: str
+    tags: list[str] = Field(default_factory=list)
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        return normalize_text(value, "Title", 1, 120)
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str) -> str:
+        return normalize_text(value, "Content", 1, 5000)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def validate_tags(cls, value: object) -> list[str]:
+        return normalize_tags(value)
+
+
+class NotePatch(StrictModel):
+    date: StrictDateValue | None = None
+    title: str | None = None
+    content: str | None = None
+    tags: list[str] | None = None
+
+    @field_validator("date")
+    @classmethod
+    def reject_null_date(cls, value: object | None) -> object:
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Title cannot be null")
+        return normalize_text(value, "Title", 1, 120)
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Content cannot be null")
+        return normalize_text(value, "Content", 1, 5000)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def validate_tags(cls, value: object) -> list[str]:
+        if value is None:
+            raise ValueError("Tags cannot be null")
+        return normalize_tags(value)
+
+
+class NoteResponse(BaseModel):
+    id: int
+    owner_id: int
+    date: DateValue
+    title: str
+    content: str
+    tags: list[str]
     created_at: DateTimeValue

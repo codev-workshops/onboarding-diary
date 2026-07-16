@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 import sqlite3
@@ -18,6 +19,9 @@ from .schemas import (
     AdminUserCreate,
     AdminUserPatch,
     AdminUserResponse,
+    FeedbackCreate,
+    FeedbackPatch,
+    FeedbackResponse,
     IssueCreate,
     IssuePatch,
     IssueResponse,
@@ -25,6 +29,9 @@ from .schemas import (
     IssueStatus,
     LoginRequest,
     ManagerAssignmentRequest,
+    NoteCreate,
+    NotePatch,
+    NoteResponse,
     ProfileResponse,
     ProfileUpdate,
     SignupRequest,
@@ -155,6 +162,16 @@ def task_response(row: sqlite3.Row) -> TaskResponse:
 
 def issue_response(row: sqlite3.Row) -> IssueResponse:
     return IssueResponse.model_validate(dict(row))
+
+
+def feedback_response(row: sqlite3.Row) -> FeedbackResponse:
+    return FeedbackResponse.model_validate(dict(row))
+
+
+def note_response(row: sqlite3.Row) -> NoteResponse:
+    values = dict(row)
+    values["tags"] = json.loads(row["tags"])
+    return NoteResponse.model_validate(values)
 
 
 def get_database(request: Request) -> Database:
@@ -722,6 +739,178 @@ def create_app() -> FastAPI:
     ) -> None:
         get_scoped_diary_record(database, actor, "issues", issue_id)
         database.execute("DELETE FROM issues WHERE id = ?", (issue_id,))
+
+    @app.get("/api/feedback", response_model=list[FeedbackResponse])
+    def list_feedback(
+        owner_id: int | None = None,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> list[FeedbackResponse]:
+        owner = resolve_diary_owner(database, actor, owner_id)
+        rows = database.fetchall(
+            """
+            SELECT * FROM feedback
+            WHERE owner_id = ?
+            ORDER BY date DESC, created_at DESC, id DESC
+            """,
+            (owner["id"],),
+        )
+        return [feedback_response(row) for row in rows]
+
+    @app.post("/api/feedback", response_model=FeedbackResponse, status_code=201)
+    def create_feedback(
+        payload: FeedbackCreate,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> FeedbackResponse:
+        owner = resolve_diary_owner(database, actor, payload.owner_id)
+        cursor = database.execute(
+            """
+            INSERT INTO feedback (
+                owner_id, date, subject, type, details, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                owner["id"],
+                payload.date.isoformat(),
+                payload.subject,
+                payload.type,
+                payload.details,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+        row = database.fetchone(
+            "SELECT * FROM feedback WHERE id = ?", (cursor.lastrowid,)
+        )
+        if row is None:
+            raise ApiError(500, "server_error", "Unable to create feedback")
+        return feedback_response(row)
+
+    @app.get("/api/feedback/{feedback_id}", response_model=FeedbackResponse)
+    def get_feedback(
+        feedback_id: int,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> FeedbackResponse:
+        return feedback_response(
+            get_scoped_diary_record(database, actor, "feedback", feedback_id)
+        )
+
+    @app.patch("/api/feedback/{feedback_id}", response_model=FeedbackResponse)
+    def patch_feedback(
+        feedback_id: int,
+        payload: FeedbackPatch,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> FeedbackResponse:
+        row = get_scoped_diary_record(database, actor, "feedback", feedback_id)
+        updates = serialize_updates(payload.model_dump(exclude_unset=True))
+        if not updates:
+            return feedback_response(row)
+        assignments = ", ".join(f"{field} = ?" for field in updates)
+        database.execute(
+            f"UPDATE feedback SET {assignments} WHERE id = ?",
+            [*updates.values(), feedback_id],
+        )
+        updated = database.fetchone(
+            "SELECT * FROM feedback WHERE id = ?", (feedback_id,)
+        )
+        if updated is None:
+            raise ApiError(500, "server_error", "Unable to update feedback")
+        return feedback_response(updated)
+
+    @app.delete("/api/feedback/{feedback_id}", status_code=204)
+    def delete_feedback(
+        feedback_id: int,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> None:
+        get_scoped_diary_record(database, actor, "feedback", feedback_id)
+        database.execute("DELETE FROM feedback WHERE id = ?", (feedback_id,))
+
+    @app.get("/api/notes", response_model=list[NoteResponse])
+    def list_notes(
+        owner_id: int | None = None,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> list[NoteResponse]:
+        owner = resolve_diary_owner(database, actor, owner_id)
+        rows = database.fetchall(
+            """
+            SELECT * FROM notes
+            WHERE owner_id = ?
+            ORDER BY date DESC, created_at DESC, id DESC
+            """,
+            (owner["id"],),
+        )
+        return [note_response(row) for row in rows]
+
+    @app.post("/api/notes", response_model=NoteResponse, status_code=201)
+    def create_note(
+        payload: NoteCreate,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> NoteResponse:
+        owner = resolve_diary_owner(database, actor, payload.owner_id)
+        cursor = database.execute(
+            """
+            INSERT INTO notes (
+                owner_id, date, title, content, tags, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                owner["id"],
+                payload.date.isoformat(),
+                payload.title,
+                payload.content,
+                json.dumps(payload.tags, separators=(",", ":")),
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+        row = database.fetchone("SELECT * FROM notes WHERE id = ?", (cursor.lastrowid,))
+        if row is None:
+            raise ApiError(500, "server_error", "Unable to create note")
+        return note_response(row)
+
+    @app.get("/api/notes/{note_id}", response_model=NoteResponse)
+    def get_note(
+        note_id: int,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> NoteResponse:
+        return note_response(get_scoped_diary_record(database, actor, "notes", note_id))
+
+    @app.patch("/api/notes/{note_id}", response_model=NoteResponse)
+    def patch_note(
+        note_id: int,
+        payload: NotePatch,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> NoteResponse:
+        row = get_scoped_diary_record(database, actor, "notes", note_id)
+        updates = serialize_updates(payload.model_dump(exclude_unset=True))
+        if "tags" in updates:
+            updates["tags"] = json.dumps(updates["tags"], separators=(",", ":"))
+        if not updates:
+            return note_response(row)
+        assignments = ", ".join(f"{field} = ?" for field in updates)
+        database.execute(
+            f"UPDATE notes SET {assignments} WHERE id = ?",
+            [*updates.values(), note_id],
+        )
+        updated = database.fetchone("SELECT * FROM notes WHERE id = ?", (note_id,))
+        if updated is None:
+            raise ApiError(500, "server_error", "Unable to update note")
+        return note_response(updated)
+
+    @app.delete("/api/notes/{note_id}", status_code=204)
+    def delete_note(
+        note_id: int,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> None:
+        get_scoped_diary_record(database, actor, "notes", note_id)
+        database.execute("DELETE FROM notes WHERE id = ?", (note_id,))
 
     @app.get("/api/admin/users", response_model=list[AdminUserResponse])
     def list_admin_users(

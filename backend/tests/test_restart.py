@@ -55,6 +55,32 @@ def test_restart_resets_users_and_sessions_and_rebootstraps_admin(
         )
         assert assignment.status_code == 200
         assert (
+            first.post(
+                "/api/feedback",
+                json={
+                    "owner_id": 2,
+                    "date": "2026-07-15",
+                    "subject": "Restart feedback",
+                    "type": "Positive",
+                    "details": "This feedback should not survive a restart.",
+                },
+            ).status_code
+            == 201
+        )
+        assert (
+            first.post(
+                "/api/notes",
+                json={
+                    "owner_id": 2,
+                    "date": "2026-07-15",
+                    "title": "Restart note",
+                    "content": "This note should not survive a restart.",
+                    "tags": ["restart"],
+                },
+            ).status_code
+            == 201
+        )
+        assert (
             first.app.state.database.fetchone(
                 "SELECT COUNT(*) AS count FROM manager_assignments"
             )["count"]
@@ -91,3 +117,11 @@ def test_restart_resets_users_and_sessions_and_rebootstraps_admin(
             "SELECT COUNT(*) AS count FROM manager_assignments"
         )
         assert assignments["count"] == 0
+        feedback = restarted.app.state.database.fetchone(
+            "SELECT COUNT(*) AS count FROM feedback"
+        )
+        assert feedback["count"] == 0
+        notes = restarted.app.state.database.fetchone(
+            "SELECT COUNT(*) AS count FROM notes"
+        )
+        assert notes["count"] == 0

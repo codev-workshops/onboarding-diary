@@ -64,6 +64,28 @@ CREATE TABLE issues (
     resolution_notes TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (
+        type IN ('Positive', 'Suggestion', 'Concern')
+    ),
+    details TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tags TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 

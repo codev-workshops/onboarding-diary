@@ -21,6 +21,8 @@ const diaryConfigs = {
     title: "Tasks",
     singular: "Task",
     endpoint: "/api/tasks",
+    headingField: "title",
+    contentField: "description",
     emptyForm: {
       date: "",
       title: "",
@@ -38,6 +40,8 @@ const diaryConfigs = {
     title: "Issues",
     singular: "Issue",
     endpoint: "/api/issues",
+    headingField: "title",
+    contentField: "description",
     emptyForm: {
       date: "",
       title: "",
@@ -49,6 +53,35 @@ const diaryConfigs = {
     emptyFilters: { status: "", severity: "" },
     statuses: ["Open", "In Progress", "Resolved", "Closed"],
     severities: ["Low", "Medium", "High", "Critical"],
+  },
+  feedback: {
+    title: "Feedback",
+    singular: "Feedback",
+    endpoint: "/api/feedback",
+    headingField: "subject",
+    contentField: "details",
+    emptyForm: {
+      date: "",
+      subject: "",
+      type: "Positive",
+      details: "",
+    },
+    emptyFilters: {},
+    types: ["Positive", "Suggestion", "Concern"],
+  },
+  notes: {
+    title: "Notes",
+    singular: "Note",
+    endpoint: "/api/notes",
+    headingField: "title",
+    contentField: "content",
+    emptyForm: {
+      date: "",
+      title: "",
+      content: "",
+      tags: "",
+    },
+    emptyFilters: {},
   },
 };
 
@@ -367,6 +400,22 @@ function Shell({ user, page, onNavigate, onLogout, children }) {
             >
               Issues
             </button>
+            <button
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                page === "feedback" ? "bg-teal-50 text-teal-800" : "text-slate-600"
+              }`}
+              onClick={() => onNavigate("feedback")}
+            >
+              Feedback
+            </button>
+            <button
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                page === "notes" ? "bg-teal-50 text-teal-800" : "text-slate-600"
+              }`}
+              onClick={() => onNavigate("notes")}
+            >
+              Notes
+            </button>
             {user.role === "Admin" ? (
               <button
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${
@@ -478,9 +527,19 @@ function DiaryPage({ kind, user, onUnauthorized }) {
     event.preventDefault();
     setErrors({});
     setMessage("");
+    const formPayload =
+      kind === "notes"
+        ? {
+            ...form,
+            tags: form.tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean),
+          }
+        : form;
     const payload = editingId
-      ? form
-      : { ...form, owner_id: Number(ownerId) };
+      ? formPayload
+      : { ...formPayload, owner_id: Number(ownerId) };
     try {
       await api(
         editingId ? `${config.endpoint}/${editingId}` : config.endpoint,
@@ -509,6 +568,9 @@ function DiaryPage({ kind, user, onUnauthorized }) {
     delete editable.id;
     delete editable.owner_id;
     delete editable.created_at;
+    if (kind === "notes") {
+      editable.tags = editable.tags.join(", ");
+    }
     setForm(editable);
     setEditingId(entry.id);
     setErrors({});
@@ -516,7 +578,7 @@ function DiaryPage({ kind, user, onUnauthorized }) {
   }
 
   async function remove(entry) {
-    if (!window.confirm(`Delete ${entry.title}?`)) {
+    if (!window.confirm(`Delete ${entry[config.headingField]}?`)) {
       return;
     }
     try {
@@ -582,20 +644,22 @@ function DiaryPage({ kind, user, onUnauthorized }) {
           error={errors.date}
         />
         <Field
-          label={`${config.singular} title`}
-          name="title"
-          value={form.title}
+          label={`${config.singular} ${
+            config.headingField === "subject" ? "subject" : "title"
+          }`}
+          name={config.headingField}
+          value={form[config.headingField]}
           onChange={changeForm}
-          error={errors.title}
+          error={errors[config.headingField]}
         />
         <div className="md:col-span-2">
           <TextareaField
-            label={`${config.singular} description`}
-            name="description"
-            value={form.description}
+            label={`${config.singular} ${config.contentField}`}
+            name={config.contentField}
+            value={form[config.contentField]}
             onChange={changeForm}
-            error={errors.description}
-            required={kind === "issues"}
+            error={errors[config.contentField]}
+            required={kind !== "tasks"}
           />
         </div>
         {kind === "tasks" ? (
@@ -634,7 +698,7 @@ function DiaryPage({ kind, user, onUnauthorized }) {
               ))}
             </SelectField>
           </>
-        ) : (
+        ) : kind === "issues" ? (
           <>
             <SelectField
               label="Issue severity"
@@ -669,6 +733,27 @@ function DiaryPage({ kind, user, onUnauthorized }) {
               />
             </div>
           </>
+        ) : kind === "feedback" ? (
+          <SelectField
+            label="Feedback type"
+            name="type"
+            value={form.type}
+            onChange={changeForm}
+            error={errors.type}
+          >
+            {config.types.map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </SelectField>
+        ) : (
+          <Field
+            label="Note tags"
+            name="tags"
+            value={form.tags}
+            onChange={changeForm}
+            error={errors.tags}
+            required={false}
+          />
         )}
         <div className="flex flex-wrap gap-3 md:col-span-2">
           <button
@@ -693,70 +778,72 @@ function DiaryPage({ kind, user, onUnauthorized }) {
         </div>
       </form>
 
-      <section className="rounded-2xl bg-white p-6 shadow">
-        <h2 className="text-xl font-semibold">Filters</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {kind === "tasks" ? (
-            <>
-              <Field
-                label="Filter date"
-                name="date"
-                type="date"
-                value={filters.date}
-                onChange={changeFilter}
-                required={false}
-              />
-              <SelectField
-                label="Filter category"
-                name="category"
-                value={filters.category}
-                onChange={changeFilter}
-              >
-                <option value="">All categories</option>
-                {config.categories.map((value) => (
-                  <option key={value}>{value}</option>
-                ))}
-              </SelectField>
-              <SelectField
-                label="Filter task status"
-                name="status"
-                value={filters.status}
-                onChange={changeFilter}
-              >
-                <option value="">All statuses</option>
-                {config.statuses.map((value) => (
-                  <option key={value}>{value}</option>
-                ))}
-              </SelectField>
-            </>
-          ) : (
-            <>
-              <SelectField
-                label="Filter issue status"
-                name="status"
-                value={filters.status}
-                onChange={changeFilter}
-              >
-                <option value="">All statuses</option>
-                {config.statuses.map((value) => (
-                  <option key={value}>{value}</option>
-                ))}
-              </SelectField>
-              <SelectField
-                label="Filter severity"
-                name="severity"
-                value={filters.severity}
-                onChange={changeFilter}
-              >
-                <option value="">All severities</option>
-                {config.severities.map((value) => (
-                  <option key={value}>{value}</option>
-                ))}
-              </SelectField>
-            </>
-          )}
-        </div>
-      </section>
+      {Object.keys(config.emptyFilters).length > 0 ? (
+        <section className="rounded-2xl bg-white p-6 shadow">
+          <h2 className="text-xl font-semibold">Filters</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {kind === "tasks" ? (
+              <>
+                <Field
+                  label="Filter date"
+                  name="date"
+                  type="date"
+                  value={filters.date}
+                  onChange={changeFilter}
+                  required={false}
+                />
+                <SelectField
+                  label="Filter category"
+                  name="category"
+                  value={filters.category}
+                  onChange={changeFilter}
+                >
+                  <option value="">All categories</option>
+                  {config.categories.map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </SelectField>
+                <SelectField
+                  label="Filter task status"
+                  name="status"
+                  value={filters.status}
+                  onChange={changeFilter}
+                >
+                  <option value="">All statuses</option>
+                  {config.statuses.map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </SelectField>
+              </>
+            ) : (
+              <>
+                <SelectField
+                  label="Filter issue status"
+                  name="status"
+                  value={filters.status}
+                  onChange={changeFilter}
+                >
+                  <option value="">All statuses</option>
+                  {config.statuses.map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </SelectField>
+                <SelectField
+                  label="Filter severity"
+                  name="severity"
+                  value={filters.severity}
+                  onChange={changeFilter}
+                >
+                  <option value="">All severities</option>
+                  {config.severities.map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </SelectField>
+              </>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <section className="space-y-4" aria-label={`${config.title} list`}>
         {entries.length === 0 ? (
@@ -769,14 +856,22 @@ function DiaryPage({ kind, user, onUnauthorized }) {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-teal-700">{entry.date}</p>
-                  <h3 className="text-lg font-semibold">{entry.title}</h3>
+                  <h3 className="text-lg font-semibold">
+                    {entry[config.headingField]}
+                  </h3>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
-                    {entry.description || "No description"}
+                    {entry[config.contentField] || "No description"}
                   </p>
                   <p className="mt-3 text-sm text-slate-700">
                     {kind === "tasks"
                       ? `${entry.category} · ${entry.status} · ${entry.priority}`
-                      : `${entry.severity} · ${entry.status}`}
+                      : kind === "issues"
+                        ? `${entry.severity} · ${entry.status}`
+                        : kind === "feedback"
+                          ? entry.type
+                          : entry.tags.length > 0
+                            ? entry.tags.join(", ")
+                            : "No tags"}
                   </p>
                   {entry.resolution_notes ? (
                     <p className="mt-2 text-sm text-slate-600">
@@ -789,7 +884,7 @@ function DiaryPage({ kind, user, onUnauthorized }) {
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold"
                     type="button"
                     onClick={() => edit(entry)}
-                    aria-label={`Edit ${entry.title}`}
+                    aria-label={`Edit ${entry[config.headingField]}`}
                   >
                     Edit
                   </button>
@@ -797,7 +892,7 @@ function DiaryPage({ kind, user, onUnauthorized }) {
                     className="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white"
                     type="button"
                     onClick={() => remove(entry)}
-                    aria-label={`Delete ${entry.title}`}
+                    aria-label={`Delete ${entry[config.headingField]}`}
                   >
                     Delete
                   </button>
@@ -1288,6 +1383,20 @@ export default function App() {
         <DiaryPage
           key="issues"
           kind="issues"
+          user={user}
+          onUnauthorized={clearSession}
+        />
+      ) : page === "feedback" ? (
+        <DiaryPage
+          key="feedback"
+          kind="feedback"
+          user={user}
+          onUnauthorized={clearSession}
+        />
+      ) : page === "notes" ? (
+        <DiaryPage
+          key="notes"
+          kind="notes"
           user={user}
           onUnauthorized={clearSession}
         />
