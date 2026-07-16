@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 
 const roles = ["Recruit", "Manager", "Admin"];
@@ -187,6 +187,17 @@ function clearInFlightGetRequests() {
     entry.controller.abort();
   });
   inFlightGetRequests.clear();
+}
+
+function buildReportRequestKey(recruitId, criteria, requestScope) {
+  return JSON.stringify({
+    recruitId,
+    type: criteria.type,
+    startDate: criteria.start_date,
+    endDate: criteria.end_date,
+    format: criteria.format,
+    requestScope,
+  });
 }
 
 function Field({
@@ -1062,6 +1073,47 @@ function Reports({ user, onUnauthorized, requestScope }) {
   const [recruitsLoading, setRecruitsLoading] = useState(
     user.role !== "Recruit",
   );
+  const reportSelectionRef = useRef({ recruitId, criteria, requestScope });
+  const activeDownloadRef = useRef(null);
+  const downloadSequenceRef = useRef(0);
+  reportSelectionRef.current = { recruitId, criteria, requestScope };
+
+  function currentReportRequestKey() {
+    const selection = reportSelectionRef.current;
+    return buildReportRequestKey(
+      selection.recruitId,
+      selection.criteria,
+      selection.requestScope,
+    );
+  }
+
+  function isCurrentDownload(request) {
+    return (
+      activeDownloadRef.current === request &&
+      !request.controller.signal.aborted &&
+      request.key === currentReportRequestKey()
+    );
+  }
+
+  const cancelReportDownload = useCallback(({ updateLoading = true } = {}) => {
+    const activeDownload = activeDownloadRef.current;
+    if (!activeDownload) {
+      return;
+    }
+    activeDownloadRef.current = null;
+    activeDownload.controller.abort();
+    if (updateLoading) {
+      setDownloading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => cancelReportDownload({ updateLoading: false });
+  }, [cancelReportDownload]);
+
+  useEffect(() => {
+    cancelReportDownload();
+  }, [cancelReportDownload, requestScope]);
 
   useEffect(() => {
     if (user.role === "Recruit") {
@@ -1100,38 +1152,64 @@ function Reports({ user, onUnauthorized, requestScope }) {
   }, [onUnauthorized, requestScope, user.role]);
 
   function changeCriteria(event) {
+    cancelReportDownload();
     setCriteria({ ...criteria, [event.target.name]: event.target.value });
   }
 
   async function download(event) {
     event.preventDefault();
+    cancelReportDownload({ updateLoading: false });
+    const requestCriteria = { ...criteria };
+    const requestRecruitId = recruitId;
+    const requestKey = buildReportRequestKey(
+      requestRecruitId,
+      requestCriteria,
+      requestScope,
+    );
+    const request = {
+      controller: new AbortController(),
+      id: downloadSequenceRef.current + 1,
+      key: requestKey,
+    };
+    downloadSequenceRef.current = request.id;
+    activeDownloadRef.current = request;
     setErrors({});
     setMessage("");
     setDownloading(true);
     const parameters = new URLSearchParams({
-      recruit_id: recruitId,
-      type: criteria.type,
-      start_date: criteria.start_date,
-      end_date: criteria.end_date,
-      format: criteria.format,
+      recruit_id: requestRecruitId,
+      type: requestCriteria.type,
+      start_date: requestCriteria.start_date,
+      end_date: requestCriteria.end_date,
+      format: requestCriteria.format,
     });
     try {
       const response = await fetch(`/api/reports?${parameters}`, {
         credentials: "same-origin",
+        signal: request.controller.signal,
       });
+      if (!isCurrentDownload(request)) {
+        return;
+      }
       if (!response.ok) {
         const body = await response.json();
+        if (!isCurrentDownload(request)) {
+          return;
+        }
         const requestError = new Error(body.error?.message || "Request failed");
         requestError.fields = body.error?.fields || {};
         requestError.status = response.status;
         throw requestError;
       }
       const blob = await response.blob();
+      if (!isCurrentDownload(request)) {
+        return;
+      }
       const disposition = response.headers.get("Content-Disposition") || "";
       const filenameMatch = disposition.match(/filename="?([^";]+)"?/);
       const filename =
         filenameMatch?.[1] ||
-        `onboarding-diary-report.${criteria.format}`;
+        `onboarding-diary-report.${requestCriteria.format}`;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -1140,9 +1218,17 @@ function Reports({ user, onUnauthorized, requestScope }) {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 0);
-      setMessage(`${criteria.format.toUpperCase()} report downloaded`);
+      if (!isCurrentDownload(request)) {
+        return;
+      }
+      setMessage(`${requestCriteria.format.toUpperCase()} report downloaded`);
     } catch (requestError) {
+      if (!isCurrentDownload(request)) {
+        return;
+      }
       if (requestError.status === 401) {
+        activeDownloadRef.current = null;
+        setDownloading(false);
         onUnauthorized();
         return;
       }
@@ -1153,7 +1239,10 @@ function Reports({ user, onUnauthorized, requestScope }) {
           : "Unable to reach the server; please retry",
       );
     } finally {
-      setDownloading(false);
+      if (isCurrentDownload(request)) {
+        activeDownloadRef.current = null;
+        setDownloading(false);
+      }
     }
   }
 
@@ -1175,7 +1264,10 @@ function Reports({ user, onUnauthorized, requestScope }) {
               label="Report Recruit"
               name="recruit_id"
               value={recruitId}
-              onChange={(event) => setRecruitId(event.target.value)}
+              onChange={(event) => {
+                cancelReportDownload();
+                setRecruitId(event.target.value);
+              }}
               error={errors.recruit_id}
             >
               {recruits.length === 0 ? (

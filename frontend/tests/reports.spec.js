@@ -159,6 +159,140 @@ const accessDenied = {
 };
 
 
+function testSlug(testInfo) {
+  return `${projectSuffix(testInfo)}-${testInfo.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 30)}`;
+}
+
+
+async function createAdminReportFixture(page, testInfo) {
+  const suffix = testSlug(testInfo);
+  await login(page, "admin@example.com", "bootstrap-password");
+  const recruitA = await createUser(page, {
+    email: `gf-recruit-a-${suffix}@example.com`,
+    name: `GF Recruit A ${suffix}`,
+    role: "Recruit",
+  });
+  const recruitB = await createUser(page, {
+    email: `gf-recruit-b-${suffix}@example.com`,
+    name: `GF Recruit B ${suffix}`,
+    role: "Recruit",
+  });
+  await createDiaryEntry(page, "tasks", recruitA.id, {
+    date: "2026-07-15",
+    title: `Obsolete task ${suffix}`,
+    description: "stale CSV content",
+    category: "Training",
+    status: "In Progress",
+    priority: "High",
+  });
+  await createDiaryEntry(page, "feedback", recruitB.id, {
+    date: "2026-08-01",
+    subject: `Current feedback ${suffix}`,
+    type: "Positive",
+    details: "current PDF content",
+  });
+  return { recruitA, recruitB, suffix };
+}
+
+
+async function openReportForm(page, { recruitName, type, format, startDate, endDate }) {
+  await page.getByRole("button", { name: "Reports" }).click();
+  await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+  await page.getByLabel("Report Recruit").selectOption({ label: recruitName });
+  await page.getByLabel("Report type").selectOption(type);
+  await page.getByLabel("Report format").selectOption(format);
+  await page.getByLabel("Report start date").fill(startDate);
+  await page.getByLabel("Report end date").fill(endDate);
+}
+
+
+async function installObjectUrlTracker(page) {
+  await page.addInitScript(() => {
+    window.__reportObjectUrls = { created: [], revoked: [] };
+    const createObjectUrl = URL.createObjectURL.bind(URL);
+    const revokeObjectUrl = URL.revokeObjectURL.bind(URL);
+    URL.createObjectURL = (blob) => {
+      const url = createObjectUrl(blob);
+      window.__reportObjectUrls.created.push(url);
+      return url;
+    };
+    URL.revokeObjectURL = (url) => {
+      window.__reportObjectUrls.revoked.push(url);
+      return revokeObjectUrl(url);
+    };
+  });
+}
+
+
+async function readObjectUrlTracker(page) {
+  return page.evaluate(() => window.__reportObjectUrls);
+}
+
+
+async function delayReport(page, expected, responseOverride) {
+  let release;
+  let resolveSeen;
+  const released = new Promise((resolve) => {
+    release = resolve;
+  });
+  const seen = new Promise((resolve) => {
+    resolveSeen = resolve;
+  });
+  let resolveDone;
+  const done = new Promise((resolve) => {
+    resolveDone = resolve;
+  });
+  let matched = false;
+  await page.route("**/api/reports?*", async (route) => {
+    const url = new URL(route.request().url());
+    const matches = Object.entries(expected).every(
+      ([key, value]) => url.searchParams.get(key) === String(value),
+    );
+    if (!matched && matches) {
+      matched = true;
+      resolveSeen(url);
+      await released;
+      try {
+        if (responseOverride) {
+          await route.fulfill(responseOverride);
+          return;
+        }
+        const response = await route.fetch();
+        await route.fulfill({ response });
+      } catch {
+        try {
+          await route.abort();
+        } catch (abortError) {
+          void abortError;
+        }
+      } finally {
+        resolveDone();
+      }
+      return;
+    }
+    await route.continue();
+  });
+  return { done, release, seen };
+}
+
+
+async function expectNoDownload(downloadPromise) {
+  await expect(downloadPromise).resolves.toBeNull();
+}
+
+
+async function waitForNoDownload(page, timeout = 1500) {
+  return page
+    .waitForEvent("download", { timeout })
+    .then((download) => download)
+    .catch(() => null);
+}
+
+
 test("Recruit downloads own CSV and receives no-leak denials", async ({
   page,
 }, testInfo) => {
@@ -334,4 +468,268 @@ test("Admin downloads any Recruit report including an empty artifact", async ({
   const unknownDenial = await requestReport(page, 999999);
   expect(unknownDenial.status).toBe(403);
   expect(JSON.parse(unknownDenial.body)).toEqual(accessDenied);
+});
+
+
+test("stale delayed report success is ignored after owner format and range changes", async ({
+  page,
+}, testInfo) => {
+  await installObjectUrlTracker(page);
+  const { recruitA, recruitB } = await createAdminReportFixture(page, testInfo);
+  await openReportForm(page, {
+    recruitName: recruitA.name,
+    type: "tasks",
+    format: "csv",
+    startDate: "2026-07-15",
+    endDate: "2026-07-15",
+  });
+  const delayed = await delayReport(page, {
+    recruit_id: recruitA.id,
+    type: "tasks",
+    format: "csv",
+    start_date: "2026-07-15",
+    end_date: "2026-07-15",
+  });
+  const noDownload = waitForNoDownload(page);
+  await page.getByRole("button", { name: "Download report" }).click();
+  await delayed.seen;
+  await page.getByLabel("Report Recruit").selectOption({ label: recruitB.name });
+  await page.getByLabel("Report type").selectOption("combined");
+  await page.getByLabel("Report format").selectOption("pdf");
+  await page.getByLabel("Report start date").fill("2026-08-01");
+  await page.getByLabel("Report end date").fill("2026-08-02");
+  delayed.release();
+  await delayed.done;
+  await expectNoDownload(noDownload);
+  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Download report" })).toBeEnabled();
+  expect((await readObjectUrlTracker(page)).created).toHaveLength(0);
+});
+
+
+test("stale delayed report errors do not overwrite current criteria state", async ({
+  page,
+}, testInfo) => {
+  const { recruitA, recruitB } = await createAdminReportFixture(page, testInfo);
+  await openReportForm(page, {
+    recruitName: recruitA.name,
+    type: "tasks",
+    format: "csv",
+    startDate: "2026-07-15",
+    endDate: "2026-07-15",
+  });
+  const delayed = await delayReport(
+    page,
+    {
+      recruit_id: recruitA.id,
+      type: "tasks",
+      format: "csv",
+      start_date: "2026-07-15",
+      end_date: "2026-07-15",
+    },
+    {
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "server_error",
+          message: "An unexpected error occurred; please retry",
+        },
+      }),
+    },
+  );
+  await page.getByRole("button", { name: "Download report" }).click();
+  await delayed.seen;
+  await page.getByLabel("Report Recruit").selectOption({ label: recruitB.name });
+  await page.getByLabel("Report start date").fill("2026-08-01");
+  await page.getByLabel("Report end date").fill("2026-08-02");
+  delayed.release();
+  await delayed.done;
+  await expect(page.getByRole("button", { name: "Download report" })).toBeEnabled();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByLabel("Report Recruit")).toHaveValue(String(recruitB.id));
+  await expect(page.getByLabel("Report start date")).toHaveValue("2026-08-01");
+  await expect(page.getByLabel("Report end date")).toHaveValue("2026-08-02");
+});
+
+
+test("newer report download supersedes a delayed stale request", async ({
+  page,
+}, testInfo) => {
+  await installObjectUrlTracker(page);
+  const { recruitA, recruitB } = await createAdminReportFixture(page, testInfo);
+  await openReportForm(page, {
+    recruitName: recruitA.name,
+    type: "tasks",
+    format: "csv",
+    startDate: "2026-07-15",
+    endDate: "2026-07-15",
+  });
+  const delayed = await delayReport(page, {
+    recruit_id: recruitA.id,
+    type: "tasks",
+    format: "csv",
+    start_date: "2026-07-15",
+    end_date: "2026-07-15",
+  });
+  await page.getByRole("button", { name: "Download report" }).click();
+  await delayed.seen;
+  await page.getByLabel("Report Recruit").selectOption({ label: recruitB.name });
+  await page.getByLabel("Report type").selectOption("combined");
+  await page.getByLabel("Report format").selectOption("pdf");
+  await page.getByLabel("Report start date").fill("2026-08-01");
+  await page.getByLabel("Report end date").fill("2026-08-02");
+  const currentDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download report" }).click();
+  const artifact = await currentDownload;
+  expect(artifact.suggestedFilename()).toBe(
+    `onboarding-diary-${recruitB.id}-combined-2026-08-01-to-2026-08-02.pdf`,
+  );
+  const pdf = (await downloadBytes(artifact)).toString("latin1");
+  expect(pdf).toContain("Current feedback");
+  expect(pdf).toContain(`Recruit: ${recruitB.name}`);
+  const staleDownload = waitForNoDownload(page);
+  delayed.release();
+  await delayed.done;
+  await expectNoDownload(staleDownload);
+  await expect(page.getByRole("status")).toHaveText("PDF report downloaded");
+  await page.waitForFunction(
+    () =>
+      window.__reportObjectUrls.created.length ===
+      window.__reportObjectUrls.revoked.length,
+  );
+});
+
+
+test("navigation cancels a pending report without stale download or state writes", async ({
+  page,
+}, testInfo) => {
+  const { recruitA } = await createAdminReportFixture(page, testInfo);
+  await openReportForm(page, {
+    recruitName: recruitA.name,
+    type: "tasks",
+    format: "csv",
+    startDate: "2026-07-15",
+    endDate: "2026-07-15",
+  });
+  const delayed = await delayReport(page, {
+    recruit_id: recruitA.id,
+    type: "tasks",
+    format: "csv",
+    start_date: "2026-07-15",
+    end_date: "2026-07-15",
+  });
+  const noDownload = waitForNoDownload(page);
+  await page.getByRole("button", { name: "Download report" }).click();
+  await delayed.seen;
+  await page.getByRole("button", { name: "Dashboard" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Welcome, Bootstrap Admin" }),
+  ).toBeVisible();
+  delayed.release();
+  await delayed.done;
+  await expectNoDownload(noDownload);
+  await expect(page.getByText("CSV report downloaded")).toHaveCount(0);
+});
+
+
+test("stale 401 is ignored but current 401 clears the session", async ({
+  page,
+}, testInfo) => {
+  const { recruitA } = await createAdminReportFixture(page, testInfo);
+  await openReportForm(page, {
+    recruitName: recruitA.name,
+    type: "tasks",
+    format: "csv",
+    startDate: "2026-07-15",
+    endDate: "2026-07-15",
+  });
+  const delayed = await delayReport(
+    page,
+    {
+      recruit_id: recruitA.id,
+      type: "tasks",
+      format: "csv",
+      start_date: "2026-07-15",
+      end_date: "2026-07-15",
+    },
+    {
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: { code: "unauthorized", message: "Authentication required" },
+      }),
+    },
+  );
+  await page.getByRole("button", { name: "Download report" }).click();
+  await delayed.seen;
+  await page.getByLabel("Report end date").fill("2026-07-16");
+  delayed.release();
+  await delayed.done;
+  await expect(page.getByRole("button", { name: "Logout" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+
+  await page.unroute("**/api/reports?*");
+  await page.route("**/api/reports?*", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: { code: "unauthorized", message: "Authentication required" },
+      }),
+    }),
+  );
+  await page.getByRole("button", { name: "Download report" }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+});
+
+
+test("current report failure is retryable and preserves filename and content on retry", async ({
+  page,
+}, testInfo) => {
+  const { recruitA, suffix } = await createAdminReportFixture(page, testInfo);
+  await openReportForm(page, {
+    recruitName: recruitA.name,
+    type: "tasks",
+    format: "csv",
+    startDate: "2026-07-15",
+    endDate: "2026-07-15",
+  });
+  let failed = false;
+  await page.route("**/api/reports?*", async (route) => {
+    if (!failed) {
+      failed = true;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "server_error",
+            message: "An unexpected error occurred; please retry",
+          },
+        }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Download report" }).click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "An unexpected error occurred; please retry",
+  );
+  await expect(page.getByLabel("Report start date")).toHaveValue("2026-07-15");
+  await expect(page.getByLabel("Report end date")).toHaveValue("2026-07-15");
+  await expect(page.getByRole("button", { name: "Download report" })).toBeEnabled();
+
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download report" }).click();
+  const artifact = await download;
+  expect(artifact.suggestedFilename()).toBe(
+    `onboarding-diary-${recruitA.id}-tasks-2026-07-15-to-2026-07-15.csv`,
+  );
+  expect((await downloadBytes(artifact)).toString("utf8")).toContain(
+    `Obsolete task ${suffix}`,
+  );
+  await expect(page.getByRole("status")).toHaveText("CSV report downloaded");
 });
