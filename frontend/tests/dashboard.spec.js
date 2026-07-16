@@ -107,6 +107,51 @@ function projectSuffix(testInfo) {
 }
 
 
+function dashboardResponse(id, name, taskCount = 0) {
+  return {
+    recruit: { id, name },
+    counts: {
+      tasks: taskCount,
+      issues: 0,
+      feedback: 0,
+      notes: 0,
+    },
+    task_progress_percent: 0,
+    open_issue_count: 0,
+    open_issues: [],
+    recent_activity: [],
+  };
+}
+
+
+async function mockAdminProfile(page) {
+  await page.route("**/api/profile", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: 900,
+        email: "mock-admin@example.com",
+        name: "Mock Admin",
+        role: "Admin",
+        department: "Administration",
+        start_date: "2026-07-15",
+        assigned_manager_id: null,
+      }),
+    }),
+  );
+}
+
+
+async function fulfillJson(route, status, body) {
+  await route.fulfill({
+    status,
+    contentType: "application/json",
+    body: JSON.stringify(body),
+  });
+}
+
+
 test("Recruit dashboard shows scoped metrics and refreshes after task CRUD", async ({
   page,
 }, testInfo) => {
@@ -191,6 +236,248 @@ test("Recruit dashboard shows scoped metrics and refreshes after task CRUD", asy
     "33",
   );
   await expect(page.getByRole("heading", { name: "Created from dashboard journey" })).toBeVisible();
+});
+
+
+test("dashboard ignores a delayed prior Recruit response after selection changes", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [
+      { id: 1, name: "First Recruit" },
+      { id: 2, name: "Second Recruit" },
+    ]),
+  );
+
+  let markFirstRequested;
+  const firstRequested = new Promise((resolve) => {
+    markFirstRequested = resolve;
+  });
+  let releaseFirst;
+  const firstRelease = new Promise((resolve) => {
+    releaseFirst = resolve;
+  });
+  let markFirstSettled;
+  const firstSettled = new Promise((resolve) => {
+    markFirstSettled = resolve;
+  });
+
+  await page.route("**/api/dashboard?owner_id=*", async (route) => {
+    const ownerId = new URL(route.request().url()).searchParams.get("owner_id");
+    if (ownerId === "1") {
+      markFirstRequested();
+      await firstRelease;
+      await fulfillJson(
+        route,
+        200,
+        dashboardResponse(1, "First Recruit", 101),
+      ).catch(() => {});
+      markFirstSettled();
+      return;
+    }
+    await fulfillJson(route, 200, dashboardResponse(2, "Second Recruit", 202));
+  });
+
+  await page.goto("/");
+  await firstRequested;
+  await page.getByLabel("Dashboard Recruit").selectOption("2");
+  await expect(page.getByLabel("Tasks count")).toHaveText("202");
+
+  releaseFirst();
+  await firstSettled;
+  await expect(page.getByLabel("Tasks count")).toHaveText("202");
+  await expect(page.getByText("101", { exact: true })).toHaveCount(0);
+});
+
+
+test("dashboard ignores a delayed prior error and keeps the latest request loading", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [
+      { id: 3, name: "Failing Recruit" },
+      { id: 4, name: "Current Recruit" },
+    ]),
+  );
+
+  let markFirstRequested;
+  const firstRequested = new Promise((resolve) => {
+    markFirstRequested = resolve;
+  });
+  let releaseFirst;
+  const firstRelease = new Promise((resolve) => {
+    releaseFirst = resolve;
+  });
+  let markFirstSettled;
+  const firstSettled = new Promise((resolve) => {
+    markFirstSettled = resolve;
+  });
+  let releaseSecond;
+  const secondRelease = new Promise((resolve) => {
+    releaseSecond = resolve;
+  });
+
+  await page.route("**/api/dashboard?owner_id=*", async (route) => {
+    const ownerId = new URL(route.request().url()).searchParams.get("owner_id");
+    if (ownerId === "3") {
+      markFirstRequested();
+      await firstRelease;
+      await fulfillJson(route, 500, {
+        error: { code: "stale_failure", message: "Stale dashboard failed" },
+      }).catch(() => {});
+      markFirstSettled();
+      return;
+    }
+    await secondRelease;
+    await fulfillJson(route, 200, dashboardResponse(4, "Current Recruit", 404));
+  });
+
+  await page.goto("/");
+  await firstRequested;
+  await page.getByLabel("Dashboard Recruit").selectOption("4");
+  await expect(page.getByText("Loading dashboard.")).toBeVisible();
+
+  releaseFirst();
+  await firstSettled;
+  await expect(page.getByText("Loading dashboard.")).toBeVisible();
+  await expect(page.getByText("Stale dashboard failed")).toHaveCount(0);
+
+  releaseSecond();
+  await expect(page.getByLabel("Tasks count")).toHaveText("404");
+  await expect(page.getByText("Stale dashboard failed")).toHaveCount(0);
+});
+
+
+test("delayed Recruit list shows loading before rendering the loaded list", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  let releaseRecruits;
+  const recruitsRelease = new Promise((resolve) => {
+    releaseRecruits = resolve;
+  });
+  await page.route("**/api/diary/recruits", async (route) => {
+    await recruitsRelease;
+    await fulfillJson(route, 200, [{ id: 7, name: "Loaded Recruit" }]);
+  });
+  await page.route("**/api/dashboard?owner_id=7", (route) =>
+    fulfillJson(route, 200, dashboardResponse(7, "Loaded Recruit", 7)),
+  );
+
+  await page.goto("/");
+  await expect(page.getByText("Loading dashboard.")).toBeVisible();
+  await expect(
+    page.getByText("No recruits are available for your dashboard."),
+  ).toHaveCount(0);
+
+  releaseRecruits();
+  await expect(page.getByLabel("Dashboard Recruit")).toHaveValue("7");
+  await expect(page.getByLabel("Dashboard Recruit").locator("option")).toHaveText(
+    "Loaded Recruit",
+  );
+  await expect(page.getByLabel("Tasks count")).toHaveText("7");
+});
+
+
+test("delayed empty Recruit list shows loading before the true empty state", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  let releaseRecruits;
+  const recruitsRelease = new Promise((resolve) => {
+    releaseRecruits = resolve;
+  });
+  await page.route("**/api/diary/recruits", async (route) => {
+    await recruitsRelease;
+    await fulfillJson(route, 200, []);
+  });
+
+  await page.goto("/");
+  await expect(page.getByText("Loading dashboard.")).toBeVisible();
+  await expect(
+    page.getByText("No recruits are available for your dashboard."),
+  ).toHaveCount(0);
+
+  releaseRecruits();
+  await expect(
+    page.getByText("No recruits are available for your dashboard."),
+  ).toBeVisible();
+  await expect(page.getByLabel("Dashboard Recruit")).toHaveValue("");
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+});
+
+
+test("Recruit-list 401 clears the session", async ({ page }) => {
+  await mockAdminProfile(page);
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 401, {
+      error: {
+        code: "not_authenticated",
+        message: "Authentication required",
+      },
+    }),
+  );
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+});
+
+
+test("dashboard 401 clears the session", async ({ page }) => {
+  await mockAdminProfile(page);
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [{ id: 8, name: "Expired Recruit" }]),
+  );
+  await page.route("**/api/dashboard?owner_id=8", (route) =>
+    fulfillJson(route, 401, {
+      error: {
+        code: "not_authenticated",
+        message: "Authentication required",
+      },
+    }),
+  );
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+});
+
+
+test("Recruit-list failure exits loading and shows the request error", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 500, {
+      error: { code: "list_failed", message: "Recruit list failed" },
+    }),
+  );
+
+  await page.goto("/");
+  await expect(page.getByRole("status")).toHaveText("Recruit list failed");
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
+});
+
+
+test("dashboard failure exits loading and shows the request error", async ({
+  page,
+}) => {
+  await mockAdminProfile(page);
+  await page.route("**/api/diary/recruits", (route) =>
+    fulfillJson(route, 200, [{ id: 9, name: "Failure Recruit" }]),
+  );
+  await page.route("**/api/dashboard?owner_id=9", (route) =>
+    fulfillJson(route, 500, {
+      error: { code: "dashboard_failed", message: "Dashboard failed" },
+    }),
+  );
+
+  await page.goto("/");
+  await expect(page.getByRole("status")).toHaveText("Dashboard failed");
+  await expect(page.getByText("Loading dashboard.")).toHaveCount(0);
 });
 
 

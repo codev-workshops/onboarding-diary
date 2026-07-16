@@ -988,23 +988,44 @@ function Dashboard({ user, onUnauthorized }) {
   const [dashboard, setDashboard] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(user.role === "Recruit");
+  const [recruitsLoading, setRecruitsLoading] = useState(
+    user.role !== "Recruit",
+  );
 
   useEffect(() => {
     if (user.role === "Recruit") {
       return;
     }
-    api("/api/diary/recruits")
+    let active = true;
+    const controller = new AbortController();
+    setRecruitsLoading(true);
+    api("/api/diary/recruits", { signal: controller.signal })
       .then((records) => {
+        if (!active) {
+          return;
+        }
         setRecruits(records);
         setOwnerId((current) => current || (records[0] ? String(records[0].id) : ""));
       })
       .catch((requestError) => {
+        if (!active) {
+          return;
+        }
         if (requestError.status === 401) {
           onUnauthorized();
           return;
         }
         setMessage(requestError.message);
+      })
+      .finally(() => {
+        if (active) {
+          setRecruitsLoading(false);
+        }
       });
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [onUnauthorized, user.role]);
 
   useEffect(() => {
@@ -1013,11 +1034,20 @@ function Dashboard({ user, onUnauthorized }) {
       setLoading(false);
       return;
     }
+    let active = true;
+    const controller = new AbortController();
     setLoading(true);
     setMessage("");
-    api(`/api/dashboard?owner_id=${ownerId}`)
-      .then((response) => setDashboard(response))
+    api(`/api/dashboard?owner_id=${ownerId}`, { signal: controller.signal })
+      .then((response) => {
+        if (active) {
+          setDashboard(response);
+        }
+      })
       .catch((requestError) => {
+        if (!active) {
+          return;
+        }
         setDashboard(null);
         if (requestError.status === 401) {
           onUnauthorized();
@@ -1025,7 +1055,15 @@ function Dashboard({ user, onUnauthorized }) {
         }
         setMessage(requestError.message);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [onUnauthorized, ownerId]);
 
   const countCards = dashboard
@@ -1054,7 +1092,9 @@ function Dashboard({ user, onUnauthorized }) {
             onChange={(event) => setOwnerId(event.target.value)}
           >
             {recruits.length === 0 ? (
-              <option value="">No recruits available</option>
+              <option value="">
+                {recruitsLoading ? "Loading recruits" : "No recruits available"}
+              </option>
             ) : null}
             {recruits.map((recruit) => (
               <option key={recruit.id} value={recruit.id}>
@@ -1070,7 +1110,7 @@ function Dashboard({ user, onUnauthorized }) {
         tone={message === "Access denied" ? "error" : "neutral"}
       />
 
-      {loading ? (
+      {loading || recruitsLoading ? (
         <p className="rounded-2xl bg-white p-6 text-slate-600 shadow">
           Loading dashboard.
         </p>
