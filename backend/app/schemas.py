@@ -1,5 +1,6 @@
 import re
-from datetime import date
+from datetime import date as DateValue
+from datetime import datetime as DateTimeValue
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -31,7 +32,7 @@ class SignupRequest(StrictModel):
     password: str
     name: str
     department: str
-    start_date: date
+    start_date: DateValue
 
     @field_validator("email")
     @classmethod
@@ -70,7 +71,7 @@ class ProfileUpdate(StrictModel):
     email: str | None = None
     name: str | None = None
     department: str | None = None
-    start_date: date | None = None
+    start_date: DateValue | None = None
 
     @field_validator("email")
     @classmethod
@@ -95,7 +96,7 @@ class ProfileUpdate(StrictModel):
 
     @field_validator("start_date")
     @classmethod
-    def validate_start_date(cls, value: date | None) -> date | None:
+    def validate_start_date(cls, value: DateValue | None) -> DateValue | None:
         if value is None:
             raise ValueError("Start date cannot be null")
         return value
@@ -107,7 +108,7 @@ class ProfileResponse(BaseModel):
     name: str
     role: str
     department: str
-    start_date: date
+    start_date: DateValue
 
 
 UserRole = Literal["Recruit", "Manager", "Admin"]
@@ -121,7 +122,7 @@ class AdminUserPatch(StrictModel):
     email: str | None = None
     name: str | None = None
     department: str | None = None
-    start_date: date | None = None
+    start_date: DateValue | None = None
     role: UserRole | None = None
 
     @field_validator("email")
@@ -147,7 +148,7 @@ class AdminUserPatch(StrictModel):
 
     @field_validator("start_date")
     @classmethod
-    def validate_start_date(cls, value: date | None) -> date | None:
+    def validate_start_date(cls, value: DateValue | None) -> DateValue | None:
         if value is None:
             raise ValueError("Start date cannot be null")
         return value
@@ -166,3 +167,153 @@ class AdminUserResponse(ProfileResponse):
 
 class ManagerAssignmentRequest(StrictModel):
     manager_id: int
+
+
+TaskCategory = Literal["Training", "Setup", "Meeting", "Project", "Other"]
+TaskStatus = Literal["Not Started", "In Progress", "Completed", "Blocked"]
+TaskPriority = Literal["Low", "Medium", "High"]
+IssueSeverity = Literal["Low", "Medium", "High", "Critical"]
+IssueStatus = Literal["Open", "In Progress", "Resolved", "Closed"]
+
+
+def normalize_text(value: str, field: str, minimum: int, maximum: int) -> str:
+    normalized = value.strip()
+    if not minimum <= len(normalized) <= maximum:
+        raise ValueError(f"{field} must be between {minimum} and {maximum} characters")
+    return normalized
+
+
+class TaskCreate(StrictModel):
+    owner_id: int | None = None
+    date: DateValue
+    title: str
+    description: str
+    category: TaskCategory
+    status: TaskStatus
+    priority: TaskPriority
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        return normalize_text(value, "Title", 1, 120)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str) -> str:
+        return normalize_text(value, "Description", 0, 2000)
+
+
+class TaskPatch(StrictModel):
+    date: DateValue | None = None
+    title: str | None = None
+    description: str | None = None
+    category: TaskCategory | None = None
+    status: TaskStatus | None = None
+    priority: TaskPriority | None = None
+
+    @field_validator("date", "category", "status", "priority")
+    @classmethod
+    def reject_null(cls, value: object | None) -> object:
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Title cannot be null")
+        return normalize_text(value, "Title", 1, 120)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Description cannot be null")
+        return normalize_text(value, "Description", 0, 2000)
+
+
+class TaskResponse(BaseModel):
+    id: int
+    owner_id: int
+    date: DateValue
+    title: str
+    description: str
+    category: TaskCategory
+    status: TaskStatus
+    priority: TaskPriority
+    created_at: DateTimeValue
+
+
+class IssueCreate(StrictModel):
+    owner_id: int | None = None
+    date: DateValue
+    title: str
+    description: str
+    severity: IssueSeverity
+    status: IssueStatus
+    resolution_notes: str = ""
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        return normalize_text(value, "Title", 1, 120)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str) -> str:
+        return normalize_text(value, "Description", 1, 2000)
+
+    @field_validator("resolution_notes")
+    @classmethod
+    def validate_resolution_notes(cls, value: str) -> str:
+        return normalize_text(value, "Resolution notes", 0, 2000)
+
+
+class IssuePatch(StrictModel):
+    date: DateValue | None = None
+    title: str | None = None
+    description: str | None = None
+    severity: IssueSeverity | None = None
+    status: IssueStatus | None = None
+    resolution_notes: str | None = None
+
+    @field_validator("date", "severity", "status")
+    @classmethod
+    def reject_null(cls, value: object | None) -> object:
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Title cannot be null")
+        return normalize_text(value, "Title", 1, 120)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Description cannot be null")
+        return normalize_text(value, "Description", 1, 2000)
+
+    @field_validator("resolution_notes")
+    @classmethod
+    def validate_resolution_notes(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Resolution notes cannot be null")
+        return normalize_text(value, "Resolution notes", 0, 2000)
+
+
+class IssueResponse(BaseModel):
+    id: int
+    owner_id: int
+    date: DateValue
+    title: str
+    description: str
+    severity: IssueSeverity
+    status: IssueStatus
+    resolution_notes: str
+    created_at: DateTimeValue

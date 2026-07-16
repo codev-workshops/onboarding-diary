@@ -4,7 +4,8 @@ import sqlite3
 from collections import deque
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date as DateValue
+from datetime import datetime, timedelta
 from threading import Lock
 from time import monotonic
 
@@ -12,17 +13,27 @@ from fastapi import Cookie, Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from .authorization import ensure_admin
+from .authorization import authorize_recruit_scope, ensure_admin
 from .database import Database
 from .schemas import (
     AdminUserCreate,
     AdminUserPatch,
     AdminUserResponse,
+    IssueCreate,
+    IssuePatch,
+    IssueResponse,
+    IssueSeverity,
+    IssueStatus,
     LoginRequest,
     ManagerAssignmentRequest,
     ProfileResponse,
     ProfileUpdate,
     SignupRequest,
+    TaskCategory,
+    TaskCreate,
+    TaskPatch,
+    TaskResponse,
+    TaskStatus,
 )
 from .security import hash_password, verify_password
 
@@ -138,6 +149,14 @@ def admin_user_response(database: Database, row: sqlite3.Row) -> AdminUserRespon
     )
 
 
+def task_response(row: sqlite3.Row) -> TaskResponse:
+    return TaskResponse.model_validate(dict(row))
+
+
+def issue_response(row: sqlite3.Row) -> IssueResponse:
+    return IssueResponse.model_validate(dict(row))
+
+
 def get_database(request: Request) -> Database:
     return request.app.state.database
 
@@ -220,6 +239,64 @@ def validate_assignment_participants(
             "invalid_assignment",
             "Assignment requires one Recruit and one Manager",
             fields,
+        )
+
+
+def resolve_diary_owner(
+    database: Database,
+    actor: sqlite3.Row,
+    owner_id: int | None,
+) -> sqlite3.Row:
+    if owner_id is None:
+        if actor["role"] == "Recruit":
+            return actor
+        raise ApiError(
+            422,
+            "validation_error",
+            "Request validation failed",
+            {"owner_id": "Owner is required"},
+        )
+    return authorize_recruit_scope(
+        database,
+        actor,
+        owner_id,
+        api_error,
+        conceal_unknown=True,
+    )
+
+
+def get_scoped_diary_record(
+    database: Database,
+    actor: sqlite3.Row,
+    table: str,
+    record_id: int,
+) -> sqlite3.Row:
+    row = database.fetchone(f"SELECT * FROM {table} WHERE id = ?", (record_id,))
+    if row is None:
+        raise ApiError(403, "access_denied", "Access denied")
+    authorize_recruit_scope(
+        database,
+        actor,
+        row["owner_id"],
+        api_error,
+        conceal_unknown=True,
+    )
+    return row
+
+
+def serialize_updates(updates: dict[str, object]) -> dict[str, object]:
+    if "date" in updates:
+        updates["date"] = updates["date"].isoformat()
+    return updates
+
+
+def ensure_issue_resolution(status: str, resolution_notes: str) -> None:
+    if status in {"Resolved", "Closed"} and not resolution_notes:
+        raise ApiError(
+            422,
+            "validation_error",
+            "Request validation failed",
+            {"resolution_notes": "Resolution notes are required"},
         )
 
 
@@ -418,6 +495,233 @@ def create_app() -> FastAPI:
         if updated is None:
             raise ApiError(500, "server_error", "Unable to update profile")
         return user_response(updated)
+
+    @app.get("/api/diary/recruits", response_model=list[ProfileResponse])
+    def list_diary_recruits(
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> list[ProfileResponse]:
+        if actor["role"] == "Recruit":
+            rows = [actor]
+        elif actor["role"] == "Manager":
+            rows = database.fetchall(
+                """
+                SELECT users.*
+                FROM manager_assignments
+                JOIN users ON users.id = manager_assignments.recruit_id
+                WHERE manager_assignments.manager_id = ?
+                    AND users.role = 'Recruit'
+                ORDER BY users.name ASC, users.id ASC
+                """,
+                (actor["id"],),
+            )
+        else:
+            rows = database.fetchall(
+                """
+                SELECT * FROM users
+                WHERE role = 'Recruit'
+                ORDER BY name ASC, id ASC
+                """
+            )
+        return [user_response(row) for row in rows]
+
+    @app.get("/api/tasks", response_model=list[TaskResponse])
+    def list_tasks(
+        owner_id: int | None = None,
+        date: DateValue | None = None,
+        category: TaskCategory | None = None,
+        status: TaskStatus | None = None,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> list[TaskResponse]:
+        owner = resolve_diary_owner(database, actor, owner_id)
+        conditions = ["owner_id = ?"]
+        parameters: list[object] = [owner["id"]]
+        if date is not None:
+            conditions.append("date = ?")
+            parameters.append(date.isoformat())
+        for field, value in (("category", category), ("status", status)):
+            if value is not None:
+                conditions.append(f"{field} = ?")
+                parameters.append(value)
+        rows = database.fetchall(
+            f"""
+            SELECT * FROM tasks
+            WHERE {" AND ".join(conditions)}
+            ORDER BY date DESC, created_at DESC, id DESC
+            """,
+            parameters,
+        )
+        return [task_response(row) for row in rows]
+
+    @app.post("/api/tasks", response_model=TaskResponse, status_code=201)
+    def create_task(
+        payload: TaskCreate,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> TaskResponse:
+        owner = resolve_diary_owner(database, actor, payload.owner_id)
+        cursor = database.execute(
+            """
+            INSERT INTO tasks (
+                owner_id, date, title, description, category, status,
+                priority, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                owner["id"],
+                payload.date.isoformat(),
+                payload.title,
+                payload.description,
+                payload.category,
+                payload.status,
+                payload.priority,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+        row = database.fetchone("SELECT * FROM tasks WHERE id = ?", (cursor.lastrowid,))
+        if row is None:
+            raise ApiError(500, "server_error", "Unable to create task")
+        return task_response(row)
+
+    @app.get("/api/tasks/{task_id}", response_model=TaskResponse)
+    def get_task(
+        task_id: int,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> TaskResponse:
+        return task_response(get_scoped_diary_record(database, actor, "tasks", task_id))
+
+    @app.patch("/api/tasks/{task_id}", response_model=TaskResponse)
+    def patch_task(
+        task_id: int,
+        payload: TaskPatch,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> TaskResponse:
+        row = get_scoped_diary_record(database, actor, "tasks", task_id)
+        updates = serialize_updates(payload.model_dump(exclude_unset=True))
+        if not updates:
+            return task_response(row)
+        assignments = ", ".join(f"{field} = ?" for field in updates)
+        database.execute(
+            f"UPDATE tasks SET {assignments} WHERE id = ?",
+            [*updates.values(), task_id],
+        )
+        updated = database.fetchone("SELECT * FROM tasks WHERE id = ?", (task_id,))
+        if updated is None:
+            raise ApiError(500, "server_error", "Unable to update task")
+        return task_response(updated)
+
+    @app.delete("/api/tasks/{task_id}", status_code=204)
+    def delete_task(
+        task_id: int,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> None:
+        get_scoped_diary_record(database, actor, "tasks", task_id)
+        database.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+
+    @app.get("/api/issues", response_model=list[IssueResponse])
+    def list_issues(
+        owner_id: int | None = None,
+        status: IssueStatus | None = None,
+        severity: IssueSeverity | None = None,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> list[IssueResponse]:
+        owner = resolve_diary_owner(database, actor, owner_id)
+        conditions = ["owner_id = ?"]
+        parameters: list[object] = [owner["id"]]
+        for field, value in (("status", status), ("severity", severity)):
+            if value is not None:
+                conditions.append(f"{field} = ?")
+                parameters.append(value)
+        rows = database.fetchall(
+            f"""
+            SELECT * FROM issues
+            WHERE {" AND ".join(conditions)}
+            ORDER BY date DESC, created_at DESC, id DESC
+            """,
+            parameters,
+        )
+        return [issue_response(row) for row in rows]
+
+    @app.post("/api/issues", response_model=IssueResponse, status_code=201)
+    def create_issue(
+        payload: IssueCreate,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> IssueResponse:
+        owner = resolve_diary_owner(database, actor, payload.owner_id)
+        ensure_issue_resolution(payload.status, payload.resolution_notes)
+        cursor = database.execute(
+            """
+            INSERT INTO issues (
+                owner_id, date, title, description, severity, status,
+                resolution_notes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                owner["id"],
+                payload.date.isoformat(),
+                payload.title,
+                payload.description,
+                payload.severity,
+                payload.status,
+                payload.resolution_notes,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+        row = database.fetchone(
+            "SELECT * FROM issues WHERE id = ?", (cursor.lastrowid,)
+        )
+        if row is None:
+            raise ApiError(500, "server_error", "Unable to create issue")
+        return issue_response(row)
+
+    @app.get("/api/issues/{issue_id}", response_model=IssueResponse)
+    def get_issue(
+        issue_id: int,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> IssueResponse:
+        return issue_response(
+            get_scoped_diary_record(database, actor, "issues", issue_id)
+        )
+
+    @app.patch("/api/issues/{issue_id}", response_model=IssueResponse)
+    def patch_issue(
+        issue_id: int,
+        payload: IssuePatch,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> IssueResponse:
+        row = get_scoped_diary_record(database, actor, "issues", issue_id)
+        updates = serialize_updates(payload.model_dump(exclude_unset=True))
+        next_status = str(updates.get("status", row["status"]))
+        next_notes = str(updates.get("resolution_notes", row["resolution_notes"]))
+        ensure_issue_resolution(next_status, next_notes)
+        if not updates:
+            return issue_response(row)
+        assignments = ", ".join(f"{field} = ?" for field in updates)
+        database.execute(
+            f"UPDATE issues SET {assignments} WHERE id = ?",
+            [*updates.values(), issue_id],
+        )
+        updated = database.fetchone("SELECT * FROM issues WHERE id = ?", (issue_id,))
+        if updated is None:
+            raise ApiError(500, "server_error", "Unable to update issue")
+        return issue_response(updated)
+
+    @app.delete("/api/issues/{issue_id}", status_code=204)
+    def delete_issue(
+        issue_id: int,
+        actor: sqlite3.Row = Depends(require_user),
+        database: Database = Depends(get_database),
+    ) -> None:
+        get_scoped_diary_record(database, actor, "issues", issue_id)
+        database.execute("DELETE FROM issues WHERE id = ?", (issue_id,))
 
     @app.get("/api/admin/users", response_model=list[AdminUserResponse])
     def list_admin_users(

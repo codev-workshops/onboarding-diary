@@ -28,6 +28,8 @@ def authorize_recruit_scope(
     actor: sqlite3.Row,
     recruit_id: int,
     error_factory: ErrorFactory,
+    *,
+    conceal_unknown: bool = False,
 ) -> sqlite3.Row:
     if actor["role"] == "Recruit":
         if actor["id"] != recruit_id:
@@ -56,6 +58,8 @@ def authorize_recruit_scope(
             (recruit_id,),
         )
         if recruit is None:
+            if conceal_unknown:
+                raise error_factory(403, "access_denied", "Access denied")
             raise error_factory(404, "not_found", "Recruit not found")
         return recruit
 

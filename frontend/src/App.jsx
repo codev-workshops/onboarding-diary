@@ -16,6 +16,42 @@ const emptyAdminUser = {
   role: "Recruit",
 };
 
+const diaryConfigs = {
+  tasks: {
+    title: "Tasks",
+    singular: "Task",
+    endpoint: "/api/tasks",
+    emptyForm: {
+      date: "",
+      title: "",
+      description: "",
+      category: "Training",
+      status: "Not Started",
+      priority: "Medium",
+    },
+    emptyFilters: { date: "", category: "", status: "" },
+    categories: ["Training", "Setup", "Meeting", "Project", "Other"],
+    statuses: ["Not Started", "In Progress", "Completed", "Blocked"],
+    priorities: ["Low", "Medium", "High"],
+  },
+  issues: {
+    title: "Issues",
+    singular: "Issue",
+    endpoint: "/api/issues",
+    emptyForm: {
+      date: "",
+      title: "",
+      description: "",
+      severity: "Medium",
+      status: "Open",
+      resolution_notes: "",
+    },
+    emptyFilters: { status: "", severity: "" },
+    statuses: ["Open", "In Progress", "Resolved", "Closed"],
+    severities: ["Low", "Medium", "High", "Critical"],
+  },
+};
+
 const fieldClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm";
 
@@ -46,7 +82,15 @@ async function api(path, options = {}) {
   return body;
 }
 
-function Field({ label, name, type = "text", value, onChange, error }) {
+function Field({
+  label,
+  name,
+  type = "text",
+  value,
+  onChange,
+  error,
+  required = true,
+}) {
   return (
     <label className="block text-sm font-medium text-slate-700">
       {label}
@@ -58,7 +102,29 @@ function Field({ label, name, type = "text", value, onChange, error }) {
         onChange={onChange}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${name}-error` : undefined}
-        required
+        required={required}
+      />
+      {error ? (
+        <span id={`${name}-error`} className="mt-1 block text-sm text-red-700">
+          {error}
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
+function TextareaField({ label, name, value, onChange, error, required = true }) {
+  return (
+    <label className="block text-sm font-medium text-slate-700">
+      {label}
+      <textarea
+        className={`${fieldClass} min-h-24`}
+        name={name}
+        value={value}
+        onChange={onChange}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${name}-error` : undefined}
+        required={required}
       />
       {error ? (
         <span id={`${name}-error`} className="mt-1 block text-sm text-red-700">
@@ -285,6 +351,22 @@ function Shell({ user, page, onNavigate, onLogout, children }) {
             >
               Dashboard
             </button>
+            <button
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                page === "tasks" ? "bg-teal-50 text-teal-800" : "text-slate-600"
+              }`}
+              onClick={() => onNavigate("tasks")}
+            >
+              Tasks
+            </button>
+            <button
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                page === "issues" ? "bg-teal-50 text-teal-800" : "text-slate-600"
+              }`}
+              onClick={() => onNavigate("issues")}
+            >
+              Issues
+            </button>
             {user.role === "Admin" ? (
               <button
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${
@@ -314,6 +396,413 @@ function Shell({ user, page, onNavigate, onLogout, children }) {
       </header>
       <main className="mx-auto max-w-5xl px-4 py-10">{children}</main>
     </div>
+  );
+}
+
+function DiaryPage({ kind, user, onUnauthorized }) {
+  const config = diaryConfigs[kind];
+  const [recruits, setRecruits] = useState([]);
+  const [ownerId, setOwnerId] = useState(
+    user.role === "Recruit" ? String(user.id) : "",
+  );
+  const [entries, setEntries] = useState([]);
+  const [form, setForm] = useState(config.emptyForm);
+  const [filters, setFilters] = useState(config.emptyFilters);
+  const [editingId, setEditingId] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState("");
+
+  const loadEntries = useCallback(async () => {
+    if (!ownerId) {
+      setEntries([]);
+      return;
+    }
+    const parameters = new URLSearchParams({ owner_id: ownerId });
+    Object.entries(filters).forEach(([name, value]) => {
+      if (value) {
+        parameters.set(name, value);
+      }
+    });
+    try {
+      const records = await api(`${config.endpoint}?${parameters}`);
+      setEntries(records);
+      setMessage("");
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        onUnauthorized();
+        return;
+      }
+      setEntries([]);
+      setMessage(requestError.message);
+    }
+  }, [config.endpoint, filters, onUnauthorized, ownerId]);
+
+  useEffect(() => {
+    api("/api/diary/recruits")
+      .then((records) => {
+        setRecruits(records);
+        if (user.role !== "Recruit" && records.length > 0) {
+          setOwnerId((current) => current || String(records[0].id));
+        }
+      })
+      .catch((requestError) => {
+        if (requestError.status === 401) {
+          onUnauthorized();
+          return;
+        }
+        setMessage(requestError.message);
+      });
+  }, [onUnauthorized, user.role]);
+
+  useEffect(() => {
+    loadEntries();
+  }, [loadEntries]);
+
+  function changeForm(event) {
+    setForm({ ...form, [event.target.name]: event.target.value });
+  }
+
+  function changeFilter(event) {
+    setFilters({ ...filters, [event.target.name]: event.target.value });
+  }
+
+  function resetForm() {
+    setForm(config.emptyForm);
+    setEditingId(null);
+    setErrors({});
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    setErrors({});
+    setMessage("");
+    const payload = editingId
+      ? form
+      : { ...form, owner_id: Number(ownerId) };
+    try {
+      await api(
+        editingId ? `${config.endpoint}/${editingId}` : config.endpoint,
+        {
+          method: editingId ? "PATCH" : "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+      setMessage(`${config.singular} ${editingId ? "saved" : "created"}`);
+      resetForm();
+      await loadEntries();
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        onUnauthorized();
+        return;
+      }
+      setErrors(requestError.fields || {});
+      setMessage(requestError.message);
+    }
+  }
+
+  function edit(entry) {
+    const editable = { ...entry };
+    delete editable.id;
+    delete editable.owner_id;
+    delete editable.created_at;
+    setForm(editable);
+    setEditingId(entry.id);
+    setErrors({});
+    setMessage("");
+  }
+
+  async function remove(entry) {
+    if (!window.confirm(`Delete ${entry.title}?`)) {
+      return;
+    }
+    try {
+      await api(`${config.endpoint}/${entry.id}`, { method: "DELETE" });
+      setMessage(`${config.singular} deleted`);
+      if (editingId === entry.id) {
+        resetForm();
+      }
+      await loadEntries();
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        onUnauthorized();
+        return;
+      }
+      setMessage(requestError.message);
+    }
+  }
+
+  const needsResolution =
+    kind === "issues" && ["Resolved", "Closed"].includes(form.status);
+
+  return (
+    <section className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">{config.title}</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Maintain entries for an authorized Recruit.
+        </p>
+      </div>
+
+      {user.role !== "Recruit" ? (
+        <SelectField
+          label="Recruit"
+          name="owner_id"
+          value={ownerId}
+          onChange={(event) => setOwnerId(event.target.value)}
+        >
+          {recruits.length === 0 ? (
+            <option value="">No recruits available</option>
+          ) : null}
+          {recruits.map((recruit) => (
+            <option key={recruit.id} value={recruit.id}>
+              {recruit.name}
+            </option>
+          ))}
+        </SelectField>
+      ) : null}
+
+      <form
+        className="grid gap-4 rounded-2xl bg-white p-6 shadow md:grid-cols-2"
+        onSubmit={submit}
+      >
+        <h2 className="md:col-span-2 text-xl font-semibold">
+          {editingId ? `Edit ${config.singular}` : `Add ${config.singular}`}
+        </h2>
+        <Field
+          label={`${config.singular} date`}
+          name="date"
+          type="date"
+          value={form.date}
+          onChange={changeForm}
+          error={errors.date}
+        />
+        <Field
+          label={`${config.singular} title`}
+          name="title"
+          value={form.title}
+          onChange={changeForm}
+          error={errors.title}
+        />
+        <div className="md:col-span-2">
+          <TextareaField
+            label={`${config.singular} description`}
+            name="description"
+            value={form.description}
+            onChange={changeForm}
+            error={errors.description}
+            required={kind === "issues"}
+          />
+        </div>
+        {kind === "tasks" ? (
+          <>
+            <SelectField
+              label="Task category"
+              name="category"
+              value={form.category}
+              onChange={changeForm}
+              error={errors.category}
+            >
+              {config.categories.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </SelectField>
+            <SelectField
+              label="Task status"
+              name="status"
+              value={form.status}
+              onChange={changeForm}
+              error={errors.status}
+            >
+              {config.statuses.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </SelectField>
+            <SelectField
+              label="Task priority"
+              name="priority"
+              value={form.priority}
+              onChange={changeForm}
+              error={errors.priority}
+            >
+              {config.priorities.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </SelectField>
+          </>
+        ) : (
+          <>
+            <SelectField
+              label="Issue severity"
+              name="severity"
+              value={form.severity}
+              onChange={changeForm}
+              error={errors.severity}
+            >
+              {config.severities.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </SelectField>
+            <SelectField
+              label="Issue status"
+              name="status"
+              value={form.status}
+              onChange={changeForm}
+              error={errors.status}
+            >
+              {config.statuses.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </SelectField>
+            <div className="md:col-span-2">
+              <TextareaField
+                label="Resolution notes"
+                name="resolution_notes"
+                value={form.resolution_notes}
+                onChange={changeForm}
+                error={errors.resolution_notes}
+                required={needsResolution}
+              />
+            </div>
+          </>
+        )}
+        <div className="flex flex-wrap gap-3 md:col-span-2">
+          <button
+            className="rounded-lg bg-teal-700 px-4 py-2.5 font-semibold text-white"
+            type="submit"
+            disabled={!ownerId}
+          >
+            {editingId ? `Save ${config.singular}` : `Create ${config.singular}`}
+          </button>
+          {editingId ? (
+            <button
+              className="rounded-lg border border-slate-300 px-4 py-2.5 font-semibold"
+              type="button"
+              onClick={resetForm}
+            >
+              Cancel edit
+            </button>
+          ) : null}
+        </div>
+        <div className="md:col-span-2">
+          <StatusMessage message={message} tone={message === "Access denied" ? "error" : "neutral"} />
+        </div>
+      </form>
+
+      <section className="rounded-2xl bg-white p-6 shadow">
+        <h2 className="text-xl font-semibold">Filters</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {kind === "tasks" ? (
+            <>
+              <Field
+                label="Filter date"
+                name="date"
+                type="date"
+                value={filters.date}
+                onChange={changeFilter}
+                required={false}
+              />
+              <SelectField
+                label="Filter category"
+                name="category"
+                value={filters.category}
+                onChange={changeFilter}
+              >
+                <option value="">All categories</option>
+                {config.categories.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </SelectField>
+              <SelectField
+                label="Filter task status"
+                name="status"
+                value={filters.status}
+                onChange={changeFilter}
+              >
+                <option value="">All statuses</option>
+                {config.statuses.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </SelectField>
+            </>
+          ) : (
+            <>
+              <SelectField
+                label="Filter issue status"
+                name="status"
+                value={filters.status}
+                onChange={changeFilter}
+              >
+                <option value="">All statuses</option>
+                {config.statuses.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </SelectField>
+              <SelectField
+                label="Filter severity"
+                name="severity"
+                value={filters.severity}
+                onChange={changeFilter}
+              >
+                <option value="">All severities</option>
+                {config.severities.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </SelectField>
+            </>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-4" aria-label={`${config.title} list`}>
+        {entries.length === 0 ? (
+          <p className="rounded-2xl bg-white p-6 text-slate-600 shadow">
+            No {config.title.toLowerCase()} found.
+          </p>
+        ) : (
+          entries.map((entry) => (
+            <article key={entry.id} className="rounded-2xl bg-white p-5 shadow">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-teal-700">{entry.date}</p>
+                  <h3 className="text-lg font-semibold">{entry.title}</h3>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
+                    {entry.description || "No description"}
+                  </p>
+                  <p className="mt-3 text-sm text-slate-700">
+                    {kind === "tasks"
+                      ? `${entry.category} · ${entry.status} · ${entry.priority}`
+                      : `${entry.severity} · ${entry.status}`}
+                  </p>
+                  {entry.resolution_notes ? (
+                    <p className="mt-2 text-sm text-slate-600">
+                      Resolution: {entry.resolution_notes}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold"
+                    type="button"
+                    onClick={() => edit(entry)}
+                    aria-label={`Edit ${entry.title}`}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white"
+                    type="button"
+                    onClick={() => remove(entry)}
+                    aria-label={`Delete ${entry.title}`}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+      </section>
+    </section>
   );
 }
 
@@ -781,6 +1270,20 @@ export default function App() {
         <AdminUsers
           currentUser={user}
           onCurrentUserChanged={setUser}
+          onUnauthorized={clearSession}
+        />
+      ) : page === "tasks" ? (
+        <DiaryPage
+          key="tasks"
+          kind="tasks"
+          user={user}
+          onUnauthorized={clearSession}
+        />
+      ) : page === "issues" ? (
+        <DiaryPage
+          key="issues"
+          kind="issues"
+          user={user}
           onUnauthorized={clearSession}
         />
       ) : page === "profile" ? (

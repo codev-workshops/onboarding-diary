@@ -32,6 +32,38 @@ CREATE TABLE manager_assignments (
     created_at TEXT NOT NULL,
     CHECK (recruit_id != manager_id)
 );
+
+CREATE TABLE tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL CHECK (
+        category IN ('Training', 'Setup', 'Meeting', 'Project', 'Other')
+    ),
+    status TEXT NOT NULL CHECK (
+        status IN ('Not Started', 'In Progress', 'Completed', 'Blocked')
+    ),
+    priority TEXT NOT NULL CHECK (priority IN ('Low', 'Medium', 'High')),
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    severity TEXT NOT NULL CHECK (
+        severity IN ('Low', 'Medium', 'High', 'Critical')
+    ),
+    status TEXT NOT NULL CHECK (
+        status IN ('Open', 'In Progress', 'Resolved', 'Closed')
+    ),
+    resolution_notes TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 

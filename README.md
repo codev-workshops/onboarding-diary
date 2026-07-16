@@ -1,6 +1,6 @@
 # Onboarding Diary
 
-Runnable account and profile slice for the Onboarding Diary application.
+Runnable account, administration, task, and issue slices for the Onboarding Diary application.
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ Runnable account and profile slice for the Onboarding Diary application.
 - Node.js 20+
 - npm 10+
 
-The backend intentionally uses one process and one in-memory SQLite database. All users and sessions are lost whenever the backend restarts.
+The backend intentionally uses one process and one in-memory SQLite database. All users, sessions, assignments, tasks, and issues are lost whenever the backend restarts.
 
 ## Install
 
@@ -84,7 +84,14 @@ The Playwright command starts both servers with isolated local bootstrap values.
 - `GET/POST /api/admin/users`
 - `GET/PATCH/DELETE /api/admin/users/{user_id}`
 - `PUT/DELETE /api/admin/recruits/{recruit_id}/manager`
+- `GET /api/diary/recruits`
+- `GET/POST /api/tasks`
+- `GET/PATCH/DELETE /api/tasks/{task_id}`
+- `GET/POST /api/issues`
+- `GET/PATCH/DELETE /api/issues/{issue_id}`
 
 Passwords are stored as salted PBKDF2-HMAC-SHA256 hashes with 310,000 iterations. Login uses an opaque server-side session in an eight-hour `HttpOnly`, `SameSite=Lax` cookie.
 
 Public sign-up always creates a Recruit. Admins create Manager/Admin users and maintain each Recruit's optional single Manager assignment. Role changes invalidate the affected user's sessions and remove invalid assignments.
+
+Recruit task and issue operations are scoped to self. Managers select an assigned Recruit, and Admins may select any Recruit. Task filters support date, category, and status; issue filters support status and severity.
