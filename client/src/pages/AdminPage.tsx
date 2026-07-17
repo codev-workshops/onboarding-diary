@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { useCategories, useDepartments, useUsers } from '@/hooks/data';
 import { api } from '@/lib/api';
 import { ROLES } from '@/lib/constants';
+import type { Department, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 type Tab = 'users' | 'departments' | 'categories';
@@ -76,6 +78,8 @@ function UsersTab() {
     mutationFn: (id: string) => api<void>(`/users/${id}`, { method: 'DELETE' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['users'] }),
   });
+
+  const [editing, setEditing] = useState<User | null>(null);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -172,7 +176,10 @@ function UsersTab() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge tone="primary">{u.role}</Badge>
-                    <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => deleteMutation.mutate(u.id)}>
+                    <Button variant="ghost" size="icon" aria-label={`Edit ${u.name}`} onClick={() => setEditing(u)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" aria-label={`Delete ${u.name}`} onClick={() => deleteMutation.mutate(u.id)}>
                       <Trash2 className="h-4 w-4 text-danger" />
                     </Button>
                   </div>
@@ -184,7 +191,140 @@ function UsersTab() {
           )}
         </CardContent>
       </Card>
+
+      {editing ? (
+        <EditUserModal
+          user={editing}
+          managers={managers.filter((m) => m.id !== editing.id)}
+          departments={departments ?? []}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function EditUserModal({
+  user,
+  managers,
+  departments,
+  onClose,
+}: {
+  user: User;
+  managers: User[];
+  departments: Department[];
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    name: user.name,
+    role: user.role as string,
+    departmentId: user.departmentId ?? '',
+    managerId: user.managerId ?? '',
+    startDate: user.startDate.slice(0, 10),
+    password: '',
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      api(`/users/${user.id}`, {
+        method: 'PUT',
+        body: {
+          name: form.name,
+          role: form.role,
+          startDate: form.startDate,
+          departmentId: form.departmentId || null,
+          managerId: form.managerId || null,
+          ...(form.password ? { password: form.password } : {}),
+        },
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['users'] });
+      void qc.invalidateQueries({ queryKey: ['team'] });
+      onClose();
+    },
+  });
+
+  return (
+    <Modal open title={`Edit ${user.name}`} onClose={onClose}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          updateMutation.mutate();
+        }}
+      >
+        <div>
+          <Label htmlFor="e-name">Name</Label>
+          <Input id="e-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        </div>
+        <div>
+          <Label htmlFor="e-email">Email</Label>
+          <Input id="e-email" value={user.email} disabled />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="e-role">Role</Label>
+            <Select id="e-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="e-start">Start date</Label>
+            <Input id="e-start" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} required />
+          </div>
+          <div>
+            <Label htmlFor="e-dept">Department</Label>
+            <Select id="e-dept" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+              <option value="">None</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="e-manager">Manager</Label>
+            <Select id="e-manager" value={form.managerId} onChange={(e) => setForm({ ...form, managerId: e.target.value })}>
+              <option value="">None</option>
+              {managers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="e-password">New password (optional)</Label>
+          <Input
+            id="e-password"
+            type="password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            placeholder="Leave blank to keep current"
+          />
+        </div>
+        {updateMutation.isError ? (
+          <p className="text-sm text-danger" role="alert">
+            {(updateMutation.error as Error).message}
+          </p>
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
