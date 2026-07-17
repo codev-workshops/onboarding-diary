@@ -374,3 +374,81 @@ onboarding UI (login helper + React Joyride).
 **Rationale:** Showing the demo logins removes first-use friction, but must be
 impossible outside demo mode; gating on the same flag that governs the demo
 datasource keeps it safe and simple.
+
+## 17. Step 3 extension feature — Onboarding checklist templates
+
+**Status:** confirmed
+
+The MANDATE's Step 3 asks for new features. The first is **reusable onboarding
+checklist templates**:
+
+- An **Admin** defines named **checklist templates**, optionally scoped to a
+  target role and/or department. Each template has ordered **items** with a title,
+  description, priority, an optional task category, and a **due offset in days**
+  (relative to the recruit's start date).
+- When provisioning (or editing) a recruit, the Admin may **apply a template**,
+  which **auto-seeds the recruit's Task Log**: one Task per item, owned by the
+  recruit, with `dueDate = startDate + dueOffsetDays` and status `To Do`.
+- Templates are managed under **Admin → Templates**; full CRUD (create, rename,
+  edit items, delete). Deleting a template does not delete already-seeded tasks.
+
+**Access control:** template management is **Admin-only** (consistent with §10
+provisioning). Seeded tasks belong to the recruit and follow the normal §7 scope.
+
+**Enabler:** a React Joyride step introduces templates in the Admin area (demo
+mode), and the demo seed ships example templates.
+
+**Rationale:** Directly serves the "understand all features on first use" goal —
+a new recruit starts with a ready-made, structured task list instead of a blank
+log.
+
+## 18. Step 3 extension feature — Task due dates & overdue reminders
+
+**Status:** confirmed
+
+- **Task** gains an optional **`dueDate`**. It is editable in the task form and
+  set automatically for template-seeded tasks (§17).
+- A task is **overdue** when it has a `dueDate` in the past **and** its status is
+  not the semantic done status (§4). Overdue tasks show a clear **badge** in the
+  Task Log, and the **Dashboard** shows an **overdue count** plus a reminder
+  callout; the **team overview** surfaces per-recruit overdue counts for managers.
+- Due dates are **date-only** (interpreted at UTC day granularity, consistent with
+  the existing entry `date` semantics) and optional so existing tasks are
+  unaffected.
+
+**Enabler:** a React Joyride step highlights due dates / the overdue reminder.
+
+**Rationale:** Overdue visibility is a high-usability, low-risk addition that
+makes onboarding progress actionable for both recruits and managers.
+
+## 19. Step 3 extension feature — Comments with @mentions & activity indicator
+
+**Status:** confirmed
+
+- Users can post **comments** on a **Task** (the primary diary entry). A comment
+  has a body and an author; comments are ordered oldest-first.
+- A comment body may **@mention** users using the handle derived from the account
+  **email local-part** (e.g. `@manager.eng` for `manager.eng@demo.local`).
+  Mentions are parsed server-side and resolved against existing users; unmatched
+  tokens are ignored.
+- Each resolved mention creates a **notification** for the mentioned user. A
+  **bell/activity indicator** in the header shows the **unread mention count**; a
+  panel lists recent mentions (who, on which task, snippet) and links to the task.
+  Opening the panel / viewing a mention marks it read.
+
+**Access control:**
+
+- A user may comment on / read comments for a task only if the task's owner is
+  within their §7 access scope (Recruit: own tasks; Manager: overseen recruits'
+  tasks + own; Admin: all).
+- Mentions are only created for users; a mention does **not** grant the mentioned
+  user access to a task they otherwise cannot see — the activity panel links to
+  the task but the task API still enforces §7.
+- A user may only read/clear **their own** mentions.
+
+**Enabler:** a React Joyride step points at the activity bell; the demo seed
+includes example comments with mentions so the indicator is populated.
+
+**Rationale:** Lightweight collaboration on onboarding entries; @mentions + an
+activity indicator make hand-offs (e.g. a recruit flagging their manager) visible
+without a heavyweight notification system.

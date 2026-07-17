@@ -125,10 +125,22 @@ the end** (guiding principle #4). Every phase adds code documentation as it goes
 - Expand unit coverage and e2e journeys; error handling; seed/reset scripts.
 - Finalize in-code documentation and per-package READMEs.
 
-### Step 3 (later) — Two new features
-- The MANDATE's Step 3 asks for two additional features. These will be proposed and
-  **documented in `ASSUMPTIONS.md`/this plan before implementation**, consistent
-  with the "document before building" rule.
+### Step 3 — Extension features (documented in ASSUMPTIONS §17–§19)
+Confirmed and built with onboarding enablers + unit + e2e tests, tests in parallel:
+
+1. **Onboarding checklist templates (§17).** New `ChecklistTemplate`/`ChecklistItem`
+   models; Admin-only CRUD under **Admin → Templates**; "apply template" on recruit
+   provisioning auto-seeds the recruit's Task Log (due dates from item offsets).
+   Joyride step + demo templates. Unit (template service, seeding) + e2e (create
+   template → provision recruit with it → tasks appear).
+2. **Task due dates & overdue reminders (§18).** `Task.dueDate?`; overdue =
+   past due & not done; Task Log badge, Dashboard overdue count + reminder, team
+   overview per-recruit overdue. Joyride step. Unit (overdue logic) + e2e.
+3. **Comments with @mentions & activity indicator (§19).** New `Comment`/`Mention`
+   models on Tasks; server-side @mention parsing (email local-part handles);
+   `GET/POST /api/tasks/:id/comments`, `GET /api/mentions` + mark-read; header bell
+   with unread count. Access scoped per §7. Joyride step + demo comments. Unit
+   (mention parsing, access) + e2e.
 
 ## Testing strategy (summary)
 

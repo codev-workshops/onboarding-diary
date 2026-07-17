@@ -77,3 +77,8 @@ date range.
 - **Step 1** — Elaborate the requirements.
 - **Step 2** — Build the application incrementally.
 - **Step 3** — Extend the application with two new features.
+
+> Selected Step 3 extension features (see `ASSUMPTIONS.md` §17–§19 and `PLAN.md`):
+> **(1) onboarding checklist templates**, **(2) task due dates & overdue
+> reminders**, and **(3) comments with @mentions & an activity indicator**. Each
+> ships with onboarding enablers and unit + e2e tests.
