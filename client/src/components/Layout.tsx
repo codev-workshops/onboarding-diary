@@ -86,7 +86,7 @@ export function Layout() {
         <nav
           data-tour="sidebar"
           className={cn(
-            'fixed inset-y-14 left-0 z-10 w-60 border-r border-border bg-card p-3 transition-transform md:static md:inset-y-auto md:translate-x-0',
+            'fixed inset-y-14 left-0 z-10 w-60 overflow-y-auto border-r border-border bg-card p-3 transition-transform md:sticky md:top-14 md:h-[calc(100vh-3.5rem)] md:translate-x-0 md:self-start',
             open ? 'translate-x-0' : '-translate-x-full',
           )}
         >

@@ -62,4 +62,13 @@ describe('Layout', () => {
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
   });
+
+  it('keeps the sidebar visible on scroll via a sticky, full-height nav on desktop', () => {
+    renderLayout('Recruit');
+    const nav = screen.getByRole('navigation');
+    // Sticky + full viewport height so long pages never leave the sidebar column empty.
+    expect(nav.className).toContain('md:sticky');
+    expect(nav.className).toContain('md:top-14');
+    expect(nav.className).toContain('md:h-[calc(100vh-3.5rem)]');
+  });
 });
