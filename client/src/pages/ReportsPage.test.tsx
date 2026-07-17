@@ -32,11 +32,22 @@ function jsonResponse(body: unknown): Response {
   return { ok: true, status: 200, text: () => Promise.resolve(JSON.stringify(body)) } as Response;
 }
 
-function renderPage() {
+const emptyReport: ReportData = {
+  meta: { start: '2026-01-01', end: '2026-01-31', generatedAt: '', generatedBy: 'Admin', scope: 'Org' },
+  summary: { taskTotal: 0, taskCompleted: 0, issueTotal: 0, issueOpen: 0, feedbackTotal: 0, noteTotal: 0 },
+  tasks: [],
+  issues: [],
+  feedback: [],
+  notes: [],
+};
+
+function renderPage(reportBody: ReportData = report) {
   const fetchMock = vi.spyOn(global, 'fetch').mockImplementation((input) => {
     const url = String(input);
+    if (url.includes('/dashboard/team'))
+      return Promise.resolve(jsonResponse({ recruits: users, totals: {} }));
     if (url.includes('/users')) return Promise.resolve(jsonResponse(users));
-    return Promise.resolve(jsonResponse(report));
+    return Promise.resolve(jsonResponse(reportBody));
   });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -66,5 +77,17 @@ describe('ReportsPage', () => {
     expect(screen.getByText('Issues (1)')).toBeInTheDocument();
     // export buttons appear once a report exists
     expect(screen.getByRole('button', { name: /PDF/ })).toBeInTheDocument();
+  });
+
+  it('shows a distinct "No data" state when a generated report has zero rows', async () => {
+    renderPage(emptyReport);
+    expect(await screen.findByText('No report yet')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Generate report/ }));
+
+    expect(await screen.findByText('No data')).toBeInTheDocument();
+    // distinct from the initial state and never renders the report body
+    expect(screen.queryByText('No report yet')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('report-view')).not.toBeInTheDocument();
   });
 });

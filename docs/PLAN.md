@@ -16,7 +16,7 @@ Phased plan for building the Onboarding Diary. Requirements come from
    in first-boot/demo mode and turn off once a production DB holds real data
    (ASSUMPTIONS §2, §13).
 2. **Modern, elegant, professional, responsive UI.** A consistent design system
-   (Tailwind + shadcn/ui, lucide-react icons, Recharts) with a clean, professional
+   (Tailwind + shadcn/ui-style primitives, lucide-react icons, Recharts) with a clean, professional
    color scheme (neutral base + calm primary + semantic status colors, light/dark,
    WCAG AA), accessible components, mobile-first responsive layouts, and deliberate
    empty/loading/error states. See `techstack.md` → "Design system & UI".
@@ -36,7 +36,7 @@ Phased plan for building the Onboarding Diary. Requirements come from
   - `server/` — Node + Express + TypeScript REST API, Prisma ORM, JWT auth, Zod
     validation, report generation (PDFKit + csv-stringify).
   - `client/` — React + TypeScript SPA (Vite, React Router, TanStack Query, React
-    Hook Form, Tailwind + shadcn/ui, lucide-react, Recharts, React Joyride).
+    Tailwind + shadcn/ui-style primitives, lucide-react, Recharts, React Joyride).
 - **Datasource:** Prisma targeting **SQLite** (first-boot/demo) and **PostgreSQL**
   (production) — a config switch, one schema (ASSUMPTIONS §2, techstack).
 - **API:** RESTful resources, JWT bearer auth, role-based authorization enforcing
@@ -80,7 +80,7 @@ the end** (guiding principle #4). Every phase adds code documentation as it goes
 - Unit tests for repositories/services and enum seeding.
 
 ### Phase 2 — Auth & users
-- JWT auth (login), bcrypt hashing, `PasswordPolicy` class (min 8 chars,
+- JWT auth (login), bcryptjs hashing, `PasswordPolicy` class (min 8 chars,
   upgradeable — ASSUMPTIONS §1).
 - Admin **department management** (create/rename departments) and **user
   provisioning** (create/manage users, roles, department, manager assignment —

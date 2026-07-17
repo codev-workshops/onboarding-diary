@@ -20,9 +20,9 @@ selections. See [`ASSUMPTIONS.md`](./ASSUMPTIONS.md) §3 for the decision contex
 | Build / dev      | Vite                       | Fast dev server and build tooling.                |
 | Routing          | React Router               | Client-side routing.                              |
 | Server state     | TanStack Query             | Data fetching, caching, invalidation.             |
-| Forms            | React Hook Form            | Form state and validation wiring.                 |
+| Forms            | Controlled React state     | Local `useState`-driven forms; no form library.   |
 | Styling          | Tailwind CSS               | Utility-first, responsive layout.                 |
-| Component library| shadcn/ui (Radix + Tailwind)| Accessible, modern, elegant components.          |
+| Component library| shadcn/ui-style Tailwind    | Hand-rolled primitives (cva + tailwind-merge).    |
 | Icons            | lucide-react               | Clean, consistent icon set.                       |
 | Charts           | Recharts                   | Dashboard progress/summary visualizations.        |
 | Onboarding UI    | React Joyride              | Tooltips / coach marks / welcome mats (see below).|
@@ -31,8 +31,10 @@ selections. See [`ASSUMPTIONS.md`](./ASSUMPTIONS.md) §3 for the decision contex
 
 The product goal is a **clean, elegant, professional, and responsive** experience.
 
-- **Component library:** shadcn/ui (built on Radix primitives + Tailwind) for
-  accessible, polished components with full styling control.
+- **Component library:** shadcn/ui-style Tailwind primitives hand-rolled in
+  `client/src/components/ui` using `class-variance-authority`, `clsx`, and
+  `tailwind-merge` (no Radix dependency) for accessible, polished components with
+  full styling control.
 - **Icons & charts:** lucide-react for iconography; Recharts for the Dashboard's
   progress/summary visualizations.
 - **Color scheme:** a restrained, professional palette — a neutral base (slate/
@@ -55,7 +57,7 @@ theme so the look stays consistent and is easy to re-theme.
 | ORM              | Prisma                     | Single ORM targeting both SQLite and PostgreSQL.  |
 | Validation       | Zod                        | Request/DTO validation.                           |
 | Auth tokens      | jsonwebtoken               | JWT issue/verify.                                 |
-| Password hashing | bcrypt                     | Adaptive hashing behind `PasswordPolicy`.         |
+| Password hashing | bcryptjs                   | Adaptive hashing behind `PasswordPolicy`.         |
 
 ## Database
 

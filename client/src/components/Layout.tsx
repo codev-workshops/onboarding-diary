@@ -99,10 +99,12 @@ export function Layout() {
                   data-tour={`nav-${label.toLowerCase()}`}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                      // A left accent bar + bolder weight give the active item a
+                      // non-color cue (accessibility), on top of the color change.
+                      'flex items-center gap-3 rounded-md border-l-4 px-3 py-2 text-sm transition-colors',
                       isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        ? 'border-primary bg-primary font-semibold text-primary-foreground'
+                        : 'border-transparent font-medium text-muted-foreground hover:bg-muted hover:text-foreground',
                     )
                   }
                 >

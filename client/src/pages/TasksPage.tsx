@@ -24,6 +24,42 @@ import { isTaskOverdue, toDateInput } from '@/lib/utils';
 
 const PAGE_SIZE = 8;
 
+type SortKey = 'date-desc' | 'date-asc' | 'due-asc' | 'priority-desc' | 'owner-asc';
+
+const SORT_OPTIONS: { value: SortKey; label: string; scopedOnly?: boolean }[] = [
+  { value: 'date-desc', label: 'Newest first' },
+  { value: 'date-asc', label: 'Oldest first' },
+  { value: 'due-asc', label: 'Due date' },
+  { value: 'priority-desc', label: 'Priority (high→low)' },
+  { value: 'owner-asc', label: 'Owner (A→Z)', scopedOnly: true },
+];
+
+// High-to-low ranking so a "Priority" sort surfaces the most urgent work first.
+const PRIORITY_RANK: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
+
+function compareTasks(a: Task, b: Task, sort: SortKey): number {
+  switch (sort) {
+    case 'date-asc':
+      return toDateInput(a.date).localeCompare(toDateInput(b.date));
+    case 'due-asc': {
+      // Tasks without a due date sort last, keeping dated work at the top.
+      const da = a.dueDate ? toDateInput(a.dueDate) : '';
+      const db = b.dueDate ? toDateInput(b.dueDate) : '';
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.localeCompare(db);
+    }
+    case 'priority-desc':
+      return (PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99);
+    case 'owner-asc':
+      return (a.owner?.name ?? '').localeCompare(b.owner?.name ?? '');
+    case 'date-desc':
+    default:
+      return toDateInput(b.date).localeCompare(toDateInput(a.date));
+  }
+}
+
 interface TaskForm {
   date: string;
   title: string;
@@ -61,6 +97,7 @@ export function TasksPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
+  const [sort, setSort] = useState<SortKey>('date-desc');
   const [page, setPage] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -115,14 +152,19 @@ export function TasksPage() {
     });
   }, [tasksQuery.data, search, showCompleted, statusFilter, dateFrom, dateTo]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount - 1);
-  const paged = filtered.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
+  const sorted = useMemo(
+    () => [...filtered].sort((a, b) => compareTasks(a, b, sort)),
+    [filtered, sort],
+  );
 
-  // Reset to the first page whenever the active filters change.
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const paged = sorted.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
+
+  // Reset to the first page whenever the active filters or sort change.
   useEffect(() => {
     setPage(0);
-  }, [search, dateFrom, dateTo, showCompleted, statusFilter, categoryFilter]);
+  }, [search, dateFrom, dateTo, showCompleted, statusFilter, categoryFilter, sort]);
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['tasks'] });
@@ -271,6 +313,23 @@ export function TasksPage() {
           />
           Show completed
         </label>
+        <div>
+          <Label htmlFor="task-sort" className="text-xs text-muted-foreground">
+            Sort by
+          </Label>
+          <Select
+            id="task-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="w-auto"
+          >
+            {SORT_OPTIONS.filter((o) => !o.scopedOnly || canScope).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       {tasksQuery.isLoading ? (

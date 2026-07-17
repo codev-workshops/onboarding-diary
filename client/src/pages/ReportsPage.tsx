@@ -51,6 +51,13 @@ export function ReportsPage() {
     recruitId: recruitId || undefined,
   });
 
+  const reportIsEmpty =
+    report !== null &&
+    report.tasks.length === 0 &&
+    report.issues.length === 0 &&
+    report.feedback.length === 0 &&
+    report.notes.length === 0;
+
   return (
     <div>
       <PageHeader
@@ -120,6 +127,11 @@ export function ReportsPage() {
 
       {runMutation.isError ? (
         <ErrorState message={(runMutation.error as Error).message} />
+      ) : reportIsEmpty ? (
+        <EmptyState
+          title="No data"
+          hint="No entries fall within the selected range. Try widening the dates or choosing a different recruit."
+        />
       ) : report ? (
         <ReportView report={report} />
       ) : (

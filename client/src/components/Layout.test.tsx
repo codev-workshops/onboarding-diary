@@ -71,4 +71,17 @@ describe('Layout', () => {
     expect(nav.className).toContain('md:top-14');
     expect(nav.className).toContain('md:h-[calc(100vh-3.5rem)]');
   });
+
+  it('marks the active nav item with a non-color cue (weight + accent + aria-current)', () => {
+    renderLayout('Recruit');
+    // Rendered at /tasks, so the Tasks link is the active route.
+    const active = screen.getByRole('link', { name: 'Tasks' });
+    expect(active).toHaveAttribute('aria-current', 'page');
+    expect(active.className).toContain('font-semibold');
+    expect(active.className).toContain('border-primary');
+
+    const inactive = screen.getByRole('link', { name: 'Dashboard' });
+    expect(inactive).not.toHaveAttribute('aria-current');
+    expect(inactive.className).toContain('font-medium');
+  });
 });

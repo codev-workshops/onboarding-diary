@@ -120,6 +120,24 @@ describe('TasksPage', () => {
     expect(screen.queryByText('Install tooling')).not.toBeInTheDocument();
   });
 
+  it('reorders tasks via the sort control', async () => {
+    const laterTask: Task = { ...overdueTask, id: 't3', title: 'Later task', date: '2026-05-05', dueDate: null };
+    routedFetch([overdueTask, laterTask]);
+    renderPage();
+
+    // Default sort is newest first: the later-dated task precedes the earlier one.
+    const earlier = await screen.findByText('Install tooling');
+    const later = screen.getByText('Later task');
+    expect(later.compareDocumentPosition(earlier) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await userEvent.selectOptions(screen.getByLabelText('Sort by'), 'date-asc');
+    await waitFor(() => {
+      const e = screen.getByText('Install tooling');
+      const l = screen.getByText('Later task');
+      expect(e.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+
   it('confirms before deleting a task', async () => {
     const fetchMock = routedFetch([overdueTask]);
     renderPage();

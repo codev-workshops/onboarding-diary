@@ -37,7 +37,7 @@ This document records every decision that is **not** explicitly specified in
   **Admin** — per the MANDATE.
 - **Auth mechanism:** **JWT** (JSON Web Tokens). The API is a stateless REST
   backend, so bearer tokens fit the architecture. Passwords are stored using a
-  modern adaptive hash (bcrypt).
+  modern adaptive hash (bcrypt algorithm, via the `bcryptjs` library).
 - **Password policy:** Enforced through a dedicated, **upgradeable** policy
   component — class **`PasswordPolicy`** (with a `validate(password)` method) —
   so the rules can be strengthened later without touching call sites.
