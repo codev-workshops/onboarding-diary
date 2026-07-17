@@ -10,7 +10,9 @@ This document records every decision that is **not** explicitly specified in
 > **⚠️ Requires product-owner sign-off before implementation begins:**
 > - Storage engine default (first-boot behavior)
 > - Chosen tech stack
-> - Enum value sets (task category/status/priority, issue severity/status)
+> - Enum value sets — the two-tier model (Tier 1 admin-configurable vs. Tier 2
+>   seeded/system-defined), the default seeded values, and the soft-disable vs.
+>   hard-delete rule for in-use task categories
 > - Manager→Recruit oversight assignment mechanism
 >
 > These items are marked **pending confirmation** below.
@@ -66,21 +68,85 @@ choice"). Proposed selections to be recorded/confirmed:
 **Rationale:** Concrete choices affect implementation and must be fixed before
 building; recorded here for sign-off.
 
-## 4. Enum value sets
+## 4. Enum / value-set management (two-tier)
 
 **Status:** pending confirmation
 
-Feedback **type** is already fixed by the MANDATE to **Positive | Suggestion |
-Concern**. The following sets are proposed and need confirmation:
+Rather than treating every categorical field as a single "define the enum values"
+decision, value sets are split into **two tiers** based on whether the app's
+features depend on the *semantic meaning* of each value.
 
-- **Task category:** `Training`, `Setup`, `Meeting`, `Documentation`, `Other`.
-- **Task status:** `Not Started`, `In Progress`, `Blocked`, `Done`.
-- **Task priority:** `Low`, `Medium`, `High`.
-- **Issue severity:** `Low`, `Medium`, `High`, `Critical`.
-- **Issue status:** `Open`, `In Progress`, `Resolved`, `Closed`.
+### Tier 1 — Admin-configurable
+
+- **Task `category`** is managed by the Admin, who can **add, rename, and delete**
+  categories at runtime.
+- Deleting a category still referenced by existing task entries must be a
+  **soft-disable / archive** (mark inactive so it no longer appears when creating
+  or filtering new tasks) rather than a **hard delete**, to avoid orphaning
+  existing task entries. *(pending confirmation — see below)*
+- Category is safe to make free-form/admin-editable because no feature relies on
+  the specific *meaning* of any given category — it is used only for grouping and
+  filtering.
+
+### Tier 2 — Seeded defaults (system-defined in v1, not free-form editable)
+
+The following are **seeded** on first boot and are **system-defined** in v1; they
+are **not** free-form editable by the Admin:
+
+- Task `status`
+- Task `priority`
+- Issue `severity`
+- Issue `status`
+
+**Rationale:** the Dashboard and Reports depend on the *semantic meaning* of these
+values, not just their labels. For example:
+
+- "Task completion progress" needs to know *which* status means **done**.
+- "Open issues at a glance" needs to know *which* issue statuses count as **open**
+  vs. resolved.
+- Priority and severity carry an inherent **ordering** (Low < Medium < High < …)
+  that Reports and sorting rely on.
+
+If these were free-form editable, an Admin could rename or remove the value the
+analytics logic keys off of and silently break the Dashboard and Reports.
+
+**Future direction:** if these become configurable in a later version, they must
+be exposed as a **managed list** where each entry carries a **protected semantic
+flag** (e.g. `isTerminal` / `isOpen`, priority `rank`) rather than free text, so
+the semantic contract the Dashboard and Reports depend on is preserved regardless
+of display label.
+
+### Fixed by mandate
+
+- Feedback `type` is **hardcoded** to **Positive / Suggestion / Concern** and is
+  **not** editable (Admin or otherwise). This is fixed by the MANDATE.
+
+### Default value sets to seed on first boot
+
+Seeded on first boot so a **zero-config** install demonstrates every feature
+immediately (a fresh install has a working, populated set of
+statuses/priorities/severities without any manual setup):
+
+| Field            | Default values              |
+| ---------------- | --------------------------- |
+| Task `status`    | To Do, In Progress, Done    |
+| Task `priority`  | Low, Medium, High           |
+| Issue `severity` | Low, Medium, High, Critical |
+| Issue `status`   | Open, In Progress, Resolved |
+
+(Feedback `type` — Positive / Suggestion / Concern — is fixed by the MANDATE and
+is not a seeded/configurable list.)
+
+**Pending confirmation:**
+
+- The exact default value sets listed above (task status, task priority, issue
+  severity, issue status).
+- Whether deleting an in-use task `category` should be a **soft-disable / archive**
+  (current working assumption) or a **hard delete**.
 
 **Rationale:** The MANDATE names these fields but does not enumerate their allowed
-values; filtering and reporting depend on a fixed set.
+values or say which are admin-managed vs. system-defined; filtering, the
+Dashboard, and Reports depend on a stable, well-defined set.
 
 ## 5. Manager → Recruit oversight
 
