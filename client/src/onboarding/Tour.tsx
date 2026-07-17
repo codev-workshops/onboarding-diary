@@ -15,7 +15,7 @@ const STEPS: Step[] = [
   {
     target: '[data-tour="nav-tasks"]',
     content:
-      'Log onboarding tasks and track their status. Give a task a due date — overdue tasks are flagged with a badge and a reminder on your dashboard. Admins can also seed a recruit’s tasks from a checklist template.',
+      'Log onboarding tasks and track their status. Give a task a due date — overdue tasks are flagged with a badge and a reminder on your dashboard (evaluated in your timezone, which an admin sets on your account). Admins can also seed a recruit’s tasks from a checklist template.',
   },
   {
     target: '[data-tour="activity-bell"]',

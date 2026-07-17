@@ -13,7 +13,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCategories, useDepartments, useTemplates, useUsers } from '@/hooks/data';
 import { api } from '@/lib/api';
-import { ROLES, TASK_PRIORITIES } from '@/lib/constants';
+import { DEFAULT_TIMEZONE, ROLES, TASK_PRIORITIES, TIMEZONES } from '@/lib/constants';
 import type { ChecklistTemplate, Department, TaskCategory, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -65,6 +65,7 @@ function UsersTab() {
     departmentId: '',
     managerId: '',
     templateId: '',
+    timezone: DEFAULT_TIMEZONE,
     startDate: new Date().toISOString().slice(0, 10),
   });
 
@@ -158,6 +159,16 @@ function UsersTab() {
                   ))}
                 </Select>
               </div>
+              <div>
+                <Label htmlFor="u-timezone">Timezone</Label>
+                <Select id="u-timezone" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
             {form.role === 'Recruit' ? (
               <div data-tour="provision-template">
@@ -202,7 +213,9 @@ function UsersTab() {
                 <li key={u.id} className="flex items-center justify-between py-2">
                   <div>
                     <p className="font-medium">{u.name}</p>
-                    <p className="text-sm text-muted-foreground">{u.email}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {u.email} · {u.timezone}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge tone="primary">{u.role}</Badge>
@@ -251,6 +264,7 @@ function EditUserModal({
     role: user.role as string,
     departmentId: user.departmentId ?? '',
     managerId: user.managerId ?? '',
+    timezone: user.timezone,
     startDate: user.startDate.slice(0, 10),
     password: '',
   });
@@ -263,6 +277,7 @@ function EditUserModal({
           name: form.name,
           role: form.role,
           startDate: form.startDate,
+          timezone: form.timezone,
           departmentId: form.departmentId || null,
           managerId: form.managerId || null,
           ...(form.password ? { password: form.password } : {}),
@@ -325,6 +340,16 @@ function EditUserModal({
               {managers.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="e-timezone">Timezone</Label>
+            <Select id="e-timezone" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz}
                 </option>
               ))}
             </Select>

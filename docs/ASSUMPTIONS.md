@@ -412,9 +412,10 @@ log.
   not the semantic done status (§4). Overdue tasks show a clear **badge** in the
   Task Log, and the **Dashboard** shows an **overdue count** plus a reminder
   callout; the **team overview** surfaces per-recruit overdue counts for managers.
-- Due dates are **date-only** (interpreted at UTC day granularity, consistent with
-  the existing entry `date` semantics) and optional so existing tasks are
-  unaffected.
+- Due dates are **date-only** and optional so existing tasks are unaffected. A due
+  date is stored as midnight UTC of the chosen calendar day; a task is overdue once
+  "today" (evaluated in the **task owner's timezone**, §20) has advanced past the
+  due day, so a task due today is not yet overdue (end-of-day is local midnight).
 
 **Enabler:** a React Joyride step highlights due dates / the overdue reminder.
 
@@ -452,3 +453,25 @@ includes example comments with mentions so the indicator is populated.
 **Rationale:** Lightweight collaboration on onboarding entries; @mentions + an
 activity indicator make hand-offs (e.g. a recruit flagging their manager) visible
 without a heavyweight notification system.
+
+## 20. Per-user timezone (admin-managed)
+
+**Status:** confirmed
+
+- Each **user** has an IANA **`timezone`** (e.g. `America/New_York`), defaulting to
+  **`UTC`** when not specified. It is used to evaluate the end-of-day boundary for
+  task overdue status (§18) in the task owner's local time.
+- The timezone is **provisioned and edited by an Admin only**, as part of user
+  create/edit (§10). There is **no self-service profile page**, so a user cannot
+  change their own timezone — consistent with the Admin-managed user model (§5/§10).
+- Any valid IANA identifier is accepted (validated server-side via the Intl API);
+  invalid identifiers are rejected with a 400. The Admin UI offers a picker of the
+  runtime's supported zones (falling back to a curated shortlist).
+- The value is returned by user endpoints and on login / `GET /auth/me` so the
+  client can evaluate overdue badges in the current user's timezone. It is never a
+  secret and carries no password material.
+
+**Rationale:** "End of day" for overdue reminders is only meaningful relative to a
+timezone. Provisioning a default per user (admin-managed, matching how users and
+oversight are already administered) keeps overdue semantics correct for distributed
+teams without introducing a user-facing profile/settings surface.

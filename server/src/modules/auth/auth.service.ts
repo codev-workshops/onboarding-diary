@@ -19,6 +19,7 @@ export interface LoginResult {
     email: string;
     name: string;
     role: Role;
+    timezone: string;
   };
 }
 
@@ -32,5 +33,8 @@ export async function login(db: Db, input: LoginInput): Promise<LoginResult> {
 
   const role = user.role as Role;
   const token = signToken({ sub: user.id, role, name: user.name, email: user.email });
-  return { token, user: { id: user.id, email: user.email, name: user.name, role } };
+  return {
+    token,
+    user: { id: user.id, email: user.email, name: user.name, role, timezone: user.timezone },
+  };
 }

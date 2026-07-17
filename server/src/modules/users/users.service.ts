@@ -5,8 +5,12 @@ import { ROLES } from '../../domain/enums.js';
 import { hashPassword } from '../../auth/password.js';
 import { passwordPolicy } from '../../auth/passwordPolicy.js';
 import { applyTemplateToUser, getTemplate } from '../templates/templates.service.js';
+import { DEFAULT_TIMEZONE, isValidTimezone } from '../../domain/timezone.js';
 
 const isoDate = z.coerce.date();
+
+/** An IANA timezone the runtime can resolve (docs/ASSUMPTIONS.md §20). */
+const timezone = z.string().refine(isValidTimezone, { message: 'Invalid IANA timezone' });
 
 export const userCreateSchema = z.object({
   email: z.string().email(),
@@ -14,6 +18,7 @@ export const userCreateSchema = z.object({
   name: z.string().min(1).max(200),
   role: z.enum(ROLES),
   startDate: isoDate,
+  timezone: timezone.optional(),
   departmentId: z.string().nullable().optional(),
   managerId: z.string().nullable().optional(),
   templateId: z.string().nullable().optional(),
@@ -25,6 +30,7 @@ export const userUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   role: z.enum(ROLES).optional(),
   startDate: isoDate.optional(),
+  timezone: timezone.optional(),
   departmentId: z.string().nullable().optional(),
   managerId: z.string().nullable().optional(),
 });
@@ -39,6 +45,7 @@ const publicUserSelect = {
   name: true,
   role: true,
   startDate: true,
+  timezone: true,
   departmentId: true,
   managerId: true,
   createdAt: true,
@@ -95,6 +102,7 @@ export async function createUser(db: Db, input: UserCreateInput) {
       name: input.name,
       role: input.role,
       startDate: input.startDate,
+      timezone: input.timezone ?? DEFAULT_TIMEZONE,
       departmentId: input.departmentId ?? null,
       managerId: input.managerId ?? null,
     },
@@ -131,6 +139,7 @@ export async function updateUser(db: Db, id: string, input: UserUpdateInput) {
       name: input.name,
       role: input.role,
       startDate: input.startDate,
+      timezone: input.timezone,
       departmentId: input.departmentId,
       managerId: input.managerId,
       ...(passwordHash ? { passwordHash } : {}),

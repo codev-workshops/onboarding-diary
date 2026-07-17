@@ -5,6 +5,7 @@ export interface CurrentUser {
   email: string;
   name: string;
   role: Role;
+  timezone: string;
 }
 
 export interface User extends CurrentUser {

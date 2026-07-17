@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/auth/AuthContext';
 import { useCategories } from '@/hooks/data';
 import { api } from '@/lib/api';
 import { TASK_PRIORITIES, TASK_STATUSES } from '@/lib/constants';
@@ -43,6 +44,7 @@ function emptyForm(): TaskForm {
 
 export function TasksPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const { data: categories } = useCategories();
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -66,8 +68,9 @@ export function TasksPage() {
     if (!deepLinkId || !tasksQuery.data) return;
     const target = tasksQuery.data.find((t) => t.id === deepLinkId);
     if (target) setCommenting(target);
-    searchParams.delete('taskId');
-    setSearchParams(searchParams, { replace: true });
+    const next = new URLSearchParams(searchParams);
+    next.delete('taskId');
+    setSearchParams(next, { replace: true });
   }, [deepLinkId, tasksQuery.data, searchParams, setSearchParams]);
 
   const invalidate = () => {
@@ -169,7 +172,9 @@ export function TasksPage() {
                     <Badge tone={toneFor(task.status)}>{task.status}</Badge>
                     <Badge tone={toneFor(task.priority)}>{task.priority}</Badge>
                     {task.category ? <Badge tone="primary">{task.category.name}</Badge> : null}
-                    {isTaskOverdue(task) ? <Badge tone="danger">Overdue</Badge> : null}
+                    {isTaskOverdue(task, user?.timezone) ? (
+                      <Badge tone="danger">Overdue</Badge>
+                    ) : null}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {toDateInput(task.date)} — {task.description || 'No description'}

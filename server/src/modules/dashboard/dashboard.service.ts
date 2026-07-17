@@ -51,14 +51,18 @@ export async function getDashboardSummary(
   const where = ownerFilter(ids);
 
   const [tasks, issues, feedbackCount, notesCount] = await Promise.all([
-    db.task.findMany({ where, select: { status: true, dueDate: true } }),
+    db.task.findMany({
+      where,
+      select: { status: true, dueDate: true, owner: { select: { timezone: true } } },
+    }),
     db.issue.findMany({ where, select: { status: true, severity: true } }),
     db.feedback.count({ where }),
     db.note.count({ where }),
   ]);
 
   const completed = tasks.filter((t) => t.status === DONE_TASK_STATUS).length;
-  const overdue = tasks.filter((t) => isTaskOverdue(t)).length;
+  // Overdue is evaluated in each task owner's timezone (docs/ASSUMPTIONS.md §20).
+  const overdue = tasks.filter((t) => isTaskOverdue(t, t.owner.timezone)).length;
   const open = issues.filter((i) => OPEN_ISSUE_STATUSES.includes(i.status as never)).length;
 
   const [recentTasks, recentIssues, recentFeedback, recentNotes] = await Promise.all([
@@ -140,7 +144,13 @@ export async function getTeamOverview(db: Db, actor: JwtPayload): Promise<TeamOv
   const recruits = await db.user.findMany({
     where,
     orderBy: { name: 'asc' },
-    select: { id: true, name: true, email: true, department: { select: { name: true } } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      timezone: true,
+      department: { select: { name: true } },
+    },
   });
 
   const rows = await Promise.all(
@@ -153,7 +163,7 @@ export async function getTeamOverview(db: Db, actor: JwtPayload): Promise<TeamOv
         db.note.count({ where: ownerWhere }),
       ]);
       const taskCompleted = tasks.filter((t) => t.status === DONE_TASK_STATUS).length;
-      const overdue = tasks.filter((t) => isTaskOverdue(t)).length;
+      const overdue = tasks.filter((t) => isTaskOverdue(t, recruit.timezone)).length;
       const openIssues = issues.filter((i) =>
         OPEN_ISSUE_STATUSES.includes(i.status as never),
       ).length;

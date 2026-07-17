@@ -1,20 +1,33 @@
 import { DONE_TASK_STATUS } from './enums.js';
 
-/** Truncates a date to the start of its UTC calendar day. */
-function utcDay(date: Date): number {
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+/**
+ * Formats a date as a `YYYY-MM-DD` calendar day in the given IANA timezone.
+ * `en-CA` yields ISO-ordered date parts, which compare correctly as strings.
+ */
+export function dayInZone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
 }
 
 /**
- * A task is overdue when its due date falls on a UTC calendar day strictly before
- * today and it is not yet complete (docs/ASSUMPTIONS.md §18). Due dates are
- * date-only, so a task due today is not overdue; tasks without a due date never are.
+ * A task is overdue when its (date-only) due day is strictly before "today" in the
+ * owner's timezone and it is not yet complete (docs/ASSUMPTIONS.md §18, §20).
+ *
+ * Due dates are stored as midnight UTC of the chosen calendar day, so the due day
+ * is read back in UTC; "today" is evaluated in the owner's timezone so end-of-day
+ * lands at local midnight. A task due today is therefore not overdue, and tasks
+ * without a due date never are.
  */
 export function isTaskOverdue(
   task: { dueDate: Date | null; status: string },
+  timeZone = 'UTC',
   now: Date = new Date(),
 ): boolean {
   if (!task.dueDate) return false;
   if (task.status === DONE_TASK_STATUS) return false;
-  return utcDay(task.dueDate) < utcDay(now);
+  return dayInZone(task.dueDate, 'UTC') < dayInZone(now, timeZone);
 }

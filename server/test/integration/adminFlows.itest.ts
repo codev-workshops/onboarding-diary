@@ -211,6 +211,37 @@ describe.skipIf(!hasDocker)('Admin management flows on PostgreSQL (Testcontainer
     expect(laptop?.dueDate?.toISOString().slice(0, 10)).toBe('2026-03-02');
   });
 
+  it('provisions and re-assigns a user timezone on Postgres (§20)', async () => {
+    const dept = await createDepartment(db, { name: 'Timezone Dept' });
+
+    const recruit = await createUser(db, {
+      email: 'tz.recruit@pg.local',
+      password: 'Passw0rd!',
+      name: 'Zoned Recruit',
+      role: 'Recruit',
+      startDate: new Date(),
+      departmentId: dept.id,
+      timezone: 'Asia/Kolkata',
+    });
+    expect(recruit.timezone).toBe('Asia/Kolkata');
+
+    const defaulted = await createUser(db, {
+      email: 'tz.default@pg.local',
+      password: 'Passw0rd!',
+      name: 'Default Zone',
+      role: 'Recruit',
+      startDate: new Date(),
+      departmentId: dept.id,
+    });
+    expect(defaulted.timezone).toBe('UTC');
+
+    const moved = await updateUser(db, recruit.id, { timezone: 'America/New_York' });
+    expect(moved.timezone).toBe('America/New_York');
+
+    const persisted = await pg.user.findUnique({ where: { id: recruit.id } });
+    expect(persisted?.timezone).toBe('America/New_York');
+  });
+
   it('records @mention notifications from task comments on Postgres (§19)', async () => {
     const dept = await createDepartment(db, { name: 'Comments Dept' });
     const category = await pg.taskCategory.create({ data: { name: 'General' } });

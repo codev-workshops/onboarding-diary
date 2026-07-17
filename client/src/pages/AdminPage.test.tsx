@@ -19,6 +19,7 @@ const managerA = {
   email: 'mgr.a@demo.local',
   role: 'Manager',
   startDate: '2026-01-01T00:00:00.000Z',
+  timezone: 'UTC',
   departmentId: 'dept-eng',
   managerId: null,
   createdAt: '2026-01-01T00:00:00.000Z',

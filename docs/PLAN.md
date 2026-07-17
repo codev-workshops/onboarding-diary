@@ -134,8 +134,10 @@ Confirmed and built with onboarding enablers + unit + e2e tests, tests in parall
    Joyride step + demo templates. Unit (template service, seeding) + e2e (create
    template → provision recruit with it → tasks appear).
 2. **Task due dates & overdue reminders (§18).** `Task.dueDate?`; overdue =
-   past due & not done; Task Log badge, Dashboard overdue count + reminder, team
-   overview per-recruit overdue. Joyride step. Unit (overdue logic) + e2e.
+   past due & not done, evaluated at end-of-day in the task owner's **admin-managed
+   timezone** (§20, `User.timezone`, default `UTC`); Task Log badge, Dashboard
+   overdue count + reminder, team overview per-recruit overdue. Joyride step.
+   Unit (overdue logic + timezone boundaries) + e2e.
 3. **Comments with @mentions & activity indicator (§19).** New `Comment`/`Mention`
    models on Tasks; server-side @mention parsing (email local-part handles);
    `GET/POST /api/tasks/:id/comments`, `GET /api/mentions` + mark-read; header bell

@@ -81,9 +81,11 @@ test('admin creates a checklist template and provisions a recruit with it', asyn
   await page.getByLabel('Name').fill(`E2E Recruit ${stamp}`);
   await page.getByLabel('Email').fill(recruitEmail);
   await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByLabel('Timezone').selectOption('Asia/Tokyo');
   await page.getByLabel('Checklist template (optional)').selectOption({ label: `${templateName} (1 tasks)` });
   await page.getByRole('button', { name: /create user/i }).click();
-  await expect(page.getByText(recruitEmail)).toBeVisible();
+  // The list shows the provisioned email alongside the admin-set timezone (§20).
+  await expect(page.getByText(`${recruitEmail} · Asia/Tokyo`)).toBeVisible();
   await logout(page);
 
   // The new recruit's Task Log is seeded from the template.

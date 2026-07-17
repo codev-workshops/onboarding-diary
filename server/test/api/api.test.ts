@@ -193,6 +193,74 @@ describe('user provisioning (admin-only)', () => {
       });
     expect(res.status).toBe(400);
   });
+
+  it('stores an admin-provided timezone and defaults to UTC otherwise', async () => {
+    const adminToken = await token('admin@t.local');
+    const withTz = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'tz@t.local',
+        password: 'password123',
+        name: 'Zoned',
+        role: 'Recruit',
+        startDate: '2026-01-01',
+        timezone: 'Asia/Tokyo',
+      });
+    expect(withTz.status).toBe(201);
+    expect(withTz.body.timezone).toBe('Asia/Tokyo');
+
+    const defaulted = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'notz@t.local',
+        password: 'password123',
+        name: 'Default Zone',
+        role: 'Recruit',
+        startDate: '2026-01-01',
+      });
+    expect(defaulted.status).toBe(201);
+    expect(defaulted.body.timezone).toBe('UTC');
+  });
+
+  it('rejects an invalid IANA timezone', async () => {
+    const adminToken = await token('admin@t.local');
+    const res = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'badtz@t.local',
+        password: 'password123',
+        name: 'Bad Zone',
+        role: 'Recruit',
+        startDate: '2026-01-01',
+        timezone: 'Not/AZone',
+      });
+    expect(res.status).toBe(400);
+  });
+
+  it('lets an admin change an existing user timezone', async () => {
+    const adminToken = await token('admin@t.local');
+    const created = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'movezone@t.local',
+        password: 'password123',
+        name: 'Mover',
+        role: 'Recruit',
+        startDate: '2026-01-01',
+        timezone: 'UTC',
+      });
+    expect(created.status).toBe(201);
+    const updated = await request(app)
+      .put(`/api/users/${created.body.id as string}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ timezone: 'Europe/Berlin' });
+    expect(updated.status).toBe(200);
+    expect(updated.body.timezone).toBe('Europe/Berlin');
+  });
 });
 
 describe('tasks CRUD & access scoping', () => {

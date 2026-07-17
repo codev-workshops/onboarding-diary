@@ -18,5 +18,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    coverage: {
+      provider: 'v8',
+      include: ['src/**'],
+      // Exclude non-testable bootstrap and pure type/declaration modules.
+      exclude: ['src/main.tsx', 'src/lib/types.ts', 'src/vite-env.d.ts', 'src/test/**'],
+      reporter: ['text-summary'],
+    },
   },
 });

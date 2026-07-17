@@ -25,4 +25,11 @@ describe('isTaskOverdue', () => {
     const today = new Date().toISOString().slice(0, 10);
     expect(isTaskOverdue({ dueDate: today, status: 'To Do' })).toBe(false);
   });
+
+  it('honours the provided timezone for a valid IANA zone', () => {
+    // A task due long ago is overdue regardless of timezone.
+    const longAgo = '2020-01-01';
+    expect(isTaskOverdue({ dueDate: longAgo, status: 'To Do' }, 'Asia/Tokyo')).toBe(true);
+    expect(isTaskOverdue({ dueDate: longAgo, status: 'To Do' }, 'America/Los_Angeles')).toBe(true);
+  });
 });
