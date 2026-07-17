@@ -4,7 +4,7 @@ import { ApiError } from '../../http/errors.js';
 import { ROLES } from '../../domain/enums.js';
 import { hashPassword } from '../../auth/password.js';
 import { passwordPolicy } from '../../auth/passwordPolicy.js';
-import { applyTemplateToUser } from '../templates/templates.service.js';
+import { applyTemplateToUser, getTemplate } from '../templates/templates.service.js';
 
 const isoDate = z.coerce.date();
 
@@ -84,6 +84,8 @@ export async function createUser(db: Db, input: UserCreateInput) {
   await assertDepartmentValid(db, input.departmentId);
   const existing = await db.user.findUnique({ where: { email: input.email } });
   if (existing) throw ApiError.conflict('A user with that email already exists');
+  // Validate the template up front so an invalid id never orphans a created user.
+  if (input.templateId) await getTemplate(db, input.templateId);
 
   const passwordHash = await hashPassword(input.password);
   const user = await db.user.create({

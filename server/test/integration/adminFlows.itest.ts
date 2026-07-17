@@ -15,6 +15,13 @@ import {
   listUsers,
   updateUser,
 } from '../../src/modules/users/users.service.js';
+import {
+  applyTemplateToUser,
+  createTemplate,
+} from '../../src/modules/templates/templates.service.js';
+import { createComment } from '../../src/modules/comments/comments.service.js';
+import { unreadMentionCount } from '../../src/modules/mentions/mentions.service.js';
+import type { JwtPayload } from '../../src/auth/jwt.js';
 
 const hasDocker = dockerAvailable();
 
@@ -167,5 +174,94 @@ describe.skipIf(!hasDocker)('Admin management flows on PostgreSQL (Testcontainer
 
     // A department with members cannot be deleted.
     await expect(deleteDepartment(db, dept.id)).rejects.toThrow(/still has members/i);
+  });
+
+  it('applies a checklist template to seed a recruit Task Log on Postgres (§17/§18)', async () => {
+    const dept = await createDepartment(db, { name: 'Templates Dept' });
+    const category = await pg.taskCategory.create({ data: { name: 'Onboarding Setup' } });
+
+    const template = await createTemplate(db, {
+      name: 'PG onboarding',
+      description: 'Standard checklist',
+      role: 'Recruit',
+      departmentId: dept.id,
+      items: [
+        { title: 'Set up laptop', description: '', priority: 'High', dueOffsetDays: 1, categoryId: category.id },
+        { title: 'Read docs', description: '', priority: 'Low', dueOffsetDays: 7, categoryId: null },
+      ],
+    });
+    expect(template.items).toHaveLength(2);
+
+    const recruit = await createUser(db, {
+      email: 'template.recruit@pg.local',
+      password: 'Passw0rd!',
+      name: 'Template Recruit',
+      role: 'Recruit',
+      startDate: new Date('2026-03-01T00:00:00.000Z'),
+      departmentId: dept.id,
+    });
+
+    const seeded = await applyTemplateToUser(db, template.id, recruit.id);
+    expect(seeded).toBe(2);
+
+    const tasks = await pg.task.findMany({ where: { ownerId: recruit.id } });
+    expect(tasks).toHaveLength(2);
+    const laptop = tasks.find((t) => t.title === 'Set up laptop');
+    expect(laptop?.status).toBe('To Do');
+    expect(laptop?.dueDate?.toISOString().slice(0, 10)).toBe('2026-03-02');
+  });
+
+  it('records @mention notifications from task comments on Postgres (§19)', async () => {
+    const dept = await createDepartment(db, { name: 'Comments Dept' });
+    const category = await pg.taskCategory.create({ data: { name: 'General' } });
+
+    const manager = await createUser(db, {
+      email: 'comment.manager@pg.local',
+      password: 'Passw0rd!',
+      name: 'Comment Manager',
+      role: 'Manager',
+      startDate: new Date(),
+      departmentId: dept.id,
+    });
+    const recruit = await createUser(db, {
+      email: 'comment.recruit@pg.local',
+      password: 'Passw0rd!',
+      name: 'Comment Recruit',
+      role: 'Recruit',
+      startDate: new Date(),
+      departmentId: dept.id,
+      managerId: manager.id,
+    });
+
+    const task = await pg.task.create({
+      data: {
+        ownerId: recruit.id,
+        date: new Date(),
+        title: 'PG task',
+        description: '',
+        status: 'To Do',
+        priority: 'Low',
+        categoryId: category.id,
+      },
+    });
+
+    const recruitActor: JwtPayload = {
+      sub: recruit.id,
+      role: 'Recruit',
+      name: recruit.name,
+      email: recruit.email,
+    };
+    const managerActor: JwtPayload = {
+      sub: manager.id,
+      role: 'Manager',
+      name: manager.name,
+      email: manager.email,
+    };
+
+    const comment = await createComment(db, recruitActor, task.id, {
+      body: 'Need input @comment.manager',
+    });
+    expect(comment.mentions).toHaveLength(1);
+    expect(await unreadMentionCount(db, managerActor)).toBe(1);
   });
 });

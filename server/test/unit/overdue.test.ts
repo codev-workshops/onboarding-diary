@@ -22,4 +22,9 @@ describe('isTaskOverdue', () => {
   it('is false when the due date is in the future', () => {
     expect(isTaskOverdue({ dueDate: future, status: 'To Do' }, now)).toBe(false);
   });
+
+  it('is false when due today (date-only UTC semantics)', () => {
+    const laterToday = new Date('2026-06-15T23:59:59.000Z');
+    expect(isTaskOverdue({ dueDate: laterToday, status: 'To Do' }, now)).toBe(false);
+  });
 });

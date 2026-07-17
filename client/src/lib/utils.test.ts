@@ -20,4 +20,9 @@ describe('isTaskOverdue', () => {
   it('is false when due in the future', () => {
     expect(isTaskOverdue({ dueDate: tomorrow, status: 'To Do' })).toBe(false);
   });
+
+  it('is false when due today (date-only UTC semantics)', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    expect(isTaskOverdue({ dueDate: today, status: 'To Do' })).toBe(false);
+  });
 });

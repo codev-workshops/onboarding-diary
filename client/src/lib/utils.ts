@@ -12,12 +12,17 @@ export function toDateInput(value: string | Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+function utcDay(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
 /**
- * A task is overdue when it has a due date in the past and is not yet done
- * (docs/ASSUMPTIONS.md §18). Mirrors the server-side `isTaskOverdue`.
+ * A task is overdue when its due date falls on a UTC calendar day strictly before
+ * today and is not yet done (docs/ASSUMPTIONS.md §18). Due dates are date-only, so
+ * a task due today is not overdue. Mirrors the server-side `isTaskOverdue`.
  */
 export function isTaskOverdue(task: { dueDate: string | null; status: string }): boolean {
   if (!task.dueDate) return false;
   if (task.status === 'Done') return false;
-  return new Date(task.dueDate).getTime() < Date.now();
+  return utcDay(new Date(task.dueDate)) < utcDay(new Date());
 }

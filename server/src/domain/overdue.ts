@@ -1,9 +1,14 @@
 import { DONE_TASK_STATUS } from './enums.js';
 
+/** Truncates a date to the start of its UTC calendar day. */
+function utcDay(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
 /**
- * A task is overdue when it has a due date strictly in the past and it is not yet
- * complete (docs/ASSUMPTIONS.md §18). Due dates are optional, so tasks without a
- * due date are never overdue.
+ * A task is overdue when its due date falls on a UTC calendar day strictly before
+ * today and it is not yet complete (docs/ASSUMPTIONS.md §18). Due dates are
+ * date-only, so a task due today is not overdue; tasks without a due date never are.
  */
 export function isTaskOverdue(
   task: { dueDate: Date | null; status: string },
@@ -11,5 +16,5 @@ export function isTaskOverdue(
 ): boolean {
   if (!task.dueDate) return false;
   if (task.status === DONE_TASK_STATUS) return false;
-  return task.dueDate.getTime() < now.getTime();
+  return utcDay(task.dueDate) < utcDay(now);
 }
