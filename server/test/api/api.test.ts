@@ -12,6 +12,7 @@ const dir = mkdtempSync(join(tmpdir(), 'onboarding-api-'));
 const url = `file:${join(dir, 'api.db')}`;
 process.env.DATABASE_URL = url;
 process.env.JWT_SECRET = 'test-secret';
+process.env.DEMO_MODE = 'true';
 execSync('npx prisma db push --skip-generate --accept-data-loss', {
   cwd: process.cwd(),
   env: { ...process.env, DATABASE_URL: url },
@@ -58,7 +59,13 @@ beforeEach(async () => {
   const passwordHash = await hashPassword('password123');
   const dept = await db.department.create({ data: { name: 'Engineering' } });
   await db.user.create({
-    data: { email: 'admin@t.local', passwordHash, name: 'Admin', role: 'Admin', startDate: new Date() },
+    data: {
+      email: 'admin@t.local',
+      passwordHash,
+      name: 'Admin',
+      role: 'Admin',
+      startDate: new Date(),
+    },
   });
   const manager = await db.user.create({
     data: {
@@ -108,11 +115,24 @@ describe('health & config', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('onboardingEnablersEnabled');
   });
+
+  it('exposes demo credentials only in demo mode (default), scoped to @demo.local', async () => {
+    const res = await request(app).get('/api/config/demo');
+    expect(res.status).toBe(200);
+    expect(res.body.password).toBeTruthy();
+    expect(Array.isArray(res.body.accounts)).toBe(true);
+    expect(res.body.accounts.length).toBeGreaterThan(0);
+    for (const account of res.body.accounts as { email: string }[]) {
+      expect(account.email.endsWith('@demo.local')).toBe(true);
+    }
+  });
 });
 
 describe('auth', () => {
   it('rejects bad credentials', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'admin@t.local', password: 'wrong' });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'admin@t.local', password: 'wrong' });
     expect(res.status).toBe(401);
   });
 
@@ -149,7 +169,13 @@ describe('user provisioning (admin-only)', () => {
     const forbidden = await request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${recruitToken}`)
-      .send({ email: 'x@t.local', password: 'password123', name: 'X', role: 'Recruit', startDate: '2026-01-01' });
+      .send({
+        email: 'x@t.local',
+        password: 'password123',
+        name: 'X',
+        role: 'Recruit',
+        startDate: '2026-01-01',
+      });
     expect(forbidden.status).toBe(403);
   });
 
@@ -158,7 +184,13 @@ describe('user provisioning (admin-only)', () => {
     const res = await request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ email: 'weak@t.local', password: 'short', name: 'Weak', role: 'Recruit', startDate: '2026-01-01' });
+      .send({
+        email: 'weak@t.local',
+        password: 'short',
+        name: 'Weak',
+        role: 'Recruit',
+        startDate: '2026-01-01',
+      });
     expect(res.status).toBe(400);
   });
 });
@@ -166,17 +198,14 @@ describe('user provisioning (admin-only)', () => {
 describe('tasks CRUD & access scoping', () => {
   it('creates, lists, updates and deletes a task for its owner', async () => {
     const t = await token('recruita@t.local');
-    const created = await request(app)
-      .post('/api/tasks')
-      .set('Authorization', `Bearer ${t}`)
-      .send({
-        date: '2026-01-01',
-        title: 'Task 1',
-        description: 'do it',
-        categoryId,
-        status: 'To Do',
-        priority: 'Low',
-      });
+    const created = await request(app).post('/api/tasks').set('Authorization', `Bearer ${t}`).send({
+      date: '2026-01-01',
+      title: 'Task 1',
+      description: 'do it',
+      categoryId,
+      status: 'To Do',
+      priority: 'Low',
+    });
     expect(created.status).toBe(201);
     const id = created.body.id as string;
 
@@ -198,14 +227,25 @@ describe('tasks CRUD & access scoping', () => {
     await request(app)
       .post('/api/tasks')
       .set('Authorization', `Bearer ${recruitToken}`)
-      .send({ date: '2026-01-01', title: 'Mine', description: '', categoryId, status: 'To Do', priority: 'Low' });
+      .send({
+        date: '2026-01-01',
+        title: 'Mine',
+        description: '',
+        categoryId,
+        status: 'To Do',
+        priority: 'Low',
+      });
 
     const managerToken = await token('manager@t.local');
-    const managerList = await request(app).get('/api/tasks').set('Authorization', `Bearer ${managerToken}`);
+    const managerList = await request(app)
+      .get('/api/tasks')
+      .set('Authorization', `Bearer ${managerToken}`);
     expect(managerList.body.map((x: { title: string }) => x.title)).toContain('Mine');
 
     const otherToken = await token('recruitb@t.local');
-    const otherList = await request(app).get('/api/tasks').set('Authorization', `Bearer ${otherToken}`);
+    const otherList = await request(app)
+      .get('/api/tasks')
+      .set('Authorization', `Bearer ${otherToken}`);
     expect(otherList.body).toHaveLength(0);
   });
 
@@ -214,7 +254,14 @@ describe('tasks CRUD & access scoping', () => {
     const res = await request(app)
       .post('/api/tasks')
       .set('Authorization', `Bearer ${t}`)
-      .send({ date: '2026-01-01', title: 'x', description: '', categoryId: 'nope', status: 'To Do', priority: 'Low' });
+      .send({
+        date: '2026-01-01',
+        title: 'x',
+        description: '',
+        categoryId: 'nope',
+        status: 'To Do',
+        priority: 'Low',
+      });
     expect(res.status).toBe(400);
   });
 });
@@ -225,7 +272,14 @@ describe('categories soft-disable', () => {
     await request(app)
       .post('/api/tasks')
       .set('Authorization', `Bearer ${recruitToken}`)
-      .send({ date: '2026-01-01', title: 'x', description: '', categoryId, status: 'To Do', priority: 'Low' });
+      .send({
+        date: '2026-01-01',
+        title: 'x',
+        description: '',
+        categoryId,
+        status: 'To Do',
+        priority: 'Low',
+      });
 
     const adminToken = await token('admin@t.local');
     const res = await request(app)
@@ -246,12 +300,25 @@ describe('dashboard & reports', () => {
       await request(app)
         .post('/api/tasks')
         .set('Authorization', `Bearer ${recruitToken}`)
-        .send({ date: '2026-01-01', title: status, description: '', categoryId, status, priority: 'Low' });
+        .send({
+          date: '2026-01-01',
+          title: status,
+          description: '',
+          categoryId,
+          status,
+          priority: 'Low',
+        });
     }
     await request(app)
       .post('/api/issues')
       .set('Authorization', `Bearer ${recruitToken}`)
-      .send({ date: '2026-01-01', title: 'issue', description: '', severity: 'High', status: 'Open' });
+      .send({
+        date: '2026-01-01',
+        title: 'issue',
+        description: '',
+        severity: 'High',
+        status: 'Open',
+      });
   });
 
   it('summarizes tasks and issues with correct semantics', async () => {
@@ -269,7 +336,9 @@ describe('dashboard & reports', () => {
     const json = await request(app).get(`/api/reports?${q}`).set('Authorization', `Bearer ${t}`);
     expect(json.body.summary.taskTotal).toBe(2);
 
-    const csv = await request(app).get(`/api/reports/export.csv?${q}`).set('Authorization', `Bearer ${t}`);
+    const csv = await request(app)
+      .get(`/api/reports/export.csv?${q}`)
+      .set('Authorization', `Bearer ${t}`);
     expect(csv.status).toBe(200);
     expect(csv.headers['content-type']).toContain('text/csv');
     expect(csv.text).toContain('Task');
@@ -280,6 +349,40 @@ describe('dashboard & reports', () => {
     const res = await request(app)
       .get('/api/reports?start=2026-01-01&end=2026-01-31&recruitId=nope')
       .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('builds a manager team overview scoped to overseen recruits', async () => {
+    const managerToken = await token('manager@t.local');
+    const res = await request(app)
+      .get('/api/dashboard/team')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    const names = (res.body.recruits as { name: string }[]).map((r) => r.name);
+    expect(names).toContain('Recruit A');
+    expect(names).not.toContain('Recruit B');
+    const rina = (
+      res.body.recruits as { name: string; taskTotal: number; taskCompleted: number }[]
+    ).find((r) => r.name === 'Recruit A');
+    expect(rina?.taskTotal).toBe(2);
+    expect(rina?.taskCompleted).toBe(1);
+  });
+
+  it('lets an admin see all recruits in the team overview', async () => {
+    const adminToken = await token('admin@t.local');
+    const res = await request(app)
+      .get('/api/dashboard/team')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    const names = (res.body.recruits as { name: string }[]).map((r) => r.name);
+    expect(names).toEqual(expect.arrayContaining(['Recruit A', 'Recruit B']));
+  });
+
+  it('forbids a recruit from the team overview', async () => {
+    const recruitToken = await token('recruita@t.local');
+    const res = await request(app)
+      .get('/api/dashboard/team')
+      .set('Authorization', `Bearer ${recruitToken}`);
     expect(res.status).toBe(403);
   });
 });

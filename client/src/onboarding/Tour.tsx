@@ -7,7 +7,8 @@ const KEY = 'onboarding.tour.done';
 const STEPS: Step[] = [
   {
     target: '[data-tour="sidebar"]',
-    content: 'Welcome! Use this navigation to move between your diary sections.',
+    content:
+      'Welcome! This is a demo environment pre-loaded with sample users, departments and entries — the login screen lists every demo account and its shared password. Use this navigation to move between your diary sections.',
     placement: 'right',
     disableBeacon: true,
   },

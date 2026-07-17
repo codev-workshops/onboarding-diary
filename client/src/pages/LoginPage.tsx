@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useDemoCredentials } from '@/hooks/data';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { ApiError } from '@/lib/api';
+import { landingPathFor } from '@/lib/roles';
 
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const { data: config } = useAppConfig();
+  const demoEnabled = config?.onboardingEnablersEnabled ?? false;
+  const { data: demo } = useDemoCredentials(demoEnabled);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +27,8 @@ export function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(email, password);
-      navigate('/');
+      const user = await login(email, password);
+      navigate(landingPathFor(user.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Login failed');
     } finally {
@@ -31,14 +36,14 @@ export function LoginPage() {
     }
   }
 
-  function fillDemo() {
-    setEmail('admin@demo.local');
-    setPassword('Passw0rd!');
+  function fillDemo(demoEmail: string) {
+    setEmail(demoEmail);
+    if (demo) setPassword(demo.password);
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      <Card className={demoEnabled ? 'w-full max-w-lg' : 'w-full max-w-md'}>
         <CardHeader>
           <CardTitle className="text-2xl">Onboarding Diary</CardTitle>
           <p className="text-sm text-muted-foreground">Sign in to your account</p>
@@ -77,15 +82,39 @@ export function LoginPage() {
             </Button>
           </form>
 
-          {config?.demoMode ? (
-            <div className="mt-6 rounded-md border border-dashed border-border p-4 text-sm">
-              <p className="mb-2 font-medium">Demo mode</p>
+          {demoEnabled && demo ? (
+            <div
+              className="mt-6 rounded-md border border-dashed border-border p-4 text-sm"
+              data-tour="demo-credentials"
+            >
+              <p className="mb-1 font-medium">Demo mode — pre-provisioned accounts</p>
               <p className="text-muted-foreground">
-                Try it with <code>admin@demo.local</code> / <code>Passw0rd!</code>
+                This is seeded demo data. Every account uses the password{' '}
+                <code>{demo.password}</code>. Pick one to sign in:
               </p>
-              <Button variant="outline" size="sm" className="mt-3" type="button" onClick={fillDemo}>
-                Fill demo credentials
-              </Button>
+              <ul className="mt-3 space-y-1">
+                {demo.accounts.map((account) => (
+                  <li key={account.email}>
+                    <button
+                      type="button"
+                      onClick={() => fillDemo(account.email)}
+                      className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted"
+                    >
+                      <span className="truncate">
+                        <span className="font-medium">{account.name}</span>{' '}
+                        <span className="text-muted-foreground">· {account.email}</span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        <Badge tone="primary">{account.role}</Badge>
+                        <Badge tone="neutral">{account.department}</Badge>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Departments: {demo.departments.join(', ')}
+              </p>
             </div>
           ) : null}
         </CardContent>

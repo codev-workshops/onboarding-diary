@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/auth/password.js';
+import { DEMO_PASSWORD } from '../src/domain/demo.js';
 import {
   DEFAULT_TASK_CATEGORIES,
   FEEDBACK_TYPES,
@@ -11,8 +12,7 @@ import {
 
 const prisma = new PrismaClient();
 
-/** Shared password for all demo accounts (docs/ASSUMPTIONS.md §9 — demo only). */
-export const DEMO_PASSWORD = 'Passw0rd!';
+export { DEMO_PASSWORD };
 
 function daysAgo(n: number): Date {
   const d = new Date();

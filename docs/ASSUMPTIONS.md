@@ -9,6 +9,7 @@ This document records every decision that is **not** explicitly specified in
 
 > **✅ Product-owner sign-off received.** All previously-open items have been
 > confirmed and implementation can begin:
+>
 > - Storage engine default / first-boot behavior — **confirmed** (§2)
 > - Tech stack — **confirmed** as React + REST (§3, details in `techstack.md`)
 > - Enum value sets — **confirmed** two-tier model, seeded defaults, and
@@ -19,6 +20,7 @@ This document records every decision that is **not** explicitly specified in
 >   `PasswordPolicy` (min 8 chars in v1) (§1)
 >
 > **✅ Planning-phase items — now confirmed:**
+>
 > - Demo seed data & demo accounts on first boot — multiple departments, managers,
 >   and recruits (§9)
 > - User provisioning model — Admin-created, no open self-registration (§10)
@@ -82,7 +84,7 @@ rather than dependency inventory.
 
 Rather than treating every categorical field as a single "define the enum values"
 decision, value sets are split into **two tiers** based on whether the app's
-features depend on the *semantic meaning* of each value.
+features depend on the _semantic meaning_ of each value.
 
 ### Tier 1 — Admin-configurable
 
@@ -93,7 +95,7 @@ features depend on the *semantic meaning* of each value.
   or filtering new tasks) rather than a **hard delete**, to avoid orphaning
   existing task entries.
 - Category is safe to make free-form/admin-editable because no feature relies on
-  the specific *meaning* of any given category — it is used only for grouping and
+  the specific _meaning_ of any given category — it is used only for grouping and
   filtering.
 
 ### Tier 2 — Seeded defaults (system-defined in v1, not free-form editable)
@@ -106,11 +108,11 @@ are **not** free-form editable by the Admin:
 - Issue `severity`
 - Issue `status`
 
-**Rationale:** the Dashboard and Reports depend on the *semantic meaning* of these
+**Rationale:** the Dashboard and Reports depend on the _semantic meaning_ of these
 values, not just their labels. For example:
 
-- "Task completion progress" needs to know *which* status means **done**.
-- "Open issues at a glance" needs to know *which* issue statuses count as **open**
+- "Task completion progress" needs to know _which_ status means **done**.
+- "Open issues at a glance" needs to know _which_ issue statuses count as **open**
   vs. resolved.
 - Priority and severity carry an inherent **ordering** (Low < Medium < High < …)
   that Reports and sorting rely on.
@@ -163,7 +165,7 @@ Dashboard, and Reports depend on a stable, well-defined set.
 - An **Admin explicitly assigns** recruits to managers; this assignment is the
   oversight relationship used for manager reports and access control.
 - Both **managers and recruits are members of a department**. Department is a
-  membership attribute of users, *not* the mechanism that drives oversight.
+  membership attribute of users, _not_ the mechanism that drives oversight.
 - Oversight is deliberately **not** department-derived: a department could have
   zero or multiple managers, which would make department-based oversight
   ambiguous. Explicit Admin assignment keeps the relationship unambiguous and
@@ -283,7 +285,7 @@ unit and e2e tests.
   system-managed **`createdAt`** and **`updatedAt`** audit timestamps used for
   ordering (e.g. "recent entries") and diagnostics.
 - These are **distinct** from the entry `date` and are **not** user-editable; §8's
-  point stands (no immutable `createdAt` rule is needed *for the entry date*).
+  point stands (no immutable `createdAt` rule is needed _for the entry date_).
 
 **Rationale:** Standard persistence practice; needed for "recent entries" ordering
 without conflating with the user-entered event date.
@@ -294,11 +296,11 @@ without conflating with the user-entered event date.
 
 Behavior is governed by a single **demo-mode feature flag**:
 
-| Flag | Production DB configured? | Datasource used | Onboarding enablers |
-| ---- | ------------------------- | --------------- | ------------------- |
-| **ON**  | (ignored)  | **Demo** (SQLite/in-memory) | **On** |
-| **OFF** | Yes        | **Production** (e.g. PostgreSQL) | Off |
-| **OFF** | No         | **Demo** (fallback) | Off |
+| Flag    | Production DB configured? | Datasource used                  | Onboarding enablers |
+| ------- | ------------------------- | -------------------------------- | ------------------- |
+| **ON**  | (ignored)                 | **Demo** (SQLite/in-memory)      | **On**              |
+| **OFF** | Yes                       | **Production** (e.g. PostgreSQL) | Off                 |
+| **OFF** | No                        | **Demo** (fallback)              | Off                 |
 
 - **Flag ON** → demo database **and** onboarding enablers (tooltips / coach marks /
   welcome mats) are active.
@@ -325,3 +327,50 @@ configured (fall back to the demo DB but without the enablers).
 
 **Rationale:** The MANDATE mandates a REST backend and per-field filters but not
 the concrete API shape; these are conventional choices recorded for consistency.
+
+## 15. Role-specific landing pages
+
+**Status:** confirmed
+
+Each role lands on a **separate** page after login (chosen over one role-aware
+dashboard for maintainability):
+
+| Role        | Landing route | Focus                                                                                                                       |
+| ----------- | ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Recruit** | `/dashboard`  | Their own onboarding progress: task counts/completion, open issues, recent entries.                                         |
+| **Manager** | `/team`       | Team overview: each overseen recruit with per-recruit task completion, open issues, and entry counts; drill-in via Reports. |
+| **Admin**   | `/overview`   | Organization overview: totals across users/departments plus quick links to user/department/category management.             |
+
+- Login and any bare/unknown authenticated route **redirect to the role's landing
+  route**. Each landing route is guarded so a user cannot open another role's
+  landing page (e.g. a Recruit visiting `/team` or `/overview` is redirected).
+- The existing per-log pages (`/tasks`, `/issues`, `/feedback`, `/notes`,
+  `/reports`) remain shared and role-scoped by §7; `/admin` remains Admin-only.
+
+**Rationale:** The MANDATE lists role-specific capabilities but not distinct
+landings. Separate routes make each role's first screen purpose-built and easier
+to evolve independently.
+
+## 16. Demo credentials helper (demo mode only)
+
+**Status:** confirmed
+
+To make the seeded demo environment self-explanatory (usability, §9), the app can
+surface the **provisioned demo accounts and their shared demo password** in the
+onboarding UI (login helper + React Joyride).
+
+**Security requirements (hard gate):**
+
+- The demo-credentials endpoint (`GET /api/config/demo`) returns the demo account
+  list + password **only when onboarding enablers are active** (i.e. demo mode,
+  per §13). When enablers are off it returns **404 with no data**.
+- The endpoint exposes a **static, code-defined list of the `@demo.local` seed
+  accounts only** — it never queries the database for real users and never returns
+  password hashes or any non-demo account. The "password" it returns is the
+  well-known demo constant, never a real credential.
+- This behavior is covered by tests asserting the account list and password are
+  available in demo mode **and** unavailable (404) when demo mode is off.
+
+**Rationale:** Showing the demo logins removes first-use friction, but must be
+impossible outside demo mode; gating on the same flag that governs the demo
+datasource keeps it safe and simple.

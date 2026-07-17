@@ -5,7 +5,7 @@ import type { CurrentUser } from '@/lib/types';
 interface AuthContextValue {
   user: CurrentUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<CurrentUser>;
   logout: () => void;
 }
 
@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         setToken(res.token);
         setUser(res.user);
+        return res.user;
       },
       logout() {
         setToken(null);

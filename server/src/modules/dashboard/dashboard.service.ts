@@ -101,3 +101,78 @@ function toRecent(
 ): RecentEntry {
   return { id, kind, title, date: date.toISOString(), createdAt: createdAt.toISOString() };
 }
+
+export interface TeamRecruitSummary {
+  id: string;
+  name: string;
+  email: string;
+  department: string | null;
+  taskTotal: number;
+  taskCompleted: number;
+  completionRate: number;
+  openIssues: number;
+  feedbackTotal: number;
+  noteTotal: number;
+}
+
+export interface TeamOverview {
+  recruits: TeamRecruitSummary[];
+  totals: {
+    recruits: number;
+    openIssues: number;
+    completionRate: number;
+  };
+}
+
+/**
+ * Builds the manager/admin team overview: one progress row per overseen recruit
+ * (docs/ASSUMPTIONS.md §15). Admins see all recruits; managers see the recruits
+ * they oversee (§7).
+ */
+export async function getTeamOverview(db: Db, actor: JwtPayload): Promise<TeamOverview> {
+  const where = actor.role === 'Admin' ? { role: 'Recruit' } : { managerId: actor.sub };
+  const recruits = await db.user.findMany({
+    where,
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, email: true, department: { select: { name: true } } },
+  });
+
+  const rows = await Promise.all(
+    recruits.map(async (recruit): Promise<TeamRecruitSummary> => {
+      const ownerWhere = { ownerId: recruit.id };
+      const [tasks, issues, feedbackTotal, noteTotal] = await Promise.all([
+        db.task.findMany({ where: ownerWhere, select: { status: true } }),
+        db.issue.findMany({ where: ownerWhere, select: { status: true } }),
+        db.feedback.count({ where: ownerWhere }),
+        db.note.count({ where: ownerWhere }),
+      ]);
+      const taskCompleted = tasks.filter((t) => t.status === DONE_TASK_STATUS).length;
+      const openIssues = issues.filter((i) =>
+        OPEN_ISSUE_STATUSES.includes(i.status as never),
+      ).length;
+      return {
+        id: recruit.id,
+        name: recruit.name,
+        email: recruit.email,
+        department: recruit.department?.name ?? null,
+        taskTotal: tasks.length,
+        taskCompleted,
+        completionRate: tasks.length === 0 ? 0 : Math.round((taskCompleted / tasks.length) * 100),
+        openIssues,
+        feedbackTotal,
+        noteTotal,
+      };
+    }),
+  );
+
+  const taskTotal = rows.reduce((sum, r) => sum + r.taskTotal, 0);
+  const completedTotal = rows.reduce((sum, r) => sum + r.taskCompleted, 0);
+  return {
+    recruits: rows,
+    totals: {
+      recruits: rows.length,
+      openIssues: rows.reduce((sum, r) => sum + r.openIssues, 0),
+      completionRate: taskTotal === 0 ? 0 : Math.round((completedTotal / taskTotal) * 100),
+    },
+  };
+}

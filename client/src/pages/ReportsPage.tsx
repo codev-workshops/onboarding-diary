@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState, ErrorState } from '@/components/states';
@@ -26,8 +27,9 @@ export function ReportsPage() {
   const { user } = useAuth();
   const canScope = user?.role === 'Manager' || user?.role === 'Admin';
   const { data: users } = useUsers(canScope);
+  const [searchParams] = useSearchParams();
   const [range, setRange] = useState(defaultRange());
-  const [recruitId, setRecruitId] = useState('');
+  const [recruitId, setRecruitId] = useState(() => searchParams.get('recruitId') ?? '');
   const [report, setReport] = useState<ReportData | null>(null);
 
   const recruits = users?.filter((u) => u.role === 'Recruit') ?? [];
@@ -128,8 +130,14 @@ function ReportView({ report }: { report: ReportData }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Metric label="Tasks" value={`${report.summary.taskCompleted}/${report.summary.taskTotal}`} />
-          <Metric label="Open issues" value={`${report.summary.issueOpen}/${report.summary.issueTotal}`} />
+          <Metric
+            label="Tasks"
+            value={`${report.summary.taskCompleted}/${report.summary.taskTotal}`}
+          />
+          <Metric
+            label="Open issues"
+            value={`${report.summary.issueOpen}/${report.summary.issueTotal}`}
+          />
           <Metric label="Feedback" value={report.summary.feedbackTotal} />
           <Metric label="Notes" value={report.summary.noteTotal} />
         </CardContent>

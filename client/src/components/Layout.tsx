@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Building2,
   ClipboardList,
   FileText,
   LayoutDashboard,
@@ -10,12 +11,14 @@ import {
   Settings,
   Sun,
   TriangleAlert,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
+import type { Role } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -25,8 +28,14 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-const NAV: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+// Role-specific landing entry (docs/ASSUMPTIONS.md §15).
+const HOME_NAV: Record<Role, NavItem> = {
+  Recruit: { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  Manager: { to: '/team', label: 'Team', icon: Users },
+  Admin: { to: '/overview', label: 'Overview', icon: Building2 },
+};
+
+const SHARED_NAV: NavItem[] = [
   { to: '/tasks', label: 'Tasks', icon: ClipboardList },
   { to: '/issues', label: 'Issues', icon: TriangleAlert },
   { to: '/feedback', label: 'Feedback', icon: MessageSquare },
@@ -40,7 +49,8 @@ export function Layout() {
   const { theme, toggle } = useTheme();
   const [open, setOpen] = useState(false);
 
-  const items = NAV.filter((n) => !n.adminOnly || user?.role === 'Admin');
+  const home = user ? HOME_NAV[user.role] : HOME_NAV.Recruit;
+  const items = [home, ...SHARED_NAV].filter((n) => !n.adminOnly || user?.role === 'Admin');
 
   return (
     <div className="min-h-screen">
@@ -83,7 +93,6 @@ export function Layout() {
               <li key={to}>
                 <NavLink
                   to={to}
-                  end={to === '/'}
                   onClick={() => setOpen(false)}
                   data-tour={`nav-${label.toLowerCase()}`}
                   className={({ isActive }) =>

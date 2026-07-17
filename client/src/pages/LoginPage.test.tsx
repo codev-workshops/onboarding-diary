@@ -35,13 +35,59 @@ describe('LoginPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows demo credentials helper in demo mode', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue(
-      jsonResponse({ demoMode: true, onboardingEnablersEnabled: true, datasource: 'demo' }),
-    );
+  it('shows demo credentials helper with provisioned accounts in demo mode', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('/api/config/demo')) {
+        return Promise.resolve(
+          jsonResponse({
+            password: 'Passw0rd!',
+            departments: ['Engineering', 'Design'],
+            accounts: [
+              {
+                email: 'admin@demo.local',
+                name: 'Ada Admin',
+                role: 'Admin',
+                department: 'Engineering',
+              },
+              {
+                email: 'recruit.rina@demo.local',
+                name: 'Rina Recruit',
+                role: 'Recruit',
+                department: 'Engineering',
+              },
+            ],
+          }),
+        );
+      }
+      if (url.includes('/api/config')) {
+        return Promise.resolve(
+          jsonResponse({ demoMode: true, onboardingEnablersEnabled: true, datasource: 'demo' }),
+        );
+      }
+      return Promise.resolve(jsonResponse({}, false, 404));
+    });
     renderPage();
-    expect(await screen.findByText(/Demo mode/i)).toBeInTheDocument();
-    expect(screen.getByText('admin@demo.local')).toBeInTheDocument();
+    expect(await screen.findByText(/pre-provisioned accounts/i)).toBeInTheDocument();
+    expect(screen.getByText('admin@demo.local', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('recruit.rina@demo.local', { exact: false })).toBeInTheDocument();
+  });
+
+  it('does not fetch or show demo credentials when demo mode is off', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('/api/config')) {
+        return Promise.resolve(
+          jsonResponse({ demoMode: false, onboardingEnablersEnabled: false, datasource: 'demo' }),
+        );
+      }
+      return Promise.resolve(jsonResponse({}, false, 404));
+    });
+    renderPage();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(screen.queryByText(/pre-provisioned accounts/i)).not.toBeInTheDocument();
+    const demoCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/config/demo'));
+    expect(demoCalls).toHaveLength(0);
   });
 
   it('submits credentials and stores the token', async () => {

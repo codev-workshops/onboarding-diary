@@ -69,7 +69,12 @@ export interface Note {
 }
 
 export interface DashboardSummary {
-  tasks: { total: number; completed: number; completionRate: number; byStatus: Record<string, number> };
+  tasks: {
+    total: number;
+    completed: number;
+    completionRate: number;
+    byStatus: Record<string, number>;
+  };
   issues: { total: number; open: number; bySeverity: Record<string, number> };
   feedback: { total: number };
   notes: { total: number };
@@ -118,4 +123,35 @@ export interface AppConfig {
   demoMode: boolean;
   onboardingEnablersEnabled: boolean;
   datasource: 'demo' | 'production';
+}
+
+export interface DemoAccount {
+  email: string;
+  name: string;
+  role: Role;
+  department: string;
+}
+
+export interface DemoCredentials {
+  password: string;
+  departments: string[];
+  accounts: DemoAccount[];
+}
+
+export interface TeamRecruitSummary {
+  id: string;
+  name: string;
+  email: string;
+  department: string | null;
+  taskTotal: number;
+  taskCompleted: number;
+  completionRate: number;
+  openIssues: number;
+  feedbackTotal: number;
+  noteTotal: number;
+}
+
+export interface TeamOverview {
+  recruits: TeamRecruitSummary[];
+  totals: { recruits: number; openIssues: number; completionRate: number };
 }
