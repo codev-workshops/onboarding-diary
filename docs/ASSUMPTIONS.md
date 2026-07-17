@@ -18,11 +18,12 @@ This document records every decision that is **not** explicitly specified in
 > - Auth mechanism & password policy — **confirmed** as JWT + upgradeable
 >   `PasswordPolicy` (min 8 chars in v1) (§1)
 >
-> **⚠️ New items surfaced during planning — pending product-owner sign-off:**
-> - Demo seed data & demo accounts on first boot (§9)
+> **✅ Planning-phase items — now confirmed:**
+> - Demo seed data & demo accounts on first boot — multiple departments, managers,
+>   and recruits (§9)
 > - User provisioning model — Admin-created, no open self-registration (§10)
-> - Reports scope & format — which entry types, date-range semantics, file layout (§11)
-> - Onboarding-enabler disable trigger — precise condition (§13)
+> - Reports — render on screen first, then export to PDF/CSV (§11)
+> - Demo-mode feature flag driving datasource + onboarding enablers (§13)
 
 ---
 
@@ -55,6 +56,9 @@ the session/JWT choice or password policy. Isolating the rules in
   users.
 - Once an **admin configures a production database** (e.g., PostgreSQL) and data
   is populated, the **onboarding enablers are disabled** automatically.
+
+The precise datasource/enabler behavior is governed by a **demo-mode feature
+flag** — see §13.
 
 **Rationale:** This first-boot experience is a **product-owner addition** and is
 **not** in the MANDATE, which only requires generic "database persistence".
@@ -211,31 +215,36 @@ code is written**, per the product owner's requirement.
 
 ## 9. First-boot demo data & demo accounts
 
-**Status:** pending confirmation
+**Status:** confirmed
 
 The principal implementation concern is **usability**: a default installation must
 let a user understand **all** features immediately. To achieve this, first boot
 seeds a **demonstration dataset** on the zero-config (SQLite/in-memory) database:
 
-- **Demo accounts** — one per role: a Recruit, a Manager (overseeing the demo
-  recruit(s)), and an Admin. Credentials are shown on the login screen / in the
-  README for the demo environment only.
+- **Multiple departments** — several departments so department creation and
+  management is visibly demonstrated.
+- **Multiple accounts across roles** — **multiple Managers** and **multiple
+  Recruits** (spread across departments, with recruits assigned to different
+  managers) plus at least one Admin. This showcases user and department creation/
+  management and gives realistic data for both unit and e2e testing. Demo
+  credentials are shown on the login screen / in the README for the demo
+  environment only.
 - **Demo entries** — a realistic spread of Tasks, Issues, Feedback Notes, and
-  Additional Notes across a date range, with varied categories/statuses/
-  priorities/severities so the **Dashboard** (summary counts, recent entries,
-  completion progress, open issues) and **Reports** (date-range PDF/CSV) are
-  populated and meaningful out of the box.
-- Demo data and demo accounts are **only** present in the first-boot/demo mode and
-  are **not** seeded once a production database is configured (see §13).
+  Additional Notes across a date range and across multiple recruits, with varied
+  categories/statuses/priorities/severities so the **Dashboard** (summary counts,
+  recent entries, completion progress, open issues) and **Reports** are populated
+  and meaningful out of the box, and so manager-oversight views have real data.
+- Demo data and demo accounts are present only in demo mode and are **not** seeded
+  once running against a production database (see §13).
 
 **Rationale:** "Default installation should allow users to understand all
-features." Empty screens hide functionality; seeded demo data showcases every
-feature on first launch. Marked pending because the *content/volume* of demo data
-and whether demo credentials are surfaced in-product need sign-off.
+features," including user/department management. Multiple managers, recruits, and
+departments make oversight, access control, and management features observable on
+first launch and provide meaningful fixtures for unit and e2e tests.
 
 ## 10. User provisioning
 
-**Status:** pending confirmation
+**Status:** confirmed
 
 - **Admins create and manage user accounts** (recruits and managers), set their
   role, department, profile fields, and manager assignment.
@@ -248,21 +257,23 @@ consistent with the access-control model (§7) and oversight assignment (§5).
 
 ## 11. Reports scope & format
 
-**Status:** pending confirmation
+**Status:** confirmed
 
+- **On-screen first, then export.** A report is **rendered on screen** (an
+  interactive report view) from the selected filters; the user then **exports the
+  displayed report** to **PDF** or **CSV**. The export reflects exactly what is
+  shown on screen.
 - **Date range** filters entries by their user-entered `date` (§8).
 - A report covers **all four entry types** (Tasks, Issues, Feedback, Notes) within
   the range, plus summary metrics mirroring the Dashboard.
 - **Scope by role** follows access control (§7): a Recruit reports on their own
   data; a **Manager** reports on the recruits they oversee (selectable per recruit
   or aggregated); an Admin can report on anyone.
-- **Formats:** **PDF** (formatted, human-readable summary + detail) and **CSV**
-  (tabular, one section/file per entry type or a combined normalized export — to
-  be finalized).
 
-**Rationale:** The MANDATE requires date-range reports as PDF or CSV and that
-managers report on their recruits, but does not define included entry types, the
-exact CSV layout, or per-recruit vs. aggregated manager reports.
+**Rationale:** Rendering on screen first lets users preview/tune a report before
+exporting, keeps PDF/CSV consistent with the view, and makes the report logic
+directly testable (assert the on-screen report, then that exports match) in both
+unit and e2e tests.
 
 ## 12. Audit timestamps vs. entry `date`
 
@@ -277,21 +288,27 @@ exact CSV layout, or per-recruit vs. aggregated manager reports.
 **Rationale:** Standard persistence practice; needed for "recent entries" ordering
 without conflating with the user-entered event date.
 
-## 13. Onboarding-enabler disable trigger
+## 13. Demo mode feature flag (drives datasource + enablers)
 
-**Status:** pending confirmation
+**Status:** confirmed
 
-- Onboarding enablers (tooltips / coach marks / welcome mats, via the onboarding
-  UI library) are **on** in first-boot/demo mode and turn **off** once the app is
-  running against a **production database** (e.g. PostgreSQL) that holds
-  **real, non-demo data**.
-- Concretely: a settings/feature flag (e.g. `onboardingEnablersEnabled`) defaults
-  on for the SQLite/demo profile and is set off when the configured datasource is
-  the production engine and the seeded demo dataset is absent/replaced. An Admin
-  can also toggle it manually.
+Behavior is governed by a single **demo-mode feature flag**:
 
-**Rationale:** §2 states enablers disable "once an admin configures a production
-database and data is populated" but not the precise mechanism; this defines it.
+| Flag | Production DB configured? | Datasource used | Onboarding enablers |
+| ---- | ------------------------- | --------------- | ------------------- |
+| **ON**  | (ignored)  | **Demo** (SQLite/in-memory) | **On** |
+| **OFF** | Yes        | **Production** (e.g. PostgreSQL) | Off |
+| **OFF** | No         | **Demo** (fallback) | Off |
+
+- **Flag ON** → demo database **and** onboarding enablers (tooltips / coach marks /
+  welcome mats) are active.
+- **Flag OFF** → use the **production** database if one is configured; if none is
+  configured, fall back to the demo database. Either way the enablers are **off**.
+- An Admin can toggle the flag; a fresh install defaults the flag **ON**.
+
+**Rationale:** Framing §2's behavior as one demo feature flag covers every case
+cleanly, including the edge case of the flag being off before a production DB is
+configured (fall back to the demo DB but without the enablers).
 
 ## 14. API & validation conventions
 

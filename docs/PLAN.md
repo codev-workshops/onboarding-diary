@@ -23,9 +23,12 @@ Phased plan for building the Onboarding Diary. Requirements come from
 3. **Well-documented code.** JSDoc/TSDoc on public functions, modules, and complex
    logic; a README per package; inline comments only where they add non-obvious
    context.
-4. **Strong testing.** A very good amount of **unit** tests (domain logic, policies,
-   report generation, access control) and **e2e** tests (Playwright) covering the
-   primary user journeys per role.
+4. **Strong testing, written in parallel.** Tests are written **alongside each
+   feature as it is built — not deferred to the end**. Each phase ships with its
+   **unit** tests (domain logic, policies, report generation, access control) and
+   **e2e** tests (Playwright) for the journeys it introduces, and a phase is not
+   "done" until they are green. This keeps feedback tight and development
+   efficient.
 
 ## Architecture overview
 
@@ -41,7 +44,9 @@ Phased plan for building the Onboarding Diary. Requirements come from
 
 ## Data model (from MANDATE fields)
 
-- **User**: email, passwordHash, name, role (Recruit|Manager|Admin), department,
+- **Department**: name (managed entity so departments can be created/managed and
+  users assigned to them — ASSUMPTIONS §9, §5).
+- **User**: email, passwordHash, name, role (Recruit|Manager|Admin), departmentId,
   startDate, managerId (nullable), audit timestamps (ASSUMPTIONS §12).
 - **Task**: date, title, description, category (FK/managed), status, priority,
   ownerId, audit timestamps.
@@ -51,14 +56,16 @@ Phased plan for building the Onboarding Diary. Requirements come from
   audit timestamps.
 - **Note**: date, title, content, tags, ownerId, audit timestamps.
 - **TaskCategory**: name, isActive (soft-disable, ASSUMPTIONS §4 Tier 1).
-- **Setting**: e.g. `onboardingEnablersEnabled`, datasource profile (ASSUMPTIONS §13).
+- **Setting**: e.g. the **demo-mode feature flag** and datasource/enabler state
+  (ASSUMPTIONS §13).
 - Tier-2 value sets (task status/priority, issue severity/status) seeded and
   system-defined (ASSUMPTIONS §4 Tier 2).
 
 ## Phases
 
 Each phase ends green: lint + typecheck + unit tests pass, and (from Phase 3 on)
-its e2e journeys pass. Every phase adds code documentation as it goes.
+its e2e journeys pass. **Tests are written in parallel with each feature, not at
+the end** (guiding principle #4). Every phase adds code documentation as it goes.
 
 ### Phase 0 — Foundation & tooling
 - Monorepo scaffold (`server/`, `client/`), TypeScript, ESLint + Prettier, CI
@@ -75,8 +82,9 @@ its e2e journeys pass. Every phase adds code documentation as it goes.
 ### Phase 2 — Auth & users
 - JWT auth (login), bcrypt hashing, `PasswordPolicy` class (min 8 chars,
   upgradeable — ASSUMPTIONS §1).
-- Admin user provisioning (create/manage users, roles, departments, manager
-  assignment — ASSUMPTIONS §10, §5).
+- Admin **department management** (create/rename departments) and **user
+  provisioning** (create/manage users, roles, department, manager assignment —
+  ASSUMPTIONS §10, §5, §9).
 - Role-based authorization middleware enforcing the access-control matrix
   (ASSUMPTIONS §7).
 - Unit tests for policy, auth, and authorization; e2e login journey.
@@ -95,19 +103,22 @@ its e2e journeys pass. Every phase adds code documentation as it goes.
 - Unit tests for aggregation logic; e2e dashboard journey.
 
 ### Phase 5 — Reports
-- Date-range reports across all entry types with role scoping; managers report on
-  overseen recruits (ASSUMPTIONS §11).
-- PDF (PDFKit) and CSV (csv-stringify) export.
-- Unit tests for report data assembly and formatters; e2e export journey.
+- **On-screen report view first** (date range across all entry types, role-scoped;
+  managers report on overseen recruits — ASSUMPTIONS §11), then **export the
+  displayed report** to PDF (PDFKit) and CSV (csv-stringify).
+- Unit tests for report data assembly and formatters (assert on-screen report,
+  then that exports match it); e2e journey: view report → export PDF/CSV.
 
-### Phase 6 — First-boot experience & onboarding enablers
-- First-boot/demo mode: SQLite + seeded demo accounts and demo entries across all
-  logs (ASSUMPTIONS §9).
-- React Joyride tours / tooltips / welcome mats, gated by `onboardingEnablersEnabled`
-  (ASSUMPTIONS §2, §13); auto-disable when running on the production DB with real
-  data; Admin toggle.
+### Phase 6 — First-boot experience, demo flag & onboarding enablers
+- Seed demo mode: **multiple departments, multiple managers and recruits**, and
+  demo entries across all logs (ASSUMPTIONS §9).
+- **Demo-mode feature flag** driving datasource + enablers per the §13 matrix
+  (ON → demo DB + enablers; OFF → production DB if configured, else demo DB, both
+  without enablers); Admin toggle.
+- React Joyride tours / tooltips / welcome mats gated by the flag.
 - Admin flow to configure the production database (PostgreSQL).
-- e2e journey: fresh boot → guided tour → configure production DB → enablers off.
+- e2e journey: fresh boot → guided tour → configure production DB → flag off →
+  enablers off.
 
 ### Phase 7 — Hardening, polish & docs
 - Accessibility pass, responsive QA across breakpoints, design polish.
