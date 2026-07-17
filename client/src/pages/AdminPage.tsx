@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
+import { PasswordField } from '@/components/PasswordField';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,11 +13,12 @@ import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/toast';
 import { useCategories, useDepartments, useTemplates, useUsers } from '@/hooks/data';
 import { api } from '@/lib/api';
-import { DEFAULT_TIMEZONE, ROLES, TASK_PRIORITIES, TIMEZONES } from '@/lib/constants';
+import { DEFAULT_TIMEZONE, ROLES, TASK_PRIORITIES, timezoneOptions } from '@/lib/constants';
 import type { ChecklistTemplate, Department, TaskCategory, User } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, formatTimezone } from '@/lib/utils';
 
 type Tab = 'users' | 'departments' | 'categories' | 'templates';
 
@@ -54,9 +57,11 @@ export function AdminPage() {
 
 function UsersTab() {
   const qc = useQueryClient();
+  const toast = useToast();
   const usersQuery = useUsers();
   const { data: departments } = useDepartments();
   const { data: templates } = useTemplates();
+  const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -86,12 +91,22 @@ function UsersTab() {
       void qc.invalidateQueries({ queryKey: ['users'] });
       void qc.invalidateQueries({ queryKey: ['tasks'] });
       setForm({ ...form, name: '', email: '', password: '', templateId: '' });
+      toast.success('User created');
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api<void>(`/users/${id}`, { method: 'DELETE' }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['users'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['users'] });
+      setConfirmDelete(null);
+      toast.success('User deleted');
+    },
+    onError: (e) => {
+      setConfirmDelete(null);
+      toast.error((e as Error).message);
+    },
   });
 
   const [editing, setEditing] = useState<User | null>(null);
@@ -118,10 +133,13 @@ function UsersTab() {
               <Label htmlFor="u-email">Email</Label>
               <Input id="u-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
             </div>
-            <div>
-              <Label htmlFor="u-password">Password</Label>
-              <Input id="u-password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-            </div>
+            <PasswordField
+              id="u-password"
+              label="Password"
+              value={form.password}
+              onChange={(value) => setForm({ ...form, password: value })}
+              required
+            />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="u-role">Role</Label>
@@ -162,7 +180,7 @@ function UsersTab() {
               <div>
                 <Label htmlFor="u-timezone">Timezone</Label>
                 <Select id="u-timezone" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
-                  {TIMEZONES.map((tz) => (
+                  {timezoneOptions(form.timezone).map((tz) => (
                     <option key={tz} value={tz}>
                       {tz}
                     </option>
@@ -214,7 +232,7 @@ function UsersTab() {
                   <div>
                     <p className="font-medium">{u.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {u.email} · {u.timezone}
+                      {u.email} · {formatTimezone(u.timezone)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -222,7 +240,7 @@ function UsersTab() {
                     <Button variant="ghost" size="icon" aria-label={`Edit ${u.name}`} onClick={() => setEditing(u)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" aria-label={`Delete ${u.name}`} onClick={() => deleteMutation.mutate(u.id)}>
+                    <Button variant="ghost" size="icon" aria-label={`Delete ${u.name}`} onClick={() => setConfirmDelete(u)}>
                       <Trash2 className="h-4 w-4 text-danger" />
                     </Button>
                   </div>
@@ -243,6 +261,19 @@ function UsersTab() {
           onClose={() => setEditing(null)}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete user?"
+        message={
+          confirmDelete
+            ? `${confirmDelete.name} and their entries will be permanently removed.`
+            : ''
+        }
+        pending={deleteMutation.isPending}
+        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
@@ -259,6 +290,7 @@ function EditUserModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [form, setForm] = useState({
     name: user.name,
     role: user.role as string,
@@ -286,8 +318,10 @@ function EditUserModal({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['users'] });
       void qc.invalidateQueries({ queryKey: ['team'] });
+      toast.success('User updated');
       onClose();
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   return (
@@ -347,7 +381,7 @@ function EditUserModal({
           <div>
             <Label htmlFor="e-timezone">Timezone</Label>
             <Select id="e-timezone" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
-              {TIMEZONES.map((tz) => (
+              {timezoneOptions(form.timezone).map((tz) => (
                 <option key={tz} value={tz}>
                   {tz}
                 </option>
@@ -355,16 +389,14 @@ function EditUserModal({
             </Select>
           </div>
         </div>
-        <div>
-          <Label htmlFor="e-password">New password (optional)</Label>
-          <Input
-            id="e-password"
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="Leave blank to keep current"
-          />
-        </div>
+        <PasswordField
+          id="e-password"
+          label="New password (optional)"
+          value={form.password}
+          onChange={(value) => setForm({ ...form, password: value })}
+          placeholder="Leave blank to keep current"
+          hint="Leave blank to keep current. Minimum 8 characters."
+        />
         {updateMutation.isError ? (
           <p className="text-sm text-danger" role="alert">
             {(updateMutation.error as Error).message}
@@ -385,19 +417,31 @@ function EditUserModal({
 
 function DepartmentsTab() {
   const qc = useQueryClient();
+  const toast = useToast();
   const departmentsQuery = useDepartments();
   const [name, setName] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<Department | null>(null);
 
   const createMutation = useMutation({
     mutationFn: () => api('/departments', { method: 'POST', body: { name } }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['departments'] });
       setName('');
+      toast.success('Department added');
     },
+    onError: (e) => toast.error((e as Error).message),
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api<void>(`/departments/${id}`, { method: 'DELETE' }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['departments'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['departments'] });
+      setConfirmDelete(null);
+      toast.success('Department deleted');
+    },
+    onError: (e) => {
+      setConfirmDelete(null);
+      toast.error((e as Error).message);
+    },
   });
 
   return (
@@ -443,7 +487,7 @@ function DepartmentsTab() {
                       ({d._count?.users ?? 0} members)
                     </span>
                   </span>
-                  <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => deleteMutation.mutate(d.id)}>
+                  <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => setConfirmDelete(d)}>
                     <Trash2 className="h-4 w-4 text-danger" />
                   </Button>
                 </li>
@@ -452,32 +496,52 @@ function DepartmentsTab() {
           ) : (
             <EmptyState title="No departments" />
           )}
-          {deleteMutation.isError ? (
-            <p className="mt-2 text-sm text-danger" role="alert">
-              {(deleteMutation.error as Error).message}
-            </p>
-          ) : null}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete department?"
+        message={
+          confirmDelete
+            ? `"${confirmDelete.name}" will be removed. Members are not deleted but lose this department.`
+            : ''
+        }
+        pending={deleteMutation.isPending}
+        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
 
 function CategoriesTab() {
   const qc = useQueryClient();
+  const toast = useToast();
   const categoriesQuery = useCategories();
   const [name, setName] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<TaskCategory | null>(null);
 
   const createMutation = useMutation({
     mutationFn: () => api('/categories', { method: 'POST', body: { name } }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['categories'] });
       setName('');
+      toast.success('Category added');
     },
+    onError: (e) => toast.error((e as Error).message),
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api<{ softDisabled: boolean }>(`/categories/${id}`, { method: 'DELETE' }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['categories'] }),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ['categories'] });
+      setConfirmDelete(null);
+      toast.success(result.softDisabled ? 'Category archived (still in use)' : 'Category deleted');
+    },
+    onError: (e) => {
+      setConfirmDelete(null);
+      toast.error((e as Error).message);
+    },
   });
 
   return (
@@ -521,7 +585,7 @@ function CategoriesTab() {
               {categoriesQuery.data.map((c) => (
                 <li key={c.id} className="flex items-center justify-between py-2">
                   <span>{c.name}</span>
-                  <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => deleteMutation.mutate(c.id)}>
+                  <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => setConfirmDelete(c)}>
                     <Trash2 className="h-4 w-4 text-danger" />
                   </Button>
                 </li>
@@ -532,6 +596,19 @@ function CategoriesTab() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete category?"
+        message={
+          confirmDelete
+            ? `"${confirmDelete.name}" will be deleted, or archived if tasks still use it.`
+            : ''
+        }
+        pending={deleteMutation.isPending}
+        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
@@ -546,13 +623,23 @@ interface ItemForm {
 
 function TemplatesTab() {
   const qc = useQueryClient();
+  const toast = useToast();
   const templatesQuery = useTemplates();
   const [editing, setEditing] = useState<ChecklistTemplate | null>(null);
   const [creating, setCreating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<ChecklistTemplate | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api<void>(`/templates/${id}`, { method: 'DELETE' }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['templates'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['templates'] });
+      setConfirmDelete(null);
+      toast.success('Template deleted');
+    },
+    onError: (e) => {
+      setConfirmDelete(null);
+      toast.error((e as Error).message);
+    },
   });
 
   return (
@@ -587,7 +674,7 @@ function TemplatesTab() {
                     <Button variant="ghost" size="icon" aria-label={`Edit ${t.name}`} onClick={() => setEditing(t)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" aria-label={`Delete ${t.name}`} onClick={() => deleteMutation.mutate(t.id)}>
+                    <Button variant="ghost" size="icon" aria-label={`Delete ${t.name}`} onClick={() => setConfirmDelete(t)}>
                       <Trash2 className="h-4 w-4 text-danger" />
                     </Button>
                   </div>
@@ -602,6 +689,19 @@ function TemplatesTab() {
 
       {creating ? <TemplateEditor onClose={() => setCreating(false)} /> : null}
       {editing ? <TemplateEditor template={editing} onClose={() => setEditing(null)} /> : null}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete template?"
+        message={
+          confirmDelete
+            ? `"${confirmDelete.name}" will be removed. Existing seeded tasks are not affected.`
+            : ''
+        }
+        pending={deleteMutation.isPending}
+        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
@@ -614,6 +714,7 @@ function TemplateEditor({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const { data: departments } = useDepartments();
   const { data: categories } = useCategories();
   const [name, setName] = useState(template?.name ?? '');
@@ -653,8 +754,10 @@ function TemplateEditor({
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['templates'] });
+      toast.success(template ? 'Template updated' : 'Template created');
       onClose();
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   function updateItem(index: number, patch: Partial<ItemForm>) {

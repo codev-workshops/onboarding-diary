@@ -10,23 +10,22 @@ export const FEEDBACK_TYPES = ['Positive', 'Suggestion', 'Concern'] as const;
 
 export type Role = (typeof ROLES)[number];
 
-// IANA timezones for the Admin user picker (docs/ASSUMPTIONS.md §20). Prefers the
-// runtime's full list when available, falling back to a curated shortlist. The
-// server accepts any valid IANA identifier, so this only drives the dropdown.
-const FALLBACK_TIMEZONES = [
+/** The timezone assigned to users when an Admin does not choose one (§20). */
+export const DEFAULT_TIMEZONE = 'Asia/Kolkata';
+
+// Common zones surfaced at the top of the Admin picker for quick access. `UTC` is
+// included because the app stores/validates it as a canonical value even though
+// `Intl.supportedValuesOf('timeZone')` omits it.
+const COMMON_TIMEZONES = [
   'UTC',
+  'Asia/Kolkata',
   'America/Los_Angeles',
-  'America/Denver',
-  'America/Chicago',
   'America/New_York',
   'America/Sao_Paulo',
   'Europe/London',
   'Europe/Berlin',
-  'Europe/Moscow',
   'Asia/Dubai',
-  'Asia/Kolkata',
   'Asia/Singapore',
-  'Asia/Shanghai',
   'Asia/Tokyo',
   'Australia/Sydney',
 ];
@@ -39,8 +38,26 @@ function supportedTimezones(): string[] {
   } catch {
     // fall through to the curated list
   }
-  return FALLBACK_TIMEZONES;
+  return [];
 }
 
-export const TIMEZONES = supportedTimezones();
-export const DEFAULT_TIMEZONE = 'UTC';
+/** De-duplicates while preserving first-seen order. */
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+// IANA timezones for the Admin user picker (docs/ASSUMPTIONS.md §20). Common zones
+// (incl. `UTC`) lead the list, followed by the runtime's full set. The server
+// accepts any valid IANA identifier, so this only drives the dropdown.
+export const TIMEZONES = unique([...COMMON_TIMEZONES, ...supportedTimezones()]);
+
+/**
+ * Ensures a stored timezone is representable in the picker. A controlled
+ * `<select>` whose value has no matching `<option>` silently displays the first
+ * option, which would risk changing a user's zone on save — so we prepend any
+ * missing stored value.
+ */
+export function timezoneOptions(current?: string): string[] {
+  if (current && !TIMEZONES.includes(current)) return [current, ...TIMEZONES];
+  return TIMEZONES;
+}

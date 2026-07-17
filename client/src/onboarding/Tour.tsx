@@ -2,8 +2,6 @@ import { useState } from 'react';
 import Joyride, { STATUS, type CallBackProps, type Step } from 'react-joyride';
 import { useAppConfig } from '@/hooks/useAppConfig';
 
-const KEY = 'onboarding.tour.done';
-
 const STEPS: Step[] = [
   {
     target: '[data-tour="sidebar"]',
@@ -29,25 +27,54 @@ const STEPS: Step[] = [
 ];
 
 /**
- * Guided first-use tour (docs/ASSUMPTIONS.md §2, §13). Shown only when onboarding
- * enablers are active (demo mode) and the user has not completed it before.
+ * Key under which the tour records that the user finished/skipped it for the
+ * current browser session. `sessionStorage` (not `localStorage`) is deliberate: the
+ * tour reappears on a fresh app restart but stays out of the way for the rest of
+ * this session once dismissed.
+ */
+const SESSION_DONE_KEY = 'onboarding.tour.done';
+
+function tourDismissedThisSession(): boolean {
+  try {
+    return sessionStorage.getItem(SESSION_DONE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function markTourDismissed(): void {
+  try {
+    sessionStorage.setItem(SESSION_DONE_KEY, 'true');
+  } catch {
+    // Storage unavailable (e.g. private mode); the in-memory `run` flag still hides it.
+  }
+}
+
+/**
+ * The onboarding tour is shown purely based on demo mode (docs/ASSUMPTIONS.md
+ * §13/§21): the backend enables `onboardingEnablersEnabled` only in demo mode
+ * (which always runs on SQLite/in-memory, never Postgres), so the tour runs in demo
+ * and never in production. Finishing or skipping it turns it off for the rest of the
+ * current browser session; restarting the app shows it again. This balances easy
+ * onboarding against a distraction-free full experience once the tour is seen.
  */
 export function Tour() {
   const { data: config } = useAppConfig();
-  const [done, setDone] = useState(() => localStorage.getItem(KEY) === 'true');
+  const [run, setRun] = useState(() => !tourDismissedThisSession());
 
-  if (!config?.onboardingEnablersEnabled || done) return null;
+  if (!config?.onboardingEnablersEnabled) return null;
 
   const handleCallback = (data: CallBackProps) => {
     const finished: string[] = [STATUS.FINISHED, STATUS.SKIPPED];
     if (finished.includes(data.status)) {
-      localStorage.setItem(KEY, 'true');
-      setDone(true);
+      markTourDismissed();
+      setRun(false);
     }
   };
 
   return (
     <Joyride
+      run={run}
       steps={STEPS}
       continuous
       showSkipButton

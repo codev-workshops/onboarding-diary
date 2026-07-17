@@ -459,19 +459,68 @@ without a heavyweight notification system.
 **Status:** confirmed
 
 - Each **user** has an IANA **`timezone`** (e.g. `America/New_York`), defaulting to
-  **`UTC`** when not specified. It is used to evaluate the end-of-day boundary for
-  task overdue status (§18) in the task owner's local time.
+  **`Asia/Kolkata`** when not specified. It is used to evaluate the end-of-day
+  boundary for task overdue status (§18) in the task owner's local time.
+- **All datetimes are stored as UTC timestamps.** The per-user timezone is applied
+  only for local-calendar-day semantics (overdue evaluation) and for display; it is
+  never used to alter how instants are persisted.
 - The timezone is **provisioned and edited by an Admin only**, as part of user
   create/edit (§10). There is **no self-service profile page**, so a user cannot
   change their own timezone — consistent with the Admin-managed user model (§5/§10).
 - Any valid IANA identifier is accepted (validated server-side via the Intl API);
   invalid identifiers are rejected with a 400. The Admin UI offers a picker of the
-  runtime's supported zones (falling back to a curated shortlist).
+  runtime's supported zones (falling back to a curated shortlist) and always
+  includes `UTC` plus any currently-stored value that the runtime enumeration omits,
+  so a controlled `<select>` never silently changes a stored zone.
 - The value is returned by user endpoints and on login / `GET /auth/me` so the
   client can evaluate overdue badges in the current user's timezone. It is never a
-  secret and carries no password material.
+  secret and carries no password material. The Admin user list shows each zone with
+  its current UTC offset for readability.
 
 **Rationale:** "End of day" for overdue reminders is only meaningful relative to a
-timezone. Provisioning a default per user (admin-managed, matching how users and
-oversight are already administered) keeps overdue semantics correct for distributed
-teams without introducing a user-facing profile/settings surface.
+timezone. Storing UTC while defaulting users to `Asia/Kolkata` (the team's primary
+locale) keeps instants unambiguous while making overdue semantics correct for
+distributed teams, all without introducing a user-facing profile/settings surface.
+
+## 21. Onboarding tour gated purely on demo mode
+
+**Status:** confirmed
+
+- The React Joyride onboarding tour is shown **only in demo mode** and is **never
+  shown in production**. Demo mode always runs on the SQLite/in-memory database
+  (never Postgres), so "demo mode" and "tour available" are the same condition.
+- Finishing or skipping the tour **suppresses it for the rest of the current browser
+  session** (recorded in `sessionStorage`, key `onboarding.tour.done`). **Restarting
+  the app shows the tour again.** This balances easy onboarding against a
+  distraction-free full experience once the tour has been seen.
+- Suppression is deliberately **session-scoped, not persistent**: any stale
+  `localStorage` flag from an earlier build is ignored and must not hide the tour.
+
+**Rationale:** Demo mode exists to teach the app, so the tour should be available on
+each fresh start; production users have real data and are never interrupted. A
+session-scoped dismissal (vs. the old permanent global `localStorage` flag) lets a
+user try the app distraction-free after the tour without permanently hiding it from
+future demo sessions.
+
+## 22. Task Log completeness (search, filtering, ownership, pagination, feedback)
+
+**Status:** confirmed
+
+- **Search** matches the task title or description (case-insensitive), alongside the
+  existing status/category filters and a **date range** (from/to) over the entry
+  `date` (§8).
+- **Completed tasks are hidden by default**; a "Show completed" toggle reveals them.
+  An explicit `Done` status filter still shows completed tasks. The dashboard
+  overdue reminder deep-links here with completed hidden.
+- The list is **paginated** client-side so it never grows unbounded.
+- **Ownership:** Managers/Admins may assign a new task to a user within their §7
+  access scope via an owner selector (defaults to themselves); Recruits may only
+  create tasks for themselves. The server re-validates the requested owner and
+  **ignores owner reassignment on edit**. Task reads include a limited
+  `owner { id, name }` so Managers/Admins see whose task it is.
+- **Destructive deletes are confirmed** via a shared confirmation dialog, and
+  create/edit/delete across all entry logs surface **success/error toasts**.
+
+**Rationale:** The mandate calls for a usable Task Log; date/search filtering,
+hiding completed work by default, safe owner assignment, pagination, delete
+confirmation, and feedback toasts make it complete, safe, and scalable.

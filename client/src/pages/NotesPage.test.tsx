@@ -39,6 +39,9 @@ describe('NotesPage', () => {
     expect(screen.getByText('week-1')).toBeInTheDocument();
 
     await userEvent.click(screen.getByLabelText('Delete'));
+    // A confirmation dialog now guards the destructive action.
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true);
     });

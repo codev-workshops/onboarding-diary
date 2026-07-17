@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import { TriangleAlert } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge, toneFor } from '@/components/ui/badge';
@@ -20,6 +21,14 @@ import type { DashboardSummary } from '@/lib/types';
 import { toDateInput } from '@/lib/utils';
 
 const STATUS_COLORS = ['#94a3b8', '#0ea5e9', '#22c55e'];
+
+// Maps a recent-entry kind to the log page it lives on.
+const ENTRY_ROUTES: Record<DashboardSummary['recentEntries'][number]['kind'], string> = {
+  task: '/tasks',
+  issue: '/issues',
+  feedback: '/feedback',
+  note: '/notes',
+};
 
 export function DashboardPage() {
   const { data, isLoading, isError, error } = useQuery({
@@ -50,7 +59,11 @@ export function DashboardPage() {
           <TriangleAlert className="h-5 w-5 shrink-0" />
           <span>
             You have <strong>{data.tasks.overdue}</strong> overdue{' '}
-            {data.tasks.overdue === 1 ? 'task' : 'tasks'}. Review the Task Log to catch up.
+            {data.tasks.overdue === 1 ? 'task' : 'tasks'}.{' '}
+            <Link to="/tasks?overdue=1" className="font-medium underline underline-offset-2">
+              Review the Task Log
+            </Link>{' '}
+            to catch up.
           </span>
         </div>
       ) : null}
@@ -134,12 +147,17 @@ export function DashboardPage() {
           ) : (
             <ul className="divide-y divide-border">
               {data.recentEntries.map((e) => (
-                <li key={`${e.kind}-${e.id}`} className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3">
-                    <Badge tone={toneFor(e.kind)}>{e.kind}</Badge>
-                    <span className="font-medium">{e.title}</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{toDateInput(e.date)}</span>
+                <li key={`${e.kind}-${e.id}`}>
+                  <Link
+                    to={ENTRY_ROUTES[e.kind]}
+                    className="-mx-2 flex items-center justify-between rounded-md px-2 py-3 transition-colors hover:bg-muted"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Badge tone={toneFor(e.kind)}>{e.kind}</Badge>
+                      <span className="font-medium">{e.title}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">{toDateInput(e.date)}</span>
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -12,6 +12,55 @@ export function toDateInput(value: string | Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Formats a stored UTC timestamp as a compact, friendly local string, e.g.
+ * "Jul 17, 2026, 5:20 PM". Used for comment/activity timestamps in place of raw
+ * `toLocaleString()` output.
+ */
+export function formatDateTime(value: string | Date): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(d);
+}
+
+/**
+ * Relative time from now for a UTC timestamp, e.g. "just now", "5m ago", "2d ago".
+ * Falls back to an absolute date beyond a week for stable, accessible context.
+ */
+export function formatRelativeTime(value: string | Date, now: Date = new Date()): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  const diffMs = now.getTime() - d.getTime();
+  const sec = Math.round(diffMs / 1000);
+  if (sec < 45) return 'just now';
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  if (day <= 7) return `${day}d ago`;
+  return toDateInput(d);
+}
+
+/**
+ * Renders an IANA timezone with its current UTC offset for the Admin user list,
+ * e.g. "Asia/Kolkata (UTC+5:30)". Returns the raw value if it cannot be resolved.
+ */
+export function formatTimezone(timeZone: string): string {
+  if (!timeZone) return '';
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(new Date());
+    const offset = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+    return offset ? `${timeZone} (${offset.replace('GMT', 'UTC')})` : timeZone;
+  } catch {
+    return timeZone;
+  }
+}
+
 /** Formats a date as a `YYYY-MM-DD` calendar day in the given IANA timezone. */
 function dayInZone(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('en-CA', {

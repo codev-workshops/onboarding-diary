@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/states';
 import { useComments } from '@/hooks/data';
 import { api } from '@/lib/api';
 import type { Comment, Task } from '@/lib/types';
+import { formatDateTime, formatRelativeTime } from '@/lib/utils';
 
 /**
  * Comment thread for a task with @mention support (docs/ASSUMPTIONS.md §19).
@@ -39,7 +40,7 @@ export function TaskComments({ task, onClose }: { task: Task; onClose: () => voi
               <li key={c.id} className="rounded-md border border-border p-3">
                 <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">{c.author.name}</span>
-                  <span>{new Date(c.createdAt).toLocaleString()}</span>
+                  <span title={formatDateTime(c.createdAt)}>{formatRelativeTime(c.createdAt)}</span>
                 </div>
                 <p className="whitespace-pre-wrap text-sm">{renderBody(c.body)}</p>
               </li>

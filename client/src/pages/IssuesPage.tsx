@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
 import { Badge, toneFor } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { ISSUE_SEVERITIES, ISSUE_STATUSES } from '@/lib/constants';
 import type { Issue } from '@/lib/types';
@@ -38,11 +40,13 @@ function emptyForm(): IssueForm {
 
 export function IssuesPage() {
   const qc = useQueryClient();
+  const toast = useToast();
   const [statusFilter, setStatusFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Issue | null>(null);
   const [form, setForm] = useState<IssueForm>(emptyForm());
+  const [confirmDelete, setConfirmDelete] = useState<Issue | null>(null);
 
   const query = useQuery({
     queryKey: ['issues', statusFilter, severityFilter],
@@ -65,12 +69,22 @@ export function IssuesPage() {
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
+      toast.success(editing ? 'Issue updated' : 'Issue created');
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api<void>(`/issues/${id}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      setConfirmDelete(null);
+      toast.success('Issue deleted');
+    },
+    onError: (e) => {
+      setConfirmDelete(null);
+      toast.error((e as Error).message);
+    },
   });
 
   function openCreate() {
@@ -168,7 +182,7 @@ export function IssuesPage() {
                     variant="ghost"
                     size="icon"
                     aria-label="Delete"
-                    onClick={() => deleteMutation.mutate(issue.id)}
+                    onClick={() => setConfirmDelete(issue)}
                   >
                     <Trash2 className="h-4 w-4 text-danger" />
                   </Button>
@@ -273,6 +287,17 @@ export function IssuesPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete issue?"
+        message={
+          confirmDelete ? `"${confirmDelete.title}" will be permanently removed.` : ''
+        }
+        pending={deleteMutation.isPending}
+        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isTaskOverdue } from './utils';
+import {
+  formatDateTime,
+  formatRelativeTime,
+  formatTimezone,
+  isTaskOverdue,
+} from './utils';
 
 const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -31,5 +36,38 @@ describe('isTaskOverdue', () => {
     const longAgo = '2020-01-01';
     expect(isTaskOverdue({ dueDate: longAgo, status: 'To Do' }, 'Asia/Tokyo')).toBe(true);
     expect(isTaskOverdue({ dueDate: longAgo, status: 'To Do' }, 'America/Los_Angeles')).toBe(true);
+  });
+});
+
+describe('formatRelativeTime', () => {
+  const now = new Date('2026-07-17T12:00:00Z');
+
+  it('reports recent times in friendly units', () => {
+    expect(formatRelativeTime(new Date('2026-07-17T11:59:40Z'), now)).toBe('just now');
+    expect(formatRelativeTime(new Date('2026-07-17T11:55:00Z'), now)).toBe('5m ago');
+    expect(formatRelativeTime(new Date('2026-07-17T09:00:00Z'), now)).toBe('3h ago');
+    expect(formatRelativeTime(new Date('2026-07-15T12:00:00Z'), now)).toBe('2d ago');
+  });
+
+  it('falls back to an absolute date beyond a week', () => {
+    expect(formatRelativeTime(new Date('2026-06-01T12:00:00Z'), now)).toBe('2026-06-01');
+  });
+});
+
+describe('formatDateTime', () => {
+  it('produces a non-empty medium/short string', () => {
+    expect(formatDateTime('2026-07-17T12:00:00Z')).toMatch(/2026/);
+  });
+});
+
+describe('formatTimezone', () => {
+  it('appends the UTC offset for a valid zone', () => {
+    expect(formatTimezone('Asia/Kolkata')).toContain('Asia/Kolkata');
+    expect(formatTimezone('Asia/Kolkata')).toMatch(/UTC\+5:30/);
+  });
+
+  it('returns the raw value for an unknown zone and empty for blank', () => {
+    expect(formatTimezone('Not/AZone')).toBe('Not/AZone');
+    expect(formatTimezone('')).toBe('');
   });
 });

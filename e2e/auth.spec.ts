@@ -2,10 +2,16 @@ import { expect, test } from '@playwright/test';
 
 const DEMO_ADMIN = { email: 'admin@demo.local', password: 'Passw0rd!' };
 
-// Suppress the first-use Joyride tour so its spotlight overlay doesn't intercept clicks.
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('onboarding.tour.done', 'true'));
-});
+// The onboarding tour always runs in demo mode; skip it so its spotlight overlay
+// doesn't intercept clicks (mirrors a real user dismissing the tour).
+async function dismissTour(page: import('@playwright/test').Page) {
+  const skip = page.getByRole('button', { name: /skip/i });
+  try {
+    await skip.click({ timeout: 3000 });
+  } catch {
+    // Tour not shown (e.g. not in demo mode); nothing to dismiss.
+  }
+}
 
 async function login(page: import('@playwright/test').Page) {
   await page.goto('/login');
@@ -13,6 +19,7 @@ async function login(page: import('@playwright/test').Page) {
   await page.getByLabel('Password').fill(DEMO_ADMIN.password);
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page.getByRole('heading', { name: 'Organization overview' })).toBeVisible();
+  await dismissTour(page);
 }
 
 test('admin lands on the organization overview after login', async ({ page }) => {

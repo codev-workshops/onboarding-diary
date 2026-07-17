@@ -14,8 +14,8 @@ describe('isValidTimezone', () => {
     expect(isValidTimezone('totally-bogus')).toBe(false);
   });
 
-  it('defaults to UTC', () => {
-    expect(DEFAULT_TIMEZONE).toBe('UTC');
+  it('defaults to Asia/Kolkata', () => {
+    expect(DEFAULT_TIMEZONE).toBe('Asia/Kolkata');
     expect(isValidTimezone(DEFAULT_TIMEZONE)).toBe(true);
   });
 });

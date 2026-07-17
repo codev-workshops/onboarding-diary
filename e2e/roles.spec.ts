@@ -2,11 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 
 const PASSWORD = 'Passw0rd!';
 
-// Suppress the first-use Joyride tour so its spotlight overlay doesn't intercept clicks.
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('onboarding.tour.done', 'true'));
-});
-
 async function loginAs(page: Page, email: string) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);

@@ -2,16 +2,23 @@ import { expect, test, type Page } from '@playwright/test';
 
 const PASSWORD = 'Passw0rd!';
 
-// Suppress the first-use Joyride tour so its spotlight overlay doesn't intercept clicks.
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('onboarding.tour.done', 'true'));
-});
+// The onboarding tour always runs in demo mode; skip it so its spotlight overlay
+// doesn't intercept clicks (mirrors a real user dismissing the tour).
+async function dismissTour(page: Page) {
+  const skip = page.getByRole('button', { name: /skip/i });
+  try {
+    await skip.click({ timeout: 3000 });
+  } catch {
+    // Tour not shown; nothing to dismiss.
+  }
+}
 
 async function loginAs(page: Page, email: string) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
+  await dismissTour(page);
 }
 
 async function logout(page: Page) {
@@ -65,6 +72,7 @@ test('admin creates a checklist template and provisions a recruit with it', asyn
   await loginAs(page, 'admin@demo.local');
   await expect(page).toHaveURL(/\/overview$/);
   await page.goto('/admin');
+  await dismissTour(page);
 
   // Create a template with one item.
   await page.locator('[data-tour="admin-tab-templates"]').click();
@@ -80,12 +88,13 @@ test('admin creates a checklist template and provisions a recruit with it', asyn
   await page.locator('[data-tour="admin-tab-users"]').click();
   await page.getByLabel('Name').fill(`E2E Recruit ${stamp}`);
   await page.getByLabel('Email').fill(recruitEmail);
-  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByLabel('Timezone').selectOption('Asia/Tokyo');
   await page.getByLabel('Checklist template (optional)').selectOption({ label: `${templateName} (1 tasks)` });
   await page.getByRole('button', { name: /create user/i }).click();
-  // The list shows the provisioned email alongside the admin-set timezone (§20).
-  await expect(page.getByText(`${recruitEmail} · Asia/Tokyo`)).toBeVisible();
+  // The list shows the provisioned email alongside the admin-set timezone with its
+  // current UTC offset (§20).
+  await expect(page.getByText(new RegExp(`${recruitEmail} · Asia/Tokyo`))).toBeVisible();
   await logout(page);
 
   // The new recruit's Task Log is seeded from the template.

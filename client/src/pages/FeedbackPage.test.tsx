@@ -52,6 +52,9 @@ describe('FeedbackPage', () => {
       .mockResolvedValue(jsonResponse(feedback));
     renderPage();
     await userEvent.click(await screen.findByLabelText('Delete'));
+    // Confirm the delete in the confirmation dialog.
+    const confirm = await screen.findByRole('dialog');
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true),
     );

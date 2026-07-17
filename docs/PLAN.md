@@ -135,7 +135,8 @@ Confirmed and built with onboarding enablers + unit + e2e tests, tests in parall
    template → provision recruit with it → tasks appear).
 2. **Task due dates & overdue reminders (§18).** `Task.dueDate?`; overdue =
    past due & not done, evaluated at end-of-day in the task owner's **admin-managed
-   timezone** (§20, `User.timezone`, default `UTC`); Task Log badge, Dashboard
+   timezone** (§20, `User.timezone`, default `Asia/Kolkata`, datetimes stored as
+   UTC); Task Log badge, Dashboard
    overdue count + reminder, team overview per-recruit overdue. Joyride step.
    Unit (overdue logic + timezone boundaries) + e2e.
 3. **Comments with @mentions & activity indicator (§19).** New `Comment`/`Mention`
@@ -143,6 +144,23 @@ Confirmed and built with onboarding enablers + unit + e2e tests, tests in parall
    `GET/POST /api/tasks/:id/comments`, `GET /api/mentions` + mark-read; header bell
    with unread count. Access scoped per §7. Joyride step + demo comments. Unit
    (mention parsing, access) + e2e.
+
+### UX polish pass (§21, §22)
+
+- **Onboarding tour** shown only in demo mode (SQLite/in-memory); dismissing it
+  suppresses it for the current browser session (`sessionStorage`) and it reappears
+  on restart (§21).
+- **Task Log completeness** (§22): title/description search, date-range filter,
+  completed-hidden-by-default with a toggle, client-side pagination, Manager/Admin
+  owner assignment (server re-validated), and owner labels.
+- **Reports** recruit picker sourced from `GET /api/dashboard/team` (not the
+  Admin-only `/api/users`), with loading/error handling so Managers no longer hit a
+  403.
+- **Feedback & consistency:** shared `ConfirmDialog` for destructive deletes and
+  success/error `ToastProvider` notifications across Tasks/Issues/Feedback/Notes and
+  Admin entities; clickable dashboard recent entries and an actionable overdue
+  reminder; password show/generate/copy + policy hint; friendly relative comment
+  timestamps (with an absolute `title`); Admin timezone display with UTC offset.
 
 ## Testing strategy (summary)
 

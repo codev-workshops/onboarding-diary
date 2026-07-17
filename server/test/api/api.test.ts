@@ -221,7 +221,7 @@ describe('user provisioning (admin-only)', () => {
         startDate: '2026-01-01',
       });
     expect(defaulted.status).toBe(201);
-    expect(defaulted.body.timezone).toBe('UTC');
+    expect(defaulted.body.timezone).toBe('Asia/Kolkata');
   });
 
   it('rejects an invalid IANA timezone', async () => {
@@ -315,6 +315,68 @@ describe('tasks CRUD & access scoping', () => {
       .get('/api/tasks')
       .set('Authorization', `Bearer ${otherToken}`);
     expect(otherList.body).toHaveLength(0);
+  });
+
+  it('lets a manager create a task for an overseen recruit and returns owner data', async () => {
+    const managerToken = await token('manager@t.local');
+    const recruitA = await db.user.findUniqueOrThrow({ where: { email: 'recruita@t.local' } });
+    const res = await request(app)
+      .post('/api/tasks')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        date: '2026-01-01',
+        title: 'Assigned by manager',
+        description: '',
+        categoryId,
+        status: 'To Do',
+        priority: 'Low',
+        ownerId: recruitA.id,
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.ownerId).toBe(recruitA.id);
+    expect(res.body.owner).toMatchObject({ id: recruitA.id, name: 'Recruit A' });
+
+    // The recruit can now see the task the manager created on their behalf.
+    const recruitList = await request(app)
+      .get('/api/tasks')
+      .set('Authorization', `Bearer ${await token('recruita@t.local')}`);
+    expect(recruitList.body.map((x: { title: string }) => x.title)).toContain('Assigned by manager');
+  });
+
+  it('forbids assigning a task to a user outside the actor scope', async () => {
+    const managerToken = await token('manager@t.local');
+    const recruitB = await db.user.findUniqueOrThrow({ where: { email: 'recruitb@t.local' } });
+    const res = await request(app)
+      .post('/api/tasks')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        date: '2026-01-01',
+        title: 'Should fail',
+        description: '',
+        categoryId,
+        status: 'To Do',
+        priority: 'Low',
+        ownerId: recruitB.id,
+      });
+    expect(res.status).toBe(403);
+  });
+
+  it('forbids a recruit from assigning a task to someone else', async () => {
+    const recruitToken = await token('recruita@t.local');
+    const recruitB = await db.user.findUniqueOrThrow({ where: { email: 'recruitb@t.local' } });
+    const res = await request(app)
+      .post('/api/tasks')
+      .set('Authorization', `Bearer ${recruitToken}`)
+      .send({
+        date: '2026-01-01',
+        title: 'Not allowed',
+        description: '',
+        categoryId,
+        status: 'To Do',
+        priority: 'Low',
+        ownerId: recruitB.id,
+      });
+    expect(res.status).toBe(403);
   });
 
   it('rejects an inactive/invalid category', async () => {

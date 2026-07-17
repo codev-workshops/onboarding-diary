@@ -38,6 +38,7 @@ export interface Task {
   status: string;
   priority: string;
   ownerId: string;
+  owner?: { id: string; name: string };
   dueDate: string | null;
 }
 

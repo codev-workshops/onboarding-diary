@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { MessageSquare, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { TaskComments } from '@/components/TaskComments';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
@@ -13,12 +14,15 @@ import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/toast';
 import { useAuth } from '@/auth/AuthContext';
-import { useCategories } from '@/hooks/data';
+import { useCategories, useTeamOverview } from '@/hooks/data';
 import { api } from '@/lib/api';
 import { TASK_PRIORITIES, TASK_STATUSES } from '@/lib/constants';
 import type { Task } from '@/lib/types';
 import { isTaskOverdue, toDateInput } from '@/lib/utils';
+
+const PAGE_SIZE = 8;
 
 interface TaskForm {
   date: string;
@@ -28,6 +32,7 @@ interface TaskForm {
   status: string;
   priority: string;
   dueDate: string;
+  ownerId: string;
 }
 
 function emptyForm(): TaskForm {
@@ -39,19 +44,29 @@ function emptyForm(): TaskForm {
     status: 'To Do',
     priority: 'Medium',
     dueDate: '',
+    ownerId: '',
   };
 }
 
 export function TasksPage() {
   const qc = useQueryClient();
+  const toast = useToast();
   const { user } = useAuth();
+  const canScope = user?.role === 'Manager' || user?.role === 'Admin';
   const { data: categories } = useCategories();
+  const teamQuery = useTeamOverview(canScope);
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [page, setPage] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(emptyForm());
   const [commenting, setCommenting] = useState<Task | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Task | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tasksQuery = useQuery({
@@ -73,6 +88,42 @@ export function TasksPage() {
     setSearchParams(next, { replace: true });
   }, [deepLinkId, tasksQuery.data, searchParams, setSearchParams]);
 
+  // Overdue deep-link from the dashboard reminder (?overdue=1) hides completed
+  // tasks so the outstanding work is front and centre.
+  const overdueLink = searchParams.get('overdue');
+  useEffect(() => {
+    if (overdueLink !== '1') return;
+    setShowCompleted(false);
+    const next = new URLSearchParams(searchParams);
+    next.delete('overdue');
+    setSearchParams(next, { replace: true });
+  }, [overdueLink, searchParams, setSearchParams]);
+
+  // Client-side date/search/completed filtering over the scoped result set, then
+  // paginate so the list never grows unbounded (docs/ASSUMPTIONS.md §22).
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (tasksQuery.data ?? []).filter((t) => {
+      if (!showCompleted && statusFilter !== 'Done' && t.status === 'Done') return false;
+      if (q && !t.title.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q)) {
+        return false;
+      }
+      const day = toDateInput(t.date);
+      if (dateFrom && day < dateFrom) return false;
+      if (dateTo && day > dateTo) return false;
+      return true;
+    });
+  }, [tasksQuery.data, search, showCompleted, statusFilter, dateFrom, dateTo]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const paged = filtered.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
+
+  // Reset to the first page whenever the active filters change.
+  useEffect(() => {
+    setPage(0);
+  }, [search, dateFrom, dateTo, showCompleted, statusFilter, categoryFilter]);
+
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['tasks'] });
     void qc.invalidateQueries({ queryKey: ['dashboard'] });
@@ -80,7 +131,18 @@ export function TasksPage() {
 
   const saveMutation = useMutation({
     mutationFn: (payload: TaskForm) => {
-      const body = { ...payload, dueDate: payload.dueDate || null };
+      const body: Record<string, unknown> = {
+        date: payload.date,
+        title: payload.title,
+        description: payload.description,
+        categoryId: payload.categoryId,
+        status: payload.status,
+        priority: payload.priority,
+        dueDate: payload.dueDate || null,
+      };
+      // Owner is only assignable at creation and only for Managers/Admins; the
+      // server re-validates access and ignores it on edit.
+      if (!editing && payload.ownerId) body.ownerId = payload.ownerId;
       return editing
         ? api<Task>(`/tasks/${editing.id}`, { method: 'PUT', body })
         : api<Task>('/tasks', { method: 'POST', body });
@@ -88,12 +150,22 @@ export function TasksPage() {
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
+      toast.success(editing ? 'Task updated' : 'Task created');
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api<void>(`/tasks/${id}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      setConfirmDelete(null);
+      toast.success('Task deleted');
+    },
+    onError: (e) => {
+      setConfirmDelete(null);
+      toast.error((e as Error).message);
+    },
   });
 
   function openCreate() {
@@ -112,6 +184,7 @@ export function TasksPage() {
       status: task.status,
       priority: task.priority,
       dueDate: task.dueDate ? toDateInput(task.dueDate) : '',
+      ownerId: task.ownerId,
     });
     setModalOpen(true);
   }
@@ -128,7 +201,17 @@ export function TasksPage() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div className="relative min-w-[12rem] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            aria-label="Search tasks"
+            placeholder="Search title or description…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
         <Select
           aria-label="Filter by status"
           value={statusFilter}
@@ -155,59 +238,128 @@ export function TasksPage() {
             </option>
           ))}
         </Select>
+        <div>
+          <Label htmlFor="task-from" className="text-xs text-muted-foreground">
+            From
+          </Label>
+          <Input
+            id="task-from"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-auto"
+          />
+        </div>
+        <div>
+          <Label htmlFor="task-to" className="text-xs text-muted-foreground">
+            To
+          </Label>
+          <Input
+            id="task-to"
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-auto"
+          />
+        </div>
+        <label className="flex h-10 items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={showCompleted}
+            onChange={(e) => setShowCompleted(e.target.checked)}
+            className="h-4 w-4 rounded border-input"
+          />
+          Show completed
+        </label>
       </div>
 
       {tasksQuery.isLoading ? (
         <LoadingState />
       ) : tasksQuery.isError ? (
         <ErrorState message={(tasksQuery.error as Error).message} />
-      ) : tasksQuery.data && tasksQuery.data.length > 0 ? (
-        <div className="space-y-3">
-          {tasksQuery.data.map((task) => (
-            <Card key={task.id}>
-              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{task.title}</span>
-                    <Badge tone={toneFor(task.status)}>{task.status}</Badge>
-                    <Badge tone={toneFor(task.priority)}>{task.priority}</Badge>
-                    {task.category ? <Badge tone="primary">{task.category.name}</Badge> : null}
-                    {isTaskOverdue(task, user?.timezone) ? (
-                      <Badge tone="danger">Overdue</Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {toDateInput(task.date)} — {task.description || 'No description'}
-                    {task.dueDate ? ` · Due ${toDateInput(task.dueDate)}` : ''}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Comments for ${task.title}`}
-                    onClick={() => setCommenting(task)}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => openEdit(task)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Delete"
-                    onClick={() => deleteMutation.mutate(task.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-danger" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
+      ) : (tasksQuery.data?.length ?? 0) === 0 ? (
         <EmptyState title="No tasks yet" hint="Create your first task to get started." />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title="No matching tasks"
+          hint="Try adjusting your filters or showing completed tasks."
+        />
+      ) : (
+        <>
+          <div className="space-y-3">
+            {paged.map((task) => (
+              <Card key={task.id}>
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{task.title}</span>
+                      <Badge tone={toneFor(task.status)}>{task.status}</Badge>
+                      <Badge tone={toneFor(task.priority)}>{task.priority}</Badge>
+                      {task.category ? <Badge tone="primary">{task.category.name}</Badge> : null}
+                      {task.owner && task.owner.id !== user?.id ? (
+                        <Badge tone="info">{task.owner.name}</Badge>
+                      ) : null}
+                      {isTaskOverdue(task, user?.timezone) ? (
+                        <Badge tone="danger">Overdue</Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {toDateInput(task.date)} — {task.description || 'No description'}
+                      {task.dueDate ? ` · Due ${toDateInput(task.dueDate)}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Comments for ${task.title}`}
+                      onClick={() => setCommenting(task)}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => openEdit(task)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Delete"
+                      onClick={() => setConfirmDelete(task)}
+                    >
+                      <Trash2 className="h-4 w-4 text-danger" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {pageCount > 1 ? (
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {pageCount} · {filtered.length} tasks
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= pageCount - 1}
+                  onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
 
       <Modal
@@ -231,6 +383,26 @@ export function TasksPage() {
               required
             />
           </div>
+          {!editing && canScope ? (
+            <div>
+              <Label htmlFor="task-owner">Owner</Label>
+              <Select
+                id="task-owner"
+                value={form.ownerId}
+                onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
+              >
+                <option value="">Myself</option>
+                {teamQuery.data?.recruits.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Assign this task to a recruit you oversee, or leave as yourself.
+              </p>
+            </div>
+          ) : null}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="task-date">Date</Label>
@@ -321,6 +493,19 @@ export function TasksPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete task?"
+        message={
+          confirmDelete
+            ? `"${confirmDelete.title}" will be permanently removed. This cannot be undone.`
+            : ''
+        }
+        pending={deleteMutation.isPending}
+        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {commenting ? (
         <TaskComments task={commenting} onClose={() => setCommenting(null)} />

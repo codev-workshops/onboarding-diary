@@ -233,7 +233,7 @@ describe.skipIf(!hasDocker)('Admin management flows on PostgreSQL (Testcontainer
       startDate: new Date(),
       departmentId: dept.id,
     });
-    expect(defaulted.timezone).toBe('UTC');
+    expect(defaulted.timezone).toBe('Asia/Kolkata');
 
     const moved = await updateUser(db, recruit.id, { timezone: 'America/New_York' });
     expect(moved.timezone).toBe('America/New_York');

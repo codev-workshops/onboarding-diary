@@ -30,6 +30,19 @@ const overdueTask: Task = {
   dueDate: '2020-01-01',
 };
 
+const doneTask: Task = {
+  id: 't2',
+  date: '2026-02-02',
+  title: 'Finish orientation',
+  description: 'Completed already',
+  categoryId: 'cat-1',
+  category: { id: 'cat-1', name: 'Setup', isActive: true },
+  status: 'Done',
+  priority: 'Low',
+  ownerId: 'rec-1',
+  dueDate: null,
+};
+
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
   return { ok, status, text: () => Promise.resolve(JSON.stringify(body)) } as Response;
 }
@@ -86,5 +99,35 @@ describe('TasksPage', () => {
     routedFetch([overdueTask]);
     renderPage(['/tasks?taskId=t1']);
     expect(await screen.findByText('Comments — Install tooling')).toBeInTheDocument();
+  });
+
+  it('hides completed tasks by default and reveals them via the toggle', async () => {
+    routedFetch([overdueTask, doneTask]);
+    renderPage();
+    expect(await screen.findByText('Install tooling')).toBeInTheDocument();
+    expect(screen.queryByText('Finish orientation')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByLabelText('Show completed'));
+    expect(await screen.findByText('Finish orientation')).toBeInTheDocument();
+  });
+
+  it('filters tasks by the search box', async () => {
+    routedFetch([overdueTask, doneTask]);
+    renderPage();
+    await userEvent.click(await screen.findByLabelText('Show completed'));
+    await userEvent.type(screen.getByLabelText('Search tasks'), 'orientation');
+    expect(await screen.findByText('Finish orientation')).toBeInTheDocument();
+    expect(screen.queryByText('Install tooling')).not.toBeInTheDocument();
+  });
+
+  it('confirms before deleting a task', async () => {
+    const fetchMock = routedFetch([overdueTask]);
+    renderPage();
+    await userEvent.click(await screen.findByLabelText('Delete'));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true),
+    );
   });
 });

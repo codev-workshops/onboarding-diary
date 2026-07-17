@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { useUsers } from '@/hooks/data';
+import { useTeamOverview } from '@/hooks/data';
 import { api, downloadReport } from '@/lib/api';
 import type { ReportData } from '@/lib/types';
 import { toDateInput } from '@/lib/utils';
@@ -26,13 +26,16 @@ function defaultRange(): { start: string; end: string } {
 export function ReportsPage() {
   const { user } = useAuth();
   const canScope = user?.role === 'Manager' || user?.role === 'Admin';
-  const { data: users } = useUsers(canScope);
+  // Scoped to the roles that may report: managers see their recruits, admins see
+  // all — sourced from /dashboard/team, which both roles may call (avoids the
+  // Admin-only /users 403 that previously left this selector empty).
+  const teamQuery = useTeamOverview(canScope);
   const [searchParams] = useSearchParams();
   const [range, setRange] = useState(defaultRange());
   const [recruitId, setRecruitId] = useState(() => searchParams.get('recruitId') ?? '');
   const [report, setReport] = useState<ReportData | null>(null);
 
-  const recruits = users?.filter((u) => u.role === 'Recruit') ?? [];
+  const recruits = teamQuery.data?.recruits ?? [];
 
   const runMutation = useMutation({
     mutationFn: () =>
@@ -83,6 +86,7 @@ export function ReportsPage() {
                 value={recruitId}
                 onChange={(e) => setRecruitId(e.target.value)}
                 className="w-48"
+                disabled={teamQuery.isLoading || teamQuery.isError}
               >
                 <option value="">All in scope</option>
                 {recruits.map((r) => (
@@ -91,6 +95,11 @@ export function ReportsPage() {
                   </option>
                 ))}
               </Select>
+              {teamQuery.isError ? (
+                <p className="mt-1 text-xs text-danger" role="alert">
+                  Couldn't load recruits.
+                </p>
+              ) : null}
             </div>
           ) : null}
           <Button onClick={() => runMutation.mutate()} disabled={runMutation.isPending}>

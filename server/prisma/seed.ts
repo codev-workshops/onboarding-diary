@@ -62,7 +62,7 @@ export async function seedDemoData(client: PrismaClient = prisma): Promise<void>
       name: 'Ada Admin',
       role: 'Admin',
       startDate: daysAgo(365),
-      timezone: 'UTC',
+      timezone: 'Asia/Kolkata',
       departmentId: engineering.id,
     },
   });

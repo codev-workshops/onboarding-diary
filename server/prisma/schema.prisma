@@ -33,7 +33,7 @@ model User {
   name         String
   role         String
   startDate    DateTime
-  timezone     String   @default("UTC")
+  timezone     String   @default("Asia/Kolkata")
   departmentId String?
   managerId    String?
   createdAt    DateTime @default(now())

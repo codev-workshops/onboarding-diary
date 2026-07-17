@@ -9,9 +9,10 @@ import { Tour } from './Tour';
 // the tour marks itself complete without mounting the real overlay/portal.
 vi.mock('react-joyride', () => ({
   STATUS: { FINISHED: 'finished', SKIPPED: 'skipped' },
-  default: ({ callback }: { callback: (data: CallBackProps) => void }) => (
-    <button onClick={() => callback({ status: 'finished' } as CallBackProps)}>finish-tour</button>
-  ),
+  default: ({ run, callback }: { run?: boolean; callback: (data: CallBackProps) => void }) =>
+    run === false ? null : (
+      <button onClick={() => callback({ status: 'finished' } as CallBackProps)}>finish-tour</button>
+    ),
 }));
 
 function jsonResponse(body: unknown): Response {
@@ -30,6 +31,7 @@ function renderTour() {
 afterEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('Tour', () => {
@@ -41,20 +43,32 @@ describe('Tour', () => {
     });
   });
 
-  it('renders nothing when the tour was already completed', () => {
+  it('shows the tour in demo mode even if a legacy localStorage flag is set', async () => {
+    // Suppression is session-scoped now; a stale localStorage flag from a previous
+    // build must not suppress the demo tour.
     localStorage.setItem('onboarding.tour.done', 'true');
     vi.spyOn(global, 'fetch').mockResolvedValue(jsonResponse({ onboardingEnablersEnabled: true }));
     renderTour();
-    expect(screen.queryByText('finish-tour')).not.toBeInTheDocument();
+    expect(await screen.findByText('finish-tour')).toBeInTheDocument();
   });
 
-  it('shows the tour in demo mode and persists completion', async () => {
+  it('suppresses the tour for the rest of the session once dismissed', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(jsonResponse({ onboardingEnablersEnabled: true }));
-    renderTour();
+    const first = renderTour();
     const btn = await screen.findByText('finish-tour');
     await userEvent.click(btn);
     await waitFor(() => {
-      expect(localStorage.getItem('onboarding.tour.done')).toBe('true');
+      expect(screen.queryByText('finish-tour')).not.toBeInTheDocument();
+    });
+    // The dismissal is recorded only in sessionStorage (reappears on restart).
+    expect(sessionStorage.getItem('onboarding.tour.done')).toBe('true');
+    expect(localStorage.getItem('onboarding.tour.done')).toBeNull();
+
+    // A re-mount within the same session (e.g. reload) keeps the tour hidden.
+    first.unmount();
+    renderTour();
+    await waitFor(() => {
+      expect(screen.queryByText('finish-tour')).not.toBeInTheDocument();
     });
   });
 });

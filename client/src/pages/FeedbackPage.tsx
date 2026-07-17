@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
 import { Badge, toneFor } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { FEEDBACK_TYPES } from '@/lib/constants';
 import type { Feedback } from '@/lib/types';
@@ -29,10 +31,12 @@ function emptyForm(): FeedbackForm {
 
 export function FeedbackPage() {
   const qc = useQueryClient();
+  const toast = useToast();
   const [typeFilter, setTypeFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Feedback | null>(null);
   const [form, setForm] = useState<FeedbackForm>(emptyForm());
+  const [confirmDelete, setConfirmDelete] = useState<Feedback | null>(null);
 
   const query = useQuery({
     queryKey: ['feedback', typeFilter],
@@ -52,12 +56,22 @@ export function FeedbackPage() {
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
+      toast.success(editing ? 'Feedback updated' : 'Feedback created');
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api<void>(`/feedback/${id}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      setConfirmDelete(null);
+      toast.success('Feedback deleted');
+    },
+    onError: (e) => {
+      setConfirmDelete(null);
+      toast.error((e as Error).message);
+    },
   });
 
   function openCreate() {
@@ -136,7 +150,7 @@ export function FeedbackPage() {
                     variant="ghost"
                     size="icon"
                     aria-label="Delete"
-                    onClick={() => deleteMutation.mutate(item.id)}
+                    onClick={() => setConfirmDelete(item)}
                   >
                     <Trash2 className="h-4 w-4 text-danger" />
                   </Button>
@@ -219,6 +233,15 @@ export function FeedbackPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete feedback?"
+        message={confirmDelete ? `"${confirmDelete.subject}" will be permanently removed.` : ''}
+        pending={deleteMutation.isPending}
+        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

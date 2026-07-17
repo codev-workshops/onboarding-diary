@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import type { Note } from '@/lib/types';
 import { toDateInput } from '@/lib/utils';
@@ -34,9 +36,11 @@ function parseTags(input: string): string[] {
 
 export function NotesPage() {
   const qc = useQueryClient();
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Note | null>(null);
   const [form, setForm] = useState<NoteForm>(emptyForm());
+  const [confirmDelete, setConfirmDelete] = useState<Note | null>(null);
 
   const query = useQuery({ queryKey: ['notes'], queryFn: () => api<Note[]>('/notes') });
 
@@ -55,12 +59,22 @@ export function NotesPage() {
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
+      toast.success(editing ? 'Note updated' : 'Note created');
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api<void>(`/notes/${id}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      setConfirmDelete(null);
+      toast.success('Note deleted');
+    },
+    onError: (e) => {
+      setConfirmDelete(null);
+      toast.error((e as Error).message);
+    },
   });
 
   function openCreate() {
@@ -116,7 +130,7 @@ export function NotesPage() {
                       variant="ghost"
                       size="icon"
                       aria-label="Delete"
-                      onClick={() => deleteMutation.mutate(note.id)}
+                      onClick={() => setConfirmDelete(note)}
                     >
                       <Trash2 className="h-4 w-4 text-danger" />
                     </Button>
@@ -204,6 +218,15 @@ export function NotesPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete note?"
+        message={confirmDelete ? `"${confirmDelete.title}" will be permanently removed.` : ''}
+        pending={deleteMutation.isPending}
+        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
