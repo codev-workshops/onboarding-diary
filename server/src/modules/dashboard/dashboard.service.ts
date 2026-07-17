@@ -2,6 +2,7 @@ import type { Db } from '../../db/prisma.js';
 import type { JwtPayload } from '../../auth/jwt.js';
 import { accessibleOwnerIds, ownerFilter } from '../../access/scope.js';
 import { DONE_TASK_STATUS, OPEN_ISSUE_STATUSES } from '../../domain/enums.js';
+import { isTaskOverdue } from '../../domain/overdue.js';
 
 export interface RecentEntry {
   id: string;
@@ -16,6 +17,7 @@ export interface DashboardSummary {
     total: number;
     completed: number;
     completionRate: number;
+    overdue: number;
     byStatus: Record<string, number>;
   };
   issues: {
@@ -49,13 +51,14 @@ export async function getDashboardSummary(
   const where = ownerFilter(ids);
 
   const [tasks, issues, feedbackCount, notesCount] = await Promise.all([
-    db.task.findMany({ where, select: { status: true } }),
+    db.task.findMany({ where, select: { status: true, dueDate: true } }),
     db.issue.findMany({ where, select: { status: true, severity: true } }),
     db.feedback.count({ where }),
     db.note.count({ where }),
   ]);
 
   const completed = tasks.filter((t) => t.status === DONE_TASK_STATUS).length;
+  const overdue = tasks.filter((t) => isTaskOverdue(t)).length;
   const open = issues.filter((i) => OPEN_ISSUE_STATUSES.includes(i.status as never)).length;
 
   const [recentTasks, recentIssues, recentFeedback, recentNotes] = await Promise.all([
@@ -79,6 +82,7 @@ export async function getDashboardSummary(
       total: tasks.length,
       completed,
       completionRate: tasks.length === 0 ? 0 : Math.round((completed / tasks.length) * 100),
+      overdue,
       byStatus: tally(tasks.map((t) => ({ key: t.status }))),
     },
     issues: {
@@ -110,6 +114,7 @@ export interface TeamRecruitSummary {
   taskTotal: number;
   taskCompleted: number;
   completionRate: number;
+  overdue: number;
   openIssues: number;
   feedbackTotal: number;
   noteTotal: number;
@@ -121,6 +126,7 @@ export interface TeamOverview {
     recruits: number;
     openIssues: number;
     completionRate: number;
+    overdue: number;
   };
 }
 
@@ -141,12 +147,13 @@ export async function getTeamOverview(db: Db, actor: JwtPayload): Promise<TeamOv
     recruits.map(async (recruit): Promise<TeamRecruitSummary> => {
       const ownerWhere = { ownerId: recruit.id };
       const [tasks, issues, feedbackTotal, noteTotal] = await Promise.all([
-        db.task.findMany({ where: ownerWhere, select: { status: true } }),
+        db.task.findMany({ where: ownerWhere, select: { status: true, dueDate: true } }),
         db.issue.findMany({ where: ownerWhere, select: { status: true } }),
         db.feedback.count({ where: ownerWhere }),
         db.note.count({ where: ownerWhere }),
       ]);
       const taskCompleted = tasks.filter((t) => t.status === DONE_TASK_STATUS).length;
+      const overdue = tasks.filter((t) => isTaskOverdue(t)).length;
       const openIssues = issues.filter((i) =>
         OPEN_ISSUE_STATUSES.includes(i.status as never),
       ).length;
@@ -158,6 +165,7 @@ export async function getTeamOverview(db: Db, actor: JwtPayload): Promise<TeamOv
         taskTotal: tasks.length,
         taskCompleted,
         completionRate: tasks.length === 0 ? 0 : Math.round((taskCompleted / tasks.length) * 100),
+        overdue,
         openIssues,
         feedbackTotal,
         noteTotal,
@@ -173,6 +181,7 @@ export async function getTeamOverview(db: Db, actor: JwtPayload): Promise<TeamOv
       recruits: rows.length,
       openIssues: rows.reduce((sum, r) => sum + r.openIssues, 0),
       completionRate: taskTotal === 0 ? 0 : Math.round((completedTotal / taskTotal) * 100),
+      overdue: rows.reduce((sum, r) => sum + r.overdue, 0),
     },
   };
 }

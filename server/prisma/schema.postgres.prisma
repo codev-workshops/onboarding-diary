@@ -21,7 +21,8 @@ model Department {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
+  users     User[]
+  templates ChecklistTemplate[]
 }
 
 model User {
@@ -44,6 +45,8 @@ model User {
   issues   Issue[]
   feedback Feedback[]
   notes    Note[]
+  comments Comment[] @relation("CommentAuthor")
+  mentions Mention[] @relation("UserMentions")
 }
 
 model TaskCategory {
@@ -53,11 +56,12 @@ model TaskCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tasks Task[]
+  tasks          Task[]
+  checklistItems ChecklistItem[]
 }
 
 model Task {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   date        DateTime
   title       String
   description String
@@ -65,14 +69,75 @@ model Task {
   priority    String
   categoryId  String
   ownerId     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   category TaskCategory @relation(fields: [categoryId], references: [id])
   owner    User         @relation(fields: [ownerId], references: [id])
+  comments Comment[]
 
   @@index([ownerId])
   @@index([date])
+}
+
+model ChecklistTemplate {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String   @default("")
+  role         String?
+  departmentId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department Department?     @relation(fields: [departmentId], references: [id])
+  items      ChecklistItem[]
+}
+
+model ChecklistItem {
+  id            String   @id @default(cuid())
+  templateId    String
+  title         String
+  description   String   @default("")
+  priority      String
+  dueOffsetDays Int      @default(0)
+  categoryId    String?
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  category TaskCategory?     @relation(fields: [categoryId], references: [id])
+
+  @@index([templateId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task     Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author   User      @relation("CommentAuthor", fields: [authorId], references: [id])
+  mentions Mention[]
+
+  @@index([taskId])
+}
+
+model Mention {
+  id        String    @id @default(cuid())
+  commentId String
+  userId    String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation("UserMentions", fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Issue {

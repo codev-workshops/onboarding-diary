@@ -14,6 +14,7 @@ export const taskCreateSchema = z.object({
   categoryId: z.string().min(1),
   status: z.enum(TASK_STATUSES),
   priority: z.enum(TASK_PRIORITIES),
+  dueDate: isoDate.nullable().optional(),
 });
 
 export const taskUpdateSchema = taskCreateSchema.partial();

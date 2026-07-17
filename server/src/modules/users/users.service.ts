@@ -4,6 +4,7 @@ import { ApiError } from '../../http/errors.js';
 import { ROLES } from '../../domain/enums.js';
 import { hashPassword } from '../../auth/password.js';
 import { passwordPolicy } from '../../auth/passwordPolicy.js';
+import { applyTemplateToUser } from '../templates/templates.service.js';
 
 const isoDate = z.coerce.date();
 
@@ -15,6 +16,7 @@ export const userCreateSchema = z.object({
   startDate: isoDate,
   departmentId: z.string().nullable().optional(),
   managerId: z.string().nullable().optional(),
+  templateId: z.string().nullable().optional(),
 });
 
 export const userUpdateSchema = z.object({
@@ -84,7 +86,7 @@ export async function createUser(db: Db, input: UserCreateInput) {
   if (existing) throw ApiError.conflict('A user with that email already exists');
 
   const passwordHash = await hashPassword(input.password);
-  return db.user.create({
+  const user = await db.user.create({
     data: {
       email: input.email,
       passwordHash,
@@ -96,6 +98,13 @@ export async function createUser(db: Db, input: UserCreateInput) {
     },
     select: publicUserSelect,
   });
+
+  // Optionally seed the recruit's Task Log from a checklist template (§17).
+  if (input.templateId) {
+    await applyTemplateToUser(db, input.templateId, user.id);
+  }
+
+  return user;
 }
 
 export async function updateUser(db: Db, id: string, input: UserUpdateInput) {
