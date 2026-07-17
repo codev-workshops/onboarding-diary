@@ -1888,6 +1888,8 @@ function UserEditor({
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState("");
   const [action, setAction] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
   const managers = users.filter((candidate) => candidate.role === "Manager");
 
   function change(event) {
@@ -1966,107 +1968,130 @@ function UserEditor({
   }
 
   return (
-    <article className="min-w-0 space-y-4 rounded-2xl bg-white p-4 shadow sm:p-5">
-      <div className="min-w-0">
-        <h3 className="break-words text-lg font-semibold">{user.name}</h3>
-        <p className="break-all text-sm text-slate-600">
-          #{user.id} · {user.email} · {user.role}
-        </p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field
-          label={`Name for user ${user.id}`}
-          name="name"
-          value={form.name}
-          onChange={change}
-          error={errors.name}
-        />
-        <Field
-          label={`Email for user ${user.id}`}
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={change}
-          error={errors.email}
-        />
-        <Field
-          label={`Department for user ${user.id}`}
-          name="department"
-          value={form.department}
-          onChange={change}
-          error={errors.department}
-        />
-        <Field
-          label={`Start date for user ${user.id}`}
-          name="start_date"
-          type="date"
-          value={form.start_date}
-          onChange={change}
-          error={errors.start_date}
-        />
-        <SelectField
-          label={`Role for user ${user.id}`}
-          name="role"
-          value={form.role}
-          onChange={change}
-          error={errors.role}
+    <article className="min-w-0 rounded-2xl bg-white shadow">
+      <h3 className="m-0">
+        <button
+          type="button"
+          className="flex w-full min-w-0 items-center justify-between gap-3 rounded-2xl p-4 text-left sm:p-5"
+          aria-expanded={expanded}
+          aria-controls={detailsId}
+          onClick={() => setExpanded((current) => !current)}
         >
-          {roles.map((role) => (
-            <option key={role} value={role}>
-              {role}
-            </option>
-          ))}
-        </SelectField>
-      </div>
-      {user.role === "Recruit" ? (
-        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-          <SelectField
-            label={`Manager assignment for user ${user.id}`}
-            name="manager_id"
-            value={managerId}
-            onChange={(event) => setManagerId(event.target.value)}
+          <span className="min-w-0">
+            <span className="block break-words text-lg font-semibold">
+              {user.name}
+            </span>
+            <span className="block text-sm text-slate-600">{user.role}</span>
+          </span>
+          <span
+            aria-hidden="true"
+            className="shrink-0 text-sm text-slate-500"
           >
-            <option value="">Unassigned</option>
-            {managers.map((manager) => (
-              <option key={manager.id} value={manager.id}>
-                {manager.name}
-              </option>
-            ))}
-          </SelectField>
-          <button
-            className="self-end rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-semibold text-teal-800"
-            type="button"
-            onClick={saveAssignment}
-            disabled={Boolean(action)}
-          >
-            {action === "assignment" ? "Saving assignment" : "Save assignment"}
-          </button>
+            {expanded ? "Hide details" : "Show details"}
+          </span>
+        </button>
+      </h3>
+      {expanded ? (
+        <div id={detailsId} className="space-y-4 p-4 pt-0 sm:p-5 sm:pt-0">
+          <p className="break-all text-sm text-slate-600">
+            #{user.id} · {user.email} · {user.role}
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field
+              label={`Name for user ${user.id}`}
+              name="name"
+              value={form.name}
+              onChange={change}
+              error={errors.name}
+            />
+            <Field
+              label={`Email for user ${user.id}`}
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={change}
+              error={errors.email}
+            />
+            <Field
+              label={`Department for user ${user.id}`}
+              name="department"
+              value={form.department}
+              onChange={change}
+              error={errors.department}
+            />
+            <Field
+              label={`Start date for user ${user.id}`}
+              name="start_date"
+              type="date"
+              value={form.start_date}
+              onChange={change}
+              error={errors.start_date}
+            />
+            <SelectField
+              label={`Role for user ${user.id}`}
+              name="role"
+              value={form.role}
+              onChange={change}
+              error={errors.role}
+            >
+              {roles.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+          {user.role === "Recruit" ? (
+            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+              <SelectField
+                label={`Manager assignment for user ${user.id}`}
+                name="manager_id"
+                value={managerId}
+                onChange={(event) => setManagerId(event.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {managers.map((manager) => (
+                  <option key={manager.id} value={manager.id}>
+                    {manager.name}
+                  </option>
+                ))}
+              </SelectField>
+              <button
+                className="self-end rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-semibold text-teal-800"
+                type="button"
+                onClick={saveAssignment}
+                disabled={Boolean(action)}
+              >
+                {action === "assignment" ? "Saving assignment" : "Save assignment"}
+              </button>
+            </div>
+          ) : null}
+          <StatusMessage
+            message={message}
+            tone={message.endsWith("saved") ? "neutral" : "error"}
+          />
+          <div className="flex flex-wrap gap-3">
+            <button
+              className="rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
+              type="button"
+              onClick={save}
+              disabled={Boolean(action)}
+            >
+              {action === "save" ? `Saving user ${user.id}` : `Save user ${user.id}`}
+            </button>
+            <button
+              className="rounded-lg border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700"
+              type="button"
+              onClick={deleteUser}
+              disabled={Boolean(action)}
+            >
+              {action === "delete"
+                ? `Deleting user ${user.id}`
+                : `Delete user ${user.id}`}
+            </button>
+          </div>
         </div>
       ) : null}
-      <StatusMessage
-        message={message}
-        tone={message.endsWith("saved") ? "neutral" : "error"}
-      />
-      <div className="flex flex-wrap gap-3">
-        <button
-          className="rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
-          type="button"
-          onClick={save}
-          disabled={Boolean(action)}
-        >
-          {action === "save" ? `Saving user ${user.id}` : `Save user ${user.id}`}
-        </button>
-        <button
-          className="rounded-lg border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700"
-          type="button"
-          onClick={deleteUser}
-          disabled={Boolean(action)}
-        >
-          {action === "delete"
-            ? `Deleting user ${user.id}`
-            : `Delete user ${user.id}`}
-        </button>
-      </div>
     </article>
   );
 }
