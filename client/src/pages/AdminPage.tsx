@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
@@ -10,24 +10,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
-import { useCategories, useDepartments, useUsers } from '@/hooks/data';
+import { Textarea } from '@/components/ui/textarea';
+import { useCategories, useDepartments, useTemplates, useUsers } from '@/hooks/data';
 import { api } from '@/lib/api';
-import { ROLES } from '@/lib/constants';
-import type { Department, User } from '@/lib/types';
+import { ROLES, TASK_PRIORITIES } from '@/lib/constants';
+import type { ChecklistTemplate, Department, TaskCategory, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-type Tab = 'users' | 'departments' | 'categories';
+type Tab = 'users' | 'departments' | 'categories' | 'templates';
 
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>('users');
   return (
     <div>
-      <PageHeader title="Admin" description="Manage users, departments, and task categories." />
+      <PageHeader title="Admin" description="Manage users, departments, categories, and templates." />
       <div className="mb-6 flex gap-1 rounded-md border border-border bg-card p-1">
-        {(['users', 'departments', 'categories'] as Tab[]).map((t) => (
+        {(['users', 'departments', 'categories', 'templates'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
+            data-tour={`admin-tab-${t}`}
             className={cn(
               'flex-1 rounded px-3 py-1.5 text-sm font-medium capitalize transition-colors',
               tab === t ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
@@ -37,7 +39,15 @@ export function AdminPage() {
           </button>
         ))}
       </div>
-      {tab === 'users' ? <UsersTab /> : tab === 'departments' ? <DepartmentsTab /> : <CategoriesTab />}
+      {tab === 'users' ? (
+        <UsersTab />
+      ) : tab === 'departments' ? (
+        <DepartmentsTab />
+      ) : tab === 'categories' ? (
+        <CategoriesTab />
+      ) : (
+        <TemplatesTab />
+      )}
     </div>
   );
 }
@@ -46,6 +56,7 @@ function UsersTab() {
   const qc = useQueryClient();
   const usersQuery = useUsers();
   const { data: departments } = useDepartments();
+  const { data: templates } = useTemplates();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -53,6 +64,7 @@ function UsersTab() {
     role: 'Recruit',
     departmentId: '',
     managerId: '',
+    templateId: '',
     startDate: new Date().toISOString().slice(0, 10),
   });
 
@@ -66,11 +78,13 @@ function UsersTab() {
           ...form,
           departmentId: form.departmentId || null,
           managerId: form.managerId || null,
+          templateId: form.role === 'Recruit' && form.templateId ? form.templateId : null,
         },
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['users'] });
-      setForm({ ...form, name: '', email: '', password: '' });
+      void qc.invalidateQueries({ queryKey: ['tasks'] });
+      setForm({ ...form, name: '', email: '', password: '', templateId: '' });
     },
   });
 
@@ -145,6 +159,22 @@ function UsersTab() {
                 </Select>
               </div>
             </div>
+            {form.role === 'Recruit' ? (
+              <div data-tour="provision-template">
+                <Label htmlFor="u-template">Checklist template (optional)</Label>
+                <Select id="u-template" value={form.templateId} onChange={(e) => setForm({ ...form, templateId: e.target.value })}>
+                  <option value="">None</option>
+                  {templates?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.items.length} tasks)
+                    </option>
+                  ))}
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Seeds the recruit's Task Log with due dates based on their start date.
+                </p>
+              </div>
+            ) : null}
             {createMutation.isError ? (
               <p className="text-sm text-danger" role="alert">
                 {(createMutation.error as Error).message}
@@ -478,5 +508,268 @@ function CategoriesTab() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+interface ItemForm {
+  title: string;
+  description: string;
+  priority: string;
+  dueOffsetDays: number;
+  categoryId: string;
+}
+
+function TemplatesTab() {
+  const qc = useQueryClient();
+  const templatesQuery = useTemplates();
+  const [editing, setEditing] = useState<ChecklistTemplate | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api<void>(`/templates/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['templates'] }),
+  });
+
+  return (
+    <div>
+      <div className="mb-4 flex justify-end">
+        <Button onClick={() => setCreating(true)} data-tour="new-template">
+          <Plus className="h-4 w-4" /> New template
+        </Button>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Checklist templates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {templatesQuery.isLoading ? (
+            <LoadingState />
+          ) : templatesQuery.isError ? (
+            <ErrorState message={(templatesQuery.error as Error).message} />
+          ) : templatesQuery.data && templatesQuery.data.length > 0 ? (
+            <ul className="divide-y divide-border">
+              {templatesQuery.data.map((t) => (
+                <li key={t.id} className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="font-medium">{t.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t.items.length} items
+                      {t.role ? ` · ${t.role}` : ''}
+                      {t.department ? ` · ${t.department.name}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" aria-label={`Edit ${t.name}`} onClick={() => setEditing(t)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" aria-label={`Delete ${t.name}`} onClick={() => deleteMutation.mutate(t.id)}>
+                      <Trash2 className="h-4 w-4 text-danger" />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="No templates" hint="Create a reusable onboarding checklist." />
+          )}
+        </CardContent>
+      </Card>
+
+      {creating ? <TemplateEditor onClose={() => setCreating(false)} /> : null}
+      {editing ? <TemplateEditor template={editing} onClose={() => setEditing(null)} /> : null}
+    </div>
+  );
+}
+
+function TemplateEditor({
+  template,
+  onClose,
+}: {
+  template?: ChecklistTemplate;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { data: departments } = useDepartments();
+  const { data: categories } = useCategories();
+  const [name, setName] = useState(template?.name ?? '');
+  const [description, setDescription] = useState(template?.description ?? '');
+  const [role, setRole] = useState(template?.role ?? '');
+  const [departmentId, setDepartmentId] = useState(template?.departmentId ?? '');
+  const [items, setItems] = useState<ItemForm[]>(
+    template?.items.map((i) => ({
+      title: i.title,
+      description: i.description,
+      priority: i.priority,
+      dueOffsetDays: i.dueOffsetDays,
+      categoryId: i.categoryId ?? '',
+    })) ?? [],
+  );
+
+  const activeCategories: TaskCategory[] = categories?.filter((c) => c.isActive) ?? [];
+
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const body = {
+        name,
+        description,
+        role: role || null,
+        departmentId: departmentId || null,
+        items: items.map((i) => ({
+          title: i.title,
+          description: i.description,
+          priority: i.priority,
+          dueOffsetDays: Number(i.dueOffsetDays) || 0,
+          categoryId: i.categoryId || null,
+        })),
+      };
+      return template
+        ? api(`/templates/${template.id}`, { method: 'PUT', body })
+        : api('/templates', { method: 'POST', body });
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['templates'] });
+      onClose();
+    },
+  });
+
+  function updateItem(index: number, patch: Partial<ItemForm>) {
+    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  }
+
+  return (
+    <Modal open title={template ? `Edit ${template.name}` : 'New template'} onClose={onClose}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          saveMutation.mutate();
+        }}
+      >
+        <div>
+          <Label htmlFor="t-name">Name</Label>
+          <Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} required />
+        </div>
+        <div>
+          <Label htmlFor="t-desc">Description</Label>
+          <Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="t-role">Target role</Label>
+            <Select id="t-role" value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="">Any</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="t-dept">Department</Label>
+            <Select id="t-dept" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+              <option value="">Any</option>
+              {departments?.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Checklist items</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setItems((prev) => [
+                  ...prev,
+                  { title: '', description: '', priority: 'Medium', dueOffsetDays: 0, categoryId: '' },
+                ])
+              }
+            >
+              <Plus className="h-4 w-4" /> Add item
+            </Button>
+          </div>
+          {items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No items yet.</p>
+          ) : (
+            items.map((item, index) => (
+              <div key={index} className="space-y-2 rounded-md border border-border p-3">
+                <div className="flex gap-2">
+                  <Input
+                    aria-label={`Item ${index + 1} title`}
+                    placeholder="Title"
+                    value={item.title}
+                    onChange={(e) => updateItem(index, { title: e.target.value })}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove item ${index + 1}`}
+                    onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                  >
+                    <Trash2 className="h-4 w-4 text-danger" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Select
+                    aria-label={`Item ${index + 1} priority`}
+                    value={item.priority}
+                    onChange={(e) => updateItem(index, { priority: e.target.value })}
+                  >
+                    {TASK_PRIORITIES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </Select>
+                  <Input
+                    type="number"
+                    min={0}
+                    aria-label={`Item ${index + 1} due offset days`}
+                    placeholder="Due +days"
+                    value={item.dueOffsetDays}
+                    onChange={(e) => updateItem(index, { dueOffsetDays: Number(e.target.value) })}
+                  />
+                  <Select
+                    aria-label={`Item ${index + 1} category`}
+                    value={item.categoryId}
+                    onChange={(e) => updateItem(index, { categoryId: e.target.value })}
+                  >
+                    <option value="">Default category</option>
+                    {activeCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {saveMutation.isError ? (
+          <p className="text-sm text-danger" role="alert">
+            {(saveMutation.error as Error).message}
+          </p>
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? 'Saving…' : 'Save template'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

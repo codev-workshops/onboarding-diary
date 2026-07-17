@@ -37,6 +37,7 @@ export interface Task {
   status: string;
   priority: string;
   ownerId: string;
+  dueDate: string | null;
 }
 
 export interface Issue {
@@ -73,6 +74,7 @@ export interface DashboardSummary {
     total: number;
     completed: number;
     completionRate: number;
+    overdue: number;
     byStatus: Record<string, number>;
   };
   issues: { total: number; open: number; bySeverity: Record<string, number> };
@@ -146,6 +148,7 @@ export interface TeamRecruitSummary {
   taskTotal: number;
   taskCompleted: number;
   completionRate: number;
+  overdue: number;
   openIssues: number;
   feedbackTotal: number;
   noteTotal: number;
@@ -153,5 +156,57 @@ export interface TeamRecruitSummary {
 
 export interface TeamOverview {
   recruits: TeamRecruitSummary[];
-  totals: { recruits: number; openIssues: number; completionRate: number };
+  totals: { recruits: number; openIssues: number; completionRate: number; overdue: number };
+}
+
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  dueOffsetDays: number;
+  categoryId: string | null;
+  order: number;
+}
+
+export interface ChecklistTemplate {
+  id: string;
+  name: string;
+  description: string;
+  role: string | null;
+  departmentId: string | null;
+  department?: { id: string; name: string } | null;
+  items: ChecklistItem[];
+}
+
+export interface UserRef {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface Comment {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: UserRef;
+  mentions: { id: string; user: UserRef }[];
+}
+
+export interface Mention {
+  id: string;
+  readAt: string | null;
+  createdAt: string;
+  comment: {
+    id: string;
+    body: string;
+    createdAt: string;
+    author: UserRef;
+    task: { id: string; title: string };
+  };
+}
+
+export interface MentionsResponse {
+  items: Mention[];
+  unread: number;
 }

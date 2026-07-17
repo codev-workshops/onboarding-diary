@@ -1,6 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Department, DemoCredentials, TaskCategory, TeamOverview, User } from '@/lib/types';
+import type {
+  ChecklistTemplate,
+  Comment,
+  Department,
+  DemoCredentials,
+  MentionsResponse,
+  TaskCategory,
+  TeamOverview,
+  User,
+} from '@/lib/types';
 
 export function useCategories() {
   return useQuery({
@@ -46,5 +55,36 @@ export function useDemoCredentials(enabled: boolean) {
     queryFn: () => api<DemoCredentials>('/config/demo'),
     enabled,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Admin-managed onboarding checklist templates (docs/ASSUMPTIONS.md §17). */
+export function useTemplates(enabled = true) {
+  return useQuery({
+    queryKey: ['templates'],
+    queryFn: () => api<ChecklistTemplate[]>('/templates'),
+    enabled,
+  });
+}
+
+/** Comments on a task (docs/ASSUMPTIONS.md §19). */
+export function useComments(taskId: string | null) {
+  return useQuery({
+    queryKey: ['comments', taskId],
+    queryFn: () => api<Comment[]>(`/tasks/${taskId}/comments`),
+    enabled: !!taskId,
+  });
+}
+
+/**
+ * Current user's @mention activity + unread count (docs/ASSUMPTIONS.md §19).
+ * Polls periodically so the header badge stays fresh.
+ */
+export function useMentions(enabled = true) {
+  return useQuery({
+    queryKey: ['mentions'],
+    queryFn: () => api<MentionsResponse>('/mentions'),
+    enabled,
+    refetchInterval: 30_000,
   });
 }

@@ -16,6 +16,7 @@ import {
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
+import { MentionsBell } from '@/components/MentionsBell';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import type { Role } from '@/lib/constants';
@@ -71,6 +72,7 @@ export function Layout() {
           <span className="hidden text-sm text-muted-foreground sm:inline">
             {user?.name} · {user?.role}
           </span>
+          <MentionsBell />
           <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={toggle}>
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>

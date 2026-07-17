@@ -21,6 +21,10 @@ function daysAgo(n: number): Date {
   return d;
 }
 
+function daysFromNow(n: number): Date {
+  return daysAgo(-n);
+}
+
 /**
  * Seeds the demo dataset: multiple departments, multiple managers and recruits,
  * default task categories, and a realistic spread of entries across all logs
@@ -28,6 +32,10 @@ function daysAgo(n: number): Date {
  */
 export async function seedDemoData(client: PrismaClient = prisma): Promise<void> {
   // Clear existing data (order respects FKs).
+  await client.mention.deleteMany();
+  await client.comment.deleteMany();
+  await client.checklistItem.deleteMany();
+  await client.checklistTemplate.deleteMany();
   await client.task.deleteMany();
   await client.issue.deleteMany();
   await client.feedback.deleteMany();
@@ -158,6 +166,19 @@ export async function seedDemoData(client: PrismaClient = prisma): Promise<void>
           categoryId: (categoryByName.get('Documentation') ?? categories[0]).id,
           status: TASK_STATUSES[0],
           priority: TASK_PRIORITIES[0],
+          // Past due and not done -> shows as overdue on dashboards (§18).
+          dueDate: daysAgo(2),
+        },
+        {
+          ownerId: recruit.id,
+          date: daysAgo(base + 1),
+          title: 'Schedule 1:1 with manager',
+          description: 'Book an intro meeting with your manager.',
+          categoryId: (categoryByName.get('Meeting') ?? categories[0]).id,
+          status: TASK_STATUSES[0],
+          priority: TASK_PRIORITIES[1],
+          // Upcoming due date (not overdue).
+          dueDate: daysFromNow(5),
         },
       ],
     });
@@ -201,6 +222,60 @@ export async function seedDemoData(client: PrismaClient = prisma): Promise<void>
         title: 'First week reflections',
         content: 'Learned a lot about the team and the codebase.',
         tags: JSON.stringify(['reflection', 'week-1']),
+      },
+    });
+  }
+
+  // Checklist template (§17) with due offsets relative to a recruit's start date.
+  await client.checklistTemplate.create({
+    data: {
+      name: 'Engineering onboarding',
+      description: 'Standard first-week checklist for engineering recruits.',
+      role: 'Recruit',
+      departmentId: engineering.id,
+      items: {
+        create: [
+          {
+            title: 'Set up development environment',
+            description: 'Install tooling and clone repositories.',
+            priority: TASK_PRIORITIES[2],
+            dueOffsetDays: 1,
+            categoryId: (categoryByName.get('Setup') ?? categories[0]).id,
+            order: 0,
+          },
+          {
+            title: 'Complete onboarding training',
+            description: 'Work through the required training modules.',
+            priority: TASK_PRIORITIES[1],
+            dueOffsetDays: 3,
+            categoryId: (categoryByName.get('Training') ?? categories[0]).id,
+            order: 1,
+          },
+          {
+            title: 'Meet your team',
+            description: 'Schedule intros with each teammate.',
+            priority: TASK_PRIORITIES[0],
+            dueOffsetDays: 5,
+            categoryId: (categoryByName.get('Meeting') ?? categories[0]).id,
+            order: 2,
+          },
+        ],
+      },
+    },
+  });
+
+  // A comment with an @mention (§19) so the demo activity indicator is populated.
+  const rina = recruits[0];
+  const rinaTask = await client.task.findFirst({
+    where: { ownerId: rina.id, title: 'Read team documentation' },
+  });
+  if (rinaTask) {
+    await client.comment.create({
+      data: {
+        taskId: rinaTask.id,
+        authorId: rina.id,
+        body: 'Which architecture doc should I start with, @manager.eng?',
+        mentions: { create: [{ userId: managerEng.id }] },
       },
     });
   }

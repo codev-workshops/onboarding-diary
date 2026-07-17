@@ -18,9 +18,10 @@ export function TeamPage() {
     <div>
       <PageHeader title="Team" description="Onboarding progress for the recruits you oversee." />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Recruits" value={data.totals.recruits} />
         <Stat label="Open issues" value={data.totals.openIssues} />
+        <Stat label="Overdue tasks" value={data.totals.overdue} />
         <Stat label="Avg. completion" value={`${data.totals.completionRate}%`} />
       </div>
 
@@ -80,7 +81,10 @@ function RecruitCard({ recruit }: { recruit: TeamRecruitSummary }) {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-4 text-sm text-muted-foreground">
+        <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
+          {recruit.overdue > 0 ? (
+            <Badge tone="danger">{recruit.overdue} overdue</Badge>
+          ) : null}
           <span>
             <span className="font-medium text-foreground">{recruit.openIssues}</span> open issues
           </span>

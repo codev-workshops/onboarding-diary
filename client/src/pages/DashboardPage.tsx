@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { TriangleAlert } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge, toneFor } from '@/components/ui/badge';
@@ -40,6 +41,20 @@ export function DashboardPage() {
     <div>
       <PageHeader title="Dashboard" description="Your onboarding progress at a glance." />
 
+      {data.tasks.overdue > 0 ? (
+        <div
+          role="alert"
+          data-tour="overdue-reminder"
+          className="mb-4 flex items-center gap-3 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
+        >
+          <TriangleAlert className="h-5 w-5 shrink-0" />
+          <span>
+            You have <strong>{data.tasks.overdue}</strong> overdue{' '}
+            {data.tasks.overdue === 1 ? 'task' : 'tasks'}. Review the Task Log to catch up.
+          </span>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Tasks" value={data.tasks.total} sub={`${data.tasks.completed} completed`} />
         <Stat
@@ -47,8 +62,12 @@ export function DashboardPage() {
           value={`${data.tasks.completionRate}%`}
           sub="of tasks done"
         />
+        <Stat
+          label="Overdue"
+          value={data.tasks.overdue}
+          sub={data.tasks.overdue > 0 ? 'need attention' : 'all on track'}
+        />
         <Stat label="Open issues" value={data.issues.open} sub={`${data.issues.total} total`} />
-        <Stat label="Notes" value={data.notes.total} sub={`${data.feedback.total} feedback`} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

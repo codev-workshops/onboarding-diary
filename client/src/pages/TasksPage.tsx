@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { MessageSquare, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
+import { TaskComments } from '@/components/TaskComments';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
 import { Badge, toneFor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +17,7 @@ import { useCategories } from '@/hooks/data';
 import { api } from '@/lib/api';
 import { TASK_PRIORITIES, TASK_STATUSES } from '@/lib/constants';
 import type { Task } from '@/lib/types';
-import { toDateInput } from '@/lib/utils';
+import { isTaskOverdue, toDateInput } from '@/lib/utils';
 
 interface TaskForm {
   date: string;
@@ -24,6 +26,7 @@ interface TaskForm {
   categoryId: string;
   status: string;
   priority: string;
+  dueDate: string;
 }
 
 function emptyForm(): TaskForm {
@@ -34,6 +37,7 @@ function emptyForm(): TaskForm {
     categoryId: '',
     status: 'To Do',
     priority: 'Medium',
+    dueDate: '',
   };
 }
 
@@ -45,6 +49,8 @@ export function TasksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(emptyForm());
+  const [commenting, setCommenting] = useState<Task | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const tasksQuery = useQuery({
     queryKey: ['tasks', statusFilter, categoryFilter],
@@ -54,16 +60,28 @@ export function TasksPage() {
       }),
   });
 
+  // Deep-link to a task's comments from the activity indicator (?taskId=...).
+  const deepLinkId = searchParams.get('taskId');
+  useEffect(() => {
+    if (!deepLinkId || !tasksQuery.data) return;
+    const target = tasksQuery.data.find((t) => t.id === deepLinkId);
+    if (target) setCommenting(target);
+    searchParams.delete('taskId');
+    setSearchParams(searchParams, { replace: true });
+  }, [deepLinkId, tasksQuery.data, searchParams, setSearchParams]);
+
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['tasks'] });
     void qc.invalidateQueries({ queryKey: ['dashboard'] });
   };
 
   const saveMutation = useMutation({
-    mutationFn: (payload: TaskForm) =>
-      editing
-        ? api<Task>(`/tasks/${editing.id}`, { method: 'PUT', body: payload })
-        : api<Task>('/tasks', { method: 'POST', body: payload }),
+    mutationFn: (payload: TaskForm) => {
+      const body = { ...payload, dueDate: payload.dueDate || null };
+      return editing
+        ? api<Task>(`/tasks/${editing.id}`, { method: 'PUT', body })
+        : api<Task>('/tasks', { method: 'POST', body });
+    },
     onSuccess: () => {
       invalidate();
       setModalOpen(false);
@@ -90,6 +108,7 @@ export function TasksPage() {
       categoryId: task.categoryId,
       status: task.status,
       priority: task.priority,
+      dueDate: task.dueDate ? toDateInput(task.dueDate) : '',
     });
     setModalOpen(true);
   }
@@ -150,12 +169,22 @@ export function TasksPage() {
                     <Badge tone={toneFor(task.status)}>{task.status}</Badge>
                     <Badge tone={toneFor(task.priority)}>{task.priority}</Badge>
                     {task.category ? <Badge tone="primary">{task.category.name}</Badge> : null}
+                    {isTaskOverdue(task) ? <Badge tone="danger">Overdue</Badge> : null}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {toDateInput(task.date)} — {task.description || 'No description'}
+                    {task.dueDate ? ` · Due ${toDateInput(task.dueDate)}` : ''}
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Comments for ${task.title}`}
+                    onClick={() => setCommenting(task)}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => openEdit(task)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -254,6 +283,15 @@ export function TasksPage() {
                 ))}
               </Select>
             </div>
+            <div>
+              <Label htmlFor="task-due">Due date (optional)</Label>
+              <Input
+                id="task-due"
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              />
+            </div>
           </div>
           <div>
             <Label htmlFor="task-desc">Description</Label>
@@ -278,6 +316,10 @@ export function TasksPage() {
           </div>
         </form>
       </Modal>
+
+      {commenting ? (
+        <TaskComments task={commenting} onClose={() => setCommenting(null)} />
+      ) : null}
     </div>
   );
 }

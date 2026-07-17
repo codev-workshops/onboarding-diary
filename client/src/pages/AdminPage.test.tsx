@@ -65,6 +65,7 @@ describe('AdminPage — inline user edit', () => {
       if (url.includes('/api/users')) return Promise.resolve(jsonResponse([managerA, managerB, recruit]));
       if (url.includes('/api/departments')) return Promise.resolve(jsonResponse(departments));
       if (url.includes('/api/categories')) return Promise.resolve(jsonResponse([]));
+      if (url.includes('/api/templates')) return Promise.resolve(jsonResponse([]));
       return Promise.resolve(jsonResponse({}));
     });
 
@@ -94,6 +95,7 @@ describe('AdminPage — inline user edit', () => {
       if (url.includes('/api/users')) return Promise.resolve(jsonResponse([managerA, managerB, recruit]));
       if (url.includes('/api/departments')) return Promise.resolve(jsonResponse(departments));
       if (url.includes('/api/categories')) return Promise.resolve(jsonResponse([]));
+      if (url.includes('/api/templates')) return Promise.resolve(jsonResponse([]));
       return Promise.resolve(jsonResponse({}));
     });
 

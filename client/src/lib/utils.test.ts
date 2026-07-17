@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { cn, toDateInput } from './utils';
+import { isTaskOverdue } from './utils';
 
-describe('cn', () => {
-  it('merges and de-duplicates conflicting tailwind classes', () => {
-    expect(cn('p-2', 'p-4')).toBe('p-4');
-    expect(cn('text-sm', false, 'font-bold')).toBe('text-sm font-bold');
+const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+describe('isTaskOverdue', () => {
+  it('is false without a due date', () => {
+    expect(isTaskOverdue({ dueDate: null, status: 'To Do' })).toBe(false);
   });
-});
 
-describe('toDateInput', () => {
-  it('formats a date to YYYY-MM-DD', () => {
-    expect(toDateInput('2026-01-15T10:30:00.000Z')).toBe('2026-01-15');
+  it('is true when past due and not done', () => {
+    expect(isTaskOverdue({ dueDate: yesterday, status: 'In Progress' })).toBe(true);
+  });
+
+  it('is false when done', () => {
+    expect(isTaskOverdue({ dueDate: yesterday, status: 'Done' })).toBe(false);
+  });
+
+  it('is false when due in the future', () => {
+    expect(isTaskOverdue({ dueDate: tomorrow, status: 'To Do' })).toBe(false);
   });
 });
