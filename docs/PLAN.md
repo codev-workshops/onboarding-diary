@@ -135,6 +135,13 @@ the end** (guiding principle #4). Every phase adds code documentation as it goes
 - **Unit:** domain services, `PasswordPolicy`, authorization checks, enum/semantic
   logic, dashboard aggregation, report assembly and PDF/CSV formatting.
 - **Integration (API):** Supertest against Express routes with an ephemeral SQLite DB.
+- **Prod DB integration (Testcontainers):** a suite that runs a real PostgreSQL
+  container to validate migrations, repositories/services, and access-control
+  queries on the production engine. **Runs on every push in CI** (Docker-enabled
+  runner) and in local dev where Docker is available; it **skips gracefully** only
+  when Docker is genuinely absent so it never blocks a Docker-less machine.
+- **CI:** a GitHub Actions workflow runs lint, typecheck, unit/API tests, the
+  Testcontainers Postgres suite, and the build on every push/PR.
 - **E2E (Playwright):** per-role journeys — login, CRUD + filters for each log,
   dashboard, report export, and the first-boot onboarding flow.
 

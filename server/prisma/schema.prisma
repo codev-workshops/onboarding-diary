@@ -1,0 +1,132 @@
+// Onboarding Diary — Prisma schema (SQLite: first-boot/demo default).
+//
+// NOTE: This schema is kept in sync with `schema.postgres.prisma`, which is
+// identical except for the datasource provider and the generator output path.
+// A unit test (prisma-schema-parity.test.ts) asserts the model definitions match
+// so the two never drift. Enum-like fields are modelled as `String` (validated in
+// code via Zod + shared constants) so the schema is portable across SQLite and
+// PostgreSQL without provider-specific native enums.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String
+  startDate    DateTime
+  departmentId String?
+  managerId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department Department? @relation(fields: [departmentId], references: [id])
+  manager    User?       @relation("ManagerRecruits", fields: [managerId], references: [id])
+  recruits   User[]      @relation("ManagerRecruits")
+
+  tasks    Task[]
+  issues   Issue[]
+  feedback Feedback[]
+  notes    Note[]
+}
+
+model TaskCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks Task[]
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  date        DateTime
+  title       String
+  description String
+  status      String
+  priority    String
+  categoryId  String
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category TaskCategory @relation(fields: [categoryId], references: [id])
+  owner    User         @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+model Issue {
+  id              String   @id @default(cuid())
+  date            DateTime
+  title           String
+  description     String
+  severity        String
+  status          String
+  resolutionNotes String?
+  ownerId         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  date      DateTime
+  subject   String
+  type      String
+  details   String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  date      DateTime
+  title     String
+  content   String
+  tags      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

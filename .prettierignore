@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+coverage/
+server/src/generated/
+server/prisma/*.db
+package-lock.json
+playwright-report/
+test-results/

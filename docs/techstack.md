@@ -81,6 +81,16 @@ theme so the look stays consistent and is easy to re-theme.
 | API / integration| Supertest (+ Vitest)             |
 | Component        | React Testing Library            |
 | End-to-end       | Playwright                       |
+| Prod DB integration | Testcontainers (PostgreSQL)   |
+
+**Testcontainers (PostgreSQL):** the unit/API suite runs against ephemeral SQLite
+(fast). A separate integration suite spins up a real PostgreSQL container to
+validate the **production** datasource path — migrations apply cleanly,
+repositories/services behave, and access-control queries work on Postgres —
+catching behavior SQLite would mask. It **runs on every push** (CI Docker runner)
+and in local dev where Docker is available, and **skips gracefully** only when
+Docker is absent. Scoped to integration coverage, not a duplicate of every unit
+test.
 
 ## Code quality / tooling
 
