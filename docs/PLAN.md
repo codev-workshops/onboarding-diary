@@ -15,9 +15,11 @@ Phased plan for building the Onboarding Diary. Requirements come from
    enablers (tooltips / coach marks / welcome mats via React Joyride) that are on
    in first-boot/demo mode and turn off once a production DB holds real data
    (ASSUMPTIONS §2, §13).
-2. **Modern, elegant, professional, responsive UI.** Consistent design system
-   (Tailwind), accessible components, mobile-first responsive layouts, empty/loading/
-   error states, and polished dashboards.
+2. **Modern, elegant, professional, responsive UI.** A consistent design system
+   (Tailwind + shadcn/ui, lucide-react icons, Recharts) with a clean, professional
+   color scheme (neutral base + calm primary + semantic status colors, light/dark,
+   WCAG AA), accessible components, mobile-first responsive layouts, and deliberate
+   empty/loading/error states. See `techstack.md` → "Design system & UI".
 3. **Well-documented code.** JSDoc/TSDoc on public functions, modules, and complex
    logic; a README per package; inline comments only where they add non-obvious
    context.
@@ -31,7 +33,7 @@ Phased plan for building the Onboarding Diary. Requirements come from
   - `server/` — Node + Express + TypeScript REST API, Prisma ORM, JWT auth, Zod
     validation, report generation (PDFKit + csv-stringify).
   - `client/` — React + TypeScript SPA (Vite, React Router, TanStack Query, React
-    Hook Form, Tailwind, React Joyride).
+    Hook Form, Tailwind + shadcn/ui, lucide-react, Recharts, React Joyride).
 - **Datasource:** Prisma targeting **SQLite** (first-boot/demo) and **PostgreSQL**
   (production) — a config switch, one schema (ASSUMPTIONS §2, techstack).
 - **API:** RESTful resources, JWT bearer auth, role-based authorization enforcing

@@ -22,7 +22,29 @@ selections. See [`ASSUMPTIONS.md`](./ASSUMPTIONS.md) §3 for the decision contex
 | Server state     | TanStack Query             | Data fetching, caching, invalidation.             |
 | Forms            | React Hook Form            | Form state and validation wiring.                 |
 | Styling          | Tailwind CSS               | Utility-first, responsive layout.                 |
+| Component library| shadcn/ui (Radix + Tailwind)| Accessible, modern, elegant components.          |
+| Icons            | lucide-react               | Clean, consistent icon set.                       |
+| Charts           | Recharts                   | Dashboard progress/summary visualizations.        |
 | Onboarding UI    | React Joyride              | Tooltips / coach marks / welcome mats (see below).|
+
+## Design system & UI
+
+The product goal is a **clean, elegant, professional, and responsive** experience.
+
+- **Component library:** shadcn/ui (built on Radix primitives + Tailwind) for
+  accessible, polished components with full styling control.
+- **Icons & charts:** lucide-react for iconography; Recharts for the Dashboard's
+  progress/summary visualizations.
+- **Color scheme:** a restrained, professional palette — a neutral base (slate/
+  gray) with a single calm brand primary and clearly-defined **semantic colors**
+  for status/priority/severity (e.g. success/warning/danger/info). Supports light
+  and dark modes. All color pairings meet **WCAG AA** contrast.
+- **Layout & responsiveness:** mobile-first, responsive across breakpoints;
+  consistent spacing/typography scale; deliberate empty, loading, and error
+  states so no screen ever looks broken or bare.
+
+Design tokens (colors, spacing, typography, radii) are centralized in the Tailwind
+theme so the look stays consistent and is easy to re-theme.
 
 ## Backend
 
