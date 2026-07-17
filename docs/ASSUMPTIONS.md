@@ -17,6 +17,12 @@ This document records every decision that is **not** explicitly specified in
 >   membership (§5)
 > - Auth mechanism & password policy — **confirmed** as JWT + upgradeable
 >   `PasswordPolicy` (min 8 chars in v1) (§1)
+>
+> **⚠️ New items surfaced during planning — pending product-owner sign-off:**
+> - Demo seed data & demo accounts on first boot (§9)
+> - User provisioning model — Admin-created, no open self-registration (§10)
+> - Reports scope & format — which entry types, date-range semantics, file layout (§11)
+> - Onboarding-enabler disable trigger — precise condition (§13)
 
 ---
 
@@ -194,3 +200,111 @@ structure and the manager oversight feature.
 
 **Rationale:** Users record the date an event occurred, which may differ from when
 the record was created; the MANDATE treats `date` as a first-class user field.
+
+---
+
+# Decisions surfaced during planning
+
+The following were not part of the original MANDATE or the initial assumptions;
+they arose while planning the implementation and are documented here **before any
+code is written**, per the product owner's requirement.
+
+## 9. First-boot demo data & demo accounts
+
+**Status:** pending confirmation
+
+The principal implementation concern is **usability**: a default installation must
+let a user understand **all** features immediately. To achieve this, first boot
+seeds a **demonstration dataset** on the zero-config (SQLite/in-memory) database:
+
+- **Demo accounts** — one per role: a Recruit, a Manager (overseeing the demo
+  recruit(s)), and an Admin. Credentials are shown on the login screen / in the
+  README for the demo environment only.
+- **Demo entries** — a realistic spread of Tasks, Issues, Feedback Notes, and
+  Additional Notes across a date range, with varied categories/statuses/
+  priorities/severities so the **Dashboard** (summary counts, recent entries,
+  completion progress, open issues) and **Reports** (date-range PDF/CSV) are
+  populated and meaningful out of the box.
+- Demo data and demo accounts are **only** present in the first-boot/demo mode and
+  are **not** seeded once a production database is configured (see §13).
+
+**Rationale:** "Default installation should allow users to understand all
+features." Empty screens hide functionality; seeded demo data showcases every
+feature on first launch. Marked pending because the *content/volume* of demo data
+and whether demo credentials are surfaced in-product need sign-off.
+
+## 10. User provisioning
+
+**Status:** pending confirmation
+
+- **Admins create and manage user accounts** (recruits and managers), set their
+  role, department, profile fields, and manager assignment.
+- There is **no open/public self-registration** — the app is an internal
+  onboarding tool, so accounts are provisioned by an Admin.
+
+**Rationale:** The MANDATE specifies authentication and an Admin role but does not
+describe how accounts are created. Admin provisioning fits an internal tool and is
+consistent with the access-control model (§7) and oversight assignment (§5).
+
+## 11. Reports scope & format
+
+**Status:** pending confirmation
+
+- **Date range** filters entries by their user-entered `date` (§8).
+- A report covers **all four entry types** (Tasks, Issues, Feedback, Notes) within
+  the range, plus summary metrics mirroring the Dashboard.
+- **Scope by role** follows access control (§7): a Recruit reports on their own
+  data; a **Manager** reports on the recruits they oversee (selectable per recruit
+  or aggregated); an Admin can report on anyone.
+- **Formats:** **PDF** (formatted, human-readable summary + detail) and **CSV**
+  (tabular, one section/file per entry type or a combined normalized export — to
+  be finalized).
+
+**Rationale:** The MANDATE requires date-range reports as PDF or CSV and that
+managers report on their recruits, but does not define included entry types, the
+exact CSV layout, or per-recruit vs. aggregated manager reports.
+
+## 12. Audit timestamps vs. entry `date`
+
+**Status:** confirmed
+
+- In addition to the user-entered `date` (§8), every record carries
+  system-managed **`createdAt`** and **`updatedAt`** audit timestamps used for
+  ordering (e.g. "recent entries") and diagnostics.
+- These are **distinct** from the entry `date` and are **not** user-editable; §8's
+  point stands (no immutable `createdAt` rule is needed *for the entry date*).
+
+**Rationale:** Standard persistence practice; needed for "recent entries" ordering
+without conflating with the user-entered event date.
+
+## 13. Onboarding-enabler disable trigger
+
+**Status:** pending confirmation
+
+- Onboarding enablers (tooltips / coach marks / welcome mats, via the onboarding
+  UI library) are **on** in first-boot/demo mode and turn **off** once the app is
+  running against a **production database** (e.g. PostgreSQL) that holds
+  **real, non-demo data**.
+- Concretely: a settings/feature flag (e.g. `onboardingEnablersEnabled`) defaults
+  on for the SQLite/demo profile and is set off when the configured datasource is
+  the production engine and the seeded demo dataset is absent/replaced. An Admin
+  can also toggle it manually.
+
+**Rationale:** §2 states enablers disable "once an admin configures a production
+database and data is populated" but not the precise mechanism; this defines it.
+
+## 14. API & validation conventions
+
+**Status:** confirmed
+
+- **RESTful** resource endpoints (e.g. `/api/tasks`, `/api/issues`,
+  `/api/feedback`, `/api/notes`, `/api/reports`, `/api/users`), JSON payloads,
+  standard HTTP status codes, and a consistent error envelope.
+- **Filtering** via query parameters (e.g. `?date=`, `?category=`, `?status=`,
+  `?severity=`), matching the MANDATE's per-log filters; list endpoints support
+  pagination.
+- Request bodies validated server-side (Zod, per `techstack.md`); auth via JWT
+  bearer tokens with role-based authorization enforcing §7.
+
+**Rationale:** The MANDATE mandates a REST backend and per-field filters but not
+the concrete API shape; these are conventional choices recorded for consistency.
