@@ -276,9 +276,10 @@ test("Admin recovery preserves loaded users and destructive actions require conf
   await login(page, "admin@example.com", "bootstrap-password");
   await page.getByRole("button", { name: "Users & Assignments" }).click();
   const email = `confirmation-${suffix(testInfo)}-${Date.now()}@example.com`;
+  const recruitName = `Confirmation Recruit ${suffix(testInfo)}`;
   const created = await page.request.post("/api/admin/users", {
     data: {
-      name: "Confirmation Recruit",
+      name: recruitName,
       email,
       department: "Engineering",
       start_date: "2026-07-15",
@@ -289,8 +290,10 @@ test("Admin recovery preserves loaded users and destructive actions require conf
   expect(created.status()).toBe(201);
   await page.reload();
   await page.getByRole("button", { name: "Users & Assignments" }).click();
-  const card = page.locator("article").filter({ hasText: email });
+  const card = page.locator("article").filter({ hasText: recruitName });
   await expect(card).toBeVisible();
+  await card.getByRole("button", { name: recruitName }).click();
+  await expect(card.getByText(email, { exact: false })).toBeVisible();
   await expectNoPageOverflow(page);
 
   let failReload = true;

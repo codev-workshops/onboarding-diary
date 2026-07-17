@@ -23,7 +23,19 @@ async function createUser(page, { name, email, role }) {
   );
   await page.getByRole("button", { name: "Create user", exact: true }).click();
   expect((await response).status()).toBe(201);
-  await expect(page.getByText(email, { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: new RegExp(name) })).toBeVisible();
+}
+
+
+async function openUserCard(page, name) {
+  const card = page
+    .locator("article")
+    .filter({ has: page.getByRole("button", { name }) });
+  const toggle = card.getByRole("button", { name }).first();
+  if ((await toggle.getAttribute("aria-expanded")) === "false") {
+    await toggle.click();
+  }
+  return card;
 }
 
 
@@ -32,6 +44,9 @@ test("Admin creates users, replaces assignments, and non-Admin is denied", async
   page,
 }, testInfo) => {
   const suffix = testInfo.project.name;
+  const managerOneName = `Browser Manager One ${suffix}`;
+  const managerTwoName = `Browser Manager Two ${suffix}`;
+  const recruitName = `Browser Assigned Recruit ${suffix}`;
   const managerOneEmail = `browser-manager-one-${suffix}@example.com`;
   const managerTwoEmail = `browser-manager-two-${suffix}@example.com`;
   const recruitEmail = `browser-assigned-${suffix}@example.com`;
@@ -42,33 +57,31 @@ test("Admin creates users, replaces assignments, and non-Admin is denied", async
   await page.getByRole("button", { name: "Users & Assignments" }).click();
 
   await createUser(page, {
-    name: "Browser Manager One",
+    name: managerOneName,
     email: managerOneEmail,
     role: "Manager",
   });
   await createUser(page, {
-    name: "Browser Manager Two",
+    name: managerTwoName,
     email: managerTwoEmail,
     role: "Manager",
   });
   await createUser(page, {
-    name: "Browser Assigned Recruit",
+    name: recruitName,
     email: recruitEmail,
     role: "Recruit",
   });
 
-  const recruitCard = page
-    .locator("article")
-    .filter({ hasText: recruitEmail });
+  const recruitCard = await openUserCard(page, recruitName);
   await recruitCard
     .getByLabel(/Manager assignment for user/)
-    .selectOption({ label: "Browser Manager One" });
+    .selectOption({ label: managerOneName });
   await recruitCard.getByRole("button", { name: "Save assignment" }).click();
   await expect(recruitCard.getByRole("status")).toHaveText("Assignment saved");
 
   await recruitCard
     .getByLabel(/Manager assignment for user/)
-    .selectOption({ label: "Browser Manager Two" });
+    .selectOption({ label: managerTwoName });
   const replacement = page.waitForResponse(
     (candidate) =>
       candidate.url().includes("/api/admin/recruits/") &&
@@ -89,7 +102,7 @@ test("Admin creates users, replaces assignments, and non-Admin is denied", async
   ).toHaveCount(0);
   await expect(
     recruitPage.getByRole("heading", {
-      name: "Welcome, Browser Assigned Recruit",
+      name: `Welcome, ${recruitName}`,
     }),
   ).toBeVisible();
   const denial = await recruitPage.evaluate(async () => {
@@ -133,9 +146,7 @@ test("Admin self-save triggers one intentional user-list refresh", async ({
     }
   });
 
-  const adminCard = page
-    .locator("article")
-    .filter({ hasText: "admin@example.com" });
+  const adminCard = await openUserCard(page, "Bootstrap Admin");
   const selfSave = page.waitForResponse(
     (candidate) =>
       candidate.url().includes("/api/admin/users/") &&
@@ -160,30 +171,28 @@ test("Admin role change invalidates the affected user's session and link", async
   page,
 }, testInfo) => {
   const suffix = testInfo.project.name;
+  const managerName = `Session Manager ${suffix}`;
+  const recruitName = `Session Recruit ${suffix}`;
   const managerEmail = `session-manager-${suffix}@example.com`;
   const recruitEmail = `session-recruit-${suffix}@example.com`;
   await login(page, "admin@example.com", "bootstrap-password");
   await page.getByRole("button", { name: "Users & Assignments" }).click();
   await createUser(page, {
-    name: "Session Manager",
+    name: managerName,
     email: managerEmail,
     role: "Manager",
   });
   await createUser(page, {
-    name: "Session Recruit",
+    name: recruitName,
     email: recruitEmail,
     role: "Recruit",
   });
 
-  const managerCard = page
-    .locator("article")
-    .filter({ hasText: managerEmail });
-  const recruitCard = page
-    .locator("article")
-    .filter({ hasText: recruitEmail });
+  const managerCard = await openUserCard(page, managerName);
+  const recruitCard = await openUserCard(page, recruitName);
   await recruitCard
     .getByLabel(/Manager assignment for user/)
-    .selectOption({ label: "Session Manager" });
+    .selectOption({ label: managerName });
   await recruitCard.getByRole("button", { name: "Save assignment" }).click();
   await expect(recruitCard.getByRole("status")).toHaveText("Assignment saved");
 
