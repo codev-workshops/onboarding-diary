@@ -1993,9 +1993,6 @@ function UserEditor({
       </h3>
       {expanded ? (
         <div id={detailsId} className="space-y-4 p-4 pt-0 sm:p-5 sm:pt-0">
-          <p className="break-all text-sm text-slate-600">
-            #{user.id} · {user.email} · {user.role}
-          </p>
           <div className="grid gap-3 md:grid-cols-2">
             <Field
               label={`Name for user ${user.id}`}
