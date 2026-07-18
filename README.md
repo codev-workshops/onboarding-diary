@@ -7,6 +7,8 @@ Onboarding Diary Application - A web application for new recruits to document th
 - [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) — decisions not specified in the mandate, with rationale and sign-off status.
 - [docs/techstack.md](docs/techstack.md) — the chosen tech stack (React + REST) and supporting libraries.
 - [docs/PLAN.md](docs/PLAN.md) — phased implementation plan (usability-first, responsive UI, unit + e2e testing).
+- [docs/OPERATIONS.md](docs/OPERATIONS.md) — deploying/managing the app: demo vs production, `DB_STRING`, running processes, and the security model.
+- [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) — what is tested and how, across both SQLite (demo) and PostgreSQL (production).
 
 > **Note:** [docs/MANDATE.md](docs/MANDATE.md) supersedes the original project description above and is the single source of truth for requirements going forward.
 
@@ -66,7 +68,10 @@ npm run test                         # unit + API tests (Vitest)
 npm run build                        # production build (server + client)
 npm run test:integration --workspace server   # PostgreSQL path via Testcontainers (needs Docker)
 npm run test:integration --workspace setup    # demo→production cutover via Testcontainers (needs Docker)
-npm run e2e                          # Playwright end-to-end tests
+npm run e2e                          # Playwright e2e — demo mode (SQLite)
+npm run e2e:prod                     # Playwright e2e — production mode (PostgreSQL via Testcontainers, needs Docker)
 ```
+
+See [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) for what each layer covers.
 
 CI (`.github/workflows/ci.yml`) runs all of the above on every push and pull request.

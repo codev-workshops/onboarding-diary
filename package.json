@@ -17,6 +17,7 @@
     "seed": "npm run seed --workspace server",
     "setup": "npm run start --workspace setup",
     "e2e": "playwright test",
+    "e2e:prod": "playwright test --config playwright.prod.config.ts",
     "format": "prettier --write ."
   },
   "devDependencies": {

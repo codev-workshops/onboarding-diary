@@ -34,8 +34,13 @@ jobs:
       - run: npm run test:integration --workspace setup
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-      - name: Run e2e tests
+      - name: Run e2e tests (demo mode, SQLite)
         run: npm run e2e
+      # Production UX parity: boots a real PostgreSQL container, cuts over via the
+      # setup-tool core, then drives the UI-built org + core flows against Postgres
+      # (docs/TESTING_STRATEGY.md).
+      - name: Run e2e tests (production mode, PostgreSQL)
+        run: npm run e2e:prod
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

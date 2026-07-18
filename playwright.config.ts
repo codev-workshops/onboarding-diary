@@ -26,8 +26,8 @@ export default defineConfig({
       reuseExistingServer: !CI,
       timeout: 180_000,
       env: {
+        // No DB_STRING ⇒ demo mode (SQLite) with the seeded demo org (§13).
         DATABASE_URL: 'file:./e2e.db',
-        DEMO_MODE: 'true',
         JWT_SECRET: 'e2e-secret',
         PORT: '4000',
         CORS_ORIGIN: 'http://localhost:5173',

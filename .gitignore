@@ -22,6 +22,10 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+# Production e2e runtime handoff files (container URL / id)
+e2e-prod/.dburl
+e2e-prod/.containerid
+
 # OS / editor
 .DS_Store
 .idea/

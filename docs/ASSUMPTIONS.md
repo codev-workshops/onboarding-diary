@@ -583,7 +583,9 @@ schema, mint an admin, or write `.env` (smaller attack surface).
   it, and drives the full admin→manager→recruit workflow over HTTP (create
   departments, managers, recruits, reassign a recruit's manager, dashboards, create
   a task), asserting no demo accounts/password exist and `GET /api/config/demo` is
-  404.
+  404. A **production browser suite** (`e2e-prod/`, `npm run e2e:prod`) additionally
+  cuts over a fresh Postgres, then builds the organization **through the UI** and
+  re-runs the core UX flows on PostgreSQL (see docs/TESTING_STRATEGY.md).
 
 **Rationale:** Making the cutover an interactive demo-mode action (not a boot-time
 init) removes the headless "who supplies the first password" problem, keeps the
