@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # No DB_STRING ⇒ demo mode (SQLite) for lint/unit/build (docs/ASSUMPTIONS.md §13).
+      DATABASE_URL: 'file:./ci.db'
+      JWT_SECRET: 'ci-secret'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+      # PostgreSQL production datasource path via Testcontainers — runs on every push
+      # (docs/PLAN.md, docs/techstack.md). Docker is available on ubuntu-latest.
+      - run: npm run test:integration --workspace server
+      # Demo→production cutover (setup tool provisions Postgres, then the real API
+      # runs in production mode) via Testcontainers (docs/ASSUMPTIONS.md §13).
+      - run: npm run test:integration --workspace setup
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run e2e tests (demo mode, SQLite)
+        run: npm run e2e
+      # Production UX parity: boots a real PostgreSQL container, cuts over via the
+      # setup-tool core, then drives the UI-built org + core flows against Postgres
+      # (docs/TESTING_STRATEGY.md).
+      - name: Run e2e tests (production mode, PostgreSQL)
+        run: npm run e2e:prod
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

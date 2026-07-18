@@ -1,0 +1,198 @@
+// Onboarding Diary — Prisma schema (PostgreSQL: production + Testcontainers).
+//
+// Identical to `schema.prisma` except for the datasource provider and the
+// generator output path. Kept in sync via prisma-schema-parity.test.ts. The
+// generated client is emitted to `src/generated/pg` so the Postgres integration
+// suite can import it alongside the default SQLite client.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/pg"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_POSTGRES")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  templates ChecklistTemplate[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String
+  startDate    DateTime
+  timezone     String   @default("Asia/Kolkata")
+  isActive     Boolean  @default(true)
+  departmentId String?
+  managerId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department Department? @relation(fields: [departmentId], references: [id])
+  manager    User?       @relation("ManagerRecruits", fields: [managerId], references: [id])
+  recruits   User[]      @relation("ManagerRecruits")
+
+  tasks    Task[]
+  issues   Issue[]
+  feedback Feedback[]
+  notes    Note[]
+  comments Comment[] @relation("CommentAuthor")
+  mentions Mention[] @relation("UserMentions")
+}
+
+model TaskCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks          Task[]
+  checklistItems ChecklistItem[]
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  date        DateTime
+  title       String
+  description String
+  status      String
+  priority    String
+  categoryId  String
+  ownerId     String
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category TaskCategory @relation(fields: [categoryId], references: [id])
+  owner    User         @relation(fields: [ownerId], references: [id])
+  comments Comment[]
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+model ChecklistTemplate {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String   @default("")
+  role         String?
+  departmentId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department Department?     @relation(fields: [departmentId], references: [id])
+  items      ChecklistItem[]
+}
+
+model ChecklistItem {
+  id            String   @id @default(cuid())
+  templateId    String
+  title         String
+  description   String   @default("")
+  priority      String
+  dueOffsetDays Int      @default(0)
+  categoryId    String?
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  category TaskCategory?     @relation(fields: [categoryId], references: [id])
+
+  @@index([templateId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task     Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author   User      @relation("CommentAuthor", fields: [authorId], references: [id])
+  mentions Mention[]
+
+  @@index([taskId])
+}
+
+model Mention {
+  id        String    @id @default(cuid())
+  commentId String
+  userId    String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation("UserMentions", fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Issue {
+  id              String   @id @default(cuid())
+  date            DateTime
+  title           String
+  description     String
+  severity        String
+  status          String
+  resolutionNotes String?
+  ownerId         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  date      DateTime
+  subject   String
+  type      String
+  details   String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  date      DateTime
+  title     String
+  content   String
+  tags      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
