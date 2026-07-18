@@ -21,7 +21,7 @@ const existing: Comment = {
   id: 'c-1',
   body: 'Please review @manager.eng',
   createdAt: '2026-01-02T10:00:00.000Z',
-  author: { id: 'rec-1', name: 'Rina Recruit', email: 'recruit.rina@demo.local' },
+  author: { id: 'rec-1', name: 'Rina Recruit', email: 'recruit.rina@demo.local', isActive: true },
   mentions: [],
 };
 

@@ -23,6 +23,7 @@ const team: TeamOverview = {
       id: 'rec-1',
       name: 'Rina Recruit',
       email: 'rina@x',
+      isActive: true,
       department: 'Engineering',
       taskTotal: 0,
       taskCompleted: 0,
@@ -47,7 +48,7 @@ function makeTasks(n: number): Task[] {
     status: 'To Do',
     priority: 'Low',
     ownerId: 'rec-1',
-    owner: { id: 'rec-1', name: 'Rina Recruit' },
+    owner: { id: 'rec-1', name: 'Rina Recruit', isActive: true },
     dueDate: null,
   }));
 }

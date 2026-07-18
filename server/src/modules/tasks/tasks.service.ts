@@ -50,7 +50,7 @@ async function assertCategoryUsable(db: Db, categoryId: string): Promise<void> {
 // Managers/Admins see whose task each row is; owner is never a hash-bearing field.
 const taskInclude = {
   category: true,
-  owner: { select: { id: true, name: true } },
+  owner: { select: { id: true, name: true, isActive: true } },
 } as const;
 
 export async function listTasks(db: Db, actor: JwtPayload, filter: TaskFilter) {

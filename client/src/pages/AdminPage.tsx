@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { UserName } from '@/components/UserName';
 import { PageHeader } from '@/components/PageHeader';
 import { PasswordField } from '@/components/PasswordField';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
@@ -101,12 +102,21 @@ function UsersTab() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['users'] });
       setConfirmDelete(null);
-      toast.success('User deleted');
+      toast.success('User deactivated');
     },
     onError: (e) => {
       setConfirmDelete(null);
       toast.error((e as Error).message);
     },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: string) => api<User>(`/users/${id}`, { method: 'PUT', body: { isActive: true } }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User reactivated');
+    },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const [editing, setEditing] = useState<User | null>(null);
@@ -230,7 +240,9 @@ function UsersTab() {
               {usersQuery.data.map((u) => (
                 <li key={u.id} className="flex items-center justify-between py-2">
                   <div>
-                    <p className="font-medium">{u.name}</p>
+                    <p className="font-medium">
+                      <UserName name={u.name} isActive={u.isActive} />
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {u.email} · {formatTimezone(u.timezone)}
                     </p>
@@ -240,9 +252,21 @@ function UsersTab() {
                     <Button variant="ghost" size="icon" aria-label={`Edit ${u.name}`} onClick={() => setEditing(u)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" aria-label={`Delete ${u.name}`} onClick={() => setConfirmDelete(u)}>
-                      <Trash2 className="h-4 w-4 text-danger" />
-                    </Button>
+                    {u.isActive ? (
+                      <Button variant="ghost" size="icon" aria-label={`Deactivate ${u.name}`} onClick={() => setConfirmDelete(u)}>
+                        <Trash2 className="h-4 w-4 text-danger" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Reactivate ${u.name}`}
+                        disabled={reactivateMutation.isPending}
+                        onClick={() => reactivateMutation.mutate(u.id)}
+                      >
+                        <RotateCcw className="h-4 w-4 text-success" />
+                      </Button>
+                    )}
                   </div>
                 </li>
               ))}
@@ -264,10 +288,11 @@ function UsersTab() {
 
       <ConfirmDialog
         open={confirmDelete !== null}
-        title="Delete user?"
+        title="Deactivate user?"
+        confirmLabel="Deactivate"
         message={
           confirmDelete
-            ? `${confirmDelete.name} and their entries will be permanently removed.`
+            ? `${confirmDelete.name} will no longer be able to sign in. Their entries are kept and shown as belonging to a deactivated user. You can reactivate them later.`
             : ''
         }
         pending={deleteMutation.isPending}

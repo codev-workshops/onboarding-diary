@@ -34,6 +34,7 @@ model User {
   role         String
   startDate    DateTime
   timezone     String   @default("Asia/Kolkata")
+  isActive     Boolean  @default(true)
   departmentId String?
   managerId    String?
   createdAt    DateTime @default(now())

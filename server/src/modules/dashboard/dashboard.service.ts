@@ -114,6 +114,7 @@ export interface TeamRecruitSummary {
   id: string;
   name: string;
   email: string;
+  isActive: boolean;
   department: string | null;
   taskTotal: number;
   taskCompleted: number;
@@ -148,6 +149,7 @@ export async function getTeamOverview(db: Db, actor: JwtPayload): Promise<TeamOv
       id: true,
       name: true,
       email: true,
+      isActive: true,
       timezone: true,
       department: { select: { name: true } },
     },
@@ -171,6 +173,7 @@ export async function getTeamOverview(db: Db, actor: JwtPayload): Promise<TeamOv
         id: recruit.id,
         name: recruit.name,
         email: recruit.email,
+        isActive: recruit.isActive,
         department: recruit.department?.name ?? null,
         taskTotal: tasks.length,
         taskCompleted,

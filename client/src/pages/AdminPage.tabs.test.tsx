@@ -8,7 +8,7 @@ import type { ChecklistTemplate, Department, TaskCategory, User } from '@/lib/ty
 
 const manager: User = {
   id: 'mgr-a', name: 'Manager A', email: 'mgr.a@demo.local', role: 'Manager', timezone: 'UTC',
-  startDate: '2026-01-01T00:00:00.000Z', departmentId: 'dept-eng', managerId: null,
+  startDate: '2026-01-01T00:00:00.000Z', departmentId: 'dept-eng', managerId: null, isActive: true,
   createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
 };
 const recruit: User = { ...manager, id: 'rec-1', name: 'Rina', email: 'recruit.rina@demo.local', role: 'Recruit', managerId: 'mgr-a' };

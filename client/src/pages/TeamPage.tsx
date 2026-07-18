@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
+import { UserName } from '@/components/UserName';
 import { useTeamOverview } from '@/hooks/data';
 import type { TeamRecruitSummary } from '@/lib/types';
 
@@ -46,7 +47,9 @@ function RecruitCard({ recruit }: { recruit: TeamRecruitSummary }) {
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-semibold">{recruit.name}</p>
+            <p className="font-semibold">
+              <UserName name={recruit.name} isActive={recruit.isActive} />
+            </p>
             <p className="text-sm text-muted-foreground">{recruit.email}</p>
             {recruit.department ? (
               <Badge tone="neutral" className="mt-2">

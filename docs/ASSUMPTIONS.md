@@ -259,6 +259,34 @@ first launch and provide meaningful fixtures for unit and e2e tests.
 describe how accounts are created. Admin provisioning fits an internal tool and is
 consistent with the access-control model (§7) and oversight assignment (§5).
 
+### Deleting a user is a soft deactivation (`isActive`)
+
+**Status:** confirmed
+
+- A user carries an **`isActive` boolean** (default `true`). "Deleting" a user from
+  the Admin screen **deactivates** them (`isActive = false`) rather than removing
+  the row. It is idempotent (deactivating an already-inactive user is a no-op) and
+  an Admin can **reverse** it (reactivate) via the same user-edit path.
+- **Their content is preserved.** Every task, issue, feedback, note, comment and
+  mention the user authored stays intact — a hard delete would be blocked by those
+  foreign keys anyway, and losing the onboarding record is undesirable.
+- **Deactivated users cannot authenticate.** Login is rejected with the same
+  generic "Invalid email or password" response used for a wrong password or an
+  unknown account, so it never reveals that an account exists or is disabled.
+- **A visible cue marks them everywhere their name/content appears** — the Admin
+  user list, the manager/admin team overview, task owners, and comment/mention
+  authors render a "Deactivated" badge (name struck through), and PDF/CSV reports
+  suffix the owner name with " (deactivated)". The cue is text/badge-based (not
+  colour alone) for accessibility.
+- **No self- or last-admin lockout.** An Admin cannot deactivate their own account;
+  since the actor is always an active Admin, at least one active Admin therefore
+  always remains, so no separate "last administrator" guard is needed.
+
+**Rationale:** The reviewed hard delete failed whenever the user had authored any
+content (the exact case for every real user), returning a server error. Soft
+deactivation satisfies the operational need ("remove their access") while keeping
+the historical onboarding record and referential integrity intact.
+
 ## 11. Reports scope & format
 
 **Status:** confirmed

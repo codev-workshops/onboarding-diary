@@ -12,6 +12,7 @@ export interface User extends CurrentUser {
   startDate: string;
   departmentId: string | null;
   managerId: string | null;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,7 +39,7 @@ export interface Task {
   status: string;
   priority: string;
   ownerId: string;
-  owner?: { id: string; name: string };
+  owner?: { id: string; name: string; isActive: boolean };
   dueDate: string | null;
 }
 
@@ -146,6 +147,7 @@ export interface TeamRecruitSummary {
   id: string;
   name: string;
   email: string;
+  isActive: boolean;
   department: string | null;
   taskTotal: number;
   taskCompleted: number;
@@ -185,6 +187,7 @@ export interface UserRef {
   id: string;
   name: string;
   email: string;
+  isActive: boolean;
 }
 
 export interface Comment {

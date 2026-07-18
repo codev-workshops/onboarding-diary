@@ -33,6 +33,8 @@ export const userUpdateSchema = z.object({
   timezone: timezone.optional(),
   departmentId: z.string().nullable().optional(),
   managerId: z.string().nullable().optional(),
+  // Reactivate a previously deactivated user (soft-delete reversal, §10).
+  isActive: z.boolean().optional(),
 });
 
 export type UserCreateInput = z.infer<typeof userCreateSchema>;
@@ -48,6 +50,7 @@ const publicUserSelect = {
   timezone: true,
   departmentId: true,
   managerId: true,
+  isActive: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -142,14 +145,26 @@ export async function updateUser(db: Db, id: string, input: UserUpdateInput) {
       timezone: input.timezone,
       departmentId: input.departmentId,
       managerId: input.managerId,
+      isActive: input.isActive,
       ...(passwordHash ? { passwordHash } : {}),
     },
     select: publicUserSelect,
   });
 }
 
-export async function deleteUser(db: Db, id: string): Promise<void> {
+/**
+ * "Deletes" a user by soft-deactivating them (docs/ASSUMPTIONS.md §10). Their
+ * account is retained so every task/issue/feedback/note/comment/mention they
+ * authored stays intact (a hard delete would be blocked by those foreign keys),
+ * and `isActive: false` blocks all future logins (see auth.service). Admins can
+ * reverse this via `updateUser`. An actor cannot deactivate their own account;
+ * since the actor is always an active Admin, this guarantees at least one active
+ * Admin always remains, so no separate "last admin" guard is needed.
+ */
+export async function deleteUser(db: Db, id: string, actorId: string): Promise<void> {
   const existing = await db.user.findUnique({ where: { id } });
   if (!existing) throw ApiError.notFound('User not found');
-  await db.user.delete({ where: { id } });
+  if (id === actorId) throw ApiError.badRequest('You cannot deactivate your own account');
+  if (!existing.isActive) return;
+  await db.user.update({ where: { id }, data: { isActive: false } });
 }

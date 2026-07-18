@@ -6,8 +6,8 @@ import { OverviewPage } from './OverviewPage';
 import type { DashboardSummary, Department, TaskCategory, User } from '@/lib/types';
 
 const users: User[] = [
-  { id: 'm1', email: 'm@x', name: 'Mgr', role: 'Manager', timezone: 'UTC', startDate: '2026-01-01', departmentId: 'd1', managerId: null, createdAt: '', updatedAt: '' },
-  { id: 'r1', email: 'r@x', name: 'Rec', role: 'Recruit', timezone: 'UTC', startDate: '2026-01-01', departmentId: 'd1', managerId: 'm1', createdAt: '', updatedAt: '' },
+  { id: 'm1', email: 'm@x', name: 'Mgr', role: 'Manager', timezone: 'UTC', startDate: '2026-01-01', departmentId: 'd1', managerId: null, isActive: true, createdAt: '', updatedAt: '' },
+  { id: 'r1', email: 'r@x', name: 'Rec', role: 'Recruit', timezone: 'UTC', startDate: '2026-01-01', departmentId: 'd1', managerId: 'm1', isActive: true, createdAt: '', updatedAt: '' },
 ];
 const departments: Department[] = [{ id: 'd1', name: 'Engineering' }];
 const categories: TaskCategory[] = [

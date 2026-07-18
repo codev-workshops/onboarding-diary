@@ -356,7 +356,11 @@ export function TasksPage() {
                       <Badge tone={toneFor(task.priority)}>{task.priority}</Badge>
                       {task.category ? <Badge tone="primary">{task.category.name}</Badge> : null}
                       {task.owner && task.owner.id !== user?.id ? (
-                        <Badge tone="info">{task.owner.name}</Badge>
+                        <Badge tone={task.owner.isActive ? 'info' : 'neutral'}>
+                          {task.owner.isActive
+                            ? task.owner.name
+                            : `${task.owner.name} (deactivated)`}
+                        </Badge>
                       ) : null}
                       {isTaskOverdue(task, user?.timezone) ? (
                         <Badge tone="danger">Overdue</Badge>

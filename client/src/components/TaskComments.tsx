@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states';
+import { UserName } from '@/components/UserName';
 import { useComments } from '@/hooks/data';
 import { api } from '@/lib/api';
 import type { Comment, Task } from '@/lib/types';
@@ -39,7 +40,11 @@ export function TaskComments({ task, onClose }: { task: Task; onClose: () => voi
             {commentsQuery.data.map((c) => (
               <li key={c.id} className="rounded-md border border-border p-3">
                 <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{c.author.name}</span>
+                  <UserName
+                    name={c.author.name}
+                    isActive={c.author.isActive}
+                    className="font-medium text-foreground"
+                  />
                   <span title={formatDateTime(c.createdAt)}>{formatRelativeTime(c.createdAt)}</span>
                 </div>
                 <p className="whitespace-pre-wrap text-sm">{renderBody(c.body)}</p>

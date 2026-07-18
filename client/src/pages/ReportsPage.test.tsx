@@ -16,7 +16,7 @@ vi.mock('@/auth/AuthContext', () => ({
 }));
 
 const users: User[] = [
-  { id: 'r1', email: 'r@x', name: 'Rina', role: 'Recruit', timezone: 'UTC', startDate: '2026-01-01', departmentId: 'd1', managerId: 'm1', createdAt: '', updatedAt: '' },
+  { id: 'r1', email: 'r@x', name: 'Rina', role: 'Recruit', timezone: 'UTC', startDate: '2026-01-01', departmentId: 'd1', managerId: 'm1', isActive: true, createdAt: '', updatedAt: '' },
 ];
 
 const report: ReportData = {

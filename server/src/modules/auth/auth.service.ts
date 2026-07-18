@@ -42,6 +42,11 @@ export async function login(db: Db, input: LoginInput): Promise<LoginResult> {
   const ok = await verifyPassword(input.password, user.passwordHash);
   if (!ok) throw ApiError.unauthorized('Invalid email or password');
 
+  // Deactivated (soft-deleted) users retain their data but can never sign in
+  // again (docs/ASSUMPTIONS.md §10). Checked after the password verify so the
+  // response is indistinguishable from a wrong password.
+  if (!user.isActive) throw ApiError.unauthorized('Invalid email or password');
+
   const role = user.role as Role;
   const token = signToken({ sub: user.id, role, name: user.name, email: user.email });
   return {

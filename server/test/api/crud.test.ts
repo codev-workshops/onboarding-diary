@@ -152,6 +152,60 @@ describe('user management edge cases (admin-only)', () => {
   });
 });
 
+describe('user soft delete (deactivation)', () => {
+  it('blocks login, preserves content, marks the owner, and can be reversed', async () => {
+    const admin = await token('admin@t.local');
+
+    // A recruit with a piece of content (a task) attached to them.
+    const created = await request(app)
+      .post('/api/users')
+      .set(auth(admin))
+      .send({ email: 'leaver@t.local', password: 'password123', name: 'Casey Leaver', role: 'Recruit', startDate: '2026-01-01' });
+    expect(created.status).toBe(201);
+    expect(created.body.isActive).toBe(true);
+    const userId = created.body.id as string;
+
+    const leaver = await token('leaver@t.local');
+    const task = await request(app)
+      .post('/api/tasks')
+      .set(auth(leaver))
+      .send({ date: '2026-01-05', title: 'Leaver task', description: '', categoryId, status: 'To Do', priority: 'Low' });
+    expect(task.status).toBe(201);
+
+    // "Delete" the user: a soft deactivation (204), not a row removal.
+    expect((await request(app).delete(`/api/users/${userId}`).set(auth(admin))).status).toBe(204);
+
+    // Login is now rejected for the deactivated account.
+    const blocked = await request(app).post('/api/auth/login').send({ email: 'leaver@t.local', password: 'password123' });
+    expect(blocked.status).toBe(401);
+
+    // The account still exists, flagged inactive; their content is retained.
+    const list = await request(app).get('/api/users').set(auth(admin));
+    const row = (list.body as { id: string; isActive: boolean }[]).find((u) => u.id === userId);
+    expect(row?.isActive).toBe(false);
+    const tasks = await request(app).get('/api/tasks').set(auth(admin));
+    expect((tasks.body as { title: string }[]).some((t) => t.title === 'Leaver task')).toBe(true);
+
+    // Reports label the deactivated user's entries with a visible cue.
+    const report = await request(app).get('/api/reports?start=2026-01-01&end=2026-01-31').set(auth(admin));
+    expect((report.body.tasks as { owner: string }[]).some((t) => t.owner === 'Casey Leaver (deactivated)')).toBe(true);
+
+    // An admin can reverse the deactivation, restoring login.
+    const reactivated = await request(app).put(`/api/users/${userId}`).set(auth(admin)).send({ isActive: true });
+    expect(reactivated.body.isActive).toBe(true);
+    expect((await request(app).post('/api/auth/login').send({ email: 'leaver@t.local', password: 'password123' })).status).toBe(200);
+  });
+
+  it('refuses to let an admin deactivate their own account', async () => {
+    const admin = await token('admin@t.local');
+    const me = await request(app).get('/api/auth/me').set(auth(admin));
+    const selfDelete = await request(app).delete(`/api/users/${me.body.id}`).set(auth(admin));
+    expect(selfDelete.status).toBe(400);
+    // Still able to log in.
+    expect((await request(app).post('/api/auth/login').send({ email: 'admin@t.local', password: 'password123' })).status).toBe(200);
+  });
+});
+
 describe('notes CRUD, filters & access scoping', () => {
   it('creates, filters by tag, gets, updates and deletes a note', async () => {
     const t = await token('recruita@t.local');

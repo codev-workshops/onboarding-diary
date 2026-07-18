@@ -8,7 +8,7 @@ const mentionInclude = {
       id: true,
       body: true,
       createdAt: true,
-      author: { select: { id: true, name: true, email: true } },
+      author: { select: { id: true, name: true, email: true, isActive: true } },
       task: { select: { id: true, title: true } },
     },
   },

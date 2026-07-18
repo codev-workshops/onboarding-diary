@@ -3,6 +3,7 @@ import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { UserName } from '@/components/UserName';
 import { useMentions } from '@/hooks/data';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -85,7 +86,12 @@ export function MentionsBell() {
                       navigate(`/tasks?taskId=${m.comment.task.id}`);
                     }}
                   >
-                    <span className="font-medium">{m.comment.author.name}</span> mentioned you on{' '}
+                    <UserName
+                      name={m.comment.author.name}
+                      isActive={m.comment.author.isActive}
+                      className="font-medium"
+                    />{' '}
+                    mentioned you on{' '}
                     <span className="font-medium">{m.comment.task.title}</span>
                     <span className="mt-0.5 block truncate text-muted-foreground">
                       {m.comment.body}

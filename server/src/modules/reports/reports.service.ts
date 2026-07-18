@@ -74,6 +74,11 @@ function dateOnly(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Owner label with a visible cue when the user has been deactivated (§10). */
+function ownerLabel(owner: { name: string; isActive: boolean }): string {
+  return owner.isActive ? owner.name : `${owner.name} (deactivated)`;
+}
+
 function rangeFilter(start: Date, end: Date): { gte: Date; lte: Date } {
   const gte = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
   const lte = new Date(
@@ -119,22 +124,22 @@ export async function buildReport(
   const [tasks, issues, feedback, notes] = await Promise.all([
     db.task.findMany({
       where,
-      include: { category: true, owner: { select: { name: true } } },
+      include: { category: true, owner: { select: { name: true, isActive: true } } },
       orderBy: { date: 'asc' },
     }),
     db.issue.findMany({
       where,
-      include: { owner: { select: { name: true } } },
+      include: { owner: { select: { name: true, isActive: true } } },
       orderBy: { date: 'asc' },
     }),
     db.feedback.findMany({
       where,
-      include: { owner: { select: { name: true } } },
+      include: { owner: { select: { name: true, isActive: true } } },
       orderBy: { date: 'asc' },
     }),
     db.note.findMany({
       where,
-      include: { owner: { select: { name: true } } },
+      include: { owner: { select: { name: true, isActive: true } } },
       orderBy: { date: 'asc' },
     }),
   ]);
@@ -146,7 +151,7 @@ export async function buildReport(
     category: t.category.name,
     status: t.status,
     priority: t.priority,
-    owner: t.owner.name,
+    owner: ownerLabel(t.owner),
   }));
   const issueRows: ReportIssue[] = issues.map((i) => ({
     date: dateOnly(i.date),
@@ -155,14 +160,14 @@ export async function buildReport(
     severity: i.severity,
     status: i.status,
     resolutionNotes: i.resolutionNotes ?? '',
-    owner: i.owner.name,
+    owner: ownerLabel(i.owner),
   }));
   const feedbackRows: ReportFeedback[] = feedback.map((f) => ({
     date: dateOnly(f.date),
     subject: f.subject,
     type: f.type,
     details: f.details,
-    owner: f.owner.name,
+    owner: ownerLabel(f.owner),
   }));
   const noteRows: ReportNote[] = notes.map((n) => {
     let tags = '';
@@ -177,7 +182,7 @@ export async function buildReport(
       title: n.title,
       content: n.content,
       tags,
-      owner: n.owner.name,
+      owner: ownerLabel(n.owner),
     };
   });
 

@@ -12,8 +12,10 @@ export const commentCreateSchema = z.object({
 export type CommentCreateInput = z.infer<typeof commentCreateSchema>;
 
 const commentInclude = {
-  author: { select: { id: true, name: true, email: true } },
-  mentions: { include: { user: { select: { id: true, name: true, email: true } } } },
+  author: { select: { id: true, name: true, email: true, isActive: true } },
+  mentions: {
+    include: { user: { select: { id: true, name: true, email: true, isActive: true } } },
+  },
 } as const;
 
 /** Asserts the actor may access the task (and returns it), per §7 scope. */

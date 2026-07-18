@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { prisma } from '../../db/prisma.js';
 import { asyncHandler } from '../../http/asyncHandler.js';
-import { authenticate, authorize } from '../../http/authMiddleware.js';
+import {
+  authenticate,
+  authorize,
+  requireUser,
+  type AuthedRequest,
+} from '../../http/authMiddleware.js';
 import {
   createUser,
   deleteUser,
@@ -49,8 +54,8 @@ usersRouter.put(
 
 usersRouter.delete(
   '/:id',
-  asyncHandler(async (req, res) => {
-    await deleteUser(prisma, req.params.id);
+  asyncHandler(async (req: AuthedRequest, res) => {
+    await deleteUser(prisma, req.params.id, requireUser(req).sub);
     res.status(204).end();
   }),
 );
