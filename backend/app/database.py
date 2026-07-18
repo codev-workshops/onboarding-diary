@@ -285,7 +285,11 @@ class PostgresDatabase:
             row_factory=dict_row,
             connect_timeout=5,
         )
-        self.connection.execute(POSTGRES_SCHEMA)
+        try:
+            self.connection.execute(POSTGRES_SCHEMA)
+        except Exception:
+            self.connection.close()
+            raise
         self.lock = threading.RLock()
 
     def close(self) -> None:
