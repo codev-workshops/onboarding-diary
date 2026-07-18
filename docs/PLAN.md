@@ -48,7 +48,9 @@ Phased plan for building the Onboarding Diary. Requirements come from
 - **Department**: name (managed entity so departments can be created/managed and
   users assigned to them — ASSUMPTIONS §9, §5).
 - **User**: email, passwordHash, name, role (Recruit|Manager|Admin), departmentId,
-  startDate, managerId (nullable), audit timestamps (ASSUMPTIONS §12).
+  startDate, managerId (nullable), isActive (soft-delete; deactivation blocks
+  login and marks their retained content — ASSUMPTIONS §10), audit timestamps
+  (ASSUMPTIONS §12).
 - **Task**: date, title, description, category (FK/managed), status, priority,
   ownerId, audit timestamps.
 - **Issue**: date, title, description, severity, status, resolutionNotes, ownerId,
