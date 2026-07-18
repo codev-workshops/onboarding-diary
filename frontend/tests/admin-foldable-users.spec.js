@@ -57,7 +57,7 @@ test("User cards start folded showing only name and role, and toggle open/closed
   // Expanding reveals the full details and editing controls.
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
-  await expect(card.getByText(recruitEmail, { exact: false })).toBeVisible();
+  await expect(card.getByLabel(/Email for user/)).toHaveValue(recruitEmail);
   await expect(
     card.getByRole("button", { name: /Save user/ }),
   ).toBeVisible();
