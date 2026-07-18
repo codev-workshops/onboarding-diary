@@ -76,3 +76,45 @@ cd client && npx vitest run --coverage
 
 The Testcontainers suites require Docker; they run on `ubuntu-latest` in CI and
 locally where Docker is available.
+
+## Limitations
+
+### The setup tool's browser form is not exercised by an end-to-end browser test
+
+The setup tool (`setup/`) is validated at two levels — its **unit/API tests**
+(`setup/test/`: `.env` writing, `provisionProduction`, and the HTTP handler
+including the demo-only 403 guard) and a **Testcontainers integration test**
+(`setup/test/integration`) that runs the real provisioning core against a fresh
+PostgreSQL container and then boots the API in production mode against it. The
+production browser suite (`e2e-prod/`) also cuts over via that **same core**
+before driving the UI.
+
+What is **not** covered is a Playwright test that opens the setup tool's own HTML
+form at `http://localhost:4100`, types the connection string/admin details, and
+clicks "Provision" in a browser. The reasons:
+
+- **Playwright starts its `webServer` processes before `globalSetup` and before the
+  specs.** Our production harness needs the cutover to finish _before_ the API can
+  start (the API refuses to boot against an unprovisioned DB). Driving the setup
+  form from within a spec would invert that ordering — the API `webServer` would
+  have to already be running against a not-yet-provisioned database, which by design
+  fails fast. So provisioning is performed in `serve.ts` (via the setup core)
+  before the API starts, and the browser then does the _organization_ setup.
+- **The setup form is a thin HTTP shell over the tested core.** The form does
+  input collection and a single `POST /provision`; that endpoint, its validation,
+  the demo-only guard, `.env` writing, and the full provisioning logic are all
+  covered by the setup unit/API tests. A browser click-through would mostly
+  re-assert the same core with more flakiness and no new coverage of the
+  security-relevant logic.
+- **Isolation/lifecycle.** The setup tool is a separate one-off process that must
+  refuse to run once `DB_STRING` is present. Standing it up as an additional
+  Playwright `webServer` alongside the API (which _does_ have `DB_STRING`) in one
+  config is awkward and easy to misconfigure, working against the very isolation
+  the tool provides.
+
+**Consequence / residual risk:** the setup tool's HTML/JS (field wiring, the
+success-message rendering, the on-prem/cloud guidance text) is not asserted by an
+automated browser test and is verified manually. If that UI grows non-trivial
+logic, add a focused component/browser test for the form in isolation (served with
+`DB_STRING` absent, `POST /provision` stubbed or pointed at a Testcontainers
+Postgres) rather than folding it into the production API harness.
