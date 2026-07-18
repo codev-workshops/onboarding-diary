@@ -26,9 +26,10 @@ function jsonResponse(body: unknown): Response {
   return { ok: true, status: 200, text: () => Promise.resolve(JSON.stringify(body)) } as Response;
 }
 
-function renderPage() {
+function renderPage(demoMode = false) {
   vi.spyOn(global, 'fetch').mockImplementation((input) => {
     const url = String(input);
+    if (url.includes('/config')) return Promise.resolve(jsonResponse({ demoMode, onboardingEnablersEnabled: demoMode, datasource: demoMode ? 'demo' : 'production' }));
     if (url.includes('/users')) return Promise.resolve(jsonResponse(users));
     if (url.includes('/departments')) return Promise.resolve(jsonResponse(departments));
     if (url.includes('/categories')) return Promise.resolve(jsonResponse(categories));
@@ -56,5 +57,17 @@ describe('OverviewPage', () => {
     expect(screen.getByText('60%')).toBeInTheDocument();
     expect(screen.getByText('active task categories')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Manage users/ })).toHaveAttribute('href', '/admin');
+  });
+
+  it('shows a link to the setup tool only in demo mode', async () => {
+    renderPage(true);
+    const link = await screen.findByRole('link', { name: /Open the setup tool/ });
+    expect(link).toHaveAttribute('href', 'http://localhost:4100');
+  });
+
+  it('hides the setup tool link in production', async () => {
+    renderPage(false);
+    await screen.findByText('1 managers · 1 recruits');
+    expect(screen.queryByRole('link', { name: /Open the setup tool/ })).not.toBeInTheDocument();
   });
 });

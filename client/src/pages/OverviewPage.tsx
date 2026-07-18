@@ -4,14 +4,19 @@ import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState, LoadingState } from '@/components/states';
 import { useCategories, useDepartments, useUsers } from '@/hooks/data';
+import { useAppConfig } from '@/hooks/useAppConfig';
 import { api } from '@/lib/api';
 import type { DashboardSummary } from '@/lib/types';
+
+/** URL of the one-off setup tool (run separately in demo mode only). */
+const SETUP_URL = import.meta.env.VITE_SETUP_URL ?? 'http://localhost:4100';
 
 /** Admin landing page: organization overview (docs/ASSUMPTIONS.md §15). */
 export function OverviewPage() {
   const users = useUsers();
   const departments = useDepartments();
   const categories = useCategories();
+  const config = useAppConfig();
   const summary = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => api<DashboardSummary>('/dashboard'),
@@ -62,6 +67,29 @@ export function OverviewPage() {
           description="Preview org-wide activity on screen, then export to PDF or CSV."
         />
       </div>
+
+      {config.data?.demoMode ? (
+        <Card className="mt-6 border-primary/40">
+          <CardHeader>
+            <CardTitle>Move to production</CardTitle>
+          </CardHeader>
+          <CardContent className="p-5 pt-0">
+            <p className="text-sm text-muted-foreground">
+              You are in demo mode (SQLite, sample data). When you are ready, use the one-off setup
+              tool to provision a PostgreSQL database and your real administrator, then restart the
+              server. Demo accounts and the shared demo password are never copied to production.
+            </p>
+            <a
+              href={SETUP_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+            >
+              Open the setup tool
+            </a>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {summary.data ? (
         <Card className="mt-6">

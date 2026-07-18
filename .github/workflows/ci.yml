@@ -12,8 +12,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     env:
+      # No DB_STRING ⇒ demo mode (SQLite) for lint/unit/build (docs/ASSUMPTIONS.md §13).
       DATABASE_URL: 'file:./ci.db'
-      DEMO_MODE: 'true'
       JWT_SECRET: 'ci-secret'
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +29,9 @@ jobs:
       # PostgreSQL production datasource path via Testcontainers — runs on every push
       # (docs/PLAN.md, docs/techstack.md). Docker is available on ubuntu-latest.
       - run: npm run test:integration --workspace server
+      # Demo→production cutover (setup tool provisions Postgres, then the real API
+      # runs in production mode) via Testcontainers (docs/ASSUMPTIONS.md §13).
+      - run: npm run test:integration --workspace setup
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run e2e tests

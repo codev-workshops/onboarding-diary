@@ -25,14 +25,47 @@ npm run dev                       # runs the API (:4000) and the client (:5173)
 Open http://localhost:5173 and sign in with a demo account, e.g. `admin@demo.local` /
 `Passw0rd!`. In demo mode the first-use React Joyride tour is enabled.
 
+## Demo vs. production mode
+
+The mode is derived from a single environment variable, **`DB_STRING`** (the
+production PostgreSQL connection string) — there is **no `DEMO_MODE` flag** (see
+[docs/ASSUMPTIONS.md §13](docs/ASSUMPTIONS.md)):
+
+- **`DB_STRING` absent → demo mode.** SQLite, seeded `@demo.local` demo accounts
+  and sample data, onboarding tour + demo-credentials helper enabled.
+- **`DB_STRING` present → production mode.** PostgreSQL; the tour and
+  `GET /api/config/demo` are disabled; `@demo.local` accounts are never seeded and
+  cannot log in. On startup the server validates a strong `JWT_SECRET` and that the
+  database is provisioned, failing fast otherwise.
+
+### Moving from demo to production (one-off setup tool)
+
+Provisioning is an explicit, interactive action done **from demo mode** using the
+standalone `setup/` tool (it refuses to run once `DB_STRING` is set):
+
+```bash
+npm run setup   # starts the setup tool on http://localhost:4100 (demo mode only)
+```
+
+Open http://localhost:4100 (or the "Move to production" card on the Admin overview),
+enter the PostgreSQL connection string and your first administrator, and submit. The
+tool applies the schema, seeds only the default task categories, creates the first
+Admin (bcrypt-hashed; never resets an existing one), sets the one-way
+`Setting.mode=production` latch, and — on-prem — writes `DB_STRING` and a generated
+`JWT_SECRET` into `server/.env` (mode `0600`; the password is never written). On
+cloud, set `DB_STRING` and `JWT_SECRET` in the platform environment instead. Then
+**restart the server** and **stop the setup tool**. See
+[docs/ASSUMPTIONS.md §23](docs/ASSUMPTIONS.md) for the full flow.
+
 ### Quality gates
 
 ```bash
-npm run lint                         # eslint (server + client)
-npm run typecheck                    # tsc --noEmit (server + client)
+npm run lint                         # eslint (server + client + setup)
+npm run typecheck                    # tsc --noEmit (server + client + setup)
 npm run test                         # unit + API tests (Vitest)
 npm run build                        # production build (server + client)
 npm run test:integration --workspace server   # PostgreSQL path via Testcontainers (needs Docker)
+npm run test:integration --workspace setup    # demo→production cutover via Testcontainers (needs Docker)
 npm run e2e                          # Playwright end-to-end tests
 ```
 

@@ -25,7 +25,9 @@ This document records every decision that is **not** explicitly specified in
 >   and recruits (§9)
 > - User provisioning model — Admin-created, no open self-registration (§10)
 > - Reports — render on screen first, then export to PDF/CSV (§11)
-> - Demo-mode feature flag driving datasource + onboarding enablers (§13)
+> - Mode derived from a single `DB_STRING` variable (no `DEMO_MODE`) driving
+>   datasource + onboarding enablers (§13), with an explicit demo→production
+>   cutover via a standalone setup tool (§23)
 
 ---
 
@@ -290,27 +292,40 @@ unit and e2e tests.
 **Rationale:** Standard persistence practice; needed for "recent entries" ordering
 without conflating with the user-entered event date.
 
-## 13. Demo mode feature flag (drives datasource + enablers)
+## 13. Mode is derived from a single variable, `DB_STRING`
 
 **Status:** confirmed
 
-Behavior is governed by a single **demo-mode feature flag**:
+There is **no `DEMO_MODE` flag**. The mode is derived from the presence of one
+operator-facing environment variable, **`DB_STRING`** (the production PostgreSQL
+connection string):
 
-| Flag    | Production DB configured? | Datasource used                  | Onboarding enablers |
-| ------- | ------------------------- | -------------------------------- | ------------------- |
-| **ON**  | (ignored)                 | **Demo** (SQLite/in-memory)      | **On**              |
-| **OFF** | Yes                       | **Production** (e.g. PostgreSQL) | Off                 |
-| **OFF** | No                        | **Demo** (fallback)              | Off                 |
+| `DB_STRING` | Mode           | Datasource             | Onboarding enablers | Demo accounts |
+| ----------- | -------------- | ---------------------- | ------------------- | ------------- |
+| **absent**  | **demo**       | SQLite (`DATABASE_URL`)| **on**              | seeded        |
+| **present** | **production** | PostgreSQL             | off                 | never         |
 
-- **Flag ON** → demo database **and** onboarding enablers (tooltips / coach marks /
-  welcome mats) are active.
-- **Flag OFF** → use the **production** database if one is configured; if none is
-  configured, fall back to the demo database. Either way the enablers are **off**.
-- An Admin can toggle the flag; a fresh install defaults the flag **ON**.
+- `demoMode = !DB_STRING`. Presence of `DB_STRING` **always** means production;
+  there is no fallback from a configured production DB back to demo.
+- **Demo mode** (no `DB_STRING`) runs on SQLite/in-memory, seeds the `@demo.local`
+  demo accounts and sample data, and enables onboarding enablers (tour, demo
+  credentials helper). It never connects to PostgreSQL.
+- **Production mode** (`DB_STRING` present) connects to PostgreSQL, disables
+  onboarding enablers, 404s `GET /api/config/demo`, and (defense in depth) refuses
+  to authenticate any `@demo.local` account. Production is never seeded with demo
+  accounts or the shared demo password.
+- `DATABASE_URL` remains only the internal SQLite datasource for demo/tests;
+  `DB_STRING` is the single operator-facing switch.
+- **Startup guards (production only):** the server validates a strong `JWT_SECRET`
+  (rejects the placeholder and secrets < 16 chars) and that the target DB is
+  **provisioned** (schema present, `Setting.mode=production` latch set, at least one
+  Admin). A configured-but-unprovisioned DB fails fast with a clear message rather
+  than silently re-provisioning or falling back to demo. The server never creates
+  schema, seeds data, or prompts for a password.
 
-**Rationale:** Framing §2's behavior as one demo feature flag covers every case
-cleanly, including the edge case of the flag being off before a production DB is
-configured (fall back to the demo DB but without the enablers).
+**Rationale:** One variable removes the ambiguous flag×DB matrix and the "flip the
+flag back on" hole. "DB configured ⇒ production" is unambiguous, works identically
+on-prem and cloud, and the DB-resident latch (§23) makes production one-way.
 
 ## 14. API & validation conventions
 
@@ -524,3 +539,53 @@ future demo sessions.
 **Rationale:** The mandate calls for a usable Task Log; date/search filtering,
 hiding completed work by default, safe owner assignment, pagination, delete
 confirmation, and feedback toasts make it complete, safe, and scalable.
+
+## 23. Demo→production cutover via a standalone one-off setup tool
+
+**Status:** confirmed
+
+Provisioning a production database is an **explicit, interactive, one-off action
+performed while still in demo mode** — never something the running API server does
+on boot. It lives in a **separate `setup/` workspace** (its own Express process),
+not in the always-on API server, so the production API has zero code path to create
+schema, mint an admin, or write `.env` (smaller attack surface).
+
+- **The setup tool only runs in demo mode.** Because it is a separate process it
+  applies the same single signal: it **refuses to start** (and `POST /provision`
+  returns 403) if `DB_STRING` is present in its own environment — i.e. already
+  production. The target Postgres connection string is supplied in the request
+  body, never via env.
+- The operator opens the setup screen (default `http://localhost:4100`; the Admin
+  overview links to it in demo mode) and submits: Postgres connection string,
+  admin email/name/password, optional timezone. The tool then:
+  1. applies the production schema (`prisma db push` against the Postgres schema),
+  2. seeds **only** minimal reference data — the default **task categories**
+     (`Training, Setup, Meeting, Documentation, Other`); no departments, users, or
+     entries. Everything else is a code constant needing no DB row,
+  3. creates the **first Admin** (bcrypt-hashed) **only if none exists** — it never
+     resets an existing admin's password,
+  4. sets the one-way latch `Setting.mode=production`,
+  5. is fully **additive and idempotent** (no `deleteMany`),
+  6. on-prem, writes `DB_STRING` + a generated strong `JWT_SECRET` to `.env`
+     (mode `0600`; the admin password is never written), reusing an existing strong
+     secret if present.
+- **Persisting `DB_STRING`:** setting the environment variable is the canonical
+  mechanism (works on-prem and cloud). Writing `.env` is an **on-prem convenience**
+  only; on cloud the filesystem is ephemeral/read-only, so operators must set
+  `DB_STRING` (and `JWT_SECRET`) in the platform's environment. The tool reports
+  this.
+- **Restart required:** the running server selects its Prisma client at process
+  startup, so after provisioning the operator restarts the server (and stops the
+  setup tool). On restart, `DB_STRING` is present ⇒ production; the startup guards
+  (§13) confirm the DB is provisioned.
+- **Testing:** a Testcontainers suite (`setup/test/integration`) provisions a fresh
+  Postgres via the setup core, boots the real server API in production mode against
+  it, and drives the full admin→manager→recruit workflow over HTTP (create
+  departments, managers, recruits, reassign a recruit's manager, dashboards, create
+  a task), asserting no demo accounts/password exist and `GET /api/config/demo` is
+  404.
+
+**Rationale:** Making the cutover an interactive demo-mode action (not a boot-time
+init) removes the headless "who supplies the first password" problem, keeps the
+production server a pure read/validate data plane, and isolates the sensitive
+provisioning code in a tool that cannot even run once production exists.

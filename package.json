@@ -5,7 +5,8 @@
   "description": "Onboarding Diary — a web app for new recruits to document their onboarding journey.",
   "workspaces": [
     "server",
-    "client"
+    "client",
+    "setup"
   ],
   "scripts": {
     "build": "npm run build --workspace server && npm run build --workspace client",
@@ -14,6 +15,7 @@
     "test": "npm run test --workspaces --if-present",
     "dev": "npm run dev --workspace server & npm run dev --workspace client",
     "seed": "npm run seed --workspace server",
+    "setup": "npm run start --workspace setup",
     "e2e": "playwright test",
     "format": "prettier --write ."
   },

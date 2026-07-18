@@ -13,8 +13,8 @@ Phased plan for building the Onboarding Diary. Requirements come from
 1. **Usability first.** A default installation must let a user understand **every**
    feature immediately — via seeded demo data (ASSUMPTIONS §9) and onboarding
    enablers (tooltips / coach marks / welcome mats via React Joyride) that are on
-   in first-boot/demo mode and turn off once a production DB holds real data
-   (ASSUMPTIONS §2, §13).
+   in demo mode (no `DB_STRING`) and off in production (`DB_STRING` present)
+   (ASSUMPTIONS §2, §13, §23).
 2. **Modern, elegant, professional, responsive UI.** A consistent design system
    (Tailwind + shadcn/ui-style primitives, lucide-react icons, Recharts) with a clean, professional
    color scheme (neutral base + calm primary + semantic status colors, light/dark,
@@ -37,8 +37,9 @@ Phased plan for building the Onboarding Diary. Requirements come from
     validation, report generation (PDFKit + csv-stringify).
   - `client/` — React + TypeScript SPA (Vite, React Router, TanStack Query, React
     Tailwind + shadcn/ui-style primitives, lucide-react, Recharts, React Joyride).
-- **Datasource:** Prisma targeting **SQLite** (first-boot/demo) and **PostgreSQL**
-  (production) — a config switch, one schema (ASSUMPTIONS §2, techstack).
+- **Datasource:** Prisma targeting **SQLite** (demo, no `DB_STRING`) and
+  **PostgreSQL** (production, `DB_STRING` present) — selected at process startup
+  from the single `DB_STRING` variable (ASSUMPTIONS §2, §13, techstack).
 - **API:** RESTful resources, JWT bearer auth, role-based authorization enforcing
   the access-control matrix (ASSUMPTIONS §7, §14).
 
@@ -56,8 +57,8 @@ Phased plan for building the Onboarding Diary. Requirements come from
   audit timestamps.
 - **Note**: date, title, content, tags, ownerId, audit timestamps.
 - **TaskCategory**: name, isActive (soft-disable, ASSUMPTIONS §4 Tier 1).
-- **Setting**: e.g. the **demo-mode feature flag** and datasource/enabler state
-  (ASSUMPTIONS §13).
+- **Setting**: holds the one-way production latch `mode=production`, set once by
+  the setup tool during the demo→production cutover (ASSUMPTIONS §13, §23).
 - Tier-2 value sets (task status/priority, issue severity/status) seeded and
   system-defined (ASSUMPTIONS §4 Tier 2).
 
@@ -109,16 +110,20 @@ the end** (guiding principle #4). Every phase adds code documentation as it goes
 - Unit tests for report data assembly and formatters (assert on-screen report,
   then that exports match it); e2e journey: view report → export PDF/CSV.
 
-### Phase 6 — First-boot experience, demo flag & onboarding enablers
+### Phase 6 — Demo experience, `DB_STRING` mode & demo→production cutover
 - Seed demo mode: **multiple departments, multiple managers and recruits**, and
   demo entries across all logs (ASSUMPTIONS §9).
-- **Demo-mode feature flag** driving datasource + enablers per the §13 matrix
-  (ON → demo DB + enablers; OFF → production DB if configured, else demo DB, both
-  without enablers); Admin toggle.
-- React Joyride tours / tooltips / welcome mats gated by the flag.
-- Admin flow to configure the production database (PostgreSQL).
-- e2e journey: fresh boot → guided tour → configure production DB → flag off →
-  enablers off.
+- **Mode derived from `DB_STRING`** (no `DEMO_MODE`): absent → demo (SQLite +
+  enablers + demo accounts); present → production (PostgreSQL, enablers off, no
+  demo data) — selected at process startup per §13.
+- React Joyride tours / tooltips / welcome mats gated purely on demo mode (§21).
+- **Standalone `setup/` tool** performs the demo→production cutover (§23): applies
+  the Postgres schema, seeds reference categories only, creates the first Admin,
+  sets the `Setting.mode=production` latch, and writes `.env` on-prem. It only runs
+  in demo mode (refuses if `DB_STRING` is set). Production startup guards validate
+  a strong `JWT_SECRET` and that the DB is provisioned.
+- Testcontainers transition test: provision Postgres via the setup core, boot the
+  real API in production mode, and drive the admin→manager→recruit workflow (§23).
 
 ### Phase 7 — Hardening, polish & docs
 - Accessibility pass, responsive QA across breakpoints, design polish.

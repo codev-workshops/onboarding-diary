@@ -61,12 +61,17 @@ theme so the look stays consistent and is easy to re-theme.
 
 ## Database
 
-- **First boot / zero-config:** **SQLite** via Prisma — supports the first-boot
-  behavior in `ASSUMPTIONS.md` §2 (works immediately, no external service).
-- **Production:** **PostgreSQL** via Prisma — once an Admin configures it, data is
-  migrated/populated and the onboarding enablers are disabled.
-- Using Prisma for both keeps a single schema/migration path and makes switching
-  engines a configuration change rather than a rewrite.
+- **Demo / zero-config:** **SQLite** via Prisma — used when `DB_STRING` is absent
+  (`ASSUMPTIONS.md` §2, §13); works immediately with no external service.
+- **Production:** **PostgreSQL** via Prisma — used when `DB_STRING` is present. The
+  runtime selects the Postgres-generated client at process startup; onboarding
+  enablers and demo data are off.
+- The datasource is chosen from the single `DB_STRING` variable (no `DEMO_MODE`).
+  A separate one-off **`setup/` tool** performs the demo→production cutover — it
+  applies the Postgres schema, seeds the default task categories, creates the first
+  Admin, and sets the `Setting.mode=production` latch (`ASSUMPTIONS.md` §23).
+- Using Prisma for both keeps parallel SQLite/Postgres schemas (parity-tested) and
+  makes the engine a configuration choice rather than a rewrite.
 
 ## Reports
 

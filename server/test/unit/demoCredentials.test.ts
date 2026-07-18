@@ -4,9 +4,9 @@ import { DEMO_PASSWORD, getDemoCredentials } from '../../src/domain/demo.js';
 
 function makeConfig(overrides: Partial<AppConfig>): AppConfig {
   return {
-    demoMode: false,
-    databaseUrl: 'file:./test.db',
-    databaseUrlPostgres: undefined,
+    demoMode: true,
+    dbString: undefined,
+    demoDatabaseUrl: 'file:./test.db',
     jwtSecret: 'test',
     jwtExpiresIn: '8h',
     port: 4000,
@@ -27,10 +27,10 @@ describe('getDemoCredentials', () => {
     }
   });
 
-  it('returns null when demo mode is off (even if no production DB is configured)', () => {
+  it('returns null in production mode (when a DB string is configured)', () => {
     expect(getDemoCredentials(makeConfig({ demoMode: false }))).toBeNull();
     expect(
-      getDemoCredentials(makeConfig({ demoMode: false, databaseUrlPostgres: 'postgres://x' })),
+      getDemoCredentials(makeConfig({ demoMode: false, dbString: 'postgres://x' })),
     ).toBeNull();
   });
 });

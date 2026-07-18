@@ -12,7 +12,9 @@ const dir = mkdtempSync(join(tmpdir(), 'onboarding-crud-'));
 const url = `file:${join(dir, 'crud.db')}`;
 process.env.DATABASE_URL = url;
 process.env.JWT_SECRET = 'test-secret';
-process.env.DEMO_MODE = 'true';
+// Demo mode is derived from the absence of DB_STRING; clear it in case a prior
+// test in the same worker set it (docs/ASSUMPTIONS.md §13).
+delete process.env.DB_STRING;
 execSync('npx prisma db push --skip-generate --accept-data-loss', {
   cwd: process.cwd(),
   env: { ...process.env, DATABASE_URL: url },
