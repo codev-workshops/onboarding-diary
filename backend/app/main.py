@@ -16,7 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .authorization import authorize_recruit_scope, authorize_report_scope, ensure_admin
-from .database import Database
+from .database import Database, create_database
 from .reports import (
     REPORT_COLUMNS,
     ReportFormat,
@@ -360,7 +360,7 @@ def create_app() -> FastAPI:
         except ValueError as exc:
             raise RuntimeError(f"Invalid bootstrap Admin configuration: {exc}") from exc
 
-        database = Database()
+        database = create_database()
         database.bootstrap_admin(signup.email, signup.password)
         app.state.database = database
         app.state.login_throttle = LoginThrottle()
@@ -425,7 +425,7 @@ def create_app() -> FastAPI:
     @app.get("/api/health")
     def health(database: Database = Depends(get_database)) -> dict[str, str]:
         database.fetchone("SELECT 1")
-        return {"status": "ok", "database": "sqlite-memory"}
+        return {"status": "ok", "database": database.store_name}
 
     @app.post("/api/auth/signup", response_model=ProfileResponse, status_code=201)
     def signup(
