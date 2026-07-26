@@ -4,15 +4,18 @@ import { DEPARTMENT_MAX_LENGTH, FULL_NAME_MAX_LENGTH } from '../constants.js';
 import { ROLES, type Role } from '../enums.js';
 import { calendarDate, paginationQuery, trimmedNonEmptyString, uuid } from '../primitives.js';
 
+/** Blank clears the department, so an empty string and `null` mean the same thing. */
+const department = z
+  .string()
+  .max(DEPARTMENT_MAX_LENGTH)
+  .transform((value) => value.trim())
+  .nullish()
+  .transform((value) => (value === undefined || value === '' ? null : value))
+  .optional();
+
 export const updateOwnProfileBody = z.object({
   fullName: trimmedNonEmptyString(FULL_NAME_MAX_LENGTH).optional(),
-  department: z
-    .string()
-    .max(DEPARTMENT_MAX_LENGTH)
-    .transform((value) => value.trim())
-    .nullish()
-    .transform((value) => (value === undefined || value === '' ? null : value))
-    .optional(),
+  department,
   startDate: calendarDate.nullish().optional(),
 });
 
@@ -20,6 +23,7 @@ export const updateUserBody = z.object({
   role: z.enum(ROLES).optional(),
   managerId: uuid.nullish().optional(),
   isActive: z.boolean().optional(),
+  department,
 });
 
 export const listUsersQuery = paginationQuery.extend({

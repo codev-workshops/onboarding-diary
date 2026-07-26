@@ -160,6 +160,7 @@ Priority key: **MUST** = required for v1 release, **SHOULD** = desirable in v1,
 | FR-U4 | An admin can deactivate and reactivate a user. Deactivation preserves their entries. | MUST |
 | FR-U5 | An admin cannot remove their own admin role or deactivate their own account. | MUST |
 | FR-U6 | Manager assignment must not create a cycle, and a user cannot be their own manager. | MUST |
+| FR-U7 | An admin can set or clear any user's department, subject to the same length limit as the self-service profile field. | MUST |
 
 ### 4.9 Cross-cutting
 
@@ -316,7 +317,7 @@ verifies.
 - Given an invalid range where the start date is after the end date, then a 422
   validation error is returned.
 
-### AC-10 Admin user management (FR-U1 to FR-U6)
+### AC-10 Admin user management (FR-U1 to FR-U7)
 - Given an admin on User Management, when they search by partial name or email, then
   matching users are listed with role, department, manager, and active state.
 - Given a user with role `RECRUIT`, when an admin sets the role to `MANAGER`, then that
@@ -325,6 +326,8 @@ verifies.
   own account, then the action is refused with an explanatory message.
 - Given a proposed manager assignment that would create a cycle, when submitted, then
   it is refused with a validation error.
+- Given an admin editing a user's department, when they save a new value, then it is
+  trimmed and stored; when they save an empty value, then the department is cleared.
 - Given a deactivated user, when their record is viewed, then all their entries are
   still present and included in reports.
 

@@ -125,9 +125,15 @@ export async function updateUserAsAdmin(
     ]);
   }
 
-  const data: { role?: Role; isActive?: boolean; managerId?: string | null } = {};
+  const data: {
+    role?: Role;
+    isActive?: boolean;
+    managerId?: string | null;
+    department?: string | null;
+  } = {};
   if (body.role !== undefined) data.role = body.role;
   if (body.isActive !== undefined) data.isActive = body.isActive;
+  if (body.department !== undefined) data.department = body.department;
 
   if (body.managerId !== undefined) {
     const managerId = body.managerId ?? null;

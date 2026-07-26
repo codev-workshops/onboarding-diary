@@ -1,10 +1,11 @@
 /**
  * Per-user admin controls (T-181, T-182). The API refuses an admin's attempts to demote or
  * deactivate themselves and rejects manager cycles; those refusals are shown next to the row
- * that caused them rather than swallowed (FR-U4, FR-U7).
+ * that caused them rather than swallowed (FR-U5, FR-U6).
  */
 
 import {
+  DEPARTMENT_MAX_LENGTH,
   ROLES,
   ROLE_LABELS,
   type Role,
@@ -16,6 +17,7 @@ import type { ReactNode } from 'react';
 
 import { Button } from '../../components/ui/Button.js';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
+import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
 import { ApiError } from '../../lib/apiClient.js';
 import { enumOptions } from '../entries/enumOptions.js';
@@ -39,6 +41,12 @@ export function UserRow({
   const update = useUpdateUser();
   const [confirmingDeactivate, setConfirmingDeactivate] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // Until the admin types, the field mirrors the server value, so a refetch is visible without
+  // copying props into state.
+  const [draftDepartment, setDraftDepartment] = useState<string | null>(null);
+  const savedDepartment = user.department ?? '';
+  const department = draftDepartment ?? savedDepartment;
+  const departmentChanged = department.trim() !== savedDepartment;
 
   function apply(body: UpdateUserBody, onDone?: () => void): void {
     setFailure(null);
@@ -54,9 +62,14 @@ export function UserRow({
     );
   }
 
+  function saveDepartment(): void {
+    if (!departmentChanged) return;
+    apply({ department: department.trim() }, () => setDraftDepartment(null));
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex flex-col gap-1 text-xs text-slate-600">
           <span aria-hidden="true">Role</span>
           <Select
@@ -81,6 +94,30 @@ export function UserRow({
               apply({ managerId: event.target.value === '' ? null : event.target.value })
             }
           />
+        </div>
+
+        <div className="flex flex-col gap-1 text-xs text-slate-600">
+          <span aria-hidden="true">Department</span>
+          <div className="flex gap-2">
+            <Input
+              aria-label={`Department for ${user.fullName}`}
+              maxLength={DEPARTMENT_MAX_LENGTH}
+              placeholder="No department"
+              value={department}
+              onChange={(event) => setDraftDepartment(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') saveDepartment();
+              }}
+            />
+            <Button
+              variant="secondary"
+              aria-label={`Save department for ${user.fullName}`}
+              disabled={!departmentChanged}
+              onClick={saveDepartment}
+            >
+              Save
+            </Button>
+          </div>
         </div>
 
         <div className="flex items-end">

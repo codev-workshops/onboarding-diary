@@ -251,7 +251,7 @@ All endpoints except `POST /auth/signup`, `POST /auth/login`,
 | PATCH | `/users/me` | any | Update `fullName`, `department`, `startDate` (FR-A6) |
 | GET | `/users` | admin | List/search users: `q`, `role`, `department`, `isActive` |
 | GET | `/users/:id` | admin, or manager of `:id`, or self | Single user |
-| PATCH | `/users/:id` | admin | Update `role`, `managerId`, `isActive` (FR-U2 to FR-U6) |
+| PATCH | `/users/:id` | admin | Update `role`, `managerId`, `isActive`, `department` (FR-U2 to FR-U7) |
 | GET | `/users/me/direct-reports` | manager, admin | Reports with summary tiles (FR-D5) |
 
 ### 4.4 Entry resources

@@ -131,6 +131,30 @@ describe('AdminUsersPage', () => {
     );
   });
 
+  it('changes and clears a department', async () => {
+    const user = userEvent.setup();
+    const client = adminClient();
+    client.patch.mockResolvedValue({ data: userFixture({ department: 'Support' }) });
+    render(client);
+
+    const field = await screen.findByLabelText('Department for Nadia Khan');
+    const save = screen.getByRole('button', { name: 'Save department for Nadia Khan' });
+    expect(save).toBeDisabled();
+
+    await user.clear(field);
+    await user.type(field, 'Support');
+    await user.click(save);
+    await waitFor(() =>
+      expect(client.patch).toHaveBeenCalledWith(`/users/${RECRUIT.id}`, { department: 'Support' }),
+    );
+
+    await user.clear(field);
+    await user.type(field, '{Enter}');
+    await waitFor(() =>
+      expect(client.patch).toHaveBeenCalledWith(`/users/${RECRUIT.id}`, { department: '' }),
+    );
+  });
+
   it('shows the cycle error returned by the API', async () => {
     const user = userEvent.setup();
     const client = adminClient();

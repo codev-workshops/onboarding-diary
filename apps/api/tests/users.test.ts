@@ -1,3 +1,4 @@
+import { DEPARTMENT_MAX_LENGTH } from '@onboarding-diary/shared';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { authenticatedAs, bearer, buildTestApp } from './helpers/app.js';
@@ -126,6 +127,30 @@ describe('PATCH /users/:id', () => {
       .set(...bearer(token))
       .send({ isActive: false });
     expect(deactivated.body.data.isActive).toBe(false);
+  });
+
+  it('sets, trims, and clears a department', async () => {
+    const { token } = await authenticatedAs(testApp, 'ADMIN');
+    const target = await createUser();
+
+    const assigned = await agent
+      .patch(`${basePath}/users/${target.id}`)
+      .set(...bearer(token))
+      .send({ department: '  Support  ' });
+    expect(assigned.body.data.department).toBe('Support');
+
+    const cleared = await agent
+      .patch(`${basePath}/users/${target.id}`)
+      .set(...bearer(token))
+      .send({ department: '' });
+    expect(cleared.body.data.department).toBeNull();
+
+    const tooLong = await agent
+      .patch(`${basePath}/users/${target.id}`)
+      .set(...bearer(token))
+      .send({ department: 'x'.repeat(DEPARTMENT_MAX_LENGTH + 1) });
+    expect(tooLong.status).toBe(422);
+    expect(tooLong.body.error.details[0].field).toBe('department');
   });
 
   it('protects the acting admin from self-demotion and self-deactivation', async () => {
