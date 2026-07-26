@@ -73,8 +73,10 @@ The seed is idempotent, so re-running it refreshes the fixture without duplicati
 
 ## Environment variables
 
-Copy `.env.example` to `.env`. The API validates its configuration at startup with Zod and
-exits listing any missing or malformed key.
+Copy `.env.example` to `.env`. There is one `.env`, at the repository root: the API's `dev`
+script reads it, Vite reads the `VITE_*` keys from it, and real environment variables always
+win, so Compose and production can supply their own. The API validates its configuration at
+startup with Zod and exits listing any missing or malformed key.
 
 | Variable                 | Scope | Default (dev)                  | Purpose                                |
 | ------------------------ | ----- | ------------------------------ | -------------------------------------- |
