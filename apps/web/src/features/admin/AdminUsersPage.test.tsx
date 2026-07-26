@@ -74,9 +74,10 @@ describe('AdminUsersPage', () => {
     const client = adminClient([ADMIN]);
     client.patch.mockRejectedValue(
       new ApiError({
-        status: 409,
-        code: 'CONFLICT',
-        message: 'You cannot change your own role',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        message: 'Request validation failed',
+        details: [{ field: 'role', message: 'You cannot change your own role' }],
       }),
     );
     render(client);

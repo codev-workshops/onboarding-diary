@@ -21,6 +21,14 @@ import { ApiError } from '../../lib/apiClient.js';
 import { enumOptions } from '../entries/enumOptions.js';
 import { useUpdateUser } from './useUsers.js';
 
+// Self-protection and manager-cycle refusals arrive as field details, which say far more than
+// the generic envelope message.
+function explain(error: unknown): string {
+  if (!(error instanceof ApiError)) return 'That change could not be saved. Please try again.';
+  const details = error.details.map((detail) => detail.message);
+  return details.length === 0 ? error.message : details.join(' ');
+}
+
 export function UserRow({
   user,
   managers,
@@ -39,11 +47,7 @@ export function UserRow({
       {
         onSuccess: () => onDone?.(),
         onError: (error) => {
-          setFailure(
-            error instanceof ApiError
-              ? error.message
-              : 'That change could not be saved. Please try again.',
-          );
+          setFailure(explain(error));
           onDone?.();
         },
       },
