@@ -426,12 +426,12 @@ task is done.
 
 ## Epic 11 — Frontend Foundation
 
-- [ ] **T-110 — Scaffold the Vite React app with Tailwind and routing**
+- [x] **T-110 — Scaffold the Vite React app with Tailwind and routing**
   App shell, router, 404 route, and base layout; responsive down to 360 px.
   Deps: T-001, T-002.
   Verify: `npm run build` succeeds; a smoke test renders the shell.
 
-- [ ] **T-111 — Implement the typed API client**
+- [x] **T-111 — Implement the typed API client**
   Base URL from the environment, bearer header injection, error-envelope normalisation
   into `ApiError`, and a single silent refresh on 401 followed by redirect
   (TRD 6.4, FR-A8).
@@ -439,27 +439,27 @@ task is done.
   Verify: unit tests with a mocked fetch for success, 422 mapping, one-shot refresh
   then retry, and refresh failure → redirect.
 
-- [ ] **T-112 — Implement the auth context and session storage**
+- [x] **T-112 — Implement the auth context and session storage**
   In-memory access token, refresh on load, `login`/`logout`/`signup` actions, and the
   current-user query.
   Deps: T-111.
   Verify: unit tests assert the token is never written to `localStorage` and that state
   clears on logout.
 
-- [ ] **T-113 — Add protected and role-aware routes**
+- [x] **T-113 — Add protected and role-aware routes**
   Redirect unauthenticated users to login preserving the intended destination; render an
   access-denied screen for insufficient roles (UF-7, TRD 6.4).
   Deps: T-112.
   Verify: unit tests for the redirect-with-return-path and the access-denied render.
 
-- [ ] **T-114 — Add TanStack Query setup and query-key conventions**
+- [x] **T-114 — Add TanStack Query setup and query-key conventions**
   Provider, defaults, and a documented key factory per resource so mutations invalidate
   correctly.
   Deps: T-111.
   Verify: unit test asserts a task mutation invalidates both the task list and the
   dashboard keys.
 
-- [ ] **T-115 — Add shared UI primitives**
+- [x] **T-115 — Add shared UI primitives**
   Button, input, select, date input, textarea, tag input, badge, table, pagination
   control, confirmation dialog, empty state, error state (with `requestId`), and skeleton
   loader — all keyboard accessible.
@@ -467,7 +467,7 @@ task is done.
   Verify: unit tests for the confirmation dialog, the tag input, and pagination;
   keyboard focus order asserted for the dialog.
 
-- [ ] **T-116 — Add the form validation wiring**
+- [x] **T-116 — Add the form validation wiring**
   React Hook Form plus the shared Zod schemas, with a helper mapping 422 `details` onto
   fields (FR-X6).
   Deps: T-115, T-011.

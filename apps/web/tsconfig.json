@@ -3,10 +3,12 @@
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "rootDir": "src",
-    "outDir": "dist"
+    "types": ["vite/client"],
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+  "include": ["src/**/*", "vite.config.ts", "vitest.config.ts"],
   "references": [{ "path": "../../packages/shared" }]
 }

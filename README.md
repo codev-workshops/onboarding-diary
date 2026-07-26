@@ -23,7 +23,9 @@ docs              BRD, TRD, task breakdown
 The repo is an npm workspaces monorepo. The API is feature-complete for v1 (Epics 0–10):
 tooling, shared contracts, the Prisma data model and seed, the API foundation,
 authentication and authorisation, the users/tasks/issues/feedback/notes resources, the
-dashboards, and CSV/PDF reports. `apps/web` is still a placeholder module.
+dashboards, and CSV/PDF reports. `apps/web` has its Epic 11 foundation — Vite, Tailwind,
+routing with role-aware guards, the API client, the auth context, TanStack Query, the UI
+primitives, and the form wiring — with the feature pages arriving in Epics 12–17.
 
 ## Prerequisites
 
@@ -75,8 +77,8 @@ docker compose up
 - `web` — installs dependencies and runs the web dev server on `localhost:5173`
 
 The `api` and `web` services mount the repository and keep `node_modules` in named
-volumes, so host and container installs do not collide. The web service runs a watch
-command that becomes meaningful once Epic 11 lands.
+volumes, so host and container installs do not collide. The web service runs the Vite dev
+server, which reads its API base URL from `VITE_API_BASE_URL`.
 
 The API exposes `GET /health` (200 with the database up, 503 when it is unreachable) and,
 under `/api/v1`: `auth`, `users`, `tasks`, `issues`, `feedback`, `notes`, `dashboard`, and
