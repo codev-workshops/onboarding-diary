@@ -18,7 +18,7 @@ describe('AppRoutes', () => {
 
     await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeVisible());
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Welcome, Nadia' })).toBeVisible();
   });
 
   it('renders the 404 page for an unknown path', async () => {

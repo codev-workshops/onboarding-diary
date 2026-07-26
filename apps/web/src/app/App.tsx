@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 
 import { AuthProvider } from '../features/auth/AuthContext.js';
+import { ApiClientProvider } from '../lib/ApiClientContext.js';
 import { API_BASE_URL } from '../lib/env.js';
 import { createApiClient, createMemoryTokenStore } from '../lib/apiClient.js';
 import { createQueryClient } from './queryClient.js';
@@ -27,11 +28,13 @@ export function App(): ReactNode {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider client={client}>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
+      <ApiClientProvider client={client}>
+        <BrowserRouter>
+          <AuthProvider client={client}>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </ApiClientProvider>
     </QueryClientProvider>
   );
 }

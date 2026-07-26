@@ -477,25 +477,25 @@ task is done.
 
 ## Epic 12 — Frontend Auth and Profile
 
-- [ ] **T-120 — Build the login page**
+- [x] **T-120 — Build the login page**
   Email and password form, generic failure message, and redirect to the intended route
   (AC-2).
   Deps: T-116, T-112.
   Verify: unit tests for validation errors, a failed login message, and a successful
   redirect.
 
-- [ ] **T-121 — Build the signup page**
+- [x] **T-121 — Build the signup page**
   Name, email, password with the strength rule; duplicate-email error mapped to the
   email field (AC-1).
   Deps: T-120.
   Verify: unit tests for the short-password error and the duplicate-email error.
 
-- [ ] **T-122 — Build the profile page and the post-signup completion prompt**
+- [x] **T-122 — Build the profile page and the post-signup completion prompt**
   Edit name, department, start date; the prompt is skippable (FR-A6, UF-1).
   Deps: T-121.
   Verify: unit tests for a successful save and for skipping the prompt.
 
-- [ ] **T-123 — Add the app navigation and logout control**
+- [x] **T-123 — Add the app navigation and logout control**
   Role-aware navigation (recruit, manager, admin) with the current user displayed.
   Deps: T-113.
   Verify: unit tests assert the visible navigation items per role and that logout clears
@@ -505,26 +505,26 @@ task is done.
 
 ## Epic 13 — Frontend Task Log
 
-- [ ] **T-130 — Build the task list view**
+- [x] **T-130 — Build the task list view**
   Table or card list with date, title, category, status, priority; loading, empty, and
   error states; pagination (FR-T4).
   Deps: T-114, T-115, T-061.
   Verify: unit tests for rendering rows, the empty state, and page changes.
 
-- [ ] **T-131 — Build the task filter bar**
+- [x] **T-131 — Build the task filter bar**
   Date range, category, status, priority, a result count, and a single reset action
   (FR-T5, UF-3).
   Deps: T-130.
   Verify: unit tests assert filter state maps to query parameters and that reset clears
   everything.
 
-- [ ] **T-132 — Build the task create and edit form**
+- [x] **T-132 — Build the task create and edit form**
   Shared form for both modes with inline validation and the future-date rule
   (FR-T1, FR-T2).
   Deps: T-116, T-130.
   Verify: unit tests for create, edit prefill, and the future-date error.
 
-- [ ] **T-133 — Add task delete with confirmation**
+- [x] **T-133 — Add task delete with confirmation**
   Confirm dialog, then invalidate the list and dashboard queries (FR-T3, AC-3).
   Deps: T-132.
   Verify: unit tests assert cancel is a no-op and confirm removes the row.
@@ -533,23 +533,23 @@ task is done.
 
 ## Epic 14 — Frontend Issue Log
 
-- [ ] **T-140 — Build the issue list view with severity and status indicators**
+- [x] **T-140 — Build the issue list view with severity and status indicators**
   Deps: T-114, T-115, T-071.
   Verify: unit tests for row rendering and the empty state.
 
-- [ ] **T-141 — Build the issue filter bar**
+- [x] **T-141 — Build the issue filter bar**
   Status, severity, and date range (FR-I4).
   Deps: T-140.
   Verify: unit tests for filter-to-query mapping.
 
-- [ ] **T-142 — Build the issue create and edit form with the resolution prompt**
+- [x] **T-142 — Build the issue create and edit form with the resolution prompt**
   Prompt for resolution notes when the status becomes Resolved or Won't Fix
   (FR-I7, AC-5).
   Deps: T-116, T-140.
   Verify: unit tests assert the notes field is surfaced and emphasised on that status
   transition.
 
-- [ ] **T-143 — Add issue delete with confirmation**
+- [x] **T-143 — Add issue delete with confirmation**
   Deps: T-142.
   Verify: unit test for the confirm-then-remove flow.
 
@@ -557,25 +557,25 @@ task is done.
 
 ## Epic 15 — Frontend Feedback and Notes
 
-- [ ] **T-150 — Build the feedback list, filters, and form**
+- [x] **T-150 — Build the feedback list, filters, and form**
   Type badges, type and date filters, create and edit (FR-F1 to FR-F4).
   Deps: T-116, T-081.
   Verify: unit tests for create, the type filter, and validation.
 
-- [ ] **T-151 — Add feedback delete with confirmation**
+- [x] **T-151 — Add feedback delete with confirmation**
   Deps: T-150.
   Verify: unit test for the confirm-then-remove flow.
 
-- [ ] **T-152 — Build the notes list with tag chips and tag filtering**
+- [x] **T-152 — Build the notes list with tag chips and tag filtering**
   Deps: T-115, T-084.
   Verify: unit tests for tag chip rendering and filtering by a tag.
 
-- [ ] **T-153 — Build the note create and edit form with the tag input**
+- [x] **T-153 — Build the note create and edit form with the tag input**
   Free-text tag entry that normalises on submit (FR-N1, FR-N2).
   Deps: T-152, T-116.
   Verify: unit tests for adding and removing tags and for normalisation before submit.
 
-- [ ] **T-154 — Add note delete with confirmation**
+- [x] **T-154 — Add note delete with confirmation**
   Deps: T-153.
   Verify: unit test for the confirm-then-remove flow.
 
@@ -583,26 +583,26 @@ task is done.
 
 ## Epic 16 — Frontend Dashboard
 
-- [ ] **T-160 — Build the recruit dashboard**
+- [x] **T-160 — Build the recruit dashboard**
   Count tiles, task completion progress, open issues by severity, and recent activity
   (FR-D1 to FR-D4, AC-7).
   Deps: T-092, T-114, T-115.
   Verify: unit tests assert rendered numbers for a fixture and the correct empty state
   for a new account.
 
-- [ ] **T-161 — Build the manager dashboard**
+- [x] **T-161 — Build the manager dashboard**
   Direct-report tiles with task progress, open-issue count, and last activity date
   (FR-D5).
   Deps: T-054, T-160.
   Verify: unit tests assert one tile per report and correct values.
 
-- [ ] **T-162 — Build the read-only recruit detail view for managers**
+- [x] **T-162 — Build the read-only recruit detail view for managers**
   Tabbed diary (tasks, issues, feedback, notes) with filters and no write affordances
   (FR-D6, FR-X2, AC-8).
   Deps: T-161, T-131, T-141, T-152.
   Verify: unit tests assert no create, edit, or delete controls render in this mode.
 
-- [ ] **T-163 — Build the admin dashboard**
+- [x] **T-163 — Build the admin dashboard**
   Organisation-wide counts and entry points into user management (FR-D7).
   Deps: T-093, T-160.
   Verify: unit tests for rendered totals and admin-only visibility.
@@ -611,20 +611,20 @@ task is done.
 
 ## Epic 17 — Frontend Reports
 
-- [ ] **T-170 — Build the report builder form**
+- [x] **T-170 — Build the report builder form**
   Date range, section checkboxes with a "Combined" shortcut, format selection, and
   range validation (FR-R1).
   Deps: T-116, T-103.
   Verify: unit tests for the combined shortcut and for the start-after-end error.
 
-- [ ] **T-171 — Implement the file download flow**
+- [x] **T-171 — Implement the file download flow**
   Authenticated `POST`, blob handling, filename from `Content-Disposition`, progress and
   failure states (FR-R2, FR-R6).
   Deps: T-170.
   Verify: unit tests with a mocked response assert the filename used and the
   download-failed state.
 
-- [ ] **T-172 — Add report generation from the manager's recruit view**
+- [x] **T-172 — Add report generation from the manager's recruit view**
   Report scoped to the selected recruit (FR-R4, UF-5).
   Deps: T-171, T-162.
   Verify: unit test asserts the correct `ownerId` is sent.
@@ -633,19 +633,19 @@ task is done.
 
 ## Epic 18 — Frontend Admin User Management
 
-- [ ] **T-180 — Build the user list with search and filters**
+- [x] **T-180 — Build the user list with search and filters**
   Search plus role, department, and active filters, paginated (FR-U1).
   Deps: T-051, T-115.
   Verify: unit tests for search-to-query mapping and pagination.
 
-- [ ] **T-181 — Build role change and activate/deactivate controls**
+- [x] **T-181 — Build role change and activate/deactivate controls**
   Confirmation on deactivation; self-protection errors surfaced clearly
   (FR-U2, FR-U4, FR-U5).
   Deps: T-180, T-052.
   Verify: unit tests for a successful role change and for the self-demotion error
   message.
 
-- [ ] **T-182 — Build the manager assignment control**
+- [x] **T-182 — Build the manager assignment control**
   Manager picker with cycle and self-assignment errors surfaced (FR-U3, FR-U6).
   Deps: T-181, T-053.
   Verify: unit tests for assign, clear, and the cycle error message.

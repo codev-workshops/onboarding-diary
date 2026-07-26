@@ -66,15 +66,28 @@ export type ApiClientOptions = {
   fetchFn?: typeof fetch;
 };
 
+/** A file response: the bytes plus the filename the server asked the browser to use. */
+export type DownloadedFile = { blob: Blob; filename: string };
+
 export type ApiClient = {
   request: <T>(method: string, path: string, options?: RequestOptions) => Promise<T>;
   get: <T>(path: string, options?: RequestOptions) => Promise<T>;
   post: <T>(path: string, body?: unknown, options?: RequestOptions) => Promise<T>;
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) => Promise<T>;
   del: (path: string, options?: RequestOptions) => Promise<void>;
+  download: (path: string, body: unknown, fallbackFilename: string) => Promise<DownloadedFile>;
   refresh: () => Promise<boolean>;
   setAccessToken: (token: string | null) => void;
 };
+
+/** Reads the filename out of `Content-Disposition: attachment; filename="..."` (FR-R2). */
+export function filenameFromDisposition(header: string | null, fallback: string): string {
+  if (header === null) return fallback;
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (encoded?.[1] !== undefined) return decodeURIComponent(encoded[1].trim());
+  const quoted = /filename="?([^";]+)"?/i.exec(header);
+  return quoted?.[1]?.trim() ?? fallback;
+}
 
 function buildQuery(query: Record<string, QueryValue> | undefined): string {
   if (query === undefined) return '';
@@ -171,27 +184,50 @@ export function createApiClient({
     return inFlightRefresh;
   }
 
+  /** `send` plus the one-shot refresh; every verb goes through here. */
+  async function sendWithRefresh(
+    method: string,
+    path: string,
+    options: RequestOptions,
+  ): Promise<Response> {
+    const response = await send(method, path, options);
+    if (response.status !== 401 || options.retryOnUnauthenticated === false) return response;
+
+    if (!(await refresh())) {
+      onSessionExpired?.();
+      return response;
+    }
+    return send(method, path, { ...options, retryOnUnauthenticated: false });
+  }
+
   async function request<T>(
     method: string,
     path: string,
     options: RequestOptions = {},
   ): Promise<T> {
-    const response = await send(method, path, options);
-
-    if (response.status === 401 && options.retryOnUnauthenticated !== false) {
-      const refreshed = await refresh();
-      if (!refreshed) {
-        onSessionExpired?.();
-        throw await toApiError(response);
-      }
-      return request<T>(method, path, { ...options, retryOnUnauthenticated: false });
-    }
+    const response = await sendWithRefresh(method, path, options);
 
     if (!response.ok) throw await toApiError(response);
     if (response.status === 204) return undefined as T;
 
     const body = (await response.json()) as T;
     return body;
+  }
+
+  async function download(
+    path: string,
+    body: unknown,
+    fallbackFilename: string,
+  ): Promise<DownloadedFile> {
+    const response = await sendWithRefresh('POST', path, { body });
+    if (!response.ok) throw await toApiError(response);
+    return {
+      blob: await response.blob(),
+      filename: filenameFromDisposition(
+        response.headers.get('content-disposition'),
+        fallbackFilename,
+      ),
+    };
   }
 
   return {
@@ -202,6 +238,7 @@ export function createApiClient({
     del: async (path, options) => {
       await request<void>('DELETE', path, options);
     },
+    download,
     refresh,
     setAccessToken: tokens.set,
   };

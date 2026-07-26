@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { createQueryClient } from '../app/queryClient.js';
 import { AuthProvider } from '../features/auth/AuthContext.js';
+import { ApiClientProvider } from '../lib/ApiClientContext.js';
 import type { ApiClient } from '../lib/apiClient.js';
 
 export function renderWithProviders(
@@ -17,9 +18,11 @@ export function renderWithProviders(
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[route]}>
-        <AuthProvider client={client}>{ui}</AuthProvider>
-      </MemoryRouter>
+      <ApiClientProvider client={client}>
+        <MemoryRouter initialEntries={[route]}>
+          <AuthProvider client={client}>{ui}</AuthProvider>
+        </MemoryRouter>
+      </ApiClientProvider>
     </QueryClientProvider>,
   );
 }

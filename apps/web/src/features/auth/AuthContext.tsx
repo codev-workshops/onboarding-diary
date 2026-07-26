@@ -18,6 +18,8 @@ export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 export type AuthContextValue = {
   status: AuthStatus;
   user: UserDto | null;
+  /** Keeps the header and guards in step after the user edits their own profile. */
+  setUser: (user: UserDto) => void;
   login: (credentials: LoginBody) => Promise<UserDto>;
   signup: (input: SignupBody) => Promise<UserDto>;
   logout: () => Promise<void>;
@@ -92,7 +94,7 @@ export function AuthProvider({
   }, [client, queryClient]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, user, login, signup, logout }),
+    () => ({ status, user, setUser, login, signup, logout }),
     [status, user, login, signup, logout],
   );
 
