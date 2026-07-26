@@ -2,9 +2,13 @@
 // Enum values are mirrored in packages/shared and asserted by tests/enum-parity.test.ts.
 
 generator client {
-  provider        = "prisma-client"
-  output          = "../src/generated/prisma"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  // Node resolves ESM specifiers literally, so the generated client must import with
+  // extensions or `node dist/server.js` cannot load it (T-194).
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+  previewFeatures     = ["postgresqlExtensions"]
 }
 
 datasource db {

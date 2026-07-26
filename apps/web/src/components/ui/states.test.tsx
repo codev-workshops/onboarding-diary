@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '../../lib/apiClient.js';
@@ -47,5 +48,20 @@ describe('ErrorState', () => {
     render(<ErrorState error={new Error('Boom')} />);
     expect(screen.getByRole('alert')).toHaveTextContent('Boom');
     expect(screen.queryByText(/Reference:/)).not.toBeInTheDocument();
+  });
+
+  it('renders the shared access-denied screen for a 403 instead of a retry', () => {
+    render(
+      <MemoryRouter>
+        <ErrorState
+          error={new ApiError({ status: 403, code: 'FORBIDDEN', message: 'Not your diary' })}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'You do not have access to this' })).toBeVisible();
+    expect(screen.getByText('Not your diary')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
 });

@@ -6,10 +6,11 @@
 
 import { ROLE_LABELS, type Role } from '@onboarding-diary/shared';
 import type { ReactNode } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { Button } from '../components/ui/Button.js';
 import { useAuth } from '../features/auth/AuthContext.js';
+import { ErrorBoundary } from './ErrorBoundary.js';
 
 type NavItem = { to: string; label: string; allow?: readonly Role[] };
 
@@ -32,6 +33,7 @@ export function visibleNavItems(role: Role | undefined): readonly NavItem[] {
 export function AppLayout(): ReactNode {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function onLogout(): Promise<void> {
     await logout();
@@ -40,6 +42,12 @@ export function AppLayout(): ReactNode {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+      <a
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-sky-500"
+        href="#main"
+      >
+        Skip to main content
+      </a>
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <span className="text-base font-semibold">Onboarding Diary</span>
@@ -78,8 +86,10 @@ export function AppLayout(): ReactNode {
           </ul>
         </nav>
       </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
-        <Outlet />
+      <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+        <ErrorBoundary resetKey={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

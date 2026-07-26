@@ -655,27 +655,27 @@ task is done.
 
 ## Epic 19 — Cross-cutting Quality and Release Readiness
 
-- [ ] **T-190 — Add the global error boundary and error states**
+- [x] **T-190 — Add the global error boundary and error states**
   Route-level error boundary showing the `requestId`, plus a shared 403 screen
   (TRD 6.4).
   Deps: T-113, T-115.
   Verify: unit test asserts a thrown render error shows the boundary with the retry
   action.
 
-- [ ] **T-191 — Add the accessibility and responsiveness pass**
+- [x] **T-191 — Add the accessibility and responsiveness pass**
   Labels, focus order, visible focus styling, contrast, and a 360 px layout review
   across every screen (FR-X5, AC-12).
   Deps: Epics 12 to 18.
   Verify: automated a11y assertions on key screens plus a documented manual checklist at
   360 px, 768 px, and 1280 px.
 
-- [ ] **T-193 — Write the developer README**
+- [x] **T-193 — Write the developer README**
   Setup, environment variables, running with Docker Compose, migrations, seeding,
   testing, and project structure.
   Deps: T-005, T-027.
   Verify: a fresh clone reaches a running app by following the README only.
 
-- [ ] **T-194 — Add the deployment configuration and runbook**
+- [x] **T-194 — Add the deployment configuration and runbook**
   Production build, migration-on-deploy step, required environment variables, health
   check wiring, and log expectations (TRD 7, TRD 9).
   Deps: T-193.

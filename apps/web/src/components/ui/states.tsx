@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { AccessDenied } from '../../app/AccessDeniedPage.js';
 import { ApiError } from '../../lib/apiClient.js';
 import { Button } from './Button.js';
 
@@ -23,7 +24,10 @@ export function EmptyState({
   );
 }
 
-/** Retryable error state; the `requestId` is shown so support can find the server log. */
+/**
+ * Retryable error state; the `requestId` is shown so support can find the server log. A 403 is
+ * not retryable, so it renders the shared access-denied screen instead (TRD 6.4).
+ */
 export function ErrorState({
   error,
   onRetry,
@@ -32,6 +36,9 @@ export function ErrorState({
   onRetry?: () => void;
 }): ReactNode {
   const apiError = error instanceof ApiError ? error : null;
+  if (apiError?.status === 403) {
+    return <AccessDenied description={apiError.message} />;
+  }
   const message =
     apiError?.message ?? (error instanceof Error ? error.message : 'Something went wrong');
 

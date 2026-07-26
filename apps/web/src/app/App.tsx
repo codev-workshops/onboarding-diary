@@ -7,6 +7,7 @@ import { AuthProvider } from '../features/auth/AuthContext.js';
 import { ApiClientProvider } from '../lib/ApiClientContext.js';
 import { API_BASE_URL } from '../lib/env.js';
 import { createApiClient, createMemoryTokenStore } from '../lib/apiClient.js';
+import { ErrorBoundary } from './ErrorBoundary.js';
 import { createQueryClient } from './queryClient.js';
 import { AppRoutes } from './routes.js';
 
@@ -31,7 +32,9 @@ export function App(): ReactNode {
       <ApiClientProvider client={client}>
         <BrowserRouter>
           <AuthProvider client={client}>
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
           </AuthProvider>
         </BrowserRouter>
       </ApiClientProvider>
