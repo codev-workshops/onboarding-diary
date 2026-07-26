@@ -1,0 +1,42 @@
+{
+  "name": "@onboarding-diary/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prebuild": "npm run build --workspace @onboarding-diary/shared",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "clean": "rm -rf dist coverage *.tsbuildinfo",
+    "predev": "npm run build --workspace @onboarding-diary/shared",
+    "dev": "vite",
+    "preview": "vite preview",
+    "pretypecheck": "npm run build --workspace @onboarding-diary/shared",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "pretest": "npm run build --workspace @onboarding-diary/shared",
+    "test": "vitest run",
+    "pretest:coverage": "npm run build --workspace @onboarding-diary/shared",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "5.4.0",
+    "@onboarding-diary/shared": "*",
+    "@tanstack/react-query": "5.101.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-hook-form": "7.82.0",
+    "react-router-dom": "7.18.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.4",
+    "axe-core": "4.12.1",
+    "tailwindcss": "4.3.3",
+    "vite": "8.1.5"
+  }
+}
