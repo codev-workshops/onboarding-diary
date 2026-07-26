@@ -320,6 +320,7 @@ an authorised relationship.
 ```json
 {
   "data": {
+    "ownerId": "3ab9...",
     "counts": { "tasks": 10, "issues": 3, "feedback": 2, "notes": 5 },
     "taskProgress": {
       "byStatus": { "NOT_STARTED": 2, "IN_PROGRESS": 3, "BLOCKED": 1, "DONE": 4 },
@@ -365,8 +366,11 @@ Aggregates are computed with SQL `GROUP BY` queries, not by loading rows into me
 - The response is a file stream with
   `Content-Disposition: attachment; filename="onboarding-diary_<slug>_<from>_<to>.<ext>"`
   and `Content-Type` `application/pdf` or `text/csv; charset=utf-8` (FR-R6).
-- CSV: one block per requested section, each preceded by a `# SECTION: TASKS` marker
-  line and a header row, then one row per entry, ordered by `entryDate`.
+- `sections` defaults to all four and is always emitted in the order above.
+- CSV: a `#`-prefixed cover block (recruit, range, generation timestamp), then one block
+  per requested section, each preceded by a `# SECTION: TASKS` marker line and a header
+  row, then one row per entry ordered by `entryDate`. Empty sections carry a
+  `# No entries for this range` line.
 - PDF: cover block with recruit name, department, start date, date range, generation
   timestamp, and summary counts, followed by one table per section.
 - An empty range still yields a valid file with a "No entries for this range" line

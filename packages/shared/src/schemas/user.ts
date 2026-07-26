@@ -36,6 +36,13 @@ export type UpdateOwnProfileBody = z.infer<typeof updateOwnProfileBody>;
 export type UpdateUserBody = z.infer<typeof updateUserBody>;
 export type ListUsersQuery = z.infer<typeof listUsersQuery>;
 
+export type DirectReportSummaryDto = {
+  user: UserDto;
+  taskProgress: { completed: number; total: number; completionPercent: number };
+  openIssueCount: number;
+  lastActivityDate: string | null;
+};
+
 export type UserDto = {
   id: string;
   email: string;

@@ -20,10 +20,10 @@ packages/shared   Enums, Zod schemas, DTOs      (@onboarding-diary/shared)
 docs              BRD, TRD, task breakdown
 ```
 
-The repo is an npm workspaces monorepo. Implemented so far: the tooling foundation
-(Epic 0), the shared contracts (Epic 1), the Prisma data model and seed (Epic 2), the API
-foundation (Epic 3), and authentication and authorisation (Epic 4). `apps/web` is still a
-placeholder module.
+The repo is an npm workspaces monorepo. The API is feature-complete for v1 (Epics 0–10):
+tooling, shared contracts, the Prisma data model and seed, the API foundation,
+authentication and authorisation, the users/tasks/issues/feedback/notes resources, the
+dashboards, and CSV/PDF reports. `apps/web` is still a placeholder module.
 
 ## Prerequisites
 
@@ -78,8 +78,9 @@ The `api` and `web` services mount the repository and keep `node_modules` in nam
 volumes, so host and container installs do not collide. The web service runs a watch
 command that becomes meaningful once Epic 11 lands.
 
-The API exposes `GET /health` (200 with the database up, 503 when it is unreachable) and
-the auth endpoints under `/api/v1/auth`.
+The API exposes `GET /health` (200 with the database up, 503 when it is unreachable) and,
+under `/api/v1`: `auth`, `users`, `tasks`, `issues`, `feedback`, `notes`, `dashboard`, and
+`reports`. See [docs/TRD.md](docs/TRD.md) section 4 for the full surface.
 
 To run only the database while working on the host:
 

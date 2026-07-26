@@ -11,7 +11,14 @@ import { createRateLimiter, noRateLimit, RATE_LIMITS } from './middleware/rateLi
 import { requestId, requestLogger } from './middleware/requestContext.js';
 import { requireAuth } from './middleware/requireAuth.js';
 import { authRouter } from './modules/auth/router.js';
+import { dashboardRouter } from './modules/dashboard/router.js';
+import { feedbackRouter } from './modules/feedback/router.js';
 import { healthRouter } from './modules/health/router.js';
+import { issuesRouter } from './modules/issues/router.js';
+import { notesRouter } from './modules/notes/router.js';
+import { reportsRouter } from './modules/reports/router.js';
+import { tasksRouter } from './modules/tasks/router.js';
+import { usersRouter } from './modules/users/router.js';
 
 export const API_BASE_PATH = '/api/v1';
 export const BODY_LIMIT = '256kb';
@@ -50,6 +57,19 @@ export function createApp({
   app.use(
     `${API_BASE_PATH}/auth`,
     authRouter(db, config, { authRateLimiter: limiter(RATE_LIMITS.auth), requireAuth: auth }),
+  );
+
+  // Everything below this point requires an authenticated caller (TRD 4).
+  app.use(`${API_BASE_PATH}/users`, auth, usersRouter(db));
+  app.use(`${API_BASE_PATH}/tasks`, auth, tasksRouter(db));
+  app.use(`${API_BASE_PATH}/issues`, auth, issuesRouter(db));
+  app.use(`${API_BASE_PATH}/feedback`, auth, feedbackRouter(db));
+  app.use(`${API_BASE_PATH}/notes`, auth, notesRouter(db));
+  app.use(`${API_BASE_PATH}/dashboard`, auth, dashboardRouter(db));
+  app.use(
+    `${API_BASE_PATH}/reports`,
+    auth,
+    reportsRouter(db, { reportRateLimiter: limiter(RATE_LIMITS.reports) }),
   );
 
   app.use(notFoundHandler());

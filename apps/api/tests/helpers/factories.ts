@@ -1,4 +1,4 @@
-import type { Role } from '@onboarding-diary/shared';
+import type { FeedbackType, Role } from '@onboarding-diary/shared';
 
 import { hashPassword } from '../../src/lib/password.js';
 import type { User } from '../../src/generated/prisma/client.js';
@@ -65,6 +65,40 @@ export async function createIssue(
       ownerId,
       entryDate: calendarDate(overrides.daysAgo ?? 0),
       title: overrides.title ?? 'VPN token expired',
+    },
+    select: { id: true },
+  });
+}
+
+export async function createFeedback(
+  ownerId: string,
+  overrides: { subject?: string; type?: FeedbackType; daysAgo?: number } = {},
+): Promise<{ id: string }> {
+  return getTestDb().feedbackNote.create({
+    data: {
+      ownerId,
+      entryDate: calendarDate(overrides.daysAgo ?? 0),
+      subject: overrides.subject ?? 'Buddy system works well',
+      type: overrides.type ?? 'POSITIVE',
+    },
+    select: { id: true },
+  });
+}
+
+export async function createNote(
+  ownerId: string,
+  overrides: { title?: string; daysAgo?: number; tags?: readonly string[] } = {},
+): Promise<{ id: string }> {
+  return getTestDb().note.create({
+    data: {
+      ownerId,
+      entryDate: calendarDate(overrides.daysAgo ?? 0),
+      title: overrides.title ?? 'Day one notes',
+      tags: {
+        create: (overrides.tags ?? []).map((name) => ({
+          tag: { connectOrCreate: { where: { name }, create: { name } } },
+        })),
+      },
     },
     select: { id: true },
   });

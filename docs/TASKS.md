@@ -240,35 +240,35 @@ task is done.
 
 ## Epic 5 — User and Profile API
 
-- [ ] **T-050 — Implement `GET /users/me` and `PATCH /users/me`**
+- [x] **T-050 — Implement `GET /users/me` and `PATCH /users/me`**
   Editable fields limited to `fullName`, `department`, `startDate`; attempts to change
   `role` or `email` are ignored (FR-A6).
   Deps: T-046, T-034.
   Verify: integration tests for a successful update and for silently ignored
   privileged fields.
 
-- [ ] **T-051 — Implement `GET /users` and `GET /users/:id`**
+- [x] **T-051 — Implement `GET /users` and `GET /users/:id`**
   Admin search by `q`, `role`, `department`, `isActive`, paginated; `GET /users/:id`
   allowed for admin, the user's manager, or self (FR-U1).
   Deps: T-047, T-035, T-048.
   Verify: integration tests for filter combinations, pagination, and 403 for a
   non-admin listing users.
 
-- [ ] **T-052 — Implement `PATCH /users/:id` for role and activation**
+- [x] **T-052 — Implement `PATCH /users/:id` for role and activation**
   Admin-only role change and activate/deactivate, with admin self-protection
   (FR-U2, FR-U4, FR-U5, AC-10).
   Deps: T-051.
   Verify: integration tests for a role change, deactivation, self-demotion → 422, and
   self-deactivation → 422.
 
-- [ ] **T-053 — Implement manager assignment with cycle prevention**
+- [x] **T-053 — Implement manager assignment with cycle prevention**
   Set or clear `managerId`; reject self-assignment and any cycle by walking the chain
   (FR-U3, FR-U6).
   Deps: T-052.
   Verify: unit tests for chain walking; integration tests for a valid assignment,
   self-assignment → 422, and a two-hop cycle → 409.
 
-- [ ] **T-054 — Implement `GET /users/me/direct-reports`**
+- [x] **T-054 — Implement `GET /users/me/direct-reports`**
   Direct reports with per-recruit task progress, open-issue count, and last activity
   date (FR-D5).
   Deps: T-053, T-021, T-022.
@@ -279,21 +279,21 @@ task is done.
 
 ## Epic 6 — Task Log API
 
-- [ ] **T-060 — Implement `POST /tasks` and `GET /tasks/:id`**
+- [x] **T-060 — Implement `POST /tasks` and `GET /tasks/:id`**
   Owner taken from the session; validation per T-011 including the future-date rule
   (FR-T1, FR-T9, AC-3).
   Deps: T-021, T-034, T-048.
   Verify: integration tests for create success, missing title → 422, future date → 422,
   a spoofed body `ownerId` being ignored, and reading another user's task → 403.
 
-- [ ] **T-061 — Implement `GET /tasks` with filters and pagination**
+- [x] **T-061 — Implement `GET /tasks` with filters and pagination**
   `from`, `to`, `category`, `status`, `priority`, `ownerId`; default sort
   `entryDate DESC, createdAt DESC` (FR-T4, FR-T5, AC-4).
   Deps: T-060, T-035.
   Verify: integration tests for each filter, a combined filter, accurate `meta.total`,
   and page-2 correctness.
 
-- [ ] **T-062 — Implement `PATCH /tasks/:id` and `DELETE /tasks/:id`**
+- [x] **T-062 — Implement `PATCH /tasks/:id` and `DELETE /tasks/:id`**
   Owner-only writes; admin override (FR-T2, FR-T3).
   Deps: T-060.
   Verify: integration tests for an update, a delete, a non-owner write → 403, and an
@@ -303,19 +303,19 @@ task is done.
 
 ## Epic 7 — Issue Log API
 
-- [ ] **T-070 — Implement `POST /issues` and `GET /issues/:id`**
+- [x] **T-070 — Implement `POST /issues` and `GET /issues/:id`**
   Defaults `OPEN` and `MEDIUM` (FR-I1, FR-I5, FR-I6, AC-5).
   Deps: T-022, T-034, T-048.
   Verify: integration tests for create with defaults applied and validation failures.
 
-- [ ] **T-071 — Implement `GET /issues` with filters and pagination**
+- [x] **T-071 — Implement `GET /issues` with filters and pagination**
   `from`, `to`, `status`, `severity`, `ownerId`, including comma-separated multi-value
   enums (FR-I3, FR-I4).
   Deps: T-070, T-035.
   Verify: integration tests for severity and status filters, including
   `status=OPEN,IN_PROGRESS`.
 
-- [ ] **T-072 — Implement `PATCH /issues/:id` and `DELETE /issues/:id`**
+- [x] **T-072 — Implement `PATCH /issues/:id` and `DELETE /issues/:id`**
   Includes updating `status` and `resolutionNotes` (FR-I2, FR-I7).
   Deps: T-070.
   Verify: integration tests for resolving an issue with notes and for non-owner
@@ -325,32 +325,32 @@ task is done.
 
 ## Epic 8 — Feedback and Notes API
 
-- [ ] **T-080 — Implement feedback CRUD**
+- [x] **T-080 — Implement feedback CRUD**
   `POST`, `GET /:id`, `PATCH`, `DELETE` for `/feedback` (FR-F1 to FR-F3).
   Deps: T-023, T-034, T-048.
   Verify: integration tests for create, update, delete, missing `type` → 422, and
   non-owner access → 403.
 
-- [ ] **T-081 — Implement `GET /feedback` with filters and pagination**
+- [x] **T-081 — Implement `GET /feedback` with filters and pagination**
   `from`, `to`, `type`, `ownerId` (FR-F4).
   Deps: T-080, T-035.
   Verify: integration test filters by type and asserts counts.
 
-- [ ] **T-082 — Implement tag normalisation and upsert**
+- [x] **T-082 — Implement tag normalisation and upsert**
   Lowercase, trim, de-duplicate, and length-limit tags; upsert `Tag` rows and rewrite
   `NoteTag` inside a transaction (FR-N2, AC-6).
   Deps: T-024.
   Verify: unit test asserts `"Setup, setup , VPN"` becomes `["setup","vpn"]`;
   integration test asserts no duplicate `Tag` rows are created.
 
-- [ ] **T-083 — Implement notes CRUD**
+- [x] **T-083 — Implement notes CRUD**
   `POST`, `GET /:id`, `PATCH`, `DELETE` for `/notes`, with tags handled via T-082
   (FR-N1, FR-N3).
   Deps: T-082, T-034, T-048.
   Verify: integration tests for create with tags, replacing tags on update, and delete
   removing join rows.
 
-- [ ] **T-084 — Implement `GET /notes` with filters and pagination**
+- [x] **T-084 — Implement `GET /notes` with filters and pagination**
   `from`, `to`, repeatable `tag`, `ownerId` (FR-N4).
   Deps: T-083, T-035.
   Verify: integration test filters by a single tag and by two tags.
@@ -359,28 +359,28 @@ task is done.
 
 ## Epic 9 — Dashboard API
 
-- [ ] **T-090 — Implement dashboard aggregate queries**
+- [x] **T-090 — Implement dashboard aggregate queries**
   `GROUP BY` counts for tasks by status, issues by status and severity, and totals per
   entry type, scoped by owner (FR-D1 to FR-D3, AC-7).
   Deps: T-021, T-022, T-023, T-024.
   Verify: unit tests on the shaping helper; integration test with a fixed fixture
   asserts 4/10 and 40% completion and an open-issue count of 2.
 
-- [ ] **T-091 — Implement the recent-activity union query**
+- [x] **T-091 — Implement the recent-activity union query**
   `UNION ALL` across the four entry tables, ordered by `entryDate DESC, createdAt DESC`,
   limited to five, each row labelled with its `kind` (FR-D4).
   Deps: T-090.
   Verify: integration test with entries in all four categories asserts the exact
   ordering and labels.
 
-- [ ] **T-092 — Implement `GET /dashboard` with access scoping**
+- [x] **T-092 — Implement `GET /dashboard` with access scoping**
   Defaults to the caller; another `ownerId` requires an authorised relationship
   (FR-D6, AC-8).
   Deps: T-091, T-048.
   Verify: integration tests for self, manager viewing a direct report, manager viewing a
   non-report → 403, and recruit viewing another recruit → 403.
 
-- [ ] **T-093 — Implement `GET /dashboard/admin`**
+- [x] **T-093 — Implement `GET /dashboard/admin`**
   Organisation-wide counts and user totals by role and active state (FR-D7).
   Deps: T-092, T-047.
   Verify: integration tests for admin success and non-admin → 403.
@@ -389,35 +389,35 @@ task is done.
 
 ## Epic 10 — Reports API
 
-- [ ] **T-100 — Implement report data assembly**
+- [x] **T-100 — Implement report data assembly**
   Fetch the selected sections for an owner over an inclusive date range; validate
   `from <= to` and the 366-day maximum (FR-R1, AC-9).
   Deps: T-061, T-071, T-081, T-084.
   Verify: unit tests for range validation; integration test asserts boundary dates are
   included exactly once.
 
-- [ ] **T-101 — Implement the CSV renderer**
+- [x] **T-101 — Implement the CSV renderer**
   One block per section with a `# SECTION:` marker and a header row, streamed
   (FR-R2, TRD 4.6).
   Deps: T-100.
   Verify: unit test asserts the exact CSV text for a fixed fixture, including quoting of
   commas and newlines in descriptions.
 
-- [ ] **T-102 — Implement the PDF renderer**
+- [x] **T-102 — Implement the PDF renderer**
   Cover block with name, department, start date, range, generation timestamp, and
   summary counts, then one table per section, streamed (FR-R2).
   Deps: T-100.
   Verify: test asserts a `%PDF` header, a non-trivial byte length, and that extracted
   text contains the recruit's name, the range, and each section heading.
 
-- [ ] **T-103 — Implement `POST /reports` with access control and download headers**
+- [x] **T-103 — Implement `POST /reports` with access control and download headers**
   Format selection, `Content-Type`, and the descriptive `Content-Disposition` filename
   (FR-R3 to FR-R6).
   Deps: T-101, T-102, T-048, T-049.
   Verify: integration tests for recruit-self, manager-for-report, manager-for-non-report
   → 403, recruit-for-other → 403, admin-for-anyone, and the filename pattern.
 
-- [ ] **T-104 — Handle the empty-range report case**
+- [x] **T-104 — Handle the empty-range report case**
   A valid file stating there are no entries, in both formats (FR-R7).
   Deps: T-103.
   Verify: integration tests assert 200 and the "No entries" content for CSV and PDF.
