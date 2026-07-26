@@ -353,7 +353,7 @@ verifies.
 | D6 | Reports are generated server-side. CSV is flat rows per section; PDF is a tabular summary with counts. |
 | D7 | Enumerations are fixed as listed in Sections 4.2 to 4.4 and are not user-configurable in v1. |
 | D8 | Attachments, notifications/email, global search, audit log, and i18n are out of scope. |
-| D9 | Testing: unit tests plus API integration tests, run in GitHub Actions alongside lint and typecheck. End-to-end browser tests are out of scope for v1. |
+| D9 | Testing: unit tests plus API integration tests, run locally alongside lint and typecheck via root npm scripts. No hosted CI pipeline and no end-to-end browser tests in v1. |
 | D10 | Entry `date` is a plain calendar date; timestamps are stored in UTC. |
 | D11 | Single-tenant deployment for one organisation. |
 

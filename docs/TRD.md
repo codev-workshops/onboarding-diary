@@ -13,7 +13,7 @@ Last updated: 2026-07-26
 | Data fetching | TanStack Query | Server-state cache, invalidation after mutations |
 | Forms & validation | React Hook Form + Zod | Zod schemas shared with the API package |
 | Styling | Tailwind CSS | Responsive from 360 px up |
-| Backend | Node.js 20 + Express 4 + TypeScript | REST API |
+| Backend | Node.js 24 + Express 4 + TypeScript | REST API |
 | ORM | Prisma | Migrations are the single source of schema truth |
 | Database | PostgreSQL 16 | |
 | Auth | JWT access token + rotating refresh token | `jsonwebtoken`, `argon2` for hashing |
@@ -21,7 +21,7 @@ Last updated: 2026-07-26
 | CSV generation | `csv-stringify` | Server-side streaming to the response |
 | Tests | Vitest (unit), Supertest (API integration) | |
 | Local dev | Docker Compose (postgres + api + web) | |
-| CI | GitHub Actions | lint, typecheck, test, build |
+| CI | none in v1 | lint, typecheck, test, and build run locally via root npm scripts and the pre-commit hook |
 
 ## 2. Architecture
 
@@ -525,8 +525,9 @@ entry and is surfaced in the UI's generic error state for support purposes.
 - **Frontend unit tests** — form validation, filter state, and the API client's refresh
   behaviour, with the network layer mocked.
 - **Coverage gate** — 80% lines on `apps/api/src/modules` and `packages/shared`.
-- **CI** — GitHub Actions runs lint, typecheck, unit tests, integration tests against a
-  `postgres:16` service container, and a production build of both apps.
+- **Local verification** — `npm run lint`, `npm run typecheck`, `npm test`, and
+  `npm run build` at the root cover every workspace; integration tests run against the
+  Docker Compose `postgres:16` service. No hosted CI pipeline in v1.
 - End-to-end browser tests are out of scope for v1 (BRD D9).
 
 ## 9. Environments and Configuration

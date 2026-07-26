@@ -7,8 +7,9 @@ Derived from [BRD.md](./BRD.md) and [TRD.md](./TRD.md).
   top to bottom.
 - Each task is independently implementable and independently testable, and should be a
   single small PR.
-- Task IDs are stable — never renumber; append new tasks instead.
-- Tick the checkbox when the task is merged with its tests passing in CI.
+- Task IDs are stable — never renumber; append new tasks instead. Retired IDs are never
+  reused: `T-004` (CI pipeline, dropped by request).
+- Tick the checkbox when the task is merged with its verification steps passing.
 
 Legend: **Deps** = task IDs that must be complete first. **Verify** = how to prove the
 task is done.
@@ -17,42 +18,35 @@ task is done.
 
 ## Epic 0 — Repository and Tooling Foundation
 
-- [ ] **T-001 — Initialise the npm workspaces monorepo skeleton**
+- [x] **T-001 — Initialise the npm workspaces monorepo skeleton**
   Create the root `package.json` with workspaces `apps/*` and `packages/*`, a shared
-  `tsconfig.base.json`, `.gitignore`, `.editorconfig`, and `.nvmrc` pinning Node 20.
+  `tsconfig.base.json`, `.gitignore`, `.editorconfig`, and `.nvmrc` pinning Node 24.
   Create empty `apps/web`, `apps/api`, and `packages/shared` packages that build.
   Deps: none.
   Verify: `npm install` succeeds at the root and `npm run build` is a no-op success in
   every workspace.
 
-- [ ] **T-002 — Add lint, format, and typecheck tooling**
+- [x] **T-002 — Add lint, format, and typecheck tooling**
   ESLint (TypeScript + React rules) and Prettier at the root with per-workspace
   overrides; root scripts `lint`, `format:check`, `typecheck`.
   Deps: T-001.
   Verify: `npm run lint`, `npm run format:check`, and `npm run typecheck` pass on the
   clean tree; a deliberately unused variable fails lint.
 
-- [ ] **T-003 — Add the Vitest test harness**
+- [x] **T-003 — Add the Vitest test harness**
   Configure Vitest in `apps/api`, `apps/web`, and `packages/shared`; add a root `test`
   script that runs all workspaces, plus coverage reporting.
   Deps: T-001.
   Verify: a trivial passing test runs in each workspace via `npm test` from the root.
 
-- [ ] **T-004 — Add the CI pipeline**
-  GitHub Actions workflow on push and pull request: install with a cache, then lint,
-  typecheck, test, and build. Include a `postgres:16` service container ready for later
-  integration tests.
-  Deps: T-002, T-003.
-  Verify: the workflow is green on a pull request and fails when lint is broken.
-
-- [ ] **T-005 — Add Docker Compose for local development**
+- [x] **T-005 — Add Docker Compose for local development**
   Services for `postgres:16` (named volume), `api`, and `web`; `.env.example` covering
   every variable in TRD Section 9.
   Deps: T-001.
   Verify: `docker compose up` starts all three containers; PostgreSQL accepts a
   connection with the documented credentials.
 
-- [ ] **T-006 — Configure pre-commit hooks**
+- [x] **T-006 — Configure pre-commit hooks**
   Husky plus lint-staged running ESLint and Prettier on staged files.
   Deps: T-002.
   Verify: committing a badly formatted file is blocked or auto-fixed by the hook.
@@ -676,8 +670,8 @@ task is done.
 
 - [ ] **T-192 — Enforce the coverage gate in CI**
   80% lines on `apps/api/src/modules` and `packages/shared` (TRD 8).
-  Deps: T-004, Epics 4 to 10.
-  Verify: CI fails when coverage drops below the threshold.
+  Deps: T-003, Epics 4 to 10.
+  Verify: `npm run test:coverage` fails when coverage drops below the threshold.
 
 - [ ] **T-193 — Write the developer README**
   Setup, environment variables, running with Docker Compose, migrations, seeding,

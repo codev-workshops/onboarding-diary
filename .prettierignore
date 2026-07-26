@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+
+# Prose specs: hand-wrapped, and Prettier's list continuation indentation hurts
+# readability of the source.
+docs/
