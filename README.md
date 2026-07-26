@@ -41,7 +41,8 @@ reports, and admin user management.
 
 ## Prerequisites
 
-- Node 24 (`.nvmrc` pins the major version; `nvm use` picks it up)
+- Node 24 (`.nvmrc` pins the major version; `nvm use` picks it up). `engine-strict` is on, so
+  `npm install` fails fast on an older major rather than breaking later in a test run.
 - Docker and Docker Compose, for PostgreSQL and the containerised dev servers
 
 ## Setup
@@ -117,6 +118,10 @@ Run from the repository root; each fans out to every workspace.
 
 Per workspace, add `--workspace @onboarding-diary/api` (or `/web`, `/shared`); the API and web
 workspaces also have `dev` (watch mode) and the API has `migrate:deploy` and `generate`.
+
+Both apps import `@onboarding-diary/shared` through its build output, so `dev`, `test`,
+`typecheck`, `build`, and `seed` each rebuild that workspace first. Nothing has to be built by
+hand after a fresh clone.
 
 ## Migrations
 

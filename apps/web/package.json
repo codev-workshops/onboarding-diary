@@ -4,12 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "npm run build --workspace @onboarding-diary/shared",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "clean": "rm -rf dist coverage *.tsbuildinfo",
+    "predev": "npm run build --workspace @onboarding-diary/shared",
     "dev": "vite",
     "preview": "vite preview",
+    "pretypecheck": "npm run build --workspace @onboarding-diary/shared",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "pretest": "npm run build --workspace @onboarding-diary/shared",
     "test": "vitest run",
+    "pretest:coverage": "npm run build --workspace @onboarding-diary/shared",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {

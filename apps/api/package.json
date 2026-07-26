@@ -7,14 +7,19 @@
   "scripts": {
     "build": "prisma generate && tsc -b",
     "clean": "rm -rf dist coverage src/generated *.tsbuildinfo",
+    "predev": "npm run build --workspace @onboarding-diary/shared",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
+    "preseed": "npm run build --workspace @onboarding-diary/shared",
     "seed": "prisma db seed",
+    "pretest": "npm run build --workspace @onboarding-diary/shared",
+    "pretypecheck": "npm run build --workspace @onboarding-diary/shared",
     "typecheck": "prisma generate && tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
+    "pretest:coverage": "npm run build --workspace @onboarding-diary/shared",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
