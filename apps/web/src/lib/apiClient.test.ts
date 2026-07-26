@@ -103,6 +103,21 @@ describe('createApiClient', () => {
     expect(onSessionExpired).toHaveBeenCalledTimes(1);
   });
 
+  it('coalesces concurrent refreshes so rotation is not replayed', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(401, { error: { code: 'UNAUTHENTICATED' } }))
+      .mockResolvedValueOnce(jsonResponse(401, { error: { code: 'UNAUTHENTICATED' } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { accessToken: 'access-2' } }))
+      .mockImplementation(() => Promise.resolve(jsonResponse(200, { data: [] })));
+    const { client } = build(fetchFn as unknown as typeof fetch);
+
+    await Promise.all([client.get('/tasks'), client.get('/issues')]);
+
+    const refreshCalls = fetchFn.mock.calls.filter(([url]) => url === `${BASE}/auth/refresh`);
+    expect(refreshCalls).toHaveLength(1);
+  });
+
   it('turns a fetch rejection into a NETWORK_ERROR and a 204 into undefined', async () => {
     const offline = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
     const { client: offlineClient } = build(offline as unknown as typeof fetch);

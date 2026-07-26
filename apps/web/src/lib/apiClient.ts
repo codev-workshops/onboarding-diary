@@ -141,7 +141,14 @@ export function createApiClient({
     }
   }
 
-  async function refresh(): Promise<boolean> {
+  /**
+   * Concurrent callers share one refresh. Rotation makes the presented token single-use and
+   * the server treats a replay as theft by revoking the token family, so two parallel
+   * refreshes (a re-mounted provider, or two requests racing a 401) would log the user out.
+   */
+  let inFlightRefresh: Promise<boolean> | null = null;
+
+  async function sendRefresh(): Promise<boolean> {
     const response = await send('POST', '/auth/refresh', { retryOnUnauthenticated: false });
     if (!response.ok) {
       tokens.set(null);
@@ -155,6 +162,13 @@ export function createApiClient({
     }
     tokens.set(accessToken);
     return true;
+  }
+
+  async function refresh(): Promise<boolean> {
+    inFlightRefresh ??= sendRefresh().finally(() => {
+      inFlightRefresh = null;
+    });
+    return inFlightRefresh;
   }
 
   async function request<T>(
