@@ -8,7 +8,8 @@ Derived from [BRD.md](./BRD.md) and [TRD.md](./TRD.md).
 - Each task is independently implementable and independently testable, and should be a
   single small PR.
 - Task IDs are stable — never renumber; append new tasks instead. Retired IDs are never
-  reused: `T-004` (CI pipeline, dropped by request).
+  reused: `T-004` (CI pipeline), `T-192` (coverage gate), `T-195` (BRD traceability
+  matrix) — all dropped by request.
 - Tick the checkbox when the task is merged with its verification steps passing.
 
 Legend: **Deps** = task IDs that must be complete first. **Verify** = how to prove the
@@ -668,11 +669,6 @@ task is done.
   Verify: automated a11y assertions on key screens plus a documented manual checklist at
   360 px, 768 px, and 1280 px.
 
-- [ ] **T-192 — Enforce the coverage gate in CI**
-  80% lines on `apps/api/src/modules` and `packages/shared` (TRD 8).
-  Deps: T-003, Epics 4 to 10.
-  Verify: `npm run test:coverage` fails when coverage drops below the threshold.
-
 - [ ] **T-193 — Write the developer README**
   Setup, environment variables, running with Docker Compose, migrations, seeding,
   testing, and project structure.
@@ -685,9 +681,3 @@ task is done.
   Deps: T-193.
   Verify: a production build runs against a fresh database with migrations applied and
   `/health` returning 200.
-
-- [ ] **T-195 — Traceability check against the BRD**
-  Confirm every `FR-*` and `AC-*` is covered by at least one task and one automated
-  test; record the mapping in `docs/TRACEABILITY.md`.
-  Deps: all preceding tasks.
-  Verify: the matrix has no gaps and is reviewed.
