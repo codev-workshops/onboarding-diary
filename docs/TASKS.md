@@ -55,13 +55,13 @@ task is done.
 
 ## Epic 1 — Shared Contracts
 
-- [ ] **T-010 — Define enums and display labels in `packages/shared`**
+- [x] **T-010 — Define enums and display labels in `packages/shared`**
   `Role`, `TaskCategory`, `TaskStatus`, `TaskPriority`, `IssueSeverity`, `IssueStatus`,
   `FeedbackType` with their human-readable label maps (TRD 3.2).
   Deps: T-001, T-003.
   Verify: unit test asserts every enum member has a non-empty label.
 
-- [ ] **T-011 — Define shared Zod schemas and DTO types**
+- [x] **T-011 — Define shared Zod schemas and DTO types**
   Auth, user, and all four entry types (create and update variants), pagination and
   filter query schemas, the paginated response wrapper, and the error envelope
   (TRD 4.1, 6.1).
@@ -73,43 +73,43 @@ task is done.
 
 ## Epic 2 — Database and Persistence
 
-- [ ] **T-020 — Set up Prisma and the initial migration for `User`**
+- [x] **T-020 — Set up Prisma and the initial migration for `User`**
   Prisma client, datasource, `User` model with the self-referential `managerId`,
   indexes, and the `managerId <> id` check constraint (TRD 3.3).
   Deps: T-005, T-010.
   Verify: `prisma migrate dev` applies cleanly; a test inserts a user and reads it back;
   self-referencing `managerId` is rejected by the database.
 
-- [ ] **T-021 — Add the `TaskEntry` model and migration**
+- [x] **T-021 — Add the `TaskEntry` model and migration**
   Columns, defaults, and the three indexes from TRD 3.3.
   Deps: T-020.
   Verify: migration applies; deleting a user with tasks is refused (restrict).
 
-- [ ] **T-022 — Add the `IssueEntry` model and migration**
+- [x] **T-022 — Add the `IssueEntry` model and migration**
   Deps: T-020.
   Verify: migration applies; defaults are `OPEN` and `MEDIUM`.
 
-- [ ] **T-023 — Add the `FeedbackNote` model and migration**
+- [x] **T-023 — Add the `FeedbackNote` model and migration**
   Deps: T-020.
   Verify: migration applies; `type` is required.
 
-- [ ] **T-024 — Add the `Note`, `Tag`, and `NoteTag` models and migration**
+- [x] **T-024 — Add the `Note`, `Tag`, and `NoteTag` models and migration**
   Unique lowercase tag names; join rows cascade when a note is deleted.
   Deps: T-020.
   Verify: migration applies; deleting a note removes its `NoteTag` rows and leaves the
   `Tag` rows intact.
 
-- [ ] **T-025 — Add the `RefreshToken` model and migration**
+- [x] **T-025 — Add the `RefreshToken` model and migration**
   Deps: T-020.
   Verify: migration applies; `tokenHash` uniqueness is enforced; deleting a user
   cascades their tokens.
 
-- [ ] **T-026 — Add a Prisma enum parity test**
+- [x] **T-026 — Add a Prisma enum parity test**
   Assert the Prisma enum values match `packages/shared` exactly (TRD 2.3).
   Deps: T-010, T-021, T-022, T-023.
   Verify: the test fails if an enum value is added on one side only.
 
-- [ ] **T-027 — Add the development seed script**
+- [x] **T-027 — Add the development seed script**
   One admin, two managers, six recruits with manager links, and sample entries across
   all four categories and date ranges.
   Deps: T-021, T-022, T-023, T-024.
@@ -119,52 +119,52 @@ task is done.
 
 ## Epic 3 — API Foundation
 
-- [ ] **T-030 — Bootstrap the Express application**
+- [x] **T-030 — Bootstrap the Express application**
   App factory, `helmet`, CORS restricted to `WEB_ORIGIN` with credentials, JSON body
   parser with a 256 KB limit, and a listening entrypoint separated from the app for
   testability.
   Deps: T-001, T-020.
   Verify: Supertest can request the app in-process without opening a port.
 
-- [ ] **T-031 — Add startup configuration validation**
+- [x] **T-031 — Add startup configuration validation**
   Zod-validated environment loading; refuse to start on a missing variable or a
   `JWT_SECRET` shorter than 32 characters (TRD 9).
   Deps: T-030.
   Verify: unit test asserts the failure message for each missing or invalid variable.
 
-- [ ] **T-032 — Add the request logger and `requestId`**
+- [x] **T-032 — Add the request logger and `requestId`**
   Structured JSON logs with `requestId`, method, path, status, and duration; the
   `requestId` is attached to the request and echoed in error responses.
   Deps: T-030.
   Verify: test asserts a `requestId` is generated per request and appears in the log
   line.
 
-- [ ] **T-033 — Add typed errors and the central error handler**
+- [x] **T-033 — Add typed errors and the central error handler**
   `AppError` subclasses, Prisma error translation, the standard error envelope, and the
   status/code table from TRD 6.2.
   Deps: T-032.
   Verify: unit tests map each error type to the expected status, code, and body; an
   unexpected throw yields a generic 500 with no internal detail.
 
-- [ ] **T-034 — Add the validation middleware**
+- [x] **T-034 — Add the validation middleware**
   Validate `params`, `query`, and `body` against Zod schemas, strip unknown fields, and
   emit 422 with per-field `details`.
   Deps: T-011, T-033.
   Verify: test asserts a multi-field failure returns every offending field.
 
-- [ ] **T-035 — Add the pagination and sorting helper**
+- [x] **T-035 — Add the pagination and sorting helper**
   Parse and clamp `page`/`pageSize`, build Prisma `skip`/`take`/`orderBy`, and shape the
   `meta` block.
   Deps: T-011.
   Verify: unit tests for defaults, the 100 maximum, and invalid input.
 
-- [ ] **T-036 — Add the `/health` endpoint**
+- [x] **T-036 — Add the `/health` endpoint**
   Liveness plus a database round-trip; 503 when the database is unreachable.
   Deps: T-030, T-020.
   Verify: integration test returns 200 with the database up and 503 when the client is
   stubbed to fail.
 
-- [ ] **T-037 — Add the API integration test harness**
+- [x] **T-037 — Add the API integration test harness**
   Test database bootstrap (migrate then truncate between tests), a factory for users
   and entries, and a helper that returns an authenticated agent for a given role.
   Deps: T-030, T-027.
@@ -174,64 +174,64 @@ task is done.
 
 ## Epic 4 — Authentication and Authorisation
 
-- [ ] **T-040 — Implement password hashing and the policy check**
+- [x] **T-040 — Implement password hashing and the policy check**
   argon2id with the documented parameters, length rules, and the common-password
   deny-list (TRD 5.1).
   Deps: T-030.
   Verify: unit tests for hash/verify round-trip, rejection of short and deny-listed
   passwords, and that the hash is never the plaintext.
 
-- [ ] **T-041 — Implement access-token issuing and verification**
+- [x] **T-041 — Implement access-token issuing and verification**
   HS256 JWT with a 15-minute TTL and `sub`/`role` claims, plus a verify helper.
   Deps: T-031, T-040.
   Verify: unit tests for a valid token, an expired token, a wrong signature, and a
   malformed token.
 
-- [ ] **T-042 — Implement refresh-token storage and rotation**
+- [x] **T-042 — Implement refresh-token storage and rotation**
   CSPRNG token, SHA-256 storage, rotation on use, and family revocation on reuse of a
   revoked token (TRD 5.2).
   Deps: T-025, T-041.
   Verify: integration tests for rotate-succeeds, reuse-revokes-family, and
   expired-token-rejected.
 
-- [ ] **T-043 — Implement `POST /auth/signup`**
+- [x] **T-043 — Implement `POST /auth/signup`**
   Create a `RECRUIT`, hash the password, issue tokens, set the refresh cookie
   (FR-A1 to FR-A3, AC-1).
   Deps: T-034, T-040, T-042.
   Verify: integration tests for success, duplicate email → 409, weak password → 422,
   and that the role is always `RECRUIT` even if the body says otherwise.
 
-- [ ] **T-044 — Implement `POST /auth/login`**
+- [x] **T-044 — Implement `POST /auth/login`**
   Uniform failure message and timing, and refusal for inactive users
   (FR-A4, FR-A7, AC-2).
   Deps: T-043.
   Verify: integration tests for success, wrong password, unknown email (identical
   response), and an inactive user.
 
-- [ ] **T-045 — Implement `POST /auth/refresh` and `POST /auth/logout`**
+- [x] **T-045 — Implement `POST /auth/refresh` and `POST /auth/logout`**
   Rotate on refresh; revoke on logout; refresh fails for an inactive user (FR-A5).
   Deps: T-042.
   Verify: integration tests for refresh success, refresh after logout → 401, and
   refresh for a deactivated user → 401.
 
-- [ ] **T-046 — Add the `requireAuth` middleware and `GET /auth/me`**
+- [x] **T-046 — Add the `requireAuth` middleware and `GET /auth/me`**
   Attach `req.user`; 401 on a missing, malformed, or expired token (AC-11).
   Deps: T-041, T-033.
   Verify: integration tests for the three 401 cases and a successful `/auth/me`.
 
-- [ ] **T-047 — Add the `requireRole` middleware**
+- [x] **T-047 — Add the `requireRole` middleware**
   Role gate producing 403 with the `FORBIDDEN` code.
   Deps: T-046.
   Verify: unit and integration tests for each allowed and denied role.
 
-- [ ] **T-048 — Implement `resolveEntryAccess` and the entry-access middleware**
+- [x] **T-048 — Implement `resolveEntryAccess` and the entry-access middleware**
   The full read/write matrix from TRD 5.3, including 403 for entries the caller does not
   own and stripping a body `ownerId` (FR-X1, FR-X2, FR-X3).
   Deps: T-046.
   Verify: a table-driven unit test covering every cell of the matrix, plus an
   integration test proving a manager write attempt returns 403.
 
-- [ ] **T-049 — Add rate limiting**
+- [x] **T-049 — Add rate limiting**
   Auth-endpoint, report, and global per-user limits with `Retry-After` (TRD 5.4).
   Deps: T-044.
   Verify: integration test exceeds the login limit and asserts 429 plus the header.

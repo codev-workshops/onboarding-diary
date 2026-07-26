@@ -6,3 +6,6 @@ package-lock.json
 # Prose specs: hand-wrapped, and Prettier's list continuation indentation hurts
 # readability of the source.
 docs/
+
+# Prisma client output.
+apps/api/src/generated/

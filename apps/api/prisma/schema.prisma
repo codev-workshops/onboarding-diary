@@ -1,0 +1,185 @@
+// Data model for the Onboarding Diary API (docs/TRD.md section 3).
+// Enum values are mirrored in packages/shared and asserted by tests/enum-parity.test.ts.
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [citext]
+}
+
+enum Role {
+  RECRUIT
+  MANAGER
+  ADMIN
+}
+
+enum TaskCategory {
+  SETUP
+  TRAINING
+  MEETING
+  DOCUMENTATION
+  DEVELOPMENT
+  OTHER
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  WONT_FIX
+}
+
+enum FeedbackType {
+  POSITIVE
+  SUGGESTION
+  CONCERN
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique @db.Citext
+  passwordHash String
+  fullName     String
+  role         Role      @default(RECRUIT)
+  department   String?
+  startDate    DateTime? @db.Date
+  managerId    String?   @db.Uuid
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+
+  manager       User?          @relation("ManagerReports", fields: [managerId], references: [id], onDelete: SetNull)
+  directReports User[]         @relation("ManagerReports")
+  tasks         TaskEntry[]
+  issues        IssueEntry[]
+  feedback      FeedbackNote[]
+  notes         Note[]
+  refreshTokens RefreshToken[]
+
+  @@index([managerId])
+  @@index([role, isActive])
+}
+
+model TaskEntry {
+  id          String       @id @default(uuid()) @db.Uuid
+  ownerId     String       @db.Uuid
+  entryDate   DateTime     @db.Date
+  title       String
+  description String?
+  category    TaskCategory @default(OTHER)
+  status      TaskStatus   @default(NOT_STARTED)
+  priority    TaskPriority @default(MEDIUM)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([ownerId, entryDate(sort: Desc)])
+  @@index([ownerId, status])
+  @@index([ownerId, category])
+}
+
+model IssueEntry {
+  id              String        @id @default(uuid()) @db.Uuid
+  ownerId         String        @db.Uuid
+  entryDate       DateTime      @db.Date
+  title           String
+  description     String?
+  severity        IssueSeverity @default(MEDIUM)
+  status          IssueStatus   @default(OPEN)
+  resolutionNotes String?
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([ownerId, entryDate(sort: Desc)])
+  @@index([ownerId, status])
+  @@index([ownerId, severity])
+}
+
+model FeedbackNote {
+  id        String       @id @default(uuid()) @db.Uuid
+  ownerId   String       @db.Uuid
+  entryDate DateTime     @db.Date
+  subject   String
+  type      FeedbackType
+  details   String?
+  createdAt DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @db.Timestamptz(3)
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([ownerId, entryDate(sort: Desc)])
+  @@index([ownerId, type])
+}
+
+model Note {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @db.Uuid
+  entryDate DateTime @db.Date
+  title     String
+  content   String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  owner User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  tags  NoteTag[]
+
+  @@index([ownerId, entryDate(sort: Desc)])
+}
+
+model Tag {
+  id    String    @id @default(uuid()) @db.Uuid
+  name  String    @unique
+  notes NoteTag[]
+}
+
+model NoteTag {
+  noteId String @db.Uuid
+  tagId  String @db.Uuid
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@index([tagId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+}

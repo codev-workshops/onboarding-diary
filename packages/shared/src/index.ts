@@ -1,6 +1,11 @@
-/**
- * Shared contracts (enums, Zod schemas, DTO types) consumed by both the API and the web
- * app. Populated by Epic 1 (T-010, T-011).
- */
-
-export const PACKAGE_NAME = '@onboarding-diary/shared';
+export * from './api.js';
+export * from './constants.js';
+export * from './enums.js';
+export * from './labels.js';
+export * from './primitives.js';
+export * from './schemas/auth.js';
+export * from './schemas/feedback.js';
+export * from './schemas/issue.js';
+export * from './schemas/note.js';
+export * from './schemas/task.js';
+export * from './schemas/user.js';

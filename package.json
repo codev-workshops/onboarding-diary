@@ -21,7 +21,9 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
-    "prepare": "husky"
+    "prepare": "husky",
+    "migrate": "npm run migrate --workspace @onboarding-diary/api",
+    "seed": "npm run seed --workspace @onboarding-diary/api"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
@@ -48,5 +50,11 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "allowScripts": {
+    "@prisma/engines": true,
+    "argon2": true,
+    "esbuild": true,
+    "prisma": true
   }
 }

@@ -13,8 +13,8 @@ Last updated: 2026-07-26
 | Data fetching | TanStack Query | Server-state cache, invalidation after mutations |
 | Forms & validation | React Hook Form + Zod | Zod schemas shared with the API package |
 | Styling | Tailwind CSS | Responsive from 360 px up |
-| Backend | Node.js 24 + Express 4 + TypeScript | REST API |
-| ORM | Prisma | Migrations are the single source of schema truth |
+| Backend | Node.js 24 + Express 5 + TypeScript | REST API |
+| ORM | Prisma with the `pg` driver adapter | Migrations are the single source of schema truth; Prisma 7 connects through a driver adapter rather than an engine URL |
 | Database | PostgreSQL 16 | |
 | Auth | JWT access token + rotating refresh token | `jsonwebtoken`, `argon2` for hashing |
 | PDF generation | `pdfkit` | Server-side streaming to the response |
@@ -125,7 +125,7 @@ Enum values are stored as PostgreSQL enums; human-readable labels live in
 | Column | Type | Constraints |
 |--------|------|-------------|
 | `id` | uuid | PK, default generated |
-| `email` | citext | unique, not null |
+| `email` | citext | unique, not null; the `citext` extension is created by the initial migration and declared via the `postgresqlExtensions` preview feature |
 | `passwordHash` | text | not null |
 | `fullName` | text | not null |
 | `role` | `Role` | not null, default `RECRUIT` |
@@ -534,7 +534,9 @@ entry and is surfaced in the UI's generic error state for support purposes.
 
 | Variable | Scope | Purpose |
 |----------|-------|---------|
+| `NODE_ENV` | api | `development`, `test`, or `production` |
 | `DATABASE_URL` | api | PostgreSQL connection string |
+| `TEST_DATABASE_URL` | api | Connection string for the integration-test database |
 | `JWT_SECRET` | api | Access-token signing key, ≥ 32 chars |
 | `ACCESS_TOKEN_TTL` | api | Default `15m` |
 | `REFRESH_TOKEN_TTL_DAYS` | api | Default `14` |

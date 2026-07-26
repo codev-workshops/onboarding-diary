@@ -20,9 +20,10 @@ packages/shared   Enums, Zod schemas, DTOs      (@onboarding-diary/shared)
 docs              BRD, TRD, task breakdown
 ```
 
-The repo is an npm workspaces monorepo. Only the tooling foundation (Epic 0) exists so
-far; the workspaces contain placeholder modules that build and are covered by a smoke
-test.
+The repo is an npm workspaces monorepo. Implemented so far: the tooling foundation
+(Epic 0), the shared contracts (Epic 1), the Prisma data model and seed (Epic 2), the API
+foundation (Epic 3), and authentication and authorisation (Epic 4). `apps/web` is still a
+placeholder module.
 
 ## Prerequisites
 
@@ -34,7 +35,15 @@ test.
 ```bash
 npm install        # installs all workspaces and the husky pre-commit hook
 cp .env.example .env
+docker compose up -d postgres
+npm run migrate    # applies Prisma migrations to the database in .env
+npm run seed       # one admin, two managers, six recruits with sample entries
 ```
+
+`DATABASE_URL` in `.env` points at `localhost` so host tooling (migrations, tests) works;
+Compose overrides the host with the `postgres` service name inside its network.
+`TEST_DATABASE_URL` names a separate database that the integration suite creates,
+migrates, and truncates automatically.
 
 ## Scripts
 
@@ -49,6 +58,8 @@ Run from the repository root; each fans out to every workspace.
 | `npm run format:check`  | Prettier check                                  |
 | `npm run format`        | Prettier write                                  |
 | `npm test`              | Vitest in every workspace                       |
+| `npm run migrate`       | `prisma migrate dev` for the API workspace      |
+| `npm run seed`          | Seed the database with demo users and entries   |
 | `npm run test:coverage` | Vitest with V8 coverage                         |
 | `npm run clean`         | Remove build output                             |
 
@@ -59,12 +70,16 @@ docker compose up
 ```
 
 - `postgres` — PostgreSQL 16 on `localhost:5432`, data in the `postgres-data` volume
-- `api` — installs dependencies and runs the API in watch mode on `localhost:4000`
+- `api` — installs dependencies, applies migrations, and runs the API in watch mode on
+  `localhost:4000`
 - `web` — installs dependencies and runs the web dev server on `localhost:5173`
 
 The `api` and `web` services mount the repository and keep `node_modules` in named
-volumes, so host and container installs do not collide. Both run watch/dev commands that
-become meaningful once Epic 3 and Epic 11 land.
+volumes, so host and container installs do not collide. The web service runs a watch
+command that becomes meaningful once Epic 11 lands.
+
+The API exposes `GET /health` (200 with the database up, 503 when it is unreachable) and
+the auth endpoints under `/api/v1/auth`.
 
 To run only the database while working on the host:
 
