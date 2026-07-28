@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Sign up - Onboarding Diary</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<main class="page">
+    <div class="card">
+        <h1>Create your account</h1>
+        <form id="signup-form" novalidate>
+            <p class="alert" hidden></p>
+            <label for="name">Name
+                <input type="text" id="name" name="name" maxlength="100" required/>
+            </label>
+            <span class="field-error" data-error-for="name"></span>
+            <label for="email">Email
+                <input type="email" id="email" name="email" maxlength="255" autocomplete="email" required/>
+            </label>
+            <span class="field-error" data-error-for="email"></span>
+            <label for="password">Password
+                <input type="password" id="password" name="password" minlength="8"
+                       autocomplete="new-password" required/>
+            </label>
+            <span class="field-error" data-error-for="password"></span>
+            <label for="department">Department
+                <select id="department" name="department" required>
+                    <option value="">Select a department</option>
+                    <option th:each="department : ${departments}"
+                            th:value="${department.name()}"
+                            th:text="${department.name()}"></option>
+                </select>
+            </label>
+            <span class="field-error" data-error-for="department"></span>
+            <label for="startDate">Start date
+                <input type="date" id="startDate" name="startDate" required/>
+            </label>
+            <span class="field-error" data-error-for="startDate"></span>
+            <button type="submit">Sign up</button>
+        </form>
+        <p class="links">Already registered? <a th:href="@{/login}">Log in</a></p>
+    </div>
+</main>
+<script th:src="@{/js/auth.js}"></script>
+<script>
+    document.getElementById('signup-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var form = event.target;
+        submitJson(form, '/api/auth/signup', 'POST', {
+            name: form.name.value,
+            email: form.email.value,
+            password: form.password.value,
+            department: form.department.value,
+            startDate: form.startDate.value
+        }, function () {
+            window.location.href = '/profile';
+        });
+    });
+</script>
+</body>
+</html>
