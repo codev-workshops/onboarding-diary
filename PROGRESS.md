@@ -23,7 +23,7 @@ cross-session feedback.
 | Phase 3 | Task Log + Issue Log - CRUD, filters, ownership rules | Done | 2026-07-28: `/api/tasks` and `/api/issues` CRUD + filters, `GET /api/categories`, Flyway `V3`-`V6` (`task_category` + seed, `task_entry`, `issue_entry`, `manager_assignment`), owner/Admin write and Manager-overseen read authorization, 55 tests green. |
 | Phase 4 | Feedback Notes + Additional Notes - feedback submission, notes CRUD with tags | Done | 2026-07-28: `/api/feedback` and `/api/notes` CRUD + filters, Flyway `V7` (`feedback_note`, `additional_note`, `note_tag`), recruit-only feedback creation, tag normalisation and tag search, 85 tests green. |
 | Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Done | 2026-07-28: `GET /api/dashboard` with `userId?`, counts for all four entry types, task completion over all time, open issues (`OPEN`/`IN_PROGRESS`) and the 10 most recent entries; no new migration; 102 tests green. |
-| Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Done | 2026-07-28: `GET /api/reports` (PDF/CSV download) and `GET /api/reports/preview` (JSON), Apache PDFBox + Apache Commons CSV (D6), range validation, empty-range "no entries" reports, no new migration; 134 tests green (32 new). |
+| Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Done | 2026-07-28: `GET /api/reports` (PDF/CSV download) and `GET /api/reports/preview` (JSON), Apache PDFBox + Apache Commons CSV (D6), range validation, empty-range "no entries" reports, no new migration; 135 tests green (33 new). |
 
 ## Decisions Log
 
@@ -269,7 +269,7 @@ cross-session feedback.
   and 7. Phase 1 can begin: Spring Boot 3.2 + Thymeleaf + JPA scaffold, Docker Compose PostgreSQL,
   H2-backed tests, and the env-var Admin bootstrap.
 - 2026-07-28: Phase 6 complete, and it is the last phase - nothing follows it in the plan.
-  Validated with `./mvnw clean verify` (134 tests, all green, 32 of them new) against in-memory H2.
+  Validated with `./mvnw clean verify` (135 tests, all green, 33 of them new) against in-memory H2.
   **Tested in Phase 6:** report parameter validation (`dateFrom`/`dateTo` required, rejected when
   not `yyyy-MM-dd` or not a real calendar date, `dateFrom` after `dateTo` rejected, a range ending
   after today rejected while a range ending today is accepted, `format` required for downloads,
@@ -285,7 +285,8 @@ cross-session feedback.
   derivation including a name with no usable characters, `ReportFormat.parse` failures as
   `FieldValidationException`s, one CSV section per entry type with a "No entries" marker in each
   empty section, optional long text rendered blank instead of "null", PDF pagination and wrapping
-  over a 60-task report); and the full authentication/authorization matrix (missing and invalid
+  over a 60-task report, and entry text containing characters the standard PDF font cannot encode
+  being replaced with `?` instead of failing the download); and the full authentication/authorization matrix (missing and invalid
   bearer token `401`; owner reporting on self without `userId`; another recruit `403`; overseeing
   Manager `200`; unassigned Manager `403`; Admin with any `userId`; unknown `userId` `403`).
   **Not tested in Phase 6, because it is not implemented:** the `/reports` Thymeleaf page and every

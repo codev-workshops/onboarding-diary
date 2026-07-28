@@ -146,12 +146,16 @@ class PdfReportRenderer {
         return wrapped;
     }
 
-    /** The standard 14 fonts only encode WinAnsi; anything else is replaced rather than failing. */
+    /**
+     * The standard 14 fonts only encode WinAnsi, which covers printable ASCII and Latin-1 but not
+     * the control ranges in between; anything else is replaced rather than failing the download.
+     */
     private String sanitise(String text) {
         StringBuilder sanitised = new StringBuilder(text.length());
         for (char character : text.toCharArray()) {
+            boolean encodable = (character >= 32 && character <= 126) || (character >= 160 && character <= 255);
             sanitised.append(character == '\n' || character == '\r' || character == '\t' ? ' '
-                    : character < 32 || character > 255 ? '?' : character);
+                    : encodable ? character : '?');
         }
         return sanitised.toString();
     }

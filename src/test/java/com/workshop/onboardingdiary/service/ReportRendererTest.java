@@ -88,6 +88,17 @@ class ReportRendererTest {
     }
 
     @Test
+    void thePdfReplacesCharactersTheStandardFontCannotEncode() throws Exception {
+        List<TaskResponse> tasks = List.of(new TaskResponse(1L, 1L, FROM, "Caf\u00e9 \u0081 \uD83D\uDE80 setup",
+                "Line one\nline two", "Training", TaskStatus.COMPLETED, TaskPriority.LOW));
+
+        String text = text(pdf.render(report(tasks, List.of(), List.of(), List.of())));
+
+        assertThat(text).contains("Caf\u00e9 ? ?? setup");
+        assertThat(text).contains("Line one line two");
+    }
+
+    @Test
     void thePdfPaginatesLongReports() throws Exception {
         List<TaskResponse> manyTasks = IntStream.rangeClosed(1, 60)
                 .mapToObj(index -> new TaskResponse((long) index, 1L, FROM, "Task number " + index,
