@@ -22,6 +22,8 @@
         <!-- Spring Boot 3.2 manages Flyway 9.x; 10.x is needed for flyway-database-postgresql. -->
         <flyway.version>10.10.0</flyway.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <pdfbox.version>3.0.2</pdfbox.version>
+        <commons-csv.version>1.11.0</commons-csv.version>
     </properties>
 
     <dependencies>
@@ -76,6 +78,18 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>${jjwt.version}</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Decision D6: PDF via Apache PDFBox, CSV via Apache Commons CSV, both Apache-2.0. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>${commons-csv.version}</version>
         </dependency>
 
         <dependency>

@@ -15,10 +15,10 @@ public interface TaskEntryRepository extends JpaRepository<TaskEntry, Long> {
     @Query("""
             select t from TaskEntry t
             where t.owner.id = :ownerId
-              and (:dateFrom is null or t.entryDate >= :dateFrom)
-              and (:dateTo is null or t.entryDate <= :dateTo)
-              and (:categoryId is null or t.category.id = :categoryId)
-              and (:status is null or t.status = :status)
+              and (cast(:dateFrom as date) is null or t.entryDate >= :dateFrom)
+              and (cast(:dateTo as date) is null or t.entryDate <= :dateTo)
+              and (cast(:categoryId as long) is null or t.category.id = :categoryId)
+              and (cast(:status as string) is null or t.status = :status)
             order by t.entryDate desc, t.createdAt desc, t.id desc
             """)
     List<TaskEntry> search(@Param("ownerId") Long ownerId,

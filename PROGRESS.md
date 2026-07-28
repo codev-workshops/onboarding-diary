@@ -23,7 +23,7 @@ cross-session feedback.
 | Phase 3 | Task Log + Issue Log - CRUD, filters, ownership rules | Done | 2026-07-28: `/api/tasks` and `/api/issues` CRUD + filters, `GET /api/categories`, Flyway `V3`-`V6` (`task_category` + seed, `task_entry`, `issue_entry`, `manager_assignment`), owner/Admin write and Manager-overseen read authorization, 55 tests green. |
 | Phase 4 | Feedback Notes + Additional Notes - feedback submission, notes CRUD with tags | Done | 2026-07-28: `/api/feedback` and `/api/notes` CRUD + filters, Flyway `V7` (`feedback_note`, `additional_note`, `note_tag`), recruit-only feedback creation, tag normalisation and tag search, 85 tests green. |
 | Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Done | 2026-07-28: `GET /api/dashboard` with `userId?`, counts for all four entry types, task completion over all time, open issues (`OPEN`/`IN_PROGRESS`) and the 10 most recent entries; no new migration; 102 tests green. |
-| Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Not Started | |
+| Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Done | 2026-07-28: `GET /api/reports` (PDF/CSV download) and `GET /api/reports/preview` (JSON), Apache PDFBox + Apache Commons CSV (D6), range validation, empty-range "no entries" reports, no new migration; 135 tests green (33 new). |
 
 ## Decisions Log
 
@@ -71,12 +71,29 @@ cross-session feedback.
 | 2026-07-28 | Phase 5: `percentComplete` is an integer rounded half-up, returned next to the raw `completedTasks`/`totalTasks`. | US-R10 asks for a whole-number percentage; keeping the raw counts saves clients re-deriving them. |
 | 2026-07-28 | Phase 5: dashboard authorization is delegated entirely to `EntryAccessService.resolveListTarget`, so an unknown `userId` is a `403` rather than a `404`, exactly like the entry lists. | One authorization implementation for lists and the dashboard (§6.2); it also avoids revealing whether a user id exists. |
 | 2026-07-28 | Phase 5: the `/dashboard` Thymeleaf page is still not built, and the admin phase (§4.8) stays after Phase 6, as considered in the Phase 5 hand-off notes. | Phase 5 scope is the dashboard summary API; sign-up and login keep landing on `/profile` until the page work happens, and oversight data stays seeded through the database. |
+| 2026-07-28 | D6 - PDF library = Apache PDFBox (`org.apache.pdfbox:pdfbox` 3.0.2). | PDF library = Apache PDFBox, Apache-2.0, chosen to satisfy the stated license preference without requiring an LGPL/MPL exception. |
+| 2026-07-28 | D6 - CSV library = Apache Commons CSV (`org.apache.commons:commons-csv` 1.11.0), also Apache-2.0. | Same licence preference as the PDF choice; quoting and escaping are handled by the library instead of hand-written CSV. |
+| 2026-07-28 | Phase 6: `ReportService` assembles one `ReportResponse` (recruit, range, `totalEntries` and the four entry lists) that the JSON preview, the CSV renderer and the PDF renderer all consume. | One content assembly and one authorization call for all three outputs; the preview is literally the same content the files carry. |
+| 2026-07-28 | Phase 6: report content comes from the existing repository `search` methods with only the date bounds set, and authorization from `EntryAccessService.resolveListTarget`, exactly as `DashboardService` does. | No new authorization or query code for reports (§4.7, §6.2); an unknown `userId` stays a `403` rather than a `404`. |
+| 2026-07-28 | Phase 6: `dateFrom`, `dateTo` and `format` are bound as raw strings in `ReportController` and validated in `ReportService`/`ReportFormat` as `FieldValidationException`s. | Keeps every report failure in the `$.errors.<field>` shape used by the rest of the API instead of Spring's generic binding failure for an unparseable query parameter. |
+| 2026-07-28 | Phase 6: an empty range renders a complete report with a "No entries in the selected date range" line plus a "No entries" marker in each empty section, in both formats. | US-R11 requires an empty range to produce a report rather than an error, and a zero-byte file would look like a failed download. |
+| 2026-07-28 | Phase 6: the download filename is `onboarding-report-<recruit-name>-<dateFrom>-to-<dateTo>.<pdf\|csv>`, with the name lower-cased and reduced to `a-z0-9-`. | US-R11 asks for a descriptive filename; restricting the character set keeps the `Content-Disposition` header and the saved file portable. |
+| 2026-07-28 | Phase 6: the PDF is laid out as a paginated list of text lines (Helvetica, wrapped at 95 characters) rather than a table library. | PDFBox draws text, not tables; a line list keeps the renderer small and makes the content extractable with `PDFTextStripper` in tests. |
+| 2026-07-28 | Phase 6: every nullable filter parameter in the four repository `search` queries is wrapped in a `cast(...)`, for example `cast(:dateFrom as date) is null`. | PostgreSQL cannot infer the type of a bind parameter that is only compared with `null` and fails the whole query with "could not determine data type of parameter"; the cast makes the parameter typed. The H2 test database inferred the types, so the tests never saw it. |
 
 ## Known Issues
 
-- The only decision still open within an agreed direction is the specific PDF library (D6),
-  needed before Phase 6.
-- Remaining non-blocking questions are listed in `REQUIREMENTS.md` section 8.2.
+- Resolved in Phase 6: the null-tolerant `search` queries added in Phases 3-4 failed on PostgreSQL
+  whenever a filter was supplied (`GET /api/tasks?dateFrom=...` and every report returned `500`
+  with `could not determine data type of parameter`). All four repositories now cast the nullable
+  parameters. The whole flow (entry lists with each filter, the JSON preview and both downloads)
+  was re-checked against a real PostgreSQL 16 instance, not only H2.
+- The test suite runs on H2 only, so dialect-specific defects like the one above are not caught by
+  it; there is no PostgreSQL-backed (for example Testcontainers) test profile.
+- Resolved in Phase 6: D6 is decided and implemented - PDF via Apache PDFBox and CSV via Apache
+  Commons CSV, both Apache-2.0. No decision is open any more.
+- Remaining non-blocking questions are listed in `REQUIREMENTS.md` section 8.2 (questions 1-5;
+  question 6 is resolved by D6).
 - Resolved in Phase 2: `UserDetailsServiceImpl` + the JWT filter replace the generated default
   password, Thymeleaf pages exist for `/login`, `/signup` and `/profile`, and case-insensitive
   email uniqueness plus the active-department check are enforced in `AuthService`/`ProfileService`.
@@ -106,7 +123,7 @@ cross-session feedback.
 - Phase 4: the `tag` filter matches one tag at a time (exact match after normalisation); §4.5 does
   not ask for multi-tag or partial-tag search, so neither is implemented.
 - Phase 4: nothing consumes the new entry types yet - dashboard counts (§4.6) and reports (§4.7)
-  come in Phases 5 and 6. Phase 5 closed the dashboard half; reports are still open.
+  come in Phases 5 and 6. Both halves are closed now: Phase 5 the dashboard, Phase 6 the reports.
 - Phase 5: `/dashboard` has no Thymeleaf page, so sign-up and login keep landing on `/profile`
   instead of the dashboard promised by US-R01/US-R02, and the summary is reachable only through
   `GET /api/dashboard`.
@@ -116,6 +133,22 @@ cross-session feedback.
   issues gets a long list; §4.6 does not ask for a limit.
 - Phase 5: dashboard oversight still depends on `manager_assignment` rows seeded directly in the
   database, like the Phase 3 and 4 read paths, until the §4.8 admin endpoints exist.
+- Phase 6: reports are API-only - there is no `/reports` Thymeleaf page, so a browser user has to
+  call `GET /api/reports` directly to download a file.
+- Phase 6: a report always covers exactly one recruit; §8.2 question 2 (multi-recruit or
+  department-wide reports) is still open and nothing was built for it.
+- Phase 6: the whole report is assembled in memory and returned as a byte array rather than being
+  streamed, and the range is not capped, so a very wide range for a very active recruit produces a
+  correspondingly large response. §7 states no scale targets.
+- Phase 6: the PDF uses the standard Helvetica font, so characters outside WinAnsi (for example
+  non-Latin scripts or emoji in an entry title) are rendered as `?`. The CSV is UTF-8 and unaffected.
+- Phase 6 audit finding (confirms the PR #76 review comment): note tags are *not* counted after
+  de-duplication as §6.1 documents. `@Size(max = 10)` on `NoteRequest.tags` runs first and rejects
+  any request with more than 10 raw tags, so 11 tags that de-duplicate to 10 distinct values are
+  rejected with `400 $.errors.tags` - verified against the running endpoint during this phase. The
+  service check that counts after de-duplication is therefore unreachable for longer lists. The
+  deviation is documented in `REQUIREMENTS.md` §4.5; deciding which of the two rules wins is a
+  product question and no code was changed for it in Phase 6.
 
 ## Feedback / Cross-session Notes
 
@@ -243,3 +276,99 @@ cross-session feedback.
   and in `REQUIREMENTS.md` section 8.2.1, with the details propagated into sections 1, 3, 4, 5,
   and 7. Phase 1 can begin: Spring Boot 3.2 + Thymeleaf + JPA scaffold, Docker Compose PostgreSQL,
   H2-backed tests, and the env-var Admin bootstrap.
+- 2026-07-28: Phase 6 complete, and it is the last phase - nothing follows it in the plan.
+  Validated with `./mvnw clean verify` (135 tests, all green, 33 of them new) against in-memory H2.
+  **Tested in Phase 6:** report parameter validation (`dateFrom`/`dateTo` required, rejected when
+  not `yyyy-MM-dd` or not a real calendar date, `dateFrom` after `dateTo` rejected, a range ending
+  after today rejected while a range ending today is accepted, `format` required for downloads,
+  unknown `format` rejected, `format` accepted case-insensitively, the preview enforcing the same
+  date rules while needing no `format`); content correctness over a fixture dataset with one
+  in-range entry per type plus four out-of-range entries (preview JSON, CSV text and PDF text
+  extracted with `PDFTextStripper` all contain exactly the in-range entries and none of the
+  out-of-range ones, and the range boundaries are inclusive); both download formats (`text/csv` and
+  `application/pdf` content types, `Content-Disposition: attachment` with the descriptive
+  `onboarding-report-test-user-2026-02-01-to-2026-02-28.<ext>` filename, non-empty bodies); the
+  empty range producing a valid non-empty report carrying "No entries in the selected date range"
+  in both formats and an empty JSON preview rather than an error; the renderer unit tests (filename
+  derivation including a name with no usable characters, `ReportFormat.parse` failures as
+  `FieldValidationException`s, one CSV section per entry type with a "No entries" marker in each
+  empty section, optional long text rendered blank instead of "null", PDF pagination and wrapping
+  over a 60-task report, and entry text containing characters the standard PDF font cannot encode
+  being replaced with `?` instead of failing the download); and the full authentication/authorization matrix (missing and invalid
+  bearer token `401`; owner reporting on self without `userId`; another recruit `403`; overseeing
+  Manager `200`; unassigned Manager `403`; Admin with any `userId`; unknown `userId` `403`).
+  **Not tested in Phase 6, because it is not implemented:** the `/reports` Thymeleaf page and every
+  other page in REQUIREMENTS section 5.1 beyond `/login`, `/signup` and `/profile`; the section 4.8
+  admin endpoints; the section 4.9 category/department maintenance endpoints; paging on any list;
+  multi-recruit or department-wide reports; report scheduling, caching, streaming or size limits;
+  and PDF pixel layout (only extracted text and page count are asserted, not visual appearance).
+  No new Flyway migration was needed, so the schema is unchanged from `V7`.
+- 2026-07-28: Phase 6 was delivered stacked on the Phase 5 branch `devin/1785218358-phase5-dashboard`
+  (PR #77) as PR #78 (https://github.com/codev-workshops/onboarding-diary/pull/78) on branch
+  `devin/1785219953-phase6-reports`, which is still open, as is every PR from Phase 1 onwards -
+  nothing has been merged to `main`, so `main` still holds only the initial commit.
+
+## Final Project Status (2026-07-28)
+
+End-of-project audit of `REQUIREMENTS.md` sections 1-7 after Phase 6, the last planned phase.
+
+### Built
+
+- **Section 1 user stories:** US-R01 sign-up, US-R02 login/logout, US-R03 profile (API plus the
+  `/login`, `/signup`, `/profile` pages), US-R04/US-R05 task log CRUD and filters, US-R06/US-R07
+  issue log CRUD and filters, US-R08 feedback notes, US-R09 additional notes with tags, US-R10
+  dashboard summary, US-R11 reports; US-M02/US-M03/US-M04 manager read access, dashboard and reports
+  for overseen recruits; US-M05 manager profile; US-A00 bootstrap Admin; US-A03 Admin read/write
+  across all users' entries, dashboards and reports.
+- **Section 2 data model:** every entity - `Department`, `User`, `TaskCategory`, `TaskEntry`,
+  `IssueEntry`, `FeedbackNote`, `AdditionalNote` (+ `note_tag`), `ManagerAssignment` - in Flyway
+  migrations `V1`-`V7`.
+- **Section 3 architecture:** layered Spring Boot 3.2 monolith (controller/service/repository/
+  entity + DTOs), Flyway-managed PostgreSQL, Docker Compose for local dev, H2 for tests, JWT
+  auth, Apache PDFBox + Apache Commons CSV reporting.
+- **Section 4 API:** 4.1 auth/profile, 4.2 tasks, 4.3 issues, 4.4 feedback, 4.5 notes, 4.6
+  dashboard, 4.7 reports, and the two read endpoints of 4.9 (`GET /api/categories`,
+  public `GET /api/departments`).
+- **Section 6 validation:** all field rules of 6.1 for users, entries and report parameters, and the
+  business rules of 6.2 that concern ownership, oversight, recruit-only feedback creation, entry
+  date sanity and issue resolution notes.
+- **Section 7:** JWT/BCrypt auth mechanism, environment-variable configuration, Docker Compose dev
+  database, H2 test database, unit and integration tests as described.
+
+### Never implemented across Phases 1-6
+
+- **Section 4.8 admin phase in full** - `GET/POST /api/users`, `GET/PUT /api/users/{id}`,
+  `GET /api/users/me/recruits`, and manager-assignment maintenance
+  (`POST /api/users/{managerId}/recruits`, `DELETE .../{recruitId}`). Consequently **US-A01**
+  (manage users, deactivation, last-active-Admin rule, role changes) and **US-A02** (assign recruits
+  to managers) are not delivered, and **US-M01** ("see my recruits") has no endpoint or page:
+  `manager_assignment` rows can only be inserted directly into the database.
+- **Section 4.9 write half** - `POST/PUT /api/categories` and `POST/PUT /api/departments`, so
+  **US-A04** (maintain categories and departments) is not delivered; both lists are only seeded by
+  migrations `V2` and `V4` and are read-only at runtime.
+- **Paging on every entry list** - sections 4.2, 4.3, 4.4 and 4.5 all mention paging and section 7
+  says lists are paginated; every list endpoint returns the full filtered result ordered by entry
+  date descending.
+- **Section 5 Thymeleaf pages beyond `/login`, `/signup` and `/profile`** - `/dashboard`, `/tasks`,
+  `/tasks/{id}`, `/issues`, `/issues/{id}`, `/feedback`, `/notes`, `/reports`, `/recruits`,
+  `/recruits/{id}`, `/admin/users` and `/admin/reference-data` do not exist. Sign-up and login
+  therefore land on `/profile` instead of the dashboard promised by US-R01/US-R02, the navigation
+  and flows of section 5.2 are not built, and the responsive-UI expectation in section 7 is only met
+  for the three pages that exist.
+- **Section 6.2 rules that depend on the admin phase** - Admin-only role changes and
+  activation/deactivation, the "last active Admin cannot be demoted or deactivated" rule, the
+  "a user cannot be their own manager" rule, and Admin-only reference-data maintenance are not
+  enforced anywhere, because no endpoint performs those operations. Email immutability, deactivated
+  users being unable to log in, and the ownership/oversight rules are enforced.
+- **Section 6.1 deviation** - note tag *count* is enforced before de-duplication by
+  `@Size(max = 10)` on `NoteRequest.tags`, not after de-duplication as documented (see the Known
+  Issues entry and `REQUIREMENTS.md` section 4.5); verified against the running endpoint during the
+  Phase 6 audit. This confirms the PR #76 review finding.
+
+### Section 8.2 open questions at project end
+
+- **Still open:** 1 (multiple managers per recruit / managers of managers), 2 (reports covering
+  several recruits at once), 3 (email verification / password reset), 4 (soft delete of entries),
+  5 (data retention after onboarding).
+- **Resolved:** 6 (PDF library) - Apache PDFBox for PDF and Apache Commons CSV for CSV, both
+  Apache-2.0, decided and implemented in Phase 6 as decision D6.

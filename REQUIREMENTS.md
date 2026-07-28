@@ -362,9 +362,10 @@ responsive server-delivered web frontend, backed by PostgreSQL.
   programmatic clients. No separate JavaScript build pipeline.
 - **Authentication:** email/password with BCrypt hashing; login issues a JWT bearer token, and
   Spring Security validates it on every request (see Section 7 for how pages carry the token).
-- **Reports:** generated in the service layer - CSV written directly, PDF via a single small,
-  permissively licensed library (Apache-2.0 or MIT; e.g. OpenPDF (LGPL/MPL) is acceptable only if
-  cleared, otherwise prefer an Apache-2.0 option) - and streamed to the client as a file download.
+- **Reports:** generated in the service layer and streamed to the client as a file download. The
+  libraries are decided (D6, 2026-07-28): PDF via Apache PDFBox (`org.apache.pdfbox:pdfbox`,
+  Apache-2.0) and CSV via Apache Commons CSV (`org.apache.commons:commons-csv`, Apache-2.0). Both
+  are Apache-2.0, so the licence preference stated here is met directly.
 - **Persistence:** PostgreSQL with schema managed by versioned migration scripts so schema changes
   are reviewable and repeatable. Local development runs PostgreSQL via Docker Compose; automated
   tests run against an in-memory database, never the dev instance.
@@ -452,6 +453,13 @@ filter is normalised the same way as stored tags so a search matches whatever ca
 caller types. The `/feedback` and `/notes` pages in Section 5.1 are not built yet; both entry types
 are API-only so far.
 
+**Correction (2026-07-28, Phase 6 audit):** the tag *count* limit is in fact enforced twice and the
+first check runs before de-duplication - `@Size(max = 10)` on `NoteRequest.tags` rejects any request
+carrying more than 10 raw tags, so 11 tags that would de-duplicate to 10 distinct values are
+rejected with `$.errors.tags` instead of being accepted. The service-level check that counts after
+de-duplication is therefore unreachable for lists longer than 10. Section 6.1 counts tags after
+de-duplication, so the stricter raw-list check is a known deviation, not the documented rule.
+
 ### 4.6 Dashboard
 
 | Method | Path | Request | Response | Auth / Role |
@@ -473,6 +481,20 @@ page in Section 5.1 is still not built; the dashboard is API-only so far.
 |---|---|---|---|---|
 | GET | `/api/reports` | query: `userId?`, `dateFrom`, `dateTo`, `format=pdf\|csv` | file download (`application/pdf` or `text/csv`) with `Content-Disposition: attachment` | Owner; Manager (overseen) and Admin may pass `userId` |
 | GET | `/api/reports/preview` | query: same as above, no `format` | JSON preview of report contents | Same as above |
+
+**Delivery status (2026-07-28):** delivered in Phase 6. `dateFrom` and `dateTo` are required on both
+endpoints and validated in `ReportService` as field errors (`$.errors.dateFrom` / `$.errors.dateTo`)
+for a missing, badly formatted, reversed or future-reaching range; `format` is required for
+downloads and must be `pdf` or `csv` (case-insensitive), otherwise `400` with `$.errors.format`.
+The report covers the recruit's tasks, issues, feedback notes and additional notes whose
+`entry_date` falls inside the inclusive range, taken from the same repository `search` methods the
+entry lists use, and authorization is the shared `EntryAccessService.resolveListTarget` rule, so an
+unknown `userId` is a `403` like everywhere else. Downloads carry
+`Content-Disposition: attachment` with a descriptive filename
+(`onboarding-report-<recruit-name>-<dateFrom>-to-<dateTo>.<pdf|csv>`). An empty range is a valid
+report carrying "No entries in the selected date range" in both formats, never an error or an empty
+body. The preview returns the same content as JSON plus a `totalEntries` count. The `/reports` page
+in Section 5.1 is not built; reports are API-only.
 
 ### 4.8 Admin - User Management
 
@@ -661,8 +683,8 @@ flowchart TD
   bootstrap Admin variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `ADMIN_DEPARTMENT`,
   `ADMIN_START_DATE`) and the JWT signing secret. No cloud, container orchestration, or CI/CD
   requirements are assumed.
-- **Reporting library:** PDF export uses one small, permissively licensed library; the licence must
-  be verified as usable before it is added.
+- **Reporting library:** PDF export uses Apache PDFBox and CSV export uses Apache Commons CSV, both
+  Apache-2.0 and licence-verified before they were added (D6, 2026-07-28).
 - **Testing expectations:**
   - Unit tests for service-layer business logic: validation rules, authorization decisions
     (ownership and oversight), dashboard aggregation, report content assembly.
@@ -718,7 +740,10 @@ flowchart TD
 3. Is email verification or password reset expected for the email/password flow?
 4. Should deleting an entry be a soft delete for auditability?
 5. Any data retention rules once onboarding completes?
-6. Which specific PDF library is licence-approved (see decision D6 below)?
+
+**Answered (2026-07-28):** former question 6, "Which specific PDF library is licence-approved?", is
+resolved and moved out of this list - PDF uses Apache PDFBox and CSV uses Apache Commons CSV, both
+Apache-2.0 (decision D6 below). Questions 1-5 above are still open at the end of the project.
 
 ### 8.2.1 Resolved blockers (decisions)
 
@@ -731,7 +756,7 @@ All blockers previously listed here are resolved; coding can start.
 | D3 | Test database | Automated tests run against an in-memory database (H2 in PostgreSQL compatibility mode), never the Docker Compose dev instance | Section 7 |
 | D4 | Auth mechanism | JWT bearer tokens (BCrypt password hashing); API clients use `Authorization: Bearer`, pages use an HttpOnly cookie holding the same token | Sections 3, 4.1, 7 |
 | D5 | Frontend technology | Server-rendered Thymeleaf templates styled responsively; no separate JavaScript build | Sections 3, 5 |
-| D6 | PDF library | A single small library under licence-cleared, permissive terms; the exact library is chosen and licence-verified before Phase 6 | Sections 3, 7 |
+| D6 | PDF/CSV library | PDF via Apache PDFBox (`org.apache.pdfbox:pdfbox`, Apache-2.0) and CSV via Apache Commons CSV (`org.apache.commons:commons-csv`, Apache-2.0); both licence-verified on 2026-07-28 and added to `pom.xml` in Phase 6 | Sections 3, 4.7, 7 |
 | D7 | Dashboard definitions | Task completion progress = completed tasks / total tasks over all time; recent entries = the 10 most recent entries, latest first | US-R10, Section 4.6 |
 
 ### 8.3 Proposed but out of scope
