@@ -25,6 +25,7 @@ cross-session feedback.
 | Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Done | 2026-07-28: `GET /api/dashboard` with `userId?`, counts for all four entry types, task completion over all time, open issues (`OPEN`/`IN_PROGRESS`) and the 10 most recent entries; no new migration; 102 tests green. |
 | Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Done | 2026-07-28: `GET /api/reports` (PDF/CSV download) and `GET /api/reports/preview` (JSON), Apache PDFBox + Apache Commons CSV (D6), range validation, empty-range "no entries" reports, no new migration; 135 tests green (33 new). |
 | Phase 7 | UI completion - Thymeleaf pages for dashboard, task log, issue log, feedback, notes and reports with a shared navigation | Done | 2026-07-28: six pages wired to the existing REST API, shared nav fragment with role gating, sign-up/login land on `/dashboard`; no backend logic added; Admin UI deferred to a later dedicated phase; 138 tests green. |
+| Extension 1: Search | Free-text search across Task Log, Issue Log, Feedback Notes and Additional Notes with a single global search bar | Not Started | Additional scope beyond the original 7 phases. 2026-07-28: elaborated only - `REQUIREMENTS.md` section 9 ("Extension: Search") specifies the user stories, scope, data-model impact, API, UI, validation and assumptions. No entities, migrations, endpoints, queries or pages exist; implementation happens in a separate approved session. |
 
 ## Decisions Log
 
@@ -85,6 +86,11 @@ cross-session feedback.
 | 2026-07-28 | Phase 7: the Admin UI (`/admin/users`, `/admin/reference-data`) is deferred to a later dedicated phase together with the Section 4.8 backend, and no admin nav entry is rendered. `/recruits` is deferred with it, because it needs `GET /api/users/me/recruits`. | Section 4.8 was never implemented, so an admin page would have no endpoints to call; manager assignments stay seeded directly in the database. |
 | 2026-07-28 | Phase 7: Managers and Admins pick the user they are reading with a recruit-user-id field that is passed as the existing `userId` query parameter, instead of a recruit picker backed by a new endpoint. | Same reason as above - the recruit list endpoint is part of the deferred admin phase, while `userId` is already supported by every list, dashboard and report endpoint. |
 | 2026-07-28 | Phase 7: sign-up, login and `/` land on `/dashboard`; `/profile` stays reachable from the navigation. | US-R01/US-R02 promise the dashboard as the landing page, and the Phase 5 known issue about landing on `/profile` is now closed. |
+| 2026-07-28 | Extension 1: Search is **new scope beyond the original seven phases** and beyond `SOURCE_REQUIREMENTS.md`; it is elaborated in `REQUIREMENTS.md` section 9 and the "full-text search" bullet in section 8.3 is promoted from out-of-scope to approved scope. | Product owner request after Phase 7; the requirement is elaborated before any code, matching how phases 1-7 were run. |
+| 2026-07-28 | Extension 1 design decision - search is **free text only** in the first iteration: it is not combined with the existing enum filters (task `status`/`category`, issue `status`/`severity`, feedback `type`) or date ranges. Combining them is deferred as possible future scope (`REQUIREMENTS.md` §9.2, assumption A4). | Keeps one small parameter surface on a single cross-entity endpoint; the per-entity list endpoints already offer those filters, and no need for the combination is stated. |
+| 2026-07-28 | Extension 1 design decision - **a single global search bar** lives in the shared nav fragment `templates/fragments/layout.html` so it is on every page, with results on a dedicated `/search` page grouped by entity type. No per-page search boxes. | Search spans all four entry types, so a per-page box would be duplicated six times and scoped to one type each; the shared fragment already holds the one navigation (Phase 7 decision). |
+| 2026-07-28 | Extension 1 architecture recommendation - plain case-insensitive SQL `LIKE` against the existing tables through the existing repository query pattern, with trigram/GIN (or standard) indexes on the searched columns, and explicitly **no Elasticsearch or other search engine**. | Thousands of short rows, no ranking/stemming/faceting requirement, a stated single-process + one-Postgres deployment, and ownership/oversight scoping that is already SQL - an external index would duplicate the authorization model and be eventually consistent. See `REQUIREMENTS.md` §9.3. |
+| 2026-07-28 | Extension 1 API shape - one endpoint `GET /api/search?q=...&userId=...` returning results grouped by entity type, authorized by the existing `EntryAccessService.resolveListTarget` (`403` out of scope, including unknown ids). | One authorization call and one round trip for the global bar, consistent with `/api/dashboard` and `/api/reports`. |
 | 2026-07-28 | Phase 6: every nullable filter parameter in the four repository `search` queries is wrapped in a `cast(...)`, for example `cast(:dateFrom as date) is null`. | PostgreSQL cannot infer the type of a bind parameter that is only compared with `null` and fails the whole query with "could not determine data type of parameter"; the cast makes the parameter typed. The H2 test database inferred the types, so the tests never saw it. |
 
 ## Known Issues
@@ -356,6 +362,38 @@ cross-session feedback.
   endpoints, `/admin/users`, `/admin/reference-data`, `/recruits` and the section 4.9 write half,
   after which the nav gains its Admin and My Recruits entries and manager assignments stop being
   database-seeded.
+- 2026-07-28: **Extension 1 (Search) elaborated - documentation only, no code.** Search is
+  additional scope beyond the original seven phases. `REQUIREMENTS.md` gained section 9
+  ("Extension: Search") in the style of sections 1-8: user stories per role with acceptance
+  criteria (US-S01 recruit searches own entries, US-S02 manager searches own + overseen recruits,
+  US-S03 admin searches everything, all `403` out of scope), the searchable field set across the
+  four entry types, the data-model impact (no new tables; SQL `LIKE` on existing tables plus
+  trigram/GIN indexing; a justified rejection of Elasticsearch), the `GET /api/search` endpoint,
+  the global-search-bar UI with a `/search` results page, validation rules (minimum 2 characters,
+  trimming and whitespace collapsing, wildcard escaping, friendly empty state, a 50-row per-group
+  cap) and eight assumptions plus five open questions. Nothing was implemented: no entity,
+  migration, repository query, service, endpoint, template or test was added, and the test suite is
+  unchanged at 138 tests.
+- 2026-07-28: Notes for the follow-up Search build session. Branch from the tip of this extension
+  branch (`devin/1785230299-ext1-search`) and read `REQUIREMENTS.md` section 9 and this file from
+  there - nothing has been merged to `main`, so the stack Phase 1 -> Phase 7 -> Extension 1 is still
+  a chain of open PRs. Build order that fits the existing code: add one `search`-style query per
+  repository (`TaskEntryRepository`, `IssueEntryRepository`, `FeedbackNoteRepository`,
+  `AdditionalNoteRepository`) using `lower(field) like lower(concat('%', :q, '%'))` so it keeps
+  working on H2 (D3), remembering the Phase 6 lesson that every nullable bind parameter needs a
+  `cast(...)` on PostgreSQL; assemble the grouped response in a new `SearchService` the way
+  `DashboardService` and `ReportService` compose the four repositories; authorize solely through
+  `EntryAccessService.resolveListTarget` so an unknown `userId` stays a `403`; raise the `q` rules
+  as `FieldValidationException`s to keep the `$.errors.q` shape; and escape `%`/`_` in the user's
+  query. The trigram index migration is PostgreSQL-only, unlike every migration so far, so decide
+  and record how the H2 test database skips it. UI work is a `/search` Thymeleaf page plus the
+  search input in `templates/fragments/layout.html`, following the Phase 7 pattern of a shell that
+  fetches `/api/**` with the `ACCESS_TOKEN` cookie. Do not add enum filters (deferred, assumption
+  A4).
+- 2026-07-28: Extension 1 elaboration was delivered stacked on the Phase 7 branch
+  `devin/1785226946-phase7-ui` (PR #79) as PR EXT1_PR_URL_PLACEHOLDER on branch
+  `devin/1785230299-ext1-search`, which is open and must not be merged ahead of the phase PRs
+  beneath it.
 
 ## Final Project Status (2026-07-28)
 
