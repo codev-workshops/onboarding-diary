@@ -17,10 +17,10 @@ public interface IssueEntryRepository extends JpaRepository<IssueEntry, Long> {
     @Query("""
             select i from IssueEntry i
             where i.owner.id = :ownerId
-              and (:dateFrom is null or i.entryDate >= :dateFrom)
-              and (:dateTo is null or i.entryDate <= :dateTo)
-              and (:status is null or i.status = :status)
-              and (:severity is null or i.severity = :severity)
+              and (cast(:dateFrom as date) is null or i.entryDate >= :dateFrom)
+              and (cast(:dateTo as date) is null or i.entryDate <= :dateTo)
+              and (cast(:status as string) is null or i.status = :status)
+              and (cast(:severity as string) is null or i.severity = :severity)
             order by i.entryDate desc, i.createdAt desc, i.id desc
             """)
     List<IssueEntry> search(@Param("ownerId") Long ownerId,

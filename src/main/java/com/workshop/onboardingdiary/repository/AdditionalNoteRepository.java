@@ -17,9 +17,9 @@ public interface AdditionalNoteRepository extends JpaRepository<AdditionalNote, 
     @Query("""
             select n from AdditionalNote n
             where n.owner.id = :ownerId
-              and (:dateFrom is null or n.entryDate >= :dateFrom)
-              and (:dateTo is null or n.entryDate <= :dateTo)
-              and (:tag is null or :tag member of n.tags)
+              and (cast(:dateFrom as date) is null or n.entryDate >= :dateFrom)
+              and (cast(:dateTo as date) is null or n.entryDate <= :dateTo)
+              and (cast(:tag as string) is null or :tag member of n.tags)
             order by n.entryDate desc, n.createdAt desc, n.id desc
             """)
     List<AdditionalNote> search(@Param("ownerId") Long ownerId,

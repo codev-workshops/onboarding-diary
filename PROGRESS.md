@@ -79,9 +79,17 @@ cross-session feedback.
 | 2026-07-28 | Phase 6: an empty range renders a complete report with a "No entries in the selected date range" line plus a "No entries" marker in each empty section, in both formats. | US-R11 requires an empty range to produce a report rather than an error, and a zero-byte file would look like a failed download. |
 | 2026-07-28 | Phase 6: the download filename is `onboarding-report-<recruit-name>-<dateFrom>-to-<dateTo>.<pdf\|csv>`, with the name lower-cased and reduced to `a-z0-9-`. | US-R11 asks for a descriptive filename; restricting the character set keeps the `Content-Disposition` header and the saved file portable. |
 | 2026-07-28 | Phase 6: the PDF is laid out as a paginated list of text lines (Helvetica, wrapped at 95 characters) rather than a table library. | PDFBox draws text, not tables; a line list keeps the renderer small and makes the content extractable with `PDFTextStripper` in tests. |
+| 2026-07-28 | Phase 6: every nullable filter parameter in the four repository `search` queries is wrapped in a `cast(...)`, for example `cast(:dateFrom as date) is null`. | PostgreSQL cannot infer the type of a bind parameter that is only compared with `null` and fails the whole query with "could not determine data type of parameter"; the cast makes the parameter typed. The H2 test database inferred the types, so the tests never saw it. |
 
 ## Known Issues
 
+- Resolved in Phase 6: the null-tolerant `search` queries added in Phases 3-4 failed on PostgreSQL
+  whenever a filter was supplied (`GET /api/tasks?dateFrom=...` and every report returned `500`
+  with `could not determine data type of parameter`). All four repositories now cast the nullable
+  parameters. The whole flow (entry lists with each filter, the JSON preview and both downloads)
+  was re-checked against a real PostgreSQL 16 instance, not only H2.
+- The test suite runs on H2 only, so dialect-specific defects like the one above are not caught by
+  it; there is no PostgreSQL-backed (for example Testcontainers) test profile.
 - Resolved in Phase 6: D6 is decided and implemented - PDF via Apache PDFBox and CSV via Apache
   Commons CSV, both Apache-2.0. No decision is open any more.
 - Remaining non-blocking questions are listed in `REQUIREMENTS.md` section 8.2 (questions 1-5;

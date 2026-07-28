@@ -15,9 +15,9 @@ public interface FeedbackNoteRepository extends JpaRepository<FeedbackNote, Long
     @Query("""
             select f from FeedbackNote f
             where f.owner.id = :ownerId
-              and (:dateFrom is null or f.entryDate >= :dateFrom)
-              and (:dateTo is null or f.entryDate <= :dateTo)
-              and (:type is null or f.type = :type)
+              and (cast(:dateFrom as date) is null or f.entryDate >= :dateFrom)
+              and (cast(:dateTo as date) is null or f.entryDate <= :dateTo)
+              and (cast(:type as string) is null or f.type = :type)
             order by f.entryDate desc, f.createdAt desc, f.id desc
             """)
     List<FeedbackNote> search(@Param("ownerId") Long ownerId,
