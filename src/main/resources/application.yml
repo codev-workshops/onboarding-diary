@@ -40,9 +40,11 @@ onboarding-diary:
     name: ${ADMIN_NAME:Administrator}
     department: ${ADMIN_DEPARTMENT:Other}
     start-date: ${ADMIN_START_DATE:}
-  # Placeholder for the Phase 2 JWT implementation; unused in Phase 1.
   jwt:
     secret: ${JWT_SECRET:}
+    expiry: ${JWT_EXPIRY:PT8H}
+    cookie-name: ACCESS_TOKEN
+    cookie-secure: ${JWT_COOKIE_SECURE:false}
 
 logging:
   level:

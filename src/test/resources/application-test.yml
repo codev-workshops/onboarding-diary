@@ -21,3 +21,8 @@ onboarding-diary:
     name: Administrator
     department: Other
     start-date: ""
+  jwt:
+    secret: test-secret-key-for-onboarding-diary-integration-tests-0123456789
+    expiry: PT8H
+    cookie-name: ACCESS_TOKEN
+    cookie-secure: false

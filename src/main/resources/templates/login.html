@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Log in - Onboarding Diary</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<main class="page">
+    <div class="card">
+        <h1>Log in</h1>
+        <form id="login-form" novalidate>
+            <p class="alert" hidden></p>
+            <label for="email">Email
+                <input type="email" id="email" name="email" autocomplete="email" required/>
+            </label>
+            <span class="field-error" data-error-for="email"></span>
+            <label for="password">Password
+                <input type="password" id="password" name="password" autocomplete="current-password" required/>
+            </label>
+            <span class="field-error" data-error-for="password"></span>
+            <button type="submit">Log in</button>
+        </form>
+        <p class="links">No account yet? <a th:href="@{/signup}">Sign up</a></p>
+    </div>
+</main>
+<script th:src="@{/js/auth.js}"></script>
+<script>
+    document.getElementById('login-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var form = event.target;
+        submitJson(form, '/api/auth/login', 'POST', {
+            email: form.email.value,
+            password: form.password.value
+        }, function () {
+            window.location.href = '/profile';
+        });
+    });
+</script>
+</body>
+</html>

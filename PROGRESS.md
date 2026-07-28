@@ -19,7 +19,7 @@ cross-session feedback.
 | Phase | Description | Status | Notes |
 |---|---|---|---|
 | Phase 1 | Project scaffold - Spring Boot project, build config, database connection, base packages | Done | 2026-07-28: Maven/Spring Boot 3.2 scaffold, Flyway schema for `department` + `users`, Docker Compose Postgres, H2-backed tests, Admin bootstrap, public health check. |
-| Phase 2 | Auth + Profile - signup/login/logout, password hashing, roles, profile view/edit | Not Started | |
+| Phase 2 | Auth + Profile - signup/login/logout, password hashing, roles, profile view/edit | Done | 2026-07-28: JWT auth (jjwt), signup/login/logout REST + Thymeleaf pages, `/api/me` profile view/edit, public `/api/departments`, 30 tests green. |
 | Phase 3 | Task Log + Issue Log - CRUD, filters, ownership rules | Not Started | |
 | Phase 4 | Feedback Notes + Additional Notes - feedback submission, notes CRUD with tags | Not Started | |
 | Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Not Started | |
@@ -48,19 +48,31 @@ cross-session feedback.
 | 2026-07-28 | Only `Department` and `User` entities/tables exist so far; the remaining tables are created by the phase that needs them. | Phase 1 scope: scaffold plus the Admin bootstrap. |
 | 2026-07-28 | Bootstrap Admin config is bound to `AdminBootstrapProperties` (`onboarding-diary.admin.*`) fed by the `ADMIN_*` environment variables. | Keeps environment wiring in configuration and makes the runner unit-testable. |
 | 2026-07-28 | Test configuration lives in `src/test/resources/application-test.yml` and is activated with `@ActiveProfiles("test")`. | Keeps the H2 test datasource out of the production artifact (D3). |
+| 2026-07-28 | Phase 2: JWT library is `io.jsonwebtoken:jjwt` 0.12.6 (`jjwt-api` compile, `jjwt-impl`/`jjwt-jackson` runtime), signed with HS256. | Small, Apache-2.0, no Spring-version coupling; the 0.12 API is the current one. |
+| 2026-07-28 | Phase 2: tokens live 8 hours (`onboarding-diary.jwt.expiry`, default `PT8H`) and are bound with `JwtProperties` alongside the existing `jwt.secret`. | Matches the assumed lifetime in `REQUIREMENTS.md` section 7; keeps environment wiring in configuration. |
+| 2026-07-28 | Phase 2: page authentication uses an HttpOnly, SameSite=Lax cookie named `ACCESS_TOKEN`, path `/`, `Secure` controlled by `JWT_COOKIE_SECURE` (false for local HTTP); API clients may instead send `Authorization: Bearer`. | Decision D4; the cookie keeps the token out of JavaScript while local development runs over plain HTTP. |
+| 2026-07-28 | Phase 2: if `JWT_SECRET` is absent or shorter than 32 bytes the application logs a warning and generates a random signing key at startup instead of failing. | Keeps local startup frictionless; tokens simply do not survive a restart. |
+| 2026-07-28 | Phase 2: department existence and `active` are enforced in `AuthService`/`ProfileService` (case-insensitive lookup), returning a field-level `department` error. | Closes the Phase 1 known issue that case-insensitive/active checks must live in the service layer. |
+| 2026-07-28 | Phase 2: security is stateless (`SessionCreationPolicy.STATELESS`) with CSRF disabled; unauthenticated HTML requests redirect to `/login` while `/api/**` returns `401`. | Stateless JWT needs no CSRF token, and pages and API clients need different unauthenticated behaviour. |
+| 2026-07-28 | Phase 2: login failures (wrong password, unknown email, deactivated account) all return the same `401` body "Invalid email or password". | US-R02: no user enumeration. |
 
 ## Known Issues
 
 - The only decision still open within an agreed direction is the specific PDF library (D6),
   needed before Phase 6.
 - Remaining non-blocking questions are listed in `REQUIREMENTS.md` section 8.2.
-- Spring Security is intentionally minimal: no `UserDetailsService` yet, so Boot logs a generated
-  default password on startup and every non-health endpoint returns `401`. This disappears in
-  Phase 2 when JWT authentication is added.
-- No Thymeleaf templates exist yet (`templates/` and `static/` hold only `.gitkeep`); page
-  rendering starts in Phase 2.
-- Case-insensitive uniqueness for `department.name` / `users.email` is not enforced by a database
-  constraint (see Decisions Log); Phase 2 must apply it in the service layer when users sign up.
+- Resolved in Phase 2: `UserDetailsServiceImpl` + the JWT filter replace the generated default
+  password, Thymeleaf pages exist for `/login`, `/signup` and `/profile`, and case-insensitive
+  email uniqueness plus the active-department check are enforced in `AuthService`/`ProfileService`.
+- Only the profile pages exist so far; `/dashboard` is a Phase 5 page, so sign-up and login
+  currently land on `/profile` instead of the dashboard promised by US-R01/US-R02.
+- There is no token refresh or revocation list: a JWT stays cryptographically valid for its full
+  8 hours and logout only clears the cookie, so a token copied out of a browser stays usable until
+  it expires. Deactivating a user does take effect immediately because the JWT filter reloads the
+  account on every request and rejects disabled users.
+- Admin-only behaviour (role changes, deactivation, the last-active-admin rule, manager
+  assignments) and reference-data maintenance are not implemented; only the read-only
+  `GET /api/departments` exists.
 
 ## Feedback / Cross-session Notes
 
@@ -81,6 +93,21 @@ cross-session feedback.
   feedback_note, additional_note, note_tag, manager_assignment) go into new `V3+` migrations using
   the same portable SQL style so the H2 suite keeps working. Tests use
   `@ActiveProfiles("test")`; the whole suite must stay runnable with no external database.
+- 2026-07-28: Phase 2 complete. Validated with `./mvnw clean verify` (30 tests, all green) against
+  in-memory H2: sign-up success/failures (duplicate email case-insensitively, invalid email,
+  short password, missing fields, unknown and inactive department), login success, generic
+  failure message with no enumeration, deactivated users blocked, logout clearing the cookie,
+  `GET/PUT /api/me` including email immutability and role read-only, public `GET /api/departments`,
+  and page access rules. Not implemented or tested: everything from Phase 3 onwards.
+- 2026-07-28: Notes for Phase 3 - Task Log + Issue Log CRUD with ownership rules. Add new `V3+`
+  Flyway migrations in the same portable SQL style (`GENERATED BY DEFAULT AS IDENTITY`, plain
+  `UNIQUE`/`CHECK`) for `task_category`, `task_entry` and `issue_entry`, and seed the task
+  categories the way `V2` seeds departments. Enforce ownership in the service layer (owner or
+  Admin may write, Managers read-only) and return `403` for other users' entries; reuse
+  `FieldValidationException` + `ApiExceptionHandler` for field-level errors and the
+  `Principal`-based lookup used by `MeController`. Keep the active-lookup check pattern from
+  `AuthService` when resolving task categories, and keep the suite runnable with
+  `@ActiveProfiles("test")` and no external database.
 - 2026-07-27: Product owner answered the outstanding blockers; decisions D1-D7 are recorded above
   and in `REQUIREMENTS.md` section 8.2.1, with the details propagated into sections 1, 3, 4, 5,
   and 7. Phase 1 can begin: Spring Boot 3.2 + Thymeleaf + JPA scaffold, Docker Compose PostgreSQL,

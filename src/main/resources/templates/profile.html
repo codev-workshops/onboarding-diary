@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Profile - Onboarding Diary</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<main class="page">
+    <div class="card">
+        <h1>My profile</h1>
+        <form id="profile-form" novalidate>
+            <p class="alert" hidden></p>
+            <label for="name">Name
+                <input type="text" id="name" name="name" maxlength="100"
+                       th:value="${profile.name()}" required/>
+            </label>
+            <span class="field-error" data-error-for="name"></span>
+
+            <label for="email">Email (read only)</label>
+            <div class="readonly-value" id="email" th:text="${profile.email()}"></div>
+
+            <label for="role">Role (read only)</label>
+            <div class="readonly-value" id="role" th:text="${profile.role()}"></div>
+
+            <label for="department">Department
+                <select id="department" name="department" required>
+                    <option th:each="department : ${departments}"
+                            th:value="${department.name()}"
+                            th:text="${department.name()}"
+                            th:selected="${department.name() == profile.department()}"></option>
+                </select>
+            </label>
+            <span class="field-error" data-error-for="department"></span>
+
+            <label for="startDate">Start date
+                <input type="date" id="startDate" name="startDate"
+                       th:value="${profile.startDate()}" required/>
+            </label>
+            <span class="field-error" data-error-for="startDate"></span>
+
+            <button type="submit">Save changes</button>
+        </form>
+        <button type="button" id="logout" class="secondary">Log out</button>
+    </div>
+</main>
+<script th:src="@{/js/auth.js}"></script>
+<script>
+    document.getElementById('profile-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var form = event.target;
+        submitJson(form, '/api/me', 'PUT', {
+            name: form.name.value,
+            department: form.department.value,
+            startDate: form.startDate.value
+        }, function () {
+            showAlert(form, 'Profile updated', 'success');
+        });
+    });
+
+    document.getElementById('logout').addEventListener('click', function () {
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+            .then(function () {
+                window.location.href = '/login';
+            });
+    });
+</script>
+</body>
+</html>
