@@ -441,9 +441,16 @@ cross-session feedback.
   target defaulting to the caller); authentication (`401` with no token and with an invalid token);
   and the page layer (`/search` renders, keeps the submitted query in the nav search bar, labels all
   four groups, and hides the recruit-id field from a New Recruit).
-  **Not tested in Extension 1:** migration `V8` itself - the H2 test database only scans
-  `db/migration`, so the `pg_trgm` extension and the GIN indexes are only exercised by starting the
-  application against PostgreSQL, and no query-plan or performance assertion is made anywhere; the
+  A manual pass against a Docker Compose PostgreSQL 16 instance additionally confirmed that Flyway
+  applies migration `V8` on PostgreSQL ("Successfully applied 8 migrations ... now at version v8")
+  and that the endpoint behaves the same there as on H2 - the wildcard escaping (`50%`), the
+  `distinct` tag match, the empty result and the `401` - and that the nav bar keeps its Search button
+  disabled at one character, submits to `/search`, keeps the query visible and renders the four
+  counted groups and the friendly empty state.
+  **Not tested in Extension 1:** migration `V8` is not covered by the automated suite - the H2 test
+  database only scans `db/migration`, so the `pg_trgm` extension and the GIN indexes are only
+  exercised by starting the application against PostgreSQL as above, and no query-plan or
+  performance assertion is made anywhere; the
   client-side JavaScript of `/search` and the nav bar's below-two-characters disabling, which are
   only checked manually like every other page script; accent-insensitive matching, ranking, paging
   past the 50-row cap and cross-recruit search, none of which are built (A3, A5, A6, Q6).
