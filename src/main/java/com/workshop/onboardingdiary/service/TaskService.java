@@ -71,7 +71,9 @@ public class TaskService {
         User caller = access.requireUser(callerEmail);
         TaskEntry task = require(id);
         access.requireWriteAccess(caller, task.getOwner());
-        TaskCategory category = taskCategoryService.resolveActiveCategory(request.category());
+        TaskCategory category = keepsItsCategory(task, request.category())
+                ? task.getCategory()
+                : taskCategoryService.resolveActiveCategory(request.category());
         access.validateEntryDate(request.entryDate(), task.getOwner());
 
         apply(task, request, category);
@@ -84,6 +86,14 @@ public class TaskService {
         TaskEntry task = require(id);
         access.requireWriteAccess(caller, task.getOwner());
         taskEntryRepository.delete(task);
+    }
+
+    /**
+     * A deactivated category keeps its existing references (REQUIREMENTS 2.6), so an edit that
+     * leaves the category unchanged stays possible even after the category was turned off.
+     */
+    private boolean keepsItsCategory(TaskEntry task, String requestedCategory) {
+        return task.getCategory().getName().equalsIgnoreCase(requestedCategory.trim());
     }
 
     private void apply(TaskEntry task, TaskRequest request, TaskCategory category) {

@@ -247,6 +247,38 @@ class TaskLogIntegrationTest {
     }
 
     @Test
+    void aTaskKeepingItsDeactivatedCategoryCanStillBeEdited() throws Exception {
+        var task = testEntries.task(recruit, LocalDate.of(2026, 2, 1), "Support call", "Support",
+                TaskStatus.IN_PROGRESS);
+        var support = taskCategoryRepository.findByNameIgnoreCase("Support").orElseThrow();
+        support.setActive(false);
+        taskCategoryRepository.save(support);
+
+        Map<String, Object> unchangedCategory = validTask();
+        unchangedCategory.put("category", "Support");
+        unchangedCategory.put("status", "COMPLETED");
+        mockMvc.perform(put("/api/tasks/" + task.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(unchangedCategory)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("Support"))
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+
+        var training = taskCategoryRepository.findByNameIgnoreCase("Training").orElseThrow();
+        training.setActive(false);
+        taskCategoryRepository.save(training);
+        Map<String, Object> switchToInactive = validTask();
+        switchToInactive.put("category", "Training");
+        mockMvc.perform(put("/api/tasks/" + task.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(switchToInactive)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.category").value("Category is not active"));
+    }
+
+    @Test
     void filtersApplyIndividuallyAndCombinedWithAndSemantics() throws Exception {
         testEntries.task(recruit, LocalDate.of(2026, 2, 1), "Dev in progress", "Development",
                 TaskStatus.IN_PROGRESS);
