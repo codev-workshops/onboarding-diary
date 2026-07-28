@@ -114,11 +114,11 @@ public class ManagerDashboardService {
         mergeLatest(lastEntry, feedbackNoteRepository.findLastEntryDates(recruitIds));
         mergeLatest(lastEntry, additionalNoteRepository.findLastEntryDates(recruitIds));
 
-        LocalDate cutoff = LocalDate.now().minusDays(INACTIVITY_WINDOW_DAYS);
+        LocalDate earliestActive = LocalDate.now().minusDays(INACTIVITY_WINDOW_DAYS - 1L);
         return recruitIds.stream()
                 .filter(id -> {
                     LocalDate last = lastEntry.get(id);
-                    return last == null || last.isBefore(cutoff);
+                    return last == null || last.isBefore(earliestActive);
                 })
                 .map(id -> new InactiveRecruit(id, nameOf(recruits, id), lastEntry.get(id)))
                 .sorted(Comparator.comparing(InactiveRecruit::name, String.CASE_INSENSITIVE_ORDER)

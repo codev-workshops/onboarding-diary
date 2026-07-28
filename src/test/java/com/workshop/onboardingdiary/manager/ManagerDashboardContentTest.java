@@ -149,4 +149,24 @@ class ManagerDashboardContentTest {
                 .andExpect(jsonPath("$.inactiveRecruits.length()").value(1))
                 .andExpect(jsonPath("$.inactiveRecruits[0].userId").value(silentRecruit.getId()));
     }
+
+    @Test
+    void theSevenDayInactivityWindowIsInclusiveOfTodayAtItsBoundary() throws Exception {
+        // FD1 window is {today ... today-6}: an entry on the sixth day back is still active,
+        // one on the seventh day back is inactive.
+        User boundaryManager = testUsers.create("md-content-boundary@example.com", "sup3rsecret", Role.MANAGER, true);
+        User edgeActive = testUsers.create("md-content-edge-active@example.com", "sup3rsecret", Role.NEW_RECRUIT, true);
+        User edgeInactive = testUsers.create("md-content-edge-inactive@example.com", "sup3rsecret", Role.NEW_RECRUIT, true);
+        testEntries.assign(boundaryManager, edgeActive);
+        testEntries.assign(boundaryManager, edgeInactive);
+        testEntries.note(edgeActive, today.minusDays(6), "Six days ago", "onboarding");
+        testEntries.note(edgeInactive, today.minusDays(7), "Seven days ago", "onboarding");
+        String token = jwtService.issueToken(boundaryManager.getEmail(), boundaryManager.getRole());
+
+        mockMvc.perform(get("/api/manager-dashboard").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.inactiveRecruits.length()").value(1))
+                .andExpect(jsonPath("$.inactiveRecruits[0].userId").value(edgeInactive.getId()))
+                .andExpect(jsonPath("$.inactiveRecruits[0].lastEntryDate").value(today.minusDays(7).toString()));
+    }
 }
