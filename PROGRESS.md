@@ -25,7 +25,8 @@ cross-session feedback.
 | Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Done | 2026-07-28: `GET /api/dashboard` with `userId?`, counts for all four entry types, task completion over all time, open issues (`OPEN`/`IN_PROGRESS`) and the 10 most recent entries; no new migration; 102 tests green. |
 | Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Done | 2026-07-28: `GET /api/reports` (PDF/CSV download) and `GET /api/reports/preview` (JSON), Apache PDFBox + Apache Commons CSV (D6), range validation, empty-range "no entries" reports, no new migration; 135 tests green (33 new). |
 | Phase 7 | UI completion - Thymeleaf pages for dashboard, task log, issue log, feedback, notes and reports with a shared navigation | Done | 2026-07-28: six pages wired to the existing REST API, shared nav fragment with role gating, sign-up/login land on `/dashboard`; no backend logic added; Admin UI deferred to a later dedicated phase; 138 tests green. |
-| Extension 1: Search | Free-text search across Task Log, Issue Log, Feedback Notes and Additional Notes with a single global search bar | Not Started | Additional scope beyond the original 7 phases. 2026-07-28: elaborated only - `REQUIREMENTS.md` section 9 ("Extension: Search") specifies the user stories, scope, data-model impact, API, UI, validation and assumptions. No entities, migrations, endpoints, queries or pages exist; implementation happens in a separate approved session. |
+| Extension 1: Search | Free-text search across Task Log, Issue Log, Feedback Notes and Additional Notes with a single global search bar | Done | Additional scope beyond the original 7 phases. 2026-07-28: `GET /api/search?q=&userId=` returning the four groups with per-group counts and truncation flags, one `searchText` query per entry repository (`lower(field) like lower(concat('%', :q, '%'))`, `distinct` tag join for notes), `SearchService` with the section 9.6 `q` rules, PostgreSQL-only Flyway `V8` trigram/GIN indexes on `db/migration-postgresql`, the nav search bar and the `/search` page; 166 tests green (28 new). |
+| Extension 2: Manager Dashboards | Aggregate team-wide dashboard for a Manager across all overseen recruits (team counts, recruits with open CRITICAL/HIGH issues, recruits inactive 7 days) | Not Started | Elaboration only. 2026-07-28: `REQUIREMENTS.md` section 10 elaborated (US-MD01 Manager, US-MD02 Admin; `GET /api/manager-dashboard` with Admin-only `managerId`; counts/lists only, charts deferred; no new entities/tables/columns; 7-day inactivity and Admin per-manager view fixed as decisions). **This PR is documentation-only - no Java, SQL, Thymeleaf or test code added; the build is a separate future PR.** |
 
 ## Decisions Log
 
@@ -92,7 +93,19 @@ cross-session feedback.
 | 2026-07-28 | Extension 1 architecture recommendation - plain case-insensitive SQL `LIKE` against the existing tables through the existing repository query pattern, with trigram/GIN (or standard) indexes on the searched columns, and explicitly **no Elasticsearch or other search engine**. | Thousands of short rows, no ranking/stemming/faceting requirement, a stated single-process + one-Postgres deployment, and ownership/oversight scoping that is already SQL - an external index would duplicate the authorization model and be eventually consistent. See `REQUIREMENTS.md` §9.3. |
 | 2026-07-28 | Extension 1 open questions answered by the product owner: issue `resolution_notes` and additional-note tags **are** searchable (assumption A9); a search targets **one user at a time** with cross-recruit search deferred (A10); **no** match highlighting; **no** full-text-search threshold - park it until a performance issue is observed; **no** soft-delete handling. `REQUIREMENTS.md` §9.2 and §9.7 updated accordingly. | Product owner answers, 2026-07-28. Recorded as assumptions and "answered - not being built now" rather than open questions so the build session does not re-open them. |
 | 2026-07-28 | Extension 1 API shape - one endpoint `GET /api/search?q=...&userId=...` returning results grouped by entity type, authorized by the existing `EntryAccessService.resolveListTarget` (`403` out of scope, including unknown ids). | One authorization call and one round trip for the global bar, consistent with `/api/dashboard` and `/api/reports`. |
+| 2026-07-28 | Extension 1 build: the trigram migration is skipped on H2 by **path**, not by guarded SQL - `V8__create_search_trigram_indexes.sql` lives in `src/main/resources/db/migration-postgresql`, a sibling of `db/migration`, and only the application's `spring.flyway.locations` lists both. | Flyway scans a location recursively, so a `db/migration/postgresql` subdirectory would still be picked up by the tests' `classpath:db/migration`; a sibling path needs no vendor detection, no `DO $$` guard and no change to the test configuration. |
+| 2026-07-28 | Extension 1 build: the note search query is `select distinct n from AdditionalNote n left join n.tags tag ...`, comparing `lower(tag)` with the lower-cased pattern like every other searched column. | The tag join multiplies rows, so a note with several matching tags would otherwise come back once per tag (`REQUIREMENTS.md` §9.3), and a `left join` keeps notes without tags matchable on title/content. Stored tags are already lower-cased, but a bare `tag` predicate would not match the `lower(tag)` trigram index of `V8`, so PostgreSQL could never use it. |
+| 2026-07-28 | Extension 1 build: each response group is an object `{count, truncated, items}` rather than the bare array of the illustrative shape in §9.4, and the group cap is enforced by fetching 51 rows and reporting `truncated` when a 51st exists. | The per-type count and the per-group truncation flag of §9.4/§9.6 belong to the group they describe; one over-sized page is cheaper than a second counting query. Recorded as a build note in `REQUIREMENTS.md` §9.4. |
+| 2026-07-28 | Extension 1 build: `q` is bound as an optional request parameter and validated in `SearchService` (trim, collapse whitespace, 2-100 characters) as `FieldValidationException`s, and `%`, `_` and `\` are escaped in the service before the JPQL `like ... escape '\'`. | Keeps a missing `q` in the same `$.errors.q` shape as a blank one instead of Spring's generic missing-parameter error, and keeps wildcard escaping in one place with the pattern it builds. |
+| 2026-07-28 | Extension 1 build: the excerpt is ~200 characters of the first searched field containing the query, centred on the match, with `…` markers; for a note matched only through a tag the tag list is the excerpt source. | §9.6 asks for an excerpt around the first match; a tag-only match has no matching title or content to excerpt, and showing the tags explains why the row is in the results. |
 | 2026-07-28 | Phase 6: every nullable filter parameter in the four repository `search` queries is wrapped in a `cast(...)`, for example `cast(:dateFrom as date) is null`. | PostgreSQL cannot infer the type of a bind parameter that is only compared with `null` and fails the whole query with "could not determine data type of parameter"; the cast makes the parameter typed. The H2 test database inferred the types, so the tests never saw it. |
+| 2026-07-28 | Extension 2 (Manager Dashboards) is **new scope beyond the original seven phases, `SOURCE_REQUIREMENTS.md` and Extension 1**; elaborated in `REQUIREMENTS.md` section 10, specification-only with no code. It is an **aggregate** team view (team-wide counts + attention lists) distinct from the existing per-recruit dashboard of US-M03/§4.6. | Product owner request after Extension 1; the requirement is elaborated before any code, matching how phases 1-7 and Extension 1 were run. |
+| 2026-07-28 | Extension 2 design decision - the dashboard is **counts and lists only; charts/visualizations are explicitly deferred to a separate future extension** (`REQUIREMENTS.md` §10.2, Q8). | Keeps the first iteration a thin aggregation over existing data with no charting library or client-side drawing code, consistent with the server-rendered, no-JS-build stance of §3/§5. |
+| 2026-07-28 | Extension 2 API shape - one endpoint `GET /api/manager-dashboard` returning team-wide counts, recruits with open `CRITICAL`/`HIGH` issues and recruits inactive for 7 days; `managerId` is **Admin-only** (a Manager sees their own oversight scope). | One authorization call and one round trip for the team view, consistent with `/api/dashboard`, `/api/reports` and `/api/search`. |
+| 2026-07-28 | Extension 2 authorization reuses the existing `EntryAccessService.resolveListTarget` pattern (default to caller, only Admin resolves another target, `403` for out-of-scope/unknown ids and for a non-Manager id, never `404`). | No new authorization concept; keeps id-existence hidden exactly like every other list, dashboard and report endpoint (§6.2). |
+| 2026-07-28 | Extension 2 data-model impact - **no new entities, tables, columns or migration**; the dashboard is aggregation (count/exists) queries over the existing `task_entry`, `issue_entry`, `feedback_note`, `additional_note` tables joined to `manager_assignment`, reusing the four entry repositories and `ManagerAssignmentRepository`. | The team view needs only aggregation over existing owned entries scoped to the manager's assignments; the schema stays at `V7`. |
+| 2026-07-28 | Extension 2 fixed decision (FD1) - **"recently inactive" = no entry of any type in the last 7 days**, a fixed default, not configurable and not a query parameter in this iteration. | Recorded as a settled decision so the build session does not re-open it (`REQUIREMENTS.md` §10.7). |
+| 2026-07-28 | Extension 2 fixed decision (FD2) - an Admin gets a **per-manager view only**, one manager's team at a time via `managerId`; there is **no** global all-managers / cohort rollup. | Mirrors Search A10 (one target at a time) and keeps the endpoint and authorization identical for Manager and Admin callers; a cross-manager rollup is deferred (`REQUIREMENTS.md` §10.7, Q7). |
 
 ## Known Issues
 
@@ -176,6 +189,18 @@ cross-session feedback.
   (each page renders, `/` redirects to `/dashboard`, the feedback create form is absent for a
   Manager); there is no browser-level or JavaScript test suite, so the client-side fetch, form and
   download code is validated manually.
+- Extension 1 (Search): migration `V8` (the `pg_trgm` extension and the GIN indexes) never runs in
+  the test suite, because the H2 test database only scans `db/migration`. It is exercised only when
+  the application starts against PostgreSQL, so a syntax error in it would surface at run time
+  rather than in CI, and `CREATE EXTENSION pg_trgm` needs a database role allowed to create
+  extensions (superuser in a default installation, which the Docker Compose dev role is).
+- Extension 1 (Search): search is unpaginated like every other list; a group larger than 50 rows is
+  truncated with a flag and no way to reach the rest, which is assumption A5 rather than a fix.
+- Extension 1 (Search): a result row links to the owning list page (`/tasks`, `/issues`,
+  `/feedback`, `/notes`), not to the individual entry, because the Phase 7 pages fold entry detail
+  into inline edit forms and have no per-entry route or anchor.
+- Extension 1 (Search): matching is accent-sensitive (assumption A3) and the excerpt is plain text
+  with no highlighting (answered question Q3).
 
 ## Feedback / Cross-session Notes
 
@@ -404,6 +429,78 @@ cross-session feedback.
   above. Only one question is genuinely open for Search - a future cross-recruit manager search
   (Q6). The assumptions A1-A8 were accepted unchanged, so the build session should treat Section 9
   as settled scope.
+- 2026-07-28: **Extension 1 (Search) built.** Validated with `./mvnw clean verify`: **166 tests, all
+  green, 28 new** over the 138-test pre-Search baseline (`SearchValidationTest` 9,
+  `SearchContentTest` 10, `SearchAuthorizationTest` 8, plus one `/search` page test in
+  `PageAccessTest`).
+  **Tested in Extension 1:** the `q` rules (missing, empty and whitespace-only `q`, a one-character
+  query, a 101-character query rejected while 100 is accepted, trimming plus internal whitespace
+  collapsing, `%`, `_` and `\` escaped so they match literally, unknown enum/date parameters ignored
+  rather than rejected); search correctness over a fixture seeded across every searched field (task
+  title and description, issue title, description and resolution notes, feedback subject and
+  details, note title, content and tags) - a matching query returns the row and a non-matching query
+  returns nothing, mid-field substrings match, matching is case-insensitive, a note whose two tags
+  both match is returned once, null optional fields neither match nor break the query, the 50-row
+  per-group cap holds with `truncated: true` while an untruncated group reports `false`, empty
+  groups are still present with `totalResults: 0`, and an excerpt is capped around the first match;
+  authorization (another user's matching entry never returned, a recruit passing another `userId`
+  `403`, an overseeing Manager reading their recruit, an unassigned Manager `403`, an unknown
+  `userId` `403` rather than `404` for Manager and Admin alike, Admin reading any user, and no
+  target defaulting to the caller); authentication (`401` with no token and with an invalid token);
+  and the page layer (`/search` renders, keeps the submitted query in the nav search bar, labels all
+  four groups, and hides the recruit-id field from a New Recruit).
+  A manual pass against a Docker Compose PostgreSQL 16 instance additionally confirmed that Flyway
+  applies migration `V8` on PostgreSQL ("Successfully applied 8 migrations ... now at version v8")
+  and that the endpoint behaves the same there as on H2 - the wildcard escaping (`50%`), the
+  `distinct` tag match, the empty result and the `401` - and that the nav bar keeps its Search button
+  disabled at one character, submits to `/search`, keeps the query visible and renders the four
+  counted groups and the friendly empty state.
+  **Not tested in Extension 1:** migration `V8` is not covered by the automated suite - the H2 test
+  database only scans `db/migration`, so the `pg_trgm` extension and the GIN indexes are only
+  exercised by starting the application against PostgreSQL as above, and no query-plan or
+  performance assertion is made anywhere; the
+  client-side JavaScript of `/search` and the nav bar's below-two-characters disabling, which are
+  only checked manually like every other page script; accent-insensitive matching, ranking, paging
+  past the 50-row cap and cross-recruit search, none of which are built (A3, A5, A6, Q6).
+- 2026-07-28: Section 9.7 open questions are resolved as recorded by the product owner on
+  2026-07-28: A9 and A10 replace former Q1 and Q2, Q3, Q4 and Q5 are answered and not being built,
+  and A1-A8 stand unchanged. **Only Q6 (a Manager searching across all overseen recruits at once)
+  remains open**, and nothing was built for it. The build added two clarifications to
+  `REQUIREMENTS.md` section 9, both marked "Build note (2026-07-28)": the response groups are
+  objects carrying their count and truncation flag rather than bare arrays (§9.4), and the trigram
+  migration is skipped on H2 by living on the separate `db/migration-postgresql` path (§9.3).
+- 2026-07-28: **Extension 2 (Manager Dashboards) elaborated - documentation only, no code.** Manager
+  Dashboards is a second extension beyond the original seven phases and beyond Extension 1, giving a
+  Manager an **aggregate** team view across all their overseen recruits, distinct from the existing
+  per-recruit dashboard (US-M03/§4.6). `REQUIREMENTS.md` gained section 10 ("Extension: Manager
+  Dashboards") in the style of sections 1-9: user stories (US-MD01 Manager team-wide dashboard,
+  US-MD02 Admin viewing any single manager's team, both `403` out of scope), the exact aggregate set
+  (team size, total tasks/issues/feedback/notes across the team, recruits with open `CRITICAL`/`HIGH`
+  issues, recruits inactive for 7 days), the data-model impact (no new entities/tables/columns; an
+  aggregation query over the existing entry tables joined to `manager_assignment`; reuse of the four
+  entry repositories and `ManagerAssignmentRepository`), the `GET /api/manager-dashboard` endpoint
+  with an Admin-only `managerId`, the `/manager-dashboard` Thymeleaf page linked from the Manager nav
+  alongside the per-recruit dashboard, validation (zero-recruit empty state is a `200`, not an error;
+  `managerId` validation resolving to `403` not `404`), and the fixed decisions / assumptions. **No
+  code of any kind was added - no entity, migration, repository query, service, endpoint, template or
+  test - and the test suite is unchanged at 166 tests.** The scope is counts and lists only; charts
+  are deferred to a separate future extension.
+- 2026-07-28: Notes for the follow-up Manager Dashboards build session (Step 2, a separate PR
+  pending approval). Branch from the tip of **this** extension branch and read `REQUIREMENTS.md`
+  section 10 and this file from there - nothing has been merged to `main`, so the stack Phase 1 ->
+  Phase 7 -> Extension 1 -> Extension 2 is a chain of open PRs. Build order that fits the existing
+  code: resolve the target manager's overseen-recruit ids from `ManagerAssignmentRepository`, then
+  reuse the four entry repositories (`TaskEntryRepository`, `IssueEntryRepository`,
+  `FeedbackNoteRepository`, `AdditionalNoteRepository`) for the team-wide counts and the two
+  attention lists; assemble the grouped response in a new `ManagerDashboardService` the way
+  `DashboardService` and `ReportService` compose the four repositories; authorize solely through the
+  `EntryAccessService.resolveListTarget` pattern so an unknown or non-Manager id stays a `403`, never
+  `404`, and only an Admin may pass `managerId`. Remember the **Phase 6 lesson that every nullable
+  bind parameter needs a `cast(...)` on PostgreSQL** (for example the 7-day cut-off date), since the
+  H2 test suite will not catch it. Add no charts (deferred, Q8) and no new tables/columns (the schema
+  stays at `V7`). Keep FD1 (7-day inactivity) and FD2 (Admin per-manager view, no global rollup) as
+  settled - do not re-open them.
+
 
 ## Final Project Status (2026-07-28)
 

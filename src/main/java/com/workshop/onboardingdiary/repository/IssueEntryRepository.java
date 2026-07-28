@@ -29,6 +29,20 @@ public interface IssueEntryRepository extends JpaRepository<IssueEntry, Long> {
                             @Param("status") IssueStatus status,
                             @Param("severity") IssueSeverity severity);
 
+    /**
+     * Free-text search over the fields of REQUIREMENTS 9.2, matched case-insensitively anywhere in
+     * the field. {@code q} is a pattern whose SQL wildcards are already escaped with {@code \}.
+     */
+    @Query("""
+            select i from IssueEntry i
+            where i.owner.id = :ownerId
+              and (lower(i.title) like lower(concat('%', cast(:q as string), '%')) escape '\\'
+                   or lower(i.description) like lower(concat('%', cast(:q as string), '%')) escape '\\'
+                   or lower(i.resolutionNotes) like lower(concat('%', cast(:q as string), '%')) escape '\\')
+            order by i.entryDate desc, i.createdAt desc, i.id desc
+            """)
+    List<IssueEntry> searchText(@Param("ownerId") Long ownerId, @Param("q") String q, Pageable pageable);
+
     long countByOwnerId(Long ownerId);
 
     /** Dashboard open issues are the ones still OPEN or IN_PROGRESS (REQUIREMENTS 4.6). */

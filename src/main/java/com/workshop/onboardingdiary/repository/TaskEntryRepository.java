@@ -27,6 +27,19 @@ public interface TaskEntryRepository extends JpaRepository<TaskEntry, Long> {
                            @Param("categoryId") Long categoryId,
                            @Param("status") TaskStatus status);
 
+    /**
+     * Free-text search over the fields of REQUIREMENTS 9.2, matched case-insensitively anywhere in
+     * the field. {@code q} is a pattern whose SQL wildcards are already escaped with {@code \}.
+     */
+    @Query("""
+            select t from TaskEntry t
+            where t.owner.id = :ownerId
+              and (lower(t.title) like lower(concat('%', cast(:q as string), '%')) escape '\\'
+                   or lower(t.description) like lower(concat('%', cast(:q as string), '%')) escape '\\')
+            order by t.entryDate desc, t.createdAt desc, t.id desc
+            """)
+    List<TaskEntry> searchText(@Param("ownerId") Long ownerId, @Param("q") String q, Pageable pageable);
+
     long countByOwnerId(Long ownerId);
 
     long countByOwnerIdAndStatus(Long ownerId, TaskStatus status);

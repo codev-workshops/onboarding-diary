@@ -25,6 +25,19 @@ public interface FeedbackNoteRepository extends JpaRepository<FeedbackNote, Long
                               @Param("dateTo") LocalDate dateTo,
                               @Param("type") FeedbackType type);
 
+    /**
+     * Free-text search over the fields of REQUIREMENTS 9.2, matched case-insensitively anywhere in
+     * the field. {@code q} is a pattern whose SQL wildcards are already escaped with {@code \}.
+     */
+    @Query("""
+            select f from FeedbackNote f
+            where f.owner.id = :ownerId
+              and (lower(f.subject) like lower(concat('%', cast(:q as string), '%')) escape '\\'
+                   or lower(f.details) like lower(concat('%', cast(:q as string), '%')) escape '\\')
+            order by f.entryDate desc, f.createdAt desc, f.id desc
+            """)
+    List<FeedbackNote> searchText(@Param("ownerId") Long ownerId, @Param("q") String q, Pageable pageable);
+
     long countByOwnerId(Long ownerId);
 
     List<FeedbackNote> findByOwnerIdOrderByEntryDateDescCreatedAtDescIdDesc(Long ownerId, Pageable pageable);

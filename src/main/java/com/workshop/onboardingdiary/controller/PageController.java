@@ -69,6 +69,11 @@ public class PageController {
         return page(principal, model, "reports");
     }
 
+    @GetMapping("/search")
+    public String search(Principal principal, Model model) {
+        return page(principal, model, "search");
+    }
+
     @GetMapping("/profile")
     public String profile(Principal principal, Model model) {
         model.addAttribute("departments", departmentService.list(true));
