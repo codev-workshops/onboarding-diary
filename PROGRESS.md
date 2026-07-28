@@ -296,8 +296,9 @@ cross-session feedback.
   and PDF pixel layout (only extracted text and page count are asserted, not visual appearance).
   No new Flyway migration was needed, so the schema is unchanged from `V7`.
 - 2026-07-28: Phase 6 was delivered stacked on the Phase 5 branch `devin/1785218358-phase5-dashboard`
-  (PR #77), which is still open, as is every PR from Phase 1 onwards - nothing has been merged to
-  `main`, so `main` still holds only the initial commit.
+  (PR #77) as PR #78 (https://github.com/codev-workshops/onboarding-diary/pull/78) on branch
+  `devin/1785219953-phase6-reports`, which is still open, as is every PR from Phase 1 onwards -
+  nothing has been merged to `main`, so `main` still holds only the initial commit.
 
 ## Final Project Status (2026-07-28)
 
