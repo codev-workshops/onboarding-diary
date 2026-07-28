@@ -172,9 +172,11 @@ cross-session feedback.
   unassigned Manager forbidden, Admin full), and the recruit-only feedback create rule (New Recruit
   `201`; Manager and Admin `403`, while both may still create their own notes). Not implemented or
   tested: dashboard (§4.6), reports (§4.7), admin user management and assignment endpoints (§4.8),
-  admin category maintenance (§4.9), paging, and Thymeleaf pages for the entry types.
+  admin category maintenance (§4.9), paging, and Thymeleaf pages for the entry types. Migration
+  `V7` was additionally applied to a fresh Docker Compose Postgres 16 to confirm the SQL stays
+  portable.
 - 2026-07-28: Phase 4 was delivered stacked on the Phase 3 branch
-  `devin/1785213965-phase3-task-issue-logs` (PR #75), which is still open. Phase 5 should branch
+  `devin/1785213965-phase3-task-issue-logs` (PR #75) as PR #76 (https://github.com/codev-workshops/onboarding-diary/pull/76), which is still open. Phase 5 should branch
   from the tip of the Phase 4 branch `devin/1785216240-phase4-feedback-notes` and read
   `REQUIREMENTS.md` and `PROGRESS.md` from that tip, since no PR has been merged to `main`.
 - 2026-07-28: Notes for Phase 5 - Dashboard (§4.6, US-R10, US-M03, D7). All four entry
