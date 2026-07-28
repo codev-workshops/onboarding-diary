@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: onboarding-diary
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:onboarding_diary}
+    username: ${DB_USER:onboarding_diary}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+  thymeleaf:
+    cache: false
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+onboarding-diary:
+  admin:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+    name: ${ADMIN_NAME:Administrator}
+    department: ${ADMIN_DEPARTMENT:Other}
+    start-date: ${ADMIN_START_DATE:}
+  # Placeholder for the Phase 2 JWT implementation; unused in Phase 1.
+  jwt:
+    secret: ${JWT_SECRET:}
+
+logging:
+  level:
+    root: INFO
