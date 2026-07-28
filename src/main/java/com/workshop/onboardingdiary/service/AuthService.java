@@ -10,6 +10,7 @@ import com.workshop.onboardingdiary.entity.User;
 import com.workshop.onboardingdiary.repository.DepartmentRepository;
 import com.workshop.onboardingdiary.repository.UserRepository;
 import java.util.Locale;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -56,7 +57,7 @@ public class AuthService {
         user.setDepartment(department);
         user.setStartDate(request.startDate());
         user.setActive(true);
-        User saved = userRepository.save(user);
+        User saved = saveUnique(user);
 
         String token = jwtService.issueToken(saved.getEmail(), saved.getRole());
         return LoginResponse.of(token, UserSummaryResponse.from(saved));
@@ -73,6 +74,15 @@ public class AuthService {
         User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(InvalidCredentialsException::new);
         String token = jwtService.issueToken(user.getEmail(), user.getRole());
         return LoginResponse.of(token, UserSummaryResponse.from(user));
+    }
+
+    /** Turns a lost race on the unique email constraint into the same field error as the pre-check. */
+    private User saveUnique(User user) {
+        try {
+            return userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException ex) {
+            throw new FieldValidationException("email", "An account with this email already exists");
+        }
     }
 
     private Department resolveActiveDepartment(String name) {
