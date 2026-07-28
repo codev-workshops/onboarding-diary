@@ -279,7 +279,11 @@ surrogate primary key `id`, plus `created_at` / `updated_at` audit timestamps.
 | `entry_date` | date | required |
 | `title` | text | required |
 | `content` | text | required, long text |
-| `tags` | set of text | optional; stored in a `note_tags` child table keyed by `note_id` |
+| `tags` | set of text | optional; stored in a `note_tag` child table keyed by `note_id` |
+
+**Delivery status (2026-07-28):** delivered in Phase 4. The child table is named `note_tag` (as in
+the diagram in Section 2.9) with primary key (`note_id`, `tag`), so a note cannot hold the same
+normalised tag twice.
 
 ### 2.6 TaskCategory (Admin-maintained lookup)
 
@@ -427,6 +431,10 @@ Authorization shorthand:
 | PUT | `/api/feedback/{id}` | full feedback fields | updated feedback note | Owner, Admin |
 | DELETE | `/api/feedback/{id}` | - | 204 | Owner, Admin |
 
+**Delivery status (2026-07-28):** delivered in Phase 4 without paging; `GET /api/feedback` returns
+the full filtered list ordered by entry date descending. The recruit-only create rule (Section 6.2)
+is enforced in the service layer and returns `403` for Managers and Admins.
+
 ### 4.5 Additional Notes
 
 | Method | Path | Request | Response | Auth / Role |
@@ -436,6 +444,13 @@ Authorization shorthand:
 | GET | `/api/notes/{id}` | - | note detail incl. tags | Owner, Manager (overseen), Admin |
 | PUT | `/api/notes/{id}` | full note fields incl. tags[] | updated note | Owner, Admin |
 | DELETE | `/api/notes/{id}` | - | 204 | Owner, Admin |
+
+**Delivery status (2026-07-28):** delivered in Phase 4 without paging. Unlike feedback, notes are
+not role-restricted on create: any authenticated user may create their own notes. Tag count and tag
+length are validated after normalisation and reported as a single `tags` field error, and the `tag`
+filter is normalised the same way as stored tags so a search matches whatever case or padding the
+caller types. The `/feedback` and `/notes` pages in Section 5.1 are not built yet; both entry types
+are API-only so far.
 
 ### 4.6 Dashboard
 
