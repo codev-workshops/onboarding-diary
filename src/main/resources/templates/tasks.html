@@ -126,7 +126,7 @@
             }).join('');
     }
 
-    function loadTasks() {
+    function loadTasks(successMessage) {
         var url = '/api/tasks' + queryString({
             userId: targetUserId(),
             dateFrom: document.getElementById('filter-dateFrom').value,
@@ -137,6 +137,9 @@
         apiGet(url, function (payload) {
             tasks = payload;
             renderTasks();
+            if (successMessage) {
+                pageAlert(successMessage, 'success');
+            }
         });
     }
 
@@ -173,7 +176,9 @@
         document.getElementById('form-card').hidden = true;
     });
 
-    document.getElementById('apply-filters').addEventListener('click', loadTasks);
+    document.getElementById('apply-filters').addEventListener('click', function () {
+        loadTasks();
+    });
 
     document.getElementById('reset-filters').addEventListener('click', function () {
         document.getElementById('filter-dateFrom').value = '';
@@ -191,7 +196,9 @@
                 return String(task.id) === editId;
             })[0]);
         } else if (deleteId && window.confirm('Delete this task?')) {
-            apiDelete('/api/tasks/' + deleteId, loadTasks);
+            apiDelete('/api/tasks/' + deleteId, function () {
+                loadTasks('Task deleted');
+            });
         }
     });
 
@@ -208,8 +215,7 @@
             priority: form.priority.value
         }, function () {
             document.getElementById('form-card').hidden = true;
-            pageAlert(id ? 'Task updated' : 'Task created', 'success');
-            loadTasks();
+            loadTasks(id ? 'Task updated' : 'Task created');
         });
     });
 

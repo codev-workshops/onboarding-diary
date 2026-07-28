@@ -133,7 +133,7 @@
             }).join('');
     }
 
-    function loadIssues() {
+    function loadIssues(successMessage) {
         var url = '/api/issues' + queryString({
             userId: targetUserId(),
             dateFrom: document.getElementById('filter-dateFrom').value,
@@ -144,6 +144,9 @@
         apiGet(url, function (payload) {
             issues = payload;
             renderIssues();
+            if (successMessage) {
+                pageAlert(successMessage, 'success');
+            }
         });
     }
 
@@ -169,7 +172,9 @@
         document.getElementById('form-card').hidden = true;
     });
 
-    document.getElementById('apply-filters').addEventListener('click', loadIssues);
+    document.getElementById('apply-filters').addEventListener('click', function () {
+        loadIssues();
+    });
 
     document.getElementById('reset-filters').addEventListener('click', function () {
         document.getElementById('filter-dateFrom').value = '';
@@ -187,7 +192,9 @@
                 return String(issue.id) === editId;
             })[0]);
         } else if (deleteId && window.confirm('Delete this issue?')) {
-            apiDelete('/api/issues/' + deleteId, loadIssues);
+            apiDelete('/api/issues/' + deleteId, function () {
+                loadIssues('Issue deleted');
+            });
         }
     });
 
@@ -204,8 +211,7 @@
             resolutionNotes: form.resolutionNotes.value
         }, function () {
             document.getElementById('form-card').hidden = true;
-            pageAlert(id ? 'Issue updated' : 'Issue created', 'success');
-            loadIssues();
+            loadIssues(id ? 'Issue updated' : 'Issue created');
         });
     });
 

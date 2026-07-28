@@ -94,7 +94,7 @@
             }).join('');
     }
 
-    function loadNotes() {
+    function loadNotes(successMessage) {
         var url = '/api/notes' + queryString({
             userId: targetUserId(),
             dateFrom: document.getElementById('filter-dateFrom').value,
@@ -104,6 +104,9 @@
         apiGet(url, function (payload) {
             notes = payload;
             renderNotes();
+            if (successMessage) {
+                pageAlert(successMessage, 'success');
+            }
         });
     }
 
@@ -135,7 +138,9 @@
         document.getElementById('form-card').hidden = true;
     });
 
-    document.getElementById('apply-filters').addEventListener('click', loadNotes);
+    document.getElementById('apply-filters').addEventListener('click', function () {
+        loadNotes();
+    });
 
     document.getElementById('reset-filters').addEventListener('click', function () {
         document.getElementById('filter-dateFrom').value = '';
@@ -152,7 +157,9 @@
                 return String(note.id) === editId;
             })[0]);
         } else if (deleteId && window.confirm('Delete this note?')) {
-            apiDelete('/api/notes/' + deleteId, loadNotes);
+            apiDelete('/api/notes/' + deleteId, function () {
+                loadNotes('Note deleted');
+            });
         }
     });
 
@@ -167,8 +174,7 @@
             tags: parseTags(form.tags.value)
         }, function () {
             document.getElementById('form-card').hidden = true;
-            pageAlert(id ? 'Note updated' : 'Note created', 'success');
-            loadNotes();
+            loadNotes(id ? 'Note updated' : 'Note created');
         });
     });
 

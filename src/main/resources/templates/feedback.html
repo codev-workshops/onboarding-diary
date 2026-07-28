@@ -112,7 +112,7 @@
             }).join('');
     }
 
-    function loadFeedback() {
+    function loadFeedback(successMessage) {
         var url = '/api/feedback' + queryString({
             userId: targetUserId(),
             dateFrom: document.getElementById('filter-dateFrom').value,
@@ -122,6 +122,9 @@
         apiGet(url, function (payload) {
             feedbackNotes = payload;
             renderFeedback();
+            if (successMessage) {
+                pageAlert(successMessage, 'success');
+            }
         });
     }
 
@@ -137,7 +140,9 @@
         form.details.value = feedback ? feedback.details : '';
     }
 
-    document.getElementById('apply-filters').addEventListener('click', loadFeedback);
+    document.getElementById('apply-filters').addEventListener('click', function () {
+        loadFeedback();
+    });
 
     document.getElementById('reset-filters').addEventListener('click', function () {
         document.getElementById('filter-dateFrom').value = '';
@@ -154,7 +159,9 @@
                 return String(feedback.id) === editId;
             })[0]);
         } else if (deleteId && window.confirm('Delete this feedback note?')) {
-            apiDelete('/api/feedback/' + deleteId, loadFeedback);
+            apiDelete('/api/feedback/' + deleteId, function () {
+                loadFeedback('Feedback note deleted');
+            });
         }
     });
 
@@ -178,8 +185,7 @@
                 details: form.details.value
             }, function () {
                 document.getElementById('form-card').hidden = true;
-                pageAlert(id ? 'Feedback note updated' : 'Feedback note created', 'success');
-                loadFeedback();
+                loadFeedback(id ? 'Feedback note updated' : 'Feedback note created');
             });
         });
     }

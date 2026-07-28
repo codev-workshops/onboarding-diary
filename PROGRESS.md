@@ -349,7 +349,8 @@ cross-session feedback.
   unauthorized page request to the caller's dashboard" rule of section 5.1, and any JavaScript-level
   automated test - the client-side code is only exercised manually.
 - 2026-07-28: Phase 7 was delivered stacked on the Phase 6 branch `devin/1785219953-phase6-reports`
-  (PR #78). Every PR from Phase 1 onwards is still open and nothing has been merged to `main`, so a
+  (PR #78) as PR #79 (https://github.com/codev-workshops/onboarding-diary/pull/79) on branch
+  `devin/1785226946-phase7-ui`, which is still open. Every PR from Phase 1 onwards is still open and nothing has been merged to `main`, so a
   follow-up build session must branch from the tip of the Phase 7 branch and read `REQUIREMENTS.md`
   and `PROGRESS.md` from there. The natural next phase is the admin phase: the section 4.8
   endpoints, `/admin/users`, `/admin/reference-data`, `/recruits` and the section 4.9 write half,

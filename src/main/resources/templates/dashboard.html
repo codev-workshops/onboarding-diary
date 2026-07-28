@@ -7,7 +7,7 @@
     <h1>Dashboard</h1>
     <p class="alert" id="page-alert" hidden></p>
 
-    <section class="card">
+    <section class="card" th:if="${profile.role().name() != 'NEW_RECRUIT'}">
         <div th:replace="~{fragments/layout :: recruitPicker}"></div>
         <button type="button" id="reload" class="inline">Show dashboard</button>
     </section>
@@ -84,7 +84,10 @@
         apiGet('/api/dashboard' + queryString({ userId: targetUserId() }), renderDashboard);
     }
 
-    document.getElementById('reload').addEventListener('click', loadDashboard);
+    var reload = document.getElementById('reload');
+    if (reload) {
+        reload.addEventListener('click', loadDashboard);
+    }
     loadDashboard();
 </script>
 </body>
