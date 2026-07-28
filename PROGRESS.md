@@ -391,7 +391,7 @@ cross-session feedback.
   fetches `/api/**` with the `ACCESS_TOKEN` cookie. Do not add enum filters (deferred, assumption
   A4).
 - 2026-07-28: Extension 1 elaboration was delivered stacked on the Phase 7 branch
-  `devin/1785226946-phase7-ui` (PR #79) as PR EXT1_PR_URL_PLACEHOLDER on branch
+  `devin/1785226946-phase7-ui` (PR #79) as PR #80 (https://github.com/codev-workshops/onboarding-diary/pull/80) on branch
   `devin/1785230299-ext1-search`, which is open and must not be merged ahead of the phase PRs
   beneath it.
 
