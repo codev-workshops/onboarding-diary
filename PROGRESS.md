@@ -176,9 +176,10 @@ cross-session feedback.
   `V7` was additionally applied to a fresh Docker Compose Postgres 16 to confirm the SQL stays
   portable.
 - 2026-07-28: Phase 4 was delivered stacked on the Phase 3 branch
-  `devin/1785213965-phase3-task-issue-logs` (PR #75) as PR #76 (https://github.com/codev-workshops/onboarding-diary/pull/76), which is still open. Phase 5 should branch
-  from the tip of the Phase 4 branch `devin/1785216240-phase4-feedback-notes` and read
-  `REQUIREMENTS.md` and `PROGRESS.md` from that tip, since no PR has been merged to `main`.
+  `devin/1785213965-phase3-task-issue-logs` (PR #75) as PR #76
+  (https://github.com/codev-workshops/onboarding-diary/pull/76), which is still open. Phase 5 should
+  branch from the tip of the Phase 4 branch `devin/1785216240-phase4-feedback-notes` (PR #76) and
+  read `REQUIREMENTS.md` and `PROGRESS.md` from that tip, since no PR has been merged to `main`.
 - 2026-07-28: Notes for Phase 5 - Dashboard (§4.6, US-R10, US-M03, D7). All four entry
   repositories now exist, so the summary can be assembled from `TaskEntryRepository`,
   `IssueEntryRepository`, `FeedbackNoteRepository` and `AdditionalNoteRepository`; reuse
