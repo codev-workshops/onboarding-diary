@@ -55,6 +55,7 @@ cross-session feedback.
 | 2026-07-28 | Phase 2: department existence and `active` are enforced in `AuthService`/`ProfileService` (case-insensitive lookup), returning a field-level `department` error. | Closes the Phase 1 known issue that case-insensitive/active checks must live in the service layer. |
 | 2026-07-28 | Phase 2: security is stateless (`SessionCreationPolicy.STATELESS`) with CSRF disabled; unauthenticated HTML requests redirect to `/login` while `/api/**` returns `401`. | Stateless JWT needs no CSRF token, and pages and API clients need different unauthenticated behaviour. |
 | 2026-07-28 | Phase 2: login failures (wrong password, unknown email, deactivated account) all return the same `401` body "Invalid email or password". | US-R02: no user enumeration. |
+| 2026-07-28 | Phase 2: CSRF stays disabled even though pages authenticate with the `ACCESS_TOKEN` cookie, which browsers send automatically. | Product owner decision after a review flagged it; `SameSite=Lax` plus HttpOnly covers the classic vectors and no CORS origins are allowed. Revisit if cross-site clients or non-Lax flows appear. |
 
 ## Known Issues
 
@@ -70,6 +71,9 @@ cross-session feedback.
   8 hours and logout only clears the cookie, so a token copied out of a browser stays usable until
   it expires. Deactivating a user does take effect immediately because the JWT filter reloads the
   account on every request and rejects disabled users.
+- CSRF tokens are not issued: state-changing endpoints such as `PUT /api/me` and
+  `POST /api/auth/logout` rely on the cookie's `SameSite=Lax` flag rather than a CSRF token.
+  Accepted deliberately (see the Decisions Log); it is a hardening gap, not an open hole.
 - Admin-only behaviour (role changes, deactivation, the last-active-admin rule, manager
   assignments) and reference-data maintenance are not implemented; only the read-only
   `GET /api/departments` exists.
