@@ -873,15 +873,21 @@ Searchable entities and the fields matched in each:
 | Entity | Fields searched |
 |---|---|
 | Task Log (`TaskEntry`) | `title`, `description` |
-| Issue Log (`IssueEntry`) | `title`, `description` |
+| Issue Log (`IssueEntry`) | `title`, `description`, `resolution_notes` |
 | Feedback Notes (`FeedbackNote`) | `subject`, `details` |
-| Additional Notes (`AdditionalNote`) | `title`, `content` |
+| Additional Notes (`AdditionalNote`) | `title`, `content`, tag values (`note_tag.tag`) |
 
 - A row matches when **any** one of its searched fields contains the query text
-  (case-insensitively). `NULL` optional fields (task/issue `description`) simply do not match.
-- Not searched in this iteration: enum values (`status`, `category`, `severity`, `type`,
-  `priority`), dates, `resolution_notes`, note tags, and user fields such as name or email. Note
-  tags already have their own exact-match `tag` filter on `GET /api/notes` (Section 4.5).
+  (case-insensitively). `NULL` optional fields (task/issue `description`, `resolution_notes`) simply
+  do not match.
+- Issue `resolution_notes` and additional-note tags are in scope (product owner, 2026-07-28). A note
+  matches when any one of its tags contains the query as a substring, so the note reached through
+  the tag join is returned once however many of its tags match. This is looser than the existing
+  `tag` filter on `GET /api/notes` (Section 4.5), which stays an exact match after normalisation;
+  the two coexist, and because stored tags are already normalised to lower case, the query is
+  lower-cased before it is compared with them.
+- Not searched: enum values (`status`, `category`, `severity`, `type`, `priority`), dates, and user
+  fields such as name or email.
 
 **DESIGN DECISION - free-text only.** Search is *free text only* for the first iteration. It is
 deliberately **not** combined with the existing enum filters (task `status`/`category`, issue
@@ -894,8 +900,11 @@ it yet, while the per-entity list endpoints already offer those filters on their
 ### 9.3 Data Model Impact
 
 **No new tables, no new columns, no new entities.** Search reads the existing `task_entry`,
-`issue_entry`, `feedback_note` and `additional_note` tables through the existing repositories, so
-there is nothing to migrate on the entity side.
+`issue_entry`, `feedback_note`, `additional_note` and `note_tag` tables through the existing
+repositories, so there is nothing to migrate on the entity side. `note_tag` is already mapped as an
+`@ElementCollection` on `AdditionalNote` and is already joined by the existing `tag` filter, so the
+tag half of the note query is a `join` over that same collection with `distinct` applied so a note
+whose tags match several times is returned once.
 
 **Recommended architecture - plain SQL `LIKE`/`ILIKE` against the existing tables.** Each of the
 four repositories gains one query in the same style as the existing null-tolerant `search` methods
@@ -908,8 +917,8 @@ authorization call live in a new `SearchService`, mirroring how `DashboardServic
 
 **Indexing.** A leading-wildcard `LIKE` cannot use a standard B-tree index, so the recommendation
 for PostgreSQL is a **trigram GIN index** per searched text column (`CREATE EXTENSION pg_trgm;` then
-`CREATE INDEX ... USING gin (lower(title) gin_trgm_ops)` and the equivalent for the other seven
-columns), delivered as one new Flyway migration. Because the extension and the index type are
+`CREATE INDEX ... USING gin (lower(title) gin_trgm_ops)` and the equivalent for the other searched
+columns, `note_tag.tag` included), delivered as one new Flyway migration. Because the extension and the index type are
 PostgreSQL-only while migrations have so far been deliberately portable ANSI SQL, the migration must
 either be guarded so the H2 test database skips it, or the index creation must live in a
 PostgreSQL-only migration path; the build phase decides which, and the decision is recorded then.
@@ -1075,15 +1084,34 @@ Following the Section 8 pattern.
   search-history feature.
 - **A8** - Trigram (`pg_trgm`) indexes are available on the PostgreSQL deployment. If the extension
   cannot be enabled, the fallback is plain indexes and unindexed substring scans (Section 9.3).
+- **A9** (product owner, 2026-07-28, answers former Q1) - Issue `resolution_notes` and
+  additional-note tag values **are** in scope and are part of the field set in Section 9.2. Tags are
+  matched as substrings through the existing `note_tag` join, which is deliberately looser than the
+  exact-match `tag` filter on `GET /api/notes`; both behaviours coexist.
+- **A10** (product owner, 2026-07-28, answers former Q2) - A search targets **one user at a time**.
+  A Manager searches their own entries by default and one overseen recruit at a time by passing that
+  recruit's `userId`; there is no "all my recruits at once" mode. A cross-recruit search with results
+  labelled by recruit is deferred as possible future scope (Q6 below).
+
+**Answered - not being built now**
+
+These are decided; they simply require no work in the first iteration. They are recorded here rather
+than as open questions so the build session does not re-open them.
+
+- **Q3 - Highlighting the matched term in the excerpt: no** (product owner, 2026-07-28). Search
+  stays simple: the excerpt is plain text, with no server-side markup and no client-side
+  highlighting, so nothing about the pages' text-only rendering has to change.
+- **Q4 - Threshold for moving to PostgreSQL full-text search (`tsvector`): none set** (product
+  owner, 2026-07-28). Initial data volume is not expected to be large enough to cause a performance
+  problem, so substring matching with the Section 9.3 indexing stands until a performance issue is
+  actually observed; the question is parked, not scheduled.
+- **Q5 - Soft-deleted entries: no special handling** (product owner, 2026-07-28). Soft delete does
+  not exist (Section 8.2 question 4 is still open), so search simply returns whatever rows the
+  tables hold. If soft delete is ever introduced, the exclusion belongs to that change and applies
+  to search along with every other list.
 
 **Open questions**
 
-- **Q1** - Should search also cover `resolution_notes` on issues and note tags, or is the eight
-  column set of Section 9.2 the intended boundary?
-- **Q2** - Should a Manager be able to search across *all* of their overseen recruits at once
-  (no `userId`, results labelled by recruit), rather than one recruit at a time as specified here?
-- **Q3** - Should the matched term be highlighted in the excerpt, and if so, is server-side markup
-  acceptable given the pages currently render text only?
-- **Q4** - At what data volume does substring search need to become PostgreSQL full-text search
-  (`tsvector`)? No scale target is stated (Section 7).
-- **Q5** - Should search results respect a future soft-delete of entries (Section 8.2 question 4)?
+- **Q6** - Should a Manager eventually be able to search across *all* of their overseen recruits at
+  once (no `userId`, results labelled by recruit)? Deferred to future scope by A10; nothing is built
+  for it now.

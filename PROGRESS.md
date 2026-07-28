@@ -90,6 +90,7 @@ cross-session feedback.
 | 2026-07-28 | Extension 1 design decision - search is **free text only** in the first iteration: it is not combined with the existing enum filters (task `status`/`category`, issue `status`/`severity`, feedback `type`) or date ranges. Combining them is deferred as possible future scope (`REQUIREMENTS.md` §9.2, assumption A4). | Keeps one small parameter surface on a single cross-entity endpoint; the per-entity list endpoints already offer those filters, and no need for the combination is stated. |
 | 2026-07-28 | Extension 1 design decision - **a single global search bar** lives in the shared nav fragment `templates/fragments/layout.html` so it is on every page, with results on a dedicated `/search` page grouped by entity type. No per-page search boxes. | Search spans all four entry types, so a per-page box would be duplicated six times and scoped to one type each; the shared fragment already holds the one navigation (Phase 7 decision). |
 | 2026-07-28 | Extension 1 architecture recommendation - plain case-insensitive SQL `LIKE` against the existing tables through the existing repository query pattern, with trigram/GIN (or standard) indexes on the searched columns, and explicitly **no Elasticsearch or other search engine**. | Thousands of short rows, no ranking/stemming/faceting requirement, a stated single-process + one-Postgres deployment, and ownership/oversight scoping that is already SQL - an external index would duplicate the authorization model and be eventually consistent. See `REQUIREMENTS.md` §9.3. |
+| 2026-07-28 | Extension 1 open questions answered by the product owner: issue `resolution_notes` and additional-note tags **are** searchable (assumption A9); a search targets **one user at a time** with cross-recruit search deferred (A10); **no** match highlighting; **no** full-text-search threshold - park it until a performance issue is observed; **no** soft-delete handling. `REQUIREMENTS.md` §9.2 and §9.7 updated accordingly. | Product owner answers, 2026-07-28. Recorded as assumptions and "answered - not being built now" rather than open questions so the build session does not re-open them. |
 | 2026-07-28 | Extension 1 API shape - one endpoint `GET /api/search?q=...&userId=...` returning results grouped by entity type, authorized by the existing `EntryAccessService.resolveListTarget` (`403` out of scope, including unknown ids). | One authorization call and one round trip for the global bar, consistent with `/api/dashboard` and `/api/reports`. |
 | 2026-07-28 | Phase 6: every nullable filter parameter in the four repository `search` queries is wrapped in a `cast(...)`, for example `cast(:dateFrom as date) is null`. | PostgreSQL cannot infer the type of a bind parameter that is only compared with `null` and fails the whole query with "could not determine data type of parameter"; the cast makes the parameter typed. The H2 test database inferred the types, so the tests never saw it. |
 
@@ -371,7 +372,7 @@ cross-session feedback.
   trigram/GIN indexing; a justified rejection of Elasticsearch), the `GET /api/search` endpoint,
   the global-search-bar UI with a `/search` results page, validation rules (minimum 2 characters,
   trimming and whitespace collapsing, wildcard escaping, friendly empty state, a 50-row per-group
-  cap) and eight assumptions plus five open questions. Nothing was implemented: no entity,
+  cap) and the assumptions and questions. Nothing was implemented: no entity,
   migration, repository query, service, endpoint, template or test was added, and the test suite is
   unchanged at 138 tests.
 - 2026-07-28: Notes for the follow-up Search build session. Branch from the tip of this extension
@@ -385,7 +386,10 @@ cross-session feedback.
   `DashboardService` and `ReportService` compose the four repositories; authorize solely through
   `EntryAccessService.resolveListTarget` so an unknown `userId` stays a `403`; raise the `q` rules
   as `FieldValidationException`s to keep the `$.errors.q` shape; and escape `%`/`_` in the user's
-  query. The trigram index migration is PostgreSQL-only, unlike every migration so far, so decide
+  query. Search the tag values too: `note_tag` is already an `@ElementCollection` on
+  `AdditionalNote`, so the note query joins it and needs `distinct` so a note with several matching
+  tags comes back once, and issue `resolution_notes` joins the issue query's OR-list. The trigram
+  index migration is PostgreSQL-only, unlike every migration so far, so decide
   and record how the H2 test database skips it. UI work is a `/search` Thymeleaf page plus the
   search input in `templates/fragments/layout.html`, following the Phase 7 pattern of a shell that
   fetches `/api/**` with the `ACCESS_TOKEN` cookie. Do not add enum filters (deferred, assumption
@@ -394,6 +398,12 @@ cross-session feedback.
   `devin/1785226946-phase7-ui` (PR #79) as PR #80 (https://github.com/codev-workshops/onboarding-diary/pull/80) on branch
   `devin/1785230299-ext1-search`, which is open and must not be merged ahead of the phase PRs
   beneath it.
+- 2026-07-28: The product owner reviewed the elaboration and answered every Section 9.7 question in
+  the same session; the answers are folded into `REQUIREMENTS.md` (§9.2 field set, §9.3 tag join,
+  §9.7 assumptions A9/A10 and the "answered - not being built now" list) and into the Decisions Log
+  above. Only one question is genuinely open for Search - a future cross-recruit manager search
+  (Q6). The assumptions A1-A8 were accepted unchanged, so the build session should treat Section 9
+  as settled scope.
 
 ## Final Project Status (2026-07-28)
 
