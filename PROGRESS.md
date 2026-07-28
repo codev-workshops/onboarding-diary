@@ -30,11 +30,16 @@ cross-session feedback.
 | Date | Decision | Rationale |
 |---|---|---|
 | 2026-07-27 | Documentation-only baseline: `SOURCE_REQUIREMENTS.md`, `REQUIREMENTS.md`, `PROGRESS.md`. No application code or build tooling yet. | Requirements elaboration precedes implementation. |
+| 2026-07-27 | Manager access to recruit data is strictly read-only; only New Recruits create feedback notes. | Product owner decision. |
+| 2026-07-27 | Task categories are an Admin-maintained list seeded with Development, Documentation, Meetings, Training, Support, Other. | Product owner decision. |
+| 2026-07-27 | Departments are an Admin-maintained list seeded with a basic set plus Other. | Product owner decision. |
 | 2026-07-27 | Architecture: single layered Spring Boot monolith (controller/service/repository) with REST API + responsive web frontend, PostgreSQL. | Simplest design that covers the stated scope; see `REQUIREMENTS.md` section 3. |
 
 ## Known Issues
 
-- None yet.
+- Open items that block specific phases are tracked in `REQUIREMENTS.md` section 8.2.1 (first Admin
+  bootstrap, local PostgreSQL setup, auth mechanism confirmation, frontend technology, PDF library,
+  dashboard metric definitions).
 
 ## Feedback / Cross-session Notes
 

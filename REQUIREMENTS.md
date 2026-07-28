@@ -55,6 +55,7 @@ As a New Recruit, I want to create, view, update, and delete task entries (date,
 description, category, status, priority), so that I can track what I work on during onboarding.
 
 - Create requires date, title, category, status, priority; description is optional.
+- Category is chosen from the Admin-maintained category list (see US-A04).
 - The list shows my own tasks only, most recent date first.
 - Update preserves the owner and allows editing every field except the owner.
 - Delete asks for confirmation and removes the entry permanently.
@@ -65,6 +66,7 @@ As a New Recruit, I want to filter my task log by date, category, and status, so
 relevant tasks quickly.
 
 - Filters can be combined (AND semantics) and applied via a date range (from/to), category, status.
+- The category filter offers the Admin-maintained category list.
 - An empty result set shows an explanatory empty state, not an error.
 - Active filters are reflected in the URL query string so a filtered view can be shared/bookmarked.
 
@@ -92,6 +94,8 @@ share what is going well and what could improve.
 - Date, subject, type, and details are required.
 - Submitted feedback appears in my feedback list and in dashboard counts.
 - Feedback is visible to me, my overseeing Manager, and Admins.
+- Only recruits author feedback: Managers and Admins can read feedback but cannot create it, and
+  neither can comment on or annotate a recruit's entries.
 
 **US-R09 - Additional notes CRUD with tags**
 As a New Recruit, I want to create, view, update, and delete additional notes with tags (date,
@@ -162,7 +166,8 @@ accurate.
 As an Admin, I want to create, view, edit, and deactivate user accounts, so that the right people
 have the right access.
 
-- Admin can set name, email, role, department, and start date on any user.
+- Admin can set name, email, role, department (chosen from the department list), and start date on
+  any user.
 - Admin can change a user's role between New Recruit, Manager, and Admin.
 - Deactivated users cannot log in; their entries are retained.
 - Admin cannot remove their own Admin role if they are the last active Admin.
@@ -182,6 +187,20 @@ support and audit the onboarding process.
 - Admin can generate any user's report in PDF or CSV.
 - Admin can edit or delete any entry (used for correction/cleanup).
 
+**US-A04 - Maintain task categories and departments**
+As an Admin, I want to maintain the list of task categories and the list of departments, so that
+recruits and user profiles select from consistent, meaningful values.
+
+- Task categories start as: Development, Documentation, Meetings, Training, Support, Other.
+- Departments start as: Engineering, Product, Design, Quality Assurance, IT / Operations, Human
+  Resources, Finance, Sales, Marketing, Customer Support, Other.
+- Admin can add new categories and departments; both lists are visible to all users as selectable
+  options and only editable by Admin.
+- A category or department that is already referenced by a task or user cannot be deleted; it can
+  be deactivated so it no longer appears in selection lists while existing records keep their
+  value.
+- Names are unique (case-insensitive) within each list.
+
 ---
 
 ## 2. Data Model
@@ -198,7 +217,7 @@ surrogate primary key `id`, plus `created_at` / `updated_at` audit timestamps.
 | `email` | text | required, unique, login identifier |
 | `password_hash` | text | required, hashed (never plain text) |
 | `role` | enum | `NEW_RECRUIT` \| `MANAGER` \| `ADMIN` |
-| `department` | text | required |
+| `department_id` | FK -> Department.id | required, from the Admin-maintained list |
 | `start_date` | date | onboarding start date |
 | `active` | boolean | deactivated users cannot log in |
 
@@ -211,7 +230,7 @@ surrogate primary key `id`, plus `created_at` / `updated_at` audit timestamps.
 | `entry_date` | date | required ("date" in source) |
 | `title` | text | required |
 | `description` | text | optional, long text |
-| `category` | text/enum | required |
+| `category_id` | FK -> TaskCategory.id | required, from the Admin-maintained list |
 | `status` | enum | `NOT_STARTED` \| `IN_PROGRESS` \| `BLOCKED` \| `COMPLETED` |
 | `priority` | enum | `LOW` \| `MEDIUM` \| `HIGH` |
 
@@ -250,7 +269,28 @@ surrogate primary key `id`, plus `created_at` / `updated_at` audit timestamps.
 | `content` | text | required, long text |
 | `tags` | set of text | optional; stored in a `note_tags` child table keyed by `note_id` |
 
-### 2.6 ManagerAssignment (join entity for oversight)
+### 2.6 TaskCategory (Admin-maintained lookup)
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | PK | |
+| `name` | text | required, unique (case-insensitive) |
+| `active` | boolean | inactive categories are hidden from selection but keep existing references |
+
+Seeded with: Development, Documentation, Meetings, Training, Support, Other.
+
+### 2.7 Department (Admin-maintained lookup)
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | PK | |
+| `name` | text | required, unique (case-insensitive) |
+| `active` | boolean | inactive departments are hidden from selection but keep existing references |
+
+Seeded with: Engineering, Product, Design, Quality Assurance, IT / Operations, Human Resources,
+Finance, Sales, Marketing, Customer Support, Other.
+
+### 2.8 ManagerAssignment (join entity for oversight)
 
 Needed because the Manager-to-Recruit oversight relationship is many-to-many.
 
@@ -263,11 +303,13 @@ Needed because the Manager-to-Recruit oversight relationship is many-to-many.
 
 Unique constraint on (`manager_id`, `recruit_id`).
 
-### 2.7 Relationships
+### 2.9 Relationships
 
 - `User` 1 - * `TaskEntry`, `IssueEntry`, `FeedbackNote`, `AdditionalNote` (via `owner_id`).
   Deleting a user cascades to their entries; in practice users are deactivated, not deleted.
 - `AdditionalNote` 1 - * tag values.
+- `TaskCategory` 1 - * `TaskEntry`; `Department` 1 - * `User`. Lookup rows are deactivated, not
+  deleted, once referenced.
 - `User` (Manager) * - * `User` (New Recruit) through `ManagerAssignment`.
 
 ```mermaid
@@ -277,6 +319,8 @@ erDiagram
     USER ||--o{ FEEDBACK_NOTE : "owns"
     USER ||--o{ ADDITIONAL_NOTE : "owns"
     ADDITIONAL_NOTE ||--o{ NOTE_TAG : "has"
+    TASK_CATEGORY ||--o{ TASK_ENTRY : "classifies"
+    DEPARTMENT ||--o{ USER : "groups"
     USER ||--o{ MANAGER_ASSIGNMENT : "manager of"
     USER ||--o{ MANAGER_ASSIGNMENT : "recruit in"
 ```
@@ -354,7 +398,7 @@ Authorization shorthand:
 | Method | Path | Request | Response | Auth / Role |
 |---|---|---|---|---|
 | GET | `/api/feedback` | query: `userId?`, `type?`, `dateFrom?`, `dateTo?`, paging | list of feedback summaries | Owner; Manager (overseen) and Admin may pass `userId` |
-| POST | `/api/feedback` | date, subject, type, details | created feedback note | Owner |
+| POST | `/api/feedback` | date, subject, type, details | created feedback note | Owner, and only when the caller's role is New Recruit |
 | GET | `/api/feedback/{id}` | - | feedback detail | Owner, Manager (overseen), Admin |
 | PUT | `/api/feedback/{id}` | full feedback fields | updated feedback note | Owner, Admin |
 | DELETE | `/api/feedback/{id}` | - | 204 | Owner, Admin |
@@ -394,6 +438,17 @@ Authorization shorthand:
 | POST | `/api/users/{managerId}/recruits` | recruitId | 201 assignment created | Admin |
 | DELETE | `/api/users/{managerId}/recruits/{recruitId}` | - | 204 | Admin |
 
+### 4.9 Reference Data (task categories and departments)
+
+| Method | Path | Request | Response | Auth / Role |
+|---|---|---|---|---|
+| GET | `/api/categories` | query: `active?` | list of task categories | Any authenticated |
+| POST | `/api/categories` | name | created category | Admin |
+| PUT | `/api/categories/{id}` | name, active | updated category | Admin |
+| GET | `/api/departments` | query: `active?` | list of departments | Public (needed by signup) |
+| POST | `/api/departments` | name | created department | Admin |
+| PUT | `/api/departments/{id}` | name, active | updated department | Admin |
+
 ---
 
 ## 5. UI Flows
@@ -410,12 +465,13 @@ Authorization shorthand:
 | Task detail/edit | `/tasks/{id}` | Own only | Own; read-only for overseen recruits | Any |
 | Issue Log (own) | `/issues` | Yes | Yes | Yes |
 | Issue detail/edit | `/issues/{id}` | Own only | Own; read-only for overseen recruits | Any |
-| Feedback Notes | `/feedback` | Yes | Yes | Yes |
+| Feedback Notes | `/feedback` | Yes (create/edit own) | Read-only (own + overseen recruits) | Read-only (any) |
 | Additional Notes | `/notes` | Yes | Yes | Yes |
 | Reports | `/reports` | Own data only | Own + overseen recruits | Any user |
 | My Recruits | `/recruits` | No | Yes | Yes |
 | Recruit detail (read-only entries + dashboard) | `/recruits/{id}` | No | Overseen only | Any |
 | User Management | `/admin/users` | No | No | Yes |
+| Reference Data (categories, departments) | `/admin/reference-data` | No | No | Yes |
 
 Unauthorized page access redirects to the caller's dashboard with an explanatory message;
 unauthenticated access redirects to `/login`.
@@ -424,7 +480,8 @@ unauthenticated access redirects to `/login`.
 
 - **Login/Sign up** -> Dashboard on success.
 - **Dashboard** is the hub: top navigation links to Task Log, Issue Log, Feedback, Notes, Reports,
-  Profile; Managers/Admins also see My Recruits; Admins also see User Management.
+  Profile; Managers/Admins also see My Recruits; Admins also see User Management and Reference
+  Data.
 - **Each log page** lists entries with filters, a "New entry" action opening a create form, and
   row actions for view/edit/delete (delete confirms first). Saving or cancelling returns to the
   list with filters preserved.
@@ -444,6 +501,7 @@ flowchart TD
     D --> R["Reports"]
     D --> MR["My Recruits (Manager, Admin)"]
     D --> AU["User Management (Admin)"]
+    D --> AR["Reference Data (Admin)"]
     T --> TD["Task detail / edit"]
     I --> ID["Issue detail / edit"]
     F --> FD["Feedback detail"]
@@ -464,7 +522,7 @@ flowchart TD
 - `email`: required, valid email format, unique, max 255 characters, stored lower-case.
 - `password`: required on signup, minimum 8 characters; never returned by the API.
 - `role`: required, one of `NEW_RECRUIT`, `MANAGER`, `ADMIN`.
-- `department`: required, 1-100 characters.
+- `department`: required, must reference an active department from the Admin-maintained list.
 - `start_date`: required, valid date.
 
 **TaskEntry**
@@ -472,7 +530,7 @@ flowchart TD
 - `entry_date`: required, valid date.
 - `title`: required, 1-150 characters.
 - `description`: optional, max 5000 characters.
-- `category`: required, 1-50 characters (from a controlled list).
+- `category`: required, must reference an active task category from the Admin-maintained list.
 - `status`: required, one of `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`.
 - `priority`: required, one of `LOW`, `MEDIUM`, `HIGH`.
 
@@ -499,6 +557,11 @@ flowchart TD
 - `content`: required, 1-10000 characters.
 - `tags`: optional, at most 10 tags, each 1-30 characters, trimmed, lower-cased, de-duplicated.
 
+**TaskCategory / Department (reference data)**
+
+- `name`: required, 1-50 characters, unique case-insensitively within its list.
+- `active`: required boolean; a referenced row may be deactivated but not deleted.
+
 **Report / filter parameters**
 
 - `dateFrom` and `dateTo`: required for reports, valid dates, `dateFrom <= dateTo`.
@@ -507,7 +570,10 @@ flowchart TD
 
 ### 6.2 Business rules
 
-- Only the owner of an entry, or an Admin, may update or delete it. Managers have read-only access.
+- Only the owner of an entry, or an Admin, may update or delete it. Managers have strictly
+  read-only access to their recruits' data and cannot comment on entries.
+- Only users with role New Recruit may create feedback notes.
+- Only an Admin may create, rename, or deactivate task categories and departments.
 - A Manager may read entries, dashboards, and reports only for recruits assigned to them; any other
   target returns `403`.
 - A New Recruit may only ever access their own data.
@@ -554,8 +620,11 @@ flowchart TD
 
 1. Enum values for task status/priority, issue status/severity are not enumerated in the source;
    the sets in Section 6 are assumed.
-2. Task `category` is assumed to be a short controlled list rather than free text; the actual list
-   is unknown.
+2. Task `category` is a fixed, Admin-maintained list seeded with Development, Documentation,
+   Meetings, Training, Support, Other (confirmed by the product owner). `department` is likewise
+   an Admin-maintained list seeded with a basic set plus Other, and Manager access to recruit data
+   is strictly read-only with only New Recruits creating feedback (both confirmed). Reference-data
+   rows are deactivated rather than deleted once referenced (assumed).
 3. Self sign-up creates a New Recruit; Manager and Admin accounts are created or promoted by an
    Admin.
 4. Manager-to-Recruit oversight is many-to-many and maintained by Admins.
@@ -575,19 +644,33 @@ flowchart TD
 
 ### 8.2 Open questions
 
-1. Should Managers be able to add feedback or comments on a recruit's entries, or is their access
-   strictly read-only?
-2. Is there a fixed category list for tasks, and who maintains it?
-3. Are there fixed departments, or is department free text?
-4. Can a recruit have more than one Manager, and does a Manager also have a Manager?
-5. Should reports be available for multiple recruits at once (e.g. a whole department), or one
+1. Can a recruit have more than one Manager, and does a Manager also have a Manager?
+2. Should reports be available for multiple recruits at once (e.g. a whole department), or one
    recruit per report?
-6. What exactly counts towards "task completion progress" - completed/total tasks overall, or
+3. What exactly counts towards "task completion progress" - completed/total tasks overall, or
    within a period?
-7. How many "recent entries" should the dashboard show, and over what window?
-8. Is email verification or password reset expected for the email/password flow?
-9. Should deleting an entry be a soft delete for auditability?
-10. Any data retention rules once onboarding completes?
+4. How many "recent entries" should the dashboard show, and over what window?
+5. Is email verification or password reset expected for the email/password flow?
+6. Should deleting an entry be a soft delete for auditability?
+7. Any data retention rules once onboarding completes?
+
+### 8.2.1 Blockers before coding starts
+
+None of these prevent Phase 1 (project scaffold), but each blocks the phase noted:
+
+- **How the first Admin account is created** (blocks Phase 2): self sign-up only creates recruits,
+  so the initial Admin must come from a seed migration or a bootstrap configuration property.
+- **Local PostgreSQL availability and credentials** (blocks Phase 1): database name, user, and
+  password conventions for local development, plus whether tests run against an in-memory database
+  or a throwaway PostgreSQL instance.
+- **Auth mechanism confirmation** (blocks Phase 2): JWT bearer tokens vs. session cookies is
+  currently an assumption (Section 7) and shapes both the security config and the frontend.
+- **Frontend technology within "responsive web frontend"** (blocks any UI work): server-rendered
+  templates vs. a JavaScript SPA is not yet fixed; the source only fixes the backend stack.
+- **PDF library choice** (blocks Phase 6): a single library must be approved before report export
+  is implemented.
+- **Dashboard definitions** (blocks Phase 5): the "task completion progress" formula and the
+  recent-entries count/window above must be settled.
 
 ### 8.3 Proposed but out of scope
 
