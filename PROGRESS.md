@@ -223,8 +223,8 @@ cross-session feedback.
   no caching or performance targets). No new Flyway migration was needed, so the schema is unchanged
   from `V7`.
 - 2026-07-28: Phase 5 was delivered stacked on the Phase 4 branch
-  `devin/1785216240-phase4-feedback-notes` (PR #76) as PR #PENDING
-  (URL_PENDING) on branch `devin/1785218358-phase5-dashboard`, which is still open. Phase 6 should
+  `devin/1785216240-phase4-feedback-notes` (PR #76) as PR #77
+  (https://github.com/codev-workshops/onboarding-diary/pull/77) on branch `devin/1785218358-phase5-dashboard`, which is still open. Phase 6 should
   branch from the tip of that branch and read `REQUIREMENTS.md` and `PROGRESS.md` from there, since
   no PR has been merged to `main`.
 - 2026-07-28: Notes for Phase 6 - Reports (§4.7, US-R11, US-M04, decision D6). Pick and
