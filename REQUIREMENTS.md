@@ -6,6 +6,12 @@ scope. Nothing here adds features beyond the source; ideas that go beyond it are
 
 Roles referenced throughout: **New Recruit**, **Manager**, **Admin**.
 
+**Decision (2026-07-28, spec extension):** [Section 9 - Extension: Search](#9-extension-search) is
+new scope elaborated *beyond* `SOURCE_REQUIREMENTS.md` and beyond the original seven phases. It was
+added after Phase 7 at the product owner's request, so "full-text search across all entry types",
+previously listed as out of scope in Section 8.3, is now an approved extension with its own
+requirements. Sections 1-8 are unchanged by it; nothing in Section 9 is implemented yet.
+
 ## Contents
 
 1. [User Stories](#1-user-stories)
@@ -16,6 +22,7 @@ Roles referenced throughout: **New Recruit**, **Manager**, **Admin**.
 6. [Validation Rules](#6-validation-rules)
 7. [Non-Functional Notes](#7-non-functional-notes)
 8. [Open Questions / Assumptions](#8-open-questions--assumptions)
+9. [Extension: Search](#9-extension-search)
 
 ---
 
@@ -793,10 +800,318 @@ part of the scope unless explicitly added to the source requirements.
 - Email or in-app notifications (e.g. reminders for overdue tasks, alerts on critical issues).
 - Comment threads or manager replies on entries.
 - File/screenshot attachments on entries.
-- Full-text search across all entry types.
+- ~~Full-text search across all entry types.~~ **Promoted to approved scope on 2026-07-28** - see
+  [Section 9 - Extension: Search](#9-extension-search). Elaboration only; no code exists yet.
 - Onboarding checklist templates auto-generating tasks for new recruits.
 - Department- or cohort-level analytics for Admins.
 - SSO / OAuth login, password reset by email, and multi-factor authentication.
 - Calendar integration or a timeline visualisation of the onboarding journey.
 - Bulk import/export of entries beyond the specified PDF/CSV reports.
 - Audit log of who viewed a recruit's data.
+
+---
+
+## 9. Extension: Search
+
+New scope beyond `SOURCE_REQUIREMENTS.md` and beyond the original seven phases, elaborated on
+2026-07-28. This section is specification only - no search entity, migration, endpoint, query or
+page exists yet. It follows the structure of Sections 1-8: user stories with acceptance criteria,
+data model impact, API, UI, validation and assumptions. Everything here reuses the ownership and
+scope model of Sections 4 and 6.2 (owner scope, Manager-overseen scope, Admin full scope, `403` for
+anything out of scope).
+
+### 9.1 User Stories
+
+#### 9.1.1 New Recruit
+
+**US-S01 - Search my own entries**
+As a New Recruit, I want to type words into a search box and see every entry of mine that contains
+them, so that I can find something I wrote without remembering which log it went into.
+
+- The search covers my Task Log, Issue Log, Feedback Notes and Additional Notes (Section 9.2).
+- Matching is case-insensitive and matches anywhere inside a field, not only at the start of a word.
+- Results are grouped by entry type and, inside a group, ordered by entry date descending with the
+  same tie-break as everywhere else (creation timestamp, then id).
+- Only my own entries are ever returned; another user's matching entry is never shown, even when it
+  contains the exact search term.
+- Searching with a scope I am not allowed (any `userId` other than my own) returns `403`, matching
+  Section 6.2.
+- A query that matches nothing returns an empty result with a friendly "no results" state, not an
+  error.
+- Each result shows enough context to identify the entry (type, entry date, title/subject and a
+  short excerpt of the matched text) and links to that entry on its existing page.
+
+#### 9.1.2 Manager
+
+**US-S02 - Search my own and my recruits' entries**
+As a Manager, I want to search across my own entries and the entries of the recruits I oversee, so
+that I can find a specific task, blocker, feedback note or note without opening each recruit's
+lists.
+
+- Without a target, the search covers my own entries only, exactly like US-S01.
+- Supplying the user id of a recruit assigned to me via `ManagerAssignment` scopes the search to
+  that recruit's entries; results are read-only, consistent with US-M02.
+- Supplying the user id of a user not assigned to me - or an unknown user id - returns `403`, never
+  `404`, matching the existing `EntryAccessService.resolveListTarget` behaviour (Sections 4.6, 4.7).
+- Results from a recruit carry no action links that a Manager may not perform: view only, no edit or
+  delete.
+
+#### 9.1.3 Admin
+
+**US-S03 - Search everything**
+As an Admin, I want to search across all users' entries, so that I can locate any record in the
+system for support or audit purposes.
+
+- With no target, the search covers the Admin's own entries.
+- With any user id, the search covers that user's entries; no assignment is required (US-A03).
+- Results carry the same grouping, ordering and excerpt shape as for the other roles.
+
+### 9.2 Scope of Search
+
+Searchable entities and the fields matched in each:
+
+| Entity | Fields searched |
+|---|---|
+| Task Log (`TaskEntry`) | `title`, `description` |
+| Issue Log (`IssueEntry`) | `title`, `description`, `resolution_notes` |
+| Feedback Notes (`FeedbackNote`) | `subject`, `details` |
+| Additional Notes (`AdditionalNote`) | `title`, `content`, tag values (`note_tag.tag`) |
+
+- A row matches when **any** one of its searched fields contains the query text
+  (case-insensitively). `NULL` optional fields (task/issue `description`, `resolution_notes`) simply
+  do not match.
+- Issue `resolution_notes` and additional-note tags are in scope (product owner, 2026-07-28). A note
+  matches when any one of its tags contains the query as a substring, so the note reached through
+  the tag join is returned once however many of its tags match. This is looser than the existing
+  `tag` filter on `GET /api/notes` (Section 4.5), which stays an exact match after normalisation;
+  the two coexist, and because stored tags are already normalised to lower case, the query is
+  lower-cased before it is compared with them.
+- Not searched: enum values (`status`, `category`, `severity`, `type`, `priority`), dates, and user
+  fields such as name or email.
+
+**DESIGN DECISION - free-text only.** Search is *free text only* for the first iteration. It is
+deliberately **not** combined with the existing enum filters (task `status`/`category`, issue
+`status`/`severity`, feedback `type`) or with date ranges. The search endpoint accepts a query
+string and an optional scope target, nothing else. Combining free text with the existing per-entity
+enum filters is deferred as possible future scope (Assumption A4, Section 9.7): it multiplies the
+parameter surface by four entity types on a single global endpoint and there is no stated need for
+it yet, while the per-entity list endpoints already offer those filters on their own.
+
+### 9.3 Data Model Impact
+
+**No new tables, no new columns, no new entities.** Search reads the existing `task_entry`,
+`issue_entry`, `feedback_note`, `additional_note` and `note_tag` tables through the existing
+repositories, so there is nothing to migrate on the entity side. `note_tag` is already mapped as an
+`@ElementCollection` on `AdditionalNote` and is already joined by the existing `tag` filter, so the
+tag half of the note query is a `join` over that same collection with `distinct` applied so a note
+whose tags match several times is returned once.
+
+**Recommended architecture - plain SQL `LIKE`/`ILIKE` against the existing tables.** Each of the
+four repositories gains one query in the same style as the existing null-tolerant `search` methods
+(Phases 3-4), of the form `lower(field) like lower(concat('%', :q, '%'))` across the entity's
+searched fields OR-combined, plus the existing owner predicate. Case-insensitivity is expressed with
+`lower(...)` on both sides rather than PostgreSQL's `ILIKE`, so the same JPQL keeps working on the
+H2 test database (D3) exactly as the current queries do. Result assembly, grouping and the
+authorization call live in a new `SearchService`, mirroring how `DashboardService` and
+`ReportService` compose the four repositories.
+
+**Indexing.** A leading-wildcard `LIKE` cannot use a standard B-tree index, so the recommendation
+for PostgreSQL is a **trigram GIN index** per searched text column (`CREATE EXTENSION pg_trgm;` then
+`CREATE INDEX ... USING gin (lower(title) gin_trgm_ops)` and the equivalent for the other searched
+columns, `note_tag.tag` included), delivered as one new Flyway migration. Because the extension and the index type are
+PostgreSQL-only while migrations have so far been deliberately portable ANSI SQL, the migration must
+either be guarded so the H2 test database skips it, or the index creation must live in a
+PostgreSQL-only migration path; the build phase decides which, and the decision is recorded then.
+Standard (non-trigram) indexes on the searched columns are the fallback if `pg_trgm` is unavailable:
+they do not accelerate a leading wildcard, which is acceptable at the data volumes this application
+targets (Section 7 states no scale targets).
+
+**Explicitly NOT Elasticsearch (or any separate search engine).** Justification:
+
+- **Volume.** The corpus is one department's onboarding diary - thousands of short rows, not
+  millions of documents. PostgreSQL with trigram indexes answers this comfortably; a search cluster
+  is orders of magnitude more capacity than the data needs.
+- **Operational cost.** Elasticsearch adds a second datastore to run, secure, back up and version,
+  against a stated deployment target of "local development - one Spring Boot process plus a
+  PostgreSQL container" (Section 7). Section 3 explicitly rejects extra service boundaries, brokers
+  and caches for exactly this reason.
+- **Consistency.** A separate engine needs an indexing pipeline and becomes eventually consistent
+  with the database, so a recruit could save an entry and not find it a second later. A SQL query
+  is read-your-writes correct for free.
+- **Authorization.** Ownership and Manager-oversight scoping (Section 6.2) are already SQL
+  predicates joined against `manager_assignment`. Reproducing that scoping inside an external index
+  means duplicating the authorization model - the most security-sensitive part of the system - in a
+  second place.
+- **Feature need.** The requirement is substring matching over eight short text columns. Ranking,
+  stemming, fuzzy matching, synonyms and faceting - the reasons to adopt a search engine - are not
+  asked for. If they are ever needed, PostgreSQL's built-in full-text search (`tsvector`/`tsquery`)
+  is the next step before any external engine.
+
+### 9.4 REST API Endpoints
+
+Same conventions as Section 4: prefixed `/api`, JSON, `401` unauthenticated, `403` when the
+role/ownership check fails.
+
+**DESIGN DECISION - one global search endpoint.** A single endpoint queries all four entity types
+and returns results grouped by type, rather than adding a `q` parameter to each of the four existing
+list endpoints. One endpoint means one authorization call, one place for the minimum-length and
+trimming rules, and one round trip for the global search bar (Section 9.5). No per-entity enum
+filter parameters are accepted (Section 9.2).
+
+| Method | Path | Request | Response | Auth / Role |
+|---|---|---|---|---|
+| GET | `/api/search` | query: `q` (required), `userId?` (defaults to the caller) | results grouped by entity type plus per-type and total counts | Owner; Manager (overseen) and Admin may pass `userId` |
+
+Response shape (illustrative):
+
+```json
+{
+  "query": "onboarding",
+  "userId": 42,
+  "totalResults": 3,
+  "results": {
+    "tasks":    [ { "id": 7, "entryDate": "2026-02-03", "title": "...", "excerpt": "..." } ],
+    "issues":   [],
+    "feedback": [ { "id": 2, "entryDate": "2026-02-01", "title": "...", "excerpt": "..." } ],
+    "notes":    [ { "id": 9, "entryDate": "2026-01-28", "title": "...", "excerpt": "..." } ]
+  }
+}
+```
+
+- `title` carries the entity's headline field (`subject` for feedback notes), matching the
+  `recentEntries` convention of Section 4.6, so clients render one result shape for all four types.
+- `excerpt` is a short snippet of the matched text; the matched term is not highlighted server-side.
+- Every group is always present, empty when it has no matches, so clients need no null handling.
+- `userId` is resolved by the existing `EntryAccessService.resolveListTarget`, so behaviour is
+  identical to `/api/dashboard` and `/api/reports`: the caller's own id by default, an overseen
+  recruit or any user for an Admin, and `403` for anything else including an unknown id.
+- `401` when unauthenticated; `400` with `$.errors.q` when the query fails the Section 9.6 rules.
+- Not paginated in this iteration, consistent with every other list in the application (Section 9.6
+  caps the result count instead).
+
+### 9.5 UI
+
+**DESIGN DECISION - one global search bar, not per-page search.** The search input lives in the
+shared navigation fragment (`templates/fragments/layout.html`), so it is available on every
+authenticated page, and it uses the existing nav styling and spacing rather than introducing a new
+component style. Per-page search boxes are rejected: they would duplicate the control on six pages,
+each one scoped to a single entity type, which contradicts the point of a global search, and the
+existing per-page filters (Section 5.1) already handle per-entity narrowing.
+
+| Page | Path | New Recruit | Manager | Admin |
+|---|---|---|---|---|
+| Search results | `/search` | Yes (own entries) | Yes (own + overseen recruits) | Yes (any user) |
+
+- Submitting the nav search bar navigates to `/search?q=<query>` (plus `&userId=<id>` when a
+  Manager or Admin has entered a target), so a search is shareable and bookmarkable exactly like the
+  filtered list views of US-R05.
+- `/search` is a Thymeleaf page in the Phase 7 style: a shell that shares the nav fragment and
+  fetches `GET /api/search` with the `ACCESS_TOKEN` cookie (D4/D5). No new backend page logic beyond
+  resolving the caller's profile for the navigation.
+- Results are rendered as four labelled groups - Tasks, Issues, Feedback Notes, Additional Notes -
+  each showing its count, with the group's rows listing entry date, title/subject and the excerpt.
+  A group with no matches renders a short "No matching …" line rather than disappearing, so the
+  covered scope stays visible.
+- Every row links to the owning page (`/tasks`, `/issues`, `/feedback`, `/notes`) for the entry, and
+  rows for another user's entries carry no edit or delete action.
+- The search bar keeps the submitted query visible after navigation so the user can refine it.
+- Manager/Admin targeting reuses the existing recruit-user-id field pattern of Phase 7 rather than a
+  recruit picker, because `GET /api/users/me/recruits` is still part of the deferred admin phase
+  (Section 4.8).
+- Empty result state: a single friendly message ("No entries match \"<query>\"." plus a hint to try
+  fewer or shorter words), never an error banner.
+- Responsive like every other page (Section 7): the nav search bar collapses with the rest of the
+  navigation on small screens.
+
+### 9.6 Validation Rules
+
+**Search parameters**
+
+- `q`: required. Missing, empty or whitespace-only `q` is a `400` with `$.errors.q`, in the
+  `FieldValidationException` shape used by the rest of the API.
+- `q` is trimmed before anything else, and internal runs of whitespace are collapsed to a single
+  space, so `"  onboarding  "` and `"onboarding"` are the same search.
+- Minimum length **2 characters after trimming**. A shorter query is a `400` with `$.errors.q`
+  ("Search query must be at least 2 characters"), because a single character matches almost every
+  row through a leading-wildcard `LIKE` and is never a useful search. The nav search bar disables
+  submission below the same threshold so the common case never reaches the server.
+- Maximum length 100 characters after trimming; longer is a `400` with `$.errors.q`.
+- The whole trimmed query is matched as one literal substring - it is not split into words, and
+  there are no operators (no `AND`/`OR`/quoting/wildcards). The SQL wildcards `%` and `_` and the
+  escape character in a user's query are escaped so they match literally rather than acting as
+  wildcards.
+- `userId`: optional, defaults to the caller; validated by the existing scope rules, `403` when out
+  of scope (Sections 6.2, 9.4).
+- No enum, date, category, severity or type parameters are accepted; supplying one is ignored rather
+  than rejected, so adding them later is not a breaking change.
+
+**Results**
+
+- An empty result set is a `200` with all four groups empty and `totalResults: 0` - never a `404`
+  and never an error (US-S01).
+- Each entity group is capped at 50 rows and the response reports whether a group was truncated, so
+  a very broad query cannot return an unbounded payload while the application remains unpaginated
+  (Assumption A5).
+- Excerpts are capped at roughly 200 characters and taken around the first match in the first
+  matching field.
+
+### 9.7 Open Questions / Assumptions (Search)
+
+Following the Section 8 pattern.
+
+**Assumptions made**
+
+- **A1** - Search results respect exactly the same scope model as the entry lists: owner scope by
+  default, Manager access only to assigned recruits, Admin access to everyone, `403` otherwise. No
+  new authorization concept is introduced.
+- **A2** - Substring (`LIKE '%q%'`) semantics are what users expect here, rather than word/stemmed
+  matching. The source requirements say nothing about search semantics.
+- **A3** - Matching is case-insensitive and accent-sensitive; no locale-specific collation or
+  accent folding is assumed.
+- **A4** - **Combining free text with the existing enum filters (task `status`/`category`, issue
+  `status`/`severity`, feedback `type`) and with date ranges is deferred as possible future scope.**
+  The first iteration is free-text only (Section 9.2). When it is picked up, the natural shape is
+  either per-entity filter parameters on `/api/search` or a `q` parameter added to the four existing
+  list endpoints; that choice is deliberately not made now.
+- **A5** - Result sets are small enough that a per-type cap (50) is an acceptable substitute for
+  paging, matching the unpaginated state of every other list endpoint. If paging is added
+  application-wide (the standing Phase 3-7 known issue), `/api/search` adopts the same mechanism -
+  most likely per-group paging, since one global page number across four heterogeneous groups is
+  ambiguous.
+- **A6** - Relevance ranking is not required: results are ordered by entry date descending within
+  each group, like every other list, rather than by a match score.
+- **A7** - Searching is a read-only operation and is not audited; there is no saved-search or
+  search-history feature.
+- **A8** - Trigram (`pg_trgm`) indexes are available on the PostgreSQL deployment. If the extension
+  cannot be enabled, the fallback is plain indexes and unindexed substring scans (Section 9.3).
+- **A9** (product owner, 2026-07-28, answers former Q1) - Issue `resolution_notes` and
+  additional-note tag values **are** in scope and are part of the field set in Section 9.2. Tags are
+  matched as substrings through the existing `note_tag` join, which is deliberately looser than the
+  exact-match `tag` filter on `GET /api/notes`; both behaviours coexist.
+- **A10** (product owner, 2026-07-28, answers former Q2) - A search targets **one user at a time**.
+  A Manager searches their own entries by default and one overseen recruit at a time by passing that
+  recruit's `userId`; there is no "all my recruits at once" mode. A cross-recruit search with results
+  labelled by recruit is deferred as possible future scope (Q6 below).
+
+**Answered - not being built now**
+
+These are decided; they simply require no work in the first iteration. They are recorded here rather
+than as open questions so the build session does not re-open them.
+
+- **Q3 - Highlighting the matched term in the excerpt: no** (product owner, 2026-07-28). Search
+  stays simple: the excerpt is plain text, with no server-side markup and no client-side
+  highlighting, so nothing about the pages' text-only rendering has to change.
+- **Q4 - Threshold for moving to PostgreSQL full-text search (`tsvector`): none set** (product
+  owner, 2026-07-28). Initial data volume is not expected to be large enough to cause a performance
+  problem, so substring matching with the Section 9.3 indexing stands until a performance issue is
+  actually observed; the question is parked, not scheduled.
+- **Q5 - Soft-deleted entries: no special handling** (product owner, 2026-07-28). Soft delete does
+  not exist (Section 8.2 question 4 is still open), so search simply returns whatever rows the
+  tables hold. If soft delete is ever introduced, the exclusion belongs to that change and applies
+  to search along with every other list.
+
+**Open questions**
+
+- **Q6** - Should a Manager eventually be able to search across *all* of their overseen recruits at
+  once (no `userId`, results labelled by recruit)? Deferred to future scope by A10; nothing is built
+  for it now.
