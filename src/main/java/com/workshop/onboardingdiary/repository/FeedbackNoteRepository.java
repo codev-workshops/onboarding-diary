@@ -4,6 +4,7 @@ import com.workshop.onboardingdiary.entity.FeedbackNote;
 import com.workshop.onboardingdiary.entity.FeedbackType;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,4 +24,8 @@ public interface FeedbackNoteRepository extends JpaRepository<FeedbackNote, Long
                               @Param("dateFrom") LocalDate dateFrom,
                               @Param("dateTo") LocalDate dateTo,
                               @Param("type") FeedbackType type);
+
+    long countByOwnerId(Long ownerId);
+
+    List<FeedbackNote> findByOwnerIdOrderByEntryDateDescCreatedAtDescIdDesc(Long ownerId, Pageable pageable);
 }

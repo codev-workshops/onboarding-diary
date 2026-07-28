@@ -22,7 +22,7 @@ cross-session feedback.
 | Phase 2 | Auth + Profile - signup/login/logout, password hashing, roles, profile view/edit | Done | 2026-07-28: JWT auth (jjwt), signup/login/logout REST + Thymeleaf pages, `/api/me` profile view/edit, public `/api/departments`, 30 tests green. |
 | Phase 3 | Task Log + Issue Log - CRUD, filters, ownership rules | Done | 2026-07-28: `/api/tasks` and `/api/issues` CRUD + filters, `GET /api/categories`, Flyway `V3`-`V6` (`task_category` + seed, `task_entry`, `issue_entry`, `manager_assignment`), owner/Admin write and Manager-overseen read authorization, 55 tests green. |
 | Phase 4 | Feedback Notes + Additional Notes - feedback submission, notes CRUD with tags | Done | 2026-07-28: `/api/feedback` and `/api/notes` CRUD + filters, Flyway `V7` (`feedback_note`, `additional_note`, `note_tag`), recruit-only feedback creation, tag normalisation and tag search, 85 tests green. |
-| Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Not Started | |
+| Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Done | 2026-07-28: `GET /api/dashboard` with `userId?`, counts for all four entry types, task completion over all time, open issues (`OPEN`/`IN_PROGRESS`) and the 10 most recent entries; no new migration; 102 tests green. |
 | Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Not Started | |
 
 ## Decisions Log
@@ -66,6 +66,11 @@ cross-session feedback.
 | 2026-07-28 | Phase 4: `feedback_note.details` and `additional_note.content` are `NOT NULL` (`VARCHAR(5000)` / `VARCHAR(10000)`), matching the required long-text fields in §6.1. | Both fields are required by §2.4/§2.5, unlike the optional task/issue descriptions. |
 | 2026-07-28 | Phase 4: no §4.8 admin endpoints and no Thymeleaf pages for `/feedback` and `/notes`; oversight rows are still seeded through `ManagerAssignmentRepository` in tests. | §2.8/§4.8 delivery notes keep admin user management and assignment maintenance in the dedicated admin phase. |
 | 2026-07-28 | Phase 2: CSRF stays disabled even though pages authenticate with the `ACCESS_TOKEN` cookie, which browsers send automatically. | Product owner decision after a review flagged it; `SameSite=Lax` plus HttpOnly covers the classic vectors and no CORS origins are allowed. Revisit if cross-site clients or non-Lax flows appear. |
+| 2026-07-28 | Phase 5: the dashboard is assembled in `DashboardService` from counting queries (`countByOwnerId`, `countByOwnerIdAndStatus`) plus a top-10 query per entry type, merged and truncated to 10 in the service. | Counting in the database avoids loading whole entry lists, and each type can contribute at most 10 rows to a 10-row result, so four small queries are enough. |
+| 2026-07-28 | Phase 5: recent entries are ordered by entry date, then creation timestamp, then id, all descending; the id is only a final stable tie-break. | D7 fixes date and creation timestamp; two entries created in the same instant still need a deterministic order for the API and its tests. |
+| 2026-07-28 | Phase 5: `percentComplete` is an integer rounded half-up, returned next to the raw `completedTasks`/`totalTasks`. | US-R10 asks for a whole-number percentage; keeping the raw counts saves clients re-deriving them. |
+| 2026-07-28 | Phase 5: dashboard authorization is delegated entirely to `EntryAccessService.resolveListTarget`, so an unknown `userId` is a `403` rather than a `404`, exactly like the entry lists. | One authorization implementation for lists and the dashboard (§6.2); it also avoids revealing whether a user id exists. |
+| 2026-07-28 | Phase 5: the `/dashboard` Thymeleaf page is still not built, and the admin phase (§4.8) stays after Phase 6, as considered in the Phase 5 hand-off notes. | Phase 5 scope is the dashboard summary API; sign-up and login keep landing on `/profile` until the page work happens, and oversight data stays seeded through the database. |
 
 ## Known Issues
 
@@ -101,7 +106,16 @@ cross-session feedback.
 - Phase 4: the `tag` filter matches one tag at a time (exact match after normalisation); §4.5 does
   not ask for multi-tag or partial-tag search, so neither is implemented.
 - Phase 4: nothing consumes the new entry types yet - dashboard counts (§4.6) and reports (§4.7)
-  come in Phases 5 and 6.
+  come in Phases 5 and 6. Phase 5 closed the dashboard half; reports are still open.
+- Phase 5: `/dashboard` has no Thymeleaf page, so sign-up and login keep landing on `/profile`
+  instead of the dashboard promised by US-R01/US-R02, and the summary is reachable only through
+  `GET /api/dashboard`.
+- Phase 5: the dashboard is recomputed on every request with no caching, and nothing about it is
+  configurable - the recent-entries limit of 10 and the open-issue statuses are fixed by §4.6/D7.
+- Phase 5: `openIssues` returns every open issue with no cap or paging, so a recruit with many open
+  issues gets a long list; §4.6 does not ask for a limit.
+- Phase 5: dashboard oversight still depends on `manager_assignment` rows seeded directly in the
+  database, like the Phase 3 and 4 read paths, until the §4.8 admin endpoints exist.
 
 ## Feedback / Cross-session Notes
 
@@ -192,6 +206,39 @@ cross-session feedback.
   (§4.8 user management and manager assignments) should come first, since oversight data is still
   only seedable through the database, and whether `/dashboard` should finally exist as a page so
   sign-up and login stop landing on `/profile`.
+- 2026-07-28: Phase 5 complete. Validated with `./mvnw clean verify` (102 tests, all green) against
+  in-memory H2: summary counts per entry type over a deterministic 14-entry dataset (and entries of
+  another recruit excluded), task completion as completed/total over all time (40% for 2 of 5, 33%
+  for 1 of 3, 60% for 3 of 5, unaffected by entry dates) and the 0-tasks edge returning 0% with no
+  divide-by-zero, the empty-diary dashboard (all counts 0, no open issues, no recent entries), the
+  open-issues filter containing exactly `OPEN` and `IN_PROGRESS` and excluding `RESOLVED`/`CLOSED`,
+  the recent-entries window being exactly the 10 latest of 14 across all four types in
+  latest-entry-date-first order with a forced creation-timestamp tie-break, and the full
+  authentication and authorization matrix (missing and invalid bearer token `401`; owner sees own
+  data without `userId`; another recruit `403`; overseeing Manager `200`; unassigned Manager `403`;
+  Admin may pass any `userId`; unknown `userId` `403`). Not implemented or tested: reports (§4.7),
+  admin user management and assignment endpoints (§4.8), admin category maintenance (§4.9), paging,
+  the `/dashboard` and entry-type Thymeleaf pages, and any dashboard behaviour not stated in
+  §4.6/US-R10/D7 (no date-window variant of the completion figure, no per-type recent-entry limits,
+  no caching or performance targets). No new Flyway migration was needed, so the schema is unchanged
+  from `V7`.
+- 2026-07-28: Phase 5 was delivered stacked on the Phase 4 branch
+  `devin/1785216240-phase4-feedback-notes` (PR #76) as PR #77
+  (https://github.com/codev-workshops/onboarding-diary/pull/77) on branch `devin/1785218358-phase5-dashboard`, which is still open. Phase 6 should
+  branch from the tip of that branch and read `REQUIREMENTS.md` and `PROGRESS.md` from there, since
+  no PR has been merged to `main`.
+- 2026-07-28: Notes for Phase 6 - Reports (§4.7, US-R11, US-M04, decision D6). Pick and
+  licence-verify the PDF library first (D6 is the last open decision); prefer an Apache-2.0 option.
+  `GET /api/reports` and `GET /api/reports/preview` take `userId?`, `dateFrom`, `dateTo` and
+  `format`, so reuse `EntryAccessService.resolveListTarget` exactly as `DashboardService` does
+  instead of writing new authorization, and reuse the four repository `search` methods for the
+  date-range content. `dateFrom <= dateTo` and "not after today" are §6.1 validation rules and
+  belong in the service as `FieldValidationException`s; an empty range must produce a "no entries"
+  report rather than an error. Downloads need `Content-Disposition: attachment` with a filename
+  carrying the recruit name and the range. No new migration should be needed. Still outstanding
+  after Phase 6: the §4.8 admin phase (user management, manager assignments), §4.9 category
+  maintenance, paging, and the Thymeleaf pages for `/dashboard`, `/tasks`, `/issues`, `/feedback`,
+  `/notes` and `/reports`.
 - 2026-07-27: Product owner answered the outstanding blockers; decisions D1-D7 are recorded above
   and in `REQUIREMENTS.md` section 8.2.1, with the details propagated into sections 1, 3, 4, 5,
   and 7. Phase 1 can begin: Spring Boot 3.2 + Thymeleaf + JPA scaffold, Docker Compose PostgreSQL,

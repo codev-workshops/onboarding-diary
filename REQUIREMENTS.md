@@ -458,6 +458,15 @@ are API-only so far.
 |---|---|---|---|---|
 | GET | `/api/dashboard` | query: `userId?` (defaults to self) | summary counts, task completion progress (completed / total tasks overall), open issues, 10 most recent entries (latest first) | Owner; Manager (overseen) and Admin may pass `userId` |
 
+**Delivery status (2026-07-28):** delivered in Phase 5. The response carries `userId`, `counts`
+(`tasks`, `issues`, `feedbackNotes`, `additionalNotes`), `taskCompletion` (`completedTasks`,
+`totalTasks`, `percentComplete` rounded half-up to a whole number and `0` when there are no tasks),
+`openIssues` (the same issue shape as Section 4.3, statuses `OPEN` and `IN_PROGRESS`) and
+`recentEntries` (`type` of `TASK`/`ISSUE`/`FEEDBACK`/`NOTE`, `id`, `entryDate`, `title` - the
+subject for feedback notes - and `createdAt`). Recent entries are ordered by entry date descending,
+then creation timestamp, then id, so the order is stable when both timestamps tie. The `/dashboard`
+page in Section 5.1 is still not built; the dashboard is API-only so far.
+
 ### 4.7 Reports
 
 | Method | Path | Request | Response | Auth / Role |
