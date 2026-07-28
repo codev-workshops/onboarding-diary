@@ -111,9 +111,11 @@ As a New Recruit, I want a dashboard summarising my onboarding, so that I can se
 glance.
 
 - Shows summary counts of tasks, issues, feedback notes, and additional notes.
-- Shows task completion progress (completed vs. total tasks).
-- Shows a list of open issues.
-- Shows recent entries across all four entry types.
+- Shows task completion progress as completed tasks / total tasks over all time, with the
+  percentage rounded to a whole number (0% when there are no tasks).
+- Shows a list of open issues (status `OPEN` or `IN_PROGRESS`).
+- Shows the 10 most recent entries across all four entry types, latest entry date first (ties
+  broken by creation timestamp).
 - Reflects only my own data.
 
 **US-R11 - Generate and download my reports**
@@ -161,6 +163,16 @@ accurate.
 - Manager can view/edit own profile fields (name, department, start date) but not own role.
 
 ### 1.3 Admin
+
+**US-A00 - Bootstrap Admin account**
+As an Admin, I want an initial Admin account to exist on first startup, so that user management is
+possible before any Admin can be created through the UI.
+
+- On startup the application creates an Admin from `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`,
+  `ADMIN_DEPARTMENT`, `ADMIN_START_DATE` if no user with that email exists.
+- The password is hashed like any other; it is never logged.
+- If the variables are absent and no Admin exists, startup logs a clear warning.
+- Re-running startup does not duplicate or overwrite the account.
 
 **US-A01 - Manage users**
 As an Admin, I want to create, view, edit, and deactivate user accounts, so that the right people
@@ -337,12 +349,20 @@ responsive server-delivered web frontend, backed by PostgreSQL.
 - **Layers:** `controller` (HTTP, DTO mapping, validation) -> `service` (business rules,
   authorization decisions, transactions) -> `repository` (Spring Data JPA interfaces) -> `entity`
   (JPA models). DTOs cross the controller boundary; entities never leave the service layer.
-- **Frontend:** one responsive web frontend served by the same application, calling the REST API.
-  A single deployable unit keeps local development and configuration simple.
-- **Reports:** generated in the service layer - CSV written directly, PDF via a single small
-  library - and streamed to the client as a file download.
+- **Frontend:** server-rendered Thymeleaf templates served by the same application, styled
+  responsively. Controllers render pages; the REST API under `/api` backs both the pages and
+  programmatic clients. No separate JavaScript build pipeline.
+- **Authentication:** email/password with BCrypt hashing; login issues a JWT bearer token, and
+  Spring Security validates it on every request (see Section 7 for how pages carry the token).
+- **Reports:** generated in the service layer - CSV written directly, PDF via a single small,
+  permissively licensed library (Apache-2.0 or MIT; e.g. OpenPDF (LGPL/MPL) is acceptable only if
+  cleared, otherwise prefer an Apache-2.0 option) - and streamed to the client as a file download.
 - **Persistence:** PostgreSQL with schema managed by versioned migration scripts so schema changes
-  are reviewable and repeatable.
+  are reviewable and repeatable. Local development runs PostgreSQL via Docker Compose; automated
+  tests run against an in-memory database, never the dev instance.
+- **Bootstrap Admin:** on startup the application ensures an Admin account exists, created from
+  environment variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `ADMIN_DEPARTMENT`,
+  `ADMIN_START_DATE`). Existing accounts are left untouched.
 - **Rationale:** the domain is a handful of CRUD aggregates with role-based read scopes and a
   reporting endpoint. A layered monolith gives clear separation of concerns with one build, one
   deployment, and one database - no service boundaries, message brokers, caches, or client-side
@@ -368,8 +388,8 @@ Authorization shorthand:
 | Method | Path | Request | Response | Auth / Role |
 |---|---|---|---|---|
 | POST | `/api/auth/signup` | name, email, password, department, startDate | created user summary | Public |
-| POST | `/api/auth/login` | email, password | user summary + session/token | Public |
-| POST | `/api/auth/logout` | - | 204 | Any authenticated |
+| POST | `/api/auth/login` | email, password | user summary + JWT bearer token | Public |
+| POST | `/api/auth/logout` | - | 204 (client discards the token; page sessions clear the token cookie) | Any authenticated |
 | GET | `/api/me` | - | profile (name, email, role, department, startDate) | Any authenticated |
 | PUT | `/api/me` | name, department, startDate | updated profile | Any authenticated (self) |
 
@@ -417,7 +437,7 @@ Authorization shorthand:
 
 | Method | Path | Request | Response | Auth / Role |
 |---|---|---|---|---|
-| GET | `/api/dashboard` | query: `userId?` (defaults to self) | summary counts, task completion progress, open issues, recent entries | Owner; Manager (overseen) and Admin may pass `userId` |
+| GET | `/api/dashboard` | query: `userId?` (defaults to self) | summary counts, task completion progress (completed / total tasks overall), open issues, 10 most recent entries (latest first) | Owner; Manager (overseen) and Admin may pass `userId` |
 
 ### 4.7 Reports
 
@@ -596,19 +616,29 @@ flowchart TD
 
 - **Responsive web:** the UI is responsive and usable on phone, tablet, and desktop widths; all
   pages including tables and forms remain operable on small screens.
-- **Authentication mechanism (assumption):** email/password authentication with server-side
-  password hashing (BCrypt), using a stateless JWT bearer token issued on login. Role-based
-  authorization enforced server-side on every endpoint; client-side checks are cosmetic only.
+- **Authentication mechanism (decided):** email/password authentication with server-side password
+  hashing (BCrypt) and a stateless JWT bearer token issued on login. API clients send
+  `Authorization: Bearer <token>`; Thymeleaf pages carry the same token in an HttpOnly, SameSite
+  cookie set at login and cleared at logout. Tokens are short-lived (assumed 8 hours) and signed
+  with a secret supplied by environment variable. Role-based authorization is enforced server-side
+  on every endpoint; client-side checks are cosmetic only.
 - **Environment:** local development is the deployment target - one Spring Boot process plus a
-  local PostgreSQL instance, configured through `application.yml` and environment variables. No
-  cloud, container orchestration, or CI/CD requirements are assumed.
+  PostgreSQL container started with Docker Compose (standard naming: service `db`, database
+  `onboarding_diary`, user `onboarding_diary`, port `5432`, credentials from environment
+  variables). Configuration lives in `application.yml` plus environment variables, including the
+  bootstrap Admin variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `ADMIN_DEPARTMENT`,
+  `ADMIN_START_DATE`) and the JWT signing secret. No cloud, container orchestration, or CI/CD
+  requirements are assumed.
+- **Reporting library:** PDF export uses one small, permissively licensed library; the licence must
+  be verified as usable before it is added.
 - **Testing expectations:**
   - Unit tests for service-layer business logic: validation rules, authorization decisions
     (ownership and oversight), dashboard aggregation, report content assembly.
   - Integration tests for REST endpoints covering happy paths, validation failures (`400`),
     unauthenticated (`401`) and forbidden (`403`) cases, and report downloads (content type and
     disposition).
-  - Tests run against an in-memory or throwaway database so the suite needs no external setup.
+  - Tests run against an in-memory database (H2 in PostgreSQL compatibility mode) so the suite
+    needs no external setup and never touches the Docker Compose dev database.
 - **Observability/performance:** standard application logging; entry lists are paginated and
   filtered in the database. No specific latency or scale targets are stated in the source.
 
@@ -628,8 +658,8 @@ flowchart TD
 3. Self sign-up creates a New Recruit; Manager and Admin accounts are created or promoted by an
    Admin.
 4. Manager-to-Recruit oversight is many-to-many and maintained by Admins.
-5. Authentication is JWT-based (see Section 7); session-cookie auth would be an equally valid
-   reading of the source.
+5. Authentication is JWT-based (confirmed by the product owner, see Section 7). Token lifetime
+   (8 hours) and delivery to Thymeleaf pages via an HttpOnly cookie are assumed.
 6. Feedback notes are authored by recruits about their onboarding and are visible to their Manager
    and Admins; the source does not state visibility explicitly.
 7. Reports cover all four entry types for one user over a date range; PDF is a formatted document,
@@ -641,36 +671,36 @@ flowchart TD
 11. Users are deactivated rather than deleted, so historical entries survive.
 12. Tags are free-form strings, normalised to lower case; there is no managed tag vocabulary.
 13. Timestamps/dates use the server's local date; no multi-timezone handling is assumed.
+14. Only `ADMIN_EMAIL` and `ADMIN_PASSWORD` are strictly required to bootstrap the first Admin;
+    `ADMIN_NAME`, `ADMIN_DEPARTMENT`, and `ADMIN_START_DATE` fall back to sensible defaults.
+15. "Standard naming conventions" for local PostgreSQL are read as database/user
+    `onboarding_diary` on port `5432` via Docker Compose service `db`.
+16. The in-memory test database is H2 in PostgreSQL compatibility mode; if a feature needs
+    PostgreSQL-specific SQL, that test moves to a throwaway container instead.
 
 ### 8.2 Open questions
 
 1. Can a recruit have more than one Manager, and does a Manager also have a Manager?
 2. Should reports be available for multiple recruits at once (e.g. a whole department), or one
    recruit per report?
-3. What exactly counts towards "task completion progress" - completed/total tasks overall, or
-   within a period?
-4. How many "recent entries" should the dashboard show, and over what window?
-5. Is email verification or password reset expected for the email/password flow?
-6. Should deleting an entry be a soft delete for auditability?
-7. Any data retention rules once onboarding completes?
+3. Is email verification or password reset expected for the email/password flow?
+4. Should deleting an entry be a soft delete for auditability?
+5. Any data retention rules once onboarding completes?
+6. Which specific PDF library is licence-approved (see decision D6 below)?
 
-### 8.2.1 Blockers before coding starts
+### 8.2.1 Resolved blockers (decisions)
 
-None of these prevent Phase 1 (project scaffold), but each blocks the phase noted:
+All blockers previously listed here are resolved; coding can start.
 
-- **How the first Admin account is created** (blocks Phase 2): self sign-up only creates recruits,
-  so the initial Admin must come from a seed migration or a bootstrap configuration property.
-- **Local PostgreSQL availability and credentials** (blocks Phase 1): database name, user, and
-  password conventions for local development, plus whether tests run against an in-memory database
-  or a throwaway PostgreSQL instance.
-- **Auth mechanism confirmation** (blocks Phase 2): JWT bearer tokens vs. session cookies is
-  currently an assumption (Section 7) and shapes both the security config and the frontend.
-- **Frontend technology within "responsive web frontend"** (blocks any UI work): server-rendered
-  templates vs. a JavaScript SPA is not yet fixed; the source only fixes the backend stack.
-- **PDF library choice** (blocks Phase 6): a single library must be approved before report export
-  is implemented.
-- **Dashboard definitions** (blocks Phase 5): the "task completion progress" formula and the
-  recent-entries count/window above must be settled.
+| ID | Blocker | Decision | Reflected in |
+|---|---|---|---|
+| D1 | First Admin account | Created on startup from environment variables `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `ADMIN_DEPARTMENT`, `ADMIN_START_DATE`; idempotent, never overwrites an existing account | US-A00, Sections 3, 7 |
+| D2 | Local database | PostgreSQL via Docker Compose with standard naming (service `db`, database/user `onboarding_diary`, port `5432`, credentials from environment variables) | Sections 3, 7 |
+| D3 | Test database | Automated tests run against an in-memory database (H2 in PostgreSQL compatibility mode), never the Docker Compose dev instance | Section 7 |
+| D4 | Auth mechanism | JWT bearer tokens (BCrypt password hashing); API clients use `Authorization: Bearer`, pages use an HttpOnly cookie holding the same token | Sections 3, 4.1, 7 |
+| D5 | Frontend technology | Server-rendered Thymeleaf templates styled responsively; no separate JavaScript build | Sections 3, 5 |
+| D6 | PDF library | A single small library under licence-cleared, permissive terms; the exact library is chosen and licence-verified before Phase 6 | Sections 3, 7 |
+| D7 | Dashboard definitions | Task completion progress = completed tasks / total tasks over all time; recent entries = the 10 most recent entries, latest first | US-R10, Section 4.6 |
 
 ### 8.3 Proposed but out of scope
 
