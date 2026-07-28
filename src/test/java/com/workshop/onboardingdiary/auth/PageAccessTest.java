@@ -92,6 +92,30 @@ class PageAccessTest {
     }
 
     @Test
+    void theTeamDashboardLinkAndPageAreManagerAndAdminOnly() throws Exception {
+        User recruit = testUsers.create("md-nav-recruit@example.com", "sup3rsecret", Role.NEW_RECRUIT, true);
+        String recruitToken = jwtService.issueToken(recruit.getEmail(), recruit.getRole());
+        mockMvc.perform(get("/dashboard").accept(MediaType.TEXT_HTML)
+                        .cookie(new Cookie("ACCESS_TOKEN", recruitToken)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("/manager-dashboard"))));
+
+        User manager = testUsers.create("md-nav-manager@example.com", "sup3rsecret", Role.MANAGER, true);
+        String managerToken = jwtService.issueToken(manager.getEmail(), manager.getRole());
+        mockMvc.perform(get("/dashboard").accept(MediaType.TEXT_HTML)
+                        .cookie(new Cookie("ACCESS_TOKEN", managerToken)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/manager-dashboard")));
+
+        mockMvc.perform(get("/manager-dashboard").accept(MediaType.TEXT_HTML)
+                        .cookie(new Cookie("ACCESS_TOKEN", managerToken)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("manager-dashboard"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Team Dashboard")));
+    }
+
+    @Test
     void homeRedirectsToTheDashboard() throws Exception {
         User user = testUsers.create("home@example.com", "sup3rsecret", Role.NEW_RECRUIT, true);
         String token = jwtService.issueToken(user.getEmail(), user.getRole());

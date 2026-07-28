@@ -44,6 +44,11 @@ public class PageController {
         return page(principal, model, "dashboard");
     }
 
+    @GetMapping("/manager-dashboard")
+    public String managerDashboard(Principal principal, Model model) {
+        return page(principal, model, "manager-dashboard");
+    }
+
     @GetMapping("/tasks")
     public String tasks(Principal principal, Model model) {
         return page(principal, model, "tasks");
