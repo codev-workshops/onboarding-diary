@@ -30,9 +30,9 @@ public interface AdditionalNoteRepository extends JpaRepository<AdditionalNote, 
     /**
      * Free-text search over the fields of REQUIREMENTS 9.2, matched case-insensitively anywhere in
      * the field, tag values included. The tag join makes {@code distinct} necessary so a note whose
-     * several tags match is returned once, and tags are stored already lower-cased so the pattern is
-     * compared with them directly. {@code q} is a pattern whose SQL wildcards are already escaped
-     * with {@code \}.
+     * several tags match is returned once. Tags are stored already lower-cased, but the comparison
+     * still lower-cases the column so it matches the {@code lower(tag)} trigram index. {@code q} is a
+     * pattern whose SQL wildcards are already escaped with {@code \}.
      */
     @Query("""
             select distinct n from AdditionalNote n
@@ -40,7 +40,7 @@ public interface AdditionalNoteRepository extends JpaRepository<AdditionalNote, 
             where n.owner.id = :ownerId
               and (lower(n.title) like lower(concat('%', cast(:q as string), '%')) escape '\\'
                    or lower(n.content) like lower(concat('%', cast(:q as string), '%')) escape '\\'
-                   or tag like lower(concat('%', cast(:q as string), '%')) escape '\\')
+                   or lower(tag) like lower(concat('%', cast(:q as string), '%')) escape '\\')
             order by n.entryDate desc, n.createdAt desc, n.id desc
             """)
     List<AdditionalNote> searchText(@Param("ownerId") Long ownerId, @Param("q") String q, Pageable pageable);
