@@ -12,6 +12,18 @@ added after Phase 7 at the product owner's request, so "full-text search across 
 previously listed as out of scope in Section 8.3, is now an approved extension with its own
 requirements. Sections 1-8 are unchanged by it; nothing in Section 9 is implemented yet.
 
+**Decision (2026-07-28, spec extension - Manager Dashboards):** [Section 10 - Extension: Manager
+Dashboards](#10-extension-manager-dashboards) is a second extension, new scope elaborated *beyond*
+`SOURCE_REQUIREMENTS.md`, beyond the original seven phases, and beyond Extension: Search. It was
+requested by the product owner after Extension 1 and gives a Manager an **aggregate** view across
+all the recruits they oversee (team-wide counts, recruits with open CRITICAL/HIGH issues, recruits
+inactive for 7 days), distinct from the existing *per-recruit* dashboard of US-M03 / Section 4.6.
+It is **specification only** - no Java, SQL, Thymeleaf or test code exists yet - and it adds **no**
+entities, tables or columns: it is an aggregation query over the existing entry tables joined to
+`manager_assignment`. Two choices are **fixed decisions, not open questions**: "recently inactive"
+means no entry of any type in the last 7 days, and an Admin sees **one manager's team at a time** (a
+per-manager view only, with no global all-managers rollup). Sections 1-9 are unchanged by it.
+
 ## Contents
 
 1. [User Stories](#1-user-stories)
@@ -23,6 +35,7 @@ requirements. Sections 1-8 are unchanged by it; nothing in Section 9 is implemen
 7. [Non-Functional Notes](#7-non-functional-notes)
 8. [Open Questions / Assumptions](#8-open-questions--assumptions)
 9. [Extension: Search](#9-extension-search)
+10. [Extension: Manager Dashboards](#10-extension-manager-dashboards)
 
 ---
 
@@ -1128,3 +1141,257 @@ than as open questions so the build session does not re-open them.
 - **Q6** - Should a Manager eventually be able to search across *all* of their overseen recruits at
   once (no `userId`, results labelled by recruit)? Deferred to future scope by A10; nothing is built
   for it now.
+
+---
+
+## 10. Extension: Manager Dashboards
+
+New scope beyond `SOURCE_REQUIREMENTS.md`, beyond the original seven phases and beyond Extension:
+Search, elaborated on 2026-07-28. This section is **specification only** - no service, query,
+endpoint, template or test exists yet, and it adds no entity, table or column. It follows the
+structure of Sections 1-9: user stories with acceptance criteria, scope, data-model impact, API, UI,
+validation and the settled/inferred decisions. Everything here reuses the ownership and scope model
+of Sections 4 and 6.2 (Manager-overseen scope, Admin full scope, `403` for anything out of scope,
+never `404`).
+
+This extension gives a Manager an **aggregate** view across **all** the recruits they oversee. It is
+deliberately distinct from the existing *per-recruit* dashboard (US-M03, Section 4.6), which shows
+one recruit's summary at a time: the Manager Dashboard rolls the whole team up into team-wide counts
+plus two attention lists (recruits with open high-priority issues, recruits who have gone quiet).
+
+### 10.1 User Stories
+
+#### 10.1.1 Manager
+
+**US-MD01 - Team-wide aggregate dashboard**
+As a Manager, I want a single dashboard that aggregates across all the recruits I oversee, so that I
+can see the health of my whole team at a glance without opening each recruit's dashboard one by one.
+
+- Shows team-wide summary counts across all my overseen recruits: total tasks, total issues, total
+  feedback notes and total additional notes, plus the number of recruits I oversee (my team size).
+- Shows a list of recruits who have at least one **open** issue of severity `CRITICAL` or `HIGH`
+  (open meaning status `OPEN` or `IN_PROGRESS`), so I can see who needs urgent support.
+- Shows a list of recruits who have logged **no** entries of any type in the last 7 days
+  ("recently inactive"), so I can follow up with anyone who has gone quiet.
+- The view aggregates over exactly the recruits assigned to me through `ManagerAssignment`; a
+  recruit I do not oversee never contributes to any count or list, and a recruit overseen by
+  several managers appears on each of their dashboards.
+- The dashboard is read-only, consistent with US-M02/US-M03: it links to a recruit's own read-only
+  entry lists and per-recruit dashboard but adds no edit or delete action.
+- A Manager who oversees no recruits gets a valid empty-state dashboard (zero counts, empty lists),
+  not an error (Section 10.6).
+
+#### 10.1.2 Admin
+
+**US-MD02 - View any manager's team dashboard**
+As an Admin, I want to view the team dashboard of any single manager, so that I can support and
+audit oversight without being assigned recruits myself.
+
+- Supplying a manager's user id shows exactly that manager's team dashboard - the same counts and
+  lists US-MD01 defines, scoped to that manager's overseen recruits.
+- The Admin sees **one manager's team at a time**; there is no global "all managers" or system-wide
+  rollup (a **fixed decision**, Section 10.7, mirroring Search A10 that a search targets one user at
+  a time).
+- Supplying an unknown user id, or a user id that is not a Manager, returns `403`, never `404`,
+  matching the existing `EntryAccessService.resolveListTarget` behaviour (Sections 4.6, 4.7, 9.4).
+- With no manager id supplied, the Admin sees their own oversight scope, which is normally empty
+  (Admins are not usually assigned recruits) - i.e. the same empty-state as a manager with no team.
+
+### 10.2 Scope of the Dashboard
+
+**Counts and lists only - no charts or visualizations.** The dashboard is rendered entirely as
+numbers, tables and lists. Charts, graphs, trend lines and any other visualization are **explicitly
+deferred to a separate future extension** and are out of scope here (Section 10.7); this keeps the
+first iteration a thin aggregation over existing data with no charting library or client-side
+drawing code, consistent with the server-rendered, no-JavaScript-build stance of Sections 3 and 5.
+
+Exactly the following aggregates are shown, all scoped to the target manager's overseen recruits:
+
+| Aggregate | Definition |
+|---|---|
+| Team size | The number of recruits assigned to the manager through `ManagerAssignment`. |
+| Total tasks | Count of `task_entry` rows owned by any overseen recruit. |
+| Total issues | Count of `issue_entry` rows owned by any overseen recruit. |
+| Total feedback notes | Count of `feedback_note` rows owned by any overseen recruit. |
+| Total additional notes | Count of `additional_note` rows owned by any overseen recruit. |
+| Recruits with open high-priority issues | The overseen recruits who own at least one `issue_entry` whose `severity` is `CRITICAL` or `HIGH` **and** whose `status` is `OPEN` or `IN_PROGRESS`; each listed once with the recruit's identity and, optionally, the count of such issues. |
+| Recently inactive recruits | The overseen recruits who own **no** entry of any of the four types with an `entry_date` within the last 7 days (Section 10.7 fixes the window at 7 days); each listed once with the recruit's identity and last entry date. |
+
+- The four totals are counts across the whole team, not per recruit; a per-recruit breakdown is the
+  existing per-recruit dashboard (US-M03) and is not duplicated here.
+- "Open" reuses the Section 4.6 dashboard definition of an open issue (`OPEN` or `IN_PROGRESS`);
+  this dashboard additionally restricts to `CRITICAL`/`HIGH` severity.
+- A recruit with no entries at all is, by definition, recently inactive and appears on that list.
+- Not shown: per-entry detail, charts/graphs, completion percentages, or any cohort/department-wide
+  rollup across multiple managers (Section 10.7).
+
+### 10.3 Data Model Impact
+
+**No new entities, no new tables, no new columns, no new migration.** The Manager Dashboard is a set
+of aggregation (count and existence) queries over the existing `task_entry`, `issue_entry`,
+`feedback_note` and `additional_note` tables, joined to `manager_assignment` to restrict them to the
+target manager's oversight scope. It reuses the existing entry repositories (`TaskEntryRepository`,
+`IssueEntryRepository`, `FeedbackNoteRepository`, `AdditionalNoteRepository`) and the existing
+`ManagerAssignmentRepository`, so there is nothing to migrate on the entity side and the schema is
+unchanged from `V7` (`db/migration-postgresql/V8` is unrelated Search indexing).
+
+**Recommended architecture - aggregation queries composed in a new `ManagerDashboardService`.** The
+service resolves the target manager's overseen-recruit ids from `ManagerAssignment`, then asks each
+repository for team-wide counts and for the two attention lists, and assembles one response DTO -
+mirroring how `DashboardService` and `ReportService` compose the four repositories. Counting and
+filtering happen in the database (for example `count`/`exists` queries keyed by the set of overseen
+recruit ids and, for the inactive list, an entry-date cut-off), never by loading whole entry lists
+into memory. A manager with an empty overseen-recruit set short-circuits to the zero/empty response
+without querying the entry tables.
+
+**Build note.** Any query that takes a nullable bind parameter (for example the 7-day cut-off date)
+must wrap it in `cast(...)` exactly like the Phase 6 fix, because PostgreSQL cannot infer the type
+of a parameter only compared with `null` and fails the whole query otherwise; the H2 test database
+hides this, so it is easy to miss (Section 7, PROGRESS Known Issues).
+
+### 10.4 REST API Endpoints
+
+Same conventions as Section 4: prefixed `/api`, JSON, `401` unauthenticated, `403` when the
+role/ownership check fails (never `404` for an out-of-scope or unknown id).
+
+**DESIGN DECISION - one Manager-only endpoint, one manager's team at a time.** A single endpoint
+returns the whole team aggregate for one manager. A Manager sees their own oversight scope; only an
+Admin may pass a `managerId` to view another manager's team, and even then only **one** manager per
+call. There is **no** global all-managers rollup endpoint (a fixed decision, Section 10.7): an Admin
+auditing the whole organisation views each manager's team in turn, exactly as Search (A10) targets
+one user at a time.
+
+| Method | Path | Request | Response | Auth / Role |
+|---|---|---|---|---|
+| GET | `/api/manager-dashboard` | query: `managerId?` (Admin only; defaults to the caller) | team-wide counts, recruits with open CRITICAL/HIGH issues, recruits inactive for 7 days | Manager (own oversight scope); Admin may pass `managerId` for any single manager |
+
+- Authorization reuses the existing `EntryAccessService.resolveListTarget` pattern: the caller
+  defaults to themselves, only an Admin may resolve a different target, and an unknown or
+  out-of-scope `managerId` (including a user id that is not a Manager) is a `403`, never a `404`, so
+  the endpoint never reveals whether a user id exists. A build session adds a manager-scoped
+  resolver in the same spirit as `resolveListTarget` rather than inventing a new authorization
+  concept.
+- A New Recruit calling the endpoint (with or without a `managerId`) gets `403`: the dashboard is
+  Manager/Admin only.
+- A Manager supplying a `managerId` other than their own gets `403` (only an Admin may target
+  another manager), matching the `userId` rule of Section 6.2.
+
+Response shape (illustrative):
+
+```json
+{
+  "managerId": 12,
+  "teamSize": 3,
+  "counts": {
+    "tasks": 47,
+    "issues": 9,
+    "feedbackNotes": 6,
+    "additionalNotes": 14
+  },
+  "recruitsWithOpenHighPriorityIssues": [
+    { "userId": 42, "name": "Dana Recruit", "openCriticalOrHigh": 2 }
+  ],
+  "inactiveRecruits": [
+    { "userId": 51, "name": "Sam Recruit", "lastEntryDate": "2026-07-15" }
+  ]
+}
+```
+
+- The two lists are always present, empty when nothing matches, so clients need no null handling
+  (the `recentEntries`/Search convention of Sections 4.6 and 9.4).
+- `lastEntryDate` is `null` for a recruit who has never logged any entry; such a recruit is still
+  "recently inactive" and appears on the list.
+- `counts` reuses the field names of the Section 4.6 dashboard `counts` object so clients render one
+  count shape everywhere.
+
+### 10.5 UI
+
+| Page | Path | New Recruit | Manager | Admin |
+|---|---|---|---|---|
+| Manager Dashboard (team aggregate) | `/manager-dashboard` | No | Yes (own team) | Yes (any single manager) |
+
+- One new Thymeleaf page, linked from the Manager's top navigation **alongside** the existing
+  per-recruit dashboard (`/dashboard`) rather than replacing it, so a Manager can move between the
+  whole-team view and a single recruit's view. The link is gated to Managers and Admins in the
+  shared navigation fragment (`templates/fragments/layout.html`), like the role gating of Section
+  5.1; New Recruits never see it.
+- The page is a Phase 7-style shell: it shares the nav fragment and fetches `GET
+  /api/manager-dashboard` with the HttpOnly `ACCESS_TOKEN` cookie (D4/D5), adding no new backend
+  page logic beyond resolving the caller's profile for the navigation.
+- Rendered with **simple tables and lists only, no charts**: the team counts as a small figures
+  table, and the two attention lists as plain tables of recruit name plus the relevant detail
+  (open-issue count, last entry date). Each recruit row links to that recruit's existing read-only
+  data via the Phase 7 recruit-user-id pattern (passing `userId` to `/dashboard`, `/tasks`, etc.),
+  because `GET /api/users/me/recruits` is still part of the deferred admin phase (Section 4.8).
+- An Admin reaches another manager's team by entering the manager's user id (the same recruit-id
+  field pattern as Phase 7), which is passed as `managerId`.
+- Empty state: a Manager with no team, or an Admin whose target manager has no recruits, sees a
+  friendly "No recruits assigned" message with zero counts and empty lists, never an error banner
+  (Section 10.6).
+- Responsive like every other page (Section 7).
+
+### 10.6 Validation Rules
+
+**Dashboard parameters**
+
+- `managerId`: optional, defaults to the caller. When present it must be a positive integer
+  referencing an existing user **with role `MANAGER`**; anything else - a non-numeric value, an
+  unknown id, or a user who is not a Manager - resolves to `403` through the shared scope rules
+  (Section 6.2, 10.4), never a `404`, so the endpoint does not reveal whether an id exists. Only an
+  Admin may supply a `managerId` other than their own caller id; a Manager supplying someone else's
+  id gets `403`.
+- No other parameters are accepted; the 7-day inactivity window is fixed (Section 10.7) and is not
+  a query parameter, and supplying an unexpected parameter is ignored rather than rejected, so
+  adding one later is not a breaking change.
+
+**Results**
+
+- A Manager (or targeted manager) with **zero** recruits assigned gets a `200` empty-state response
+  - `teamSize: 0`, every count `0`, both lists empty - never a `404` and never an error (US-MD01).
+- The two attention lists are not paginated in this iteration, consistent with every other list in
+  the application; the data volume (one team of recruits) makes a cap unnecessary here.
+
+### 10.7 Fixed Decisions and Open Questions / Assumptions
+
+Following the Section 8/9 pattern, but note the first two items are **settled decisions, not open
+questions** - they are recorded here so the build session does not re-open them.
+
+**Fixed decisions (settled, not assumptions)**
+
+- **FD1 - "Recently inactive" = no entry of any type in the last 7 days.** The inactivity window is
+  fixed at 7 days as the default; it is not configurable and is not a query parameter in this
+  iteration. A recruit is recently inactive when none of their task, issue, feedback or additional
+  note entries has an `entry_date` within the last 7 days (a recruit with no entries at all
+  qualifies).
+- **FD2 - Admin gets a per-manager view only; no global all-managers rollup.** An Admin views one
+  manager's team at a time by passing that manager's `managerId`; there is deliberately no
+  system-wide or cohort/department rollup across all managers. This mirrors Search A10 (a search
+  targets one user at a time) and keeps the endpoint and authorization identical for Manager and
+  Admin callers. A cross-manager or organisation-wide rollup is deferred as possible future scope
+  (Q7 below).
+
+**Assumptions made**
+
+- **A1** - The dashboard respects exactly the same scope model as the entry lists and the
+  per-recruit dashboard: a Manager sees only recruits assigned to them, an Admin may target any
+  single manager, `403` otherwise. No new authorization concept is introduced (it reuses the
+  `EntryAccessService.resolveListTarget` pattern).
+- **A2** - "Open" high-priority issues reuse the Section 4.6 open-issue definition (`OPEN` or
+  `IN_PROGRESS`) restricted to severity `CRITICAL` or `HIGH`; no new status or severity semantics
+  are introduced.
+- **A3** - The 7-day inactivity window is measured against the entry `entry_date` (the same date the
+  entry lists and reports use), on the server's local date (Section 8.1 assumption 13), inclusive
+  of today.
+- **A4** - Counts and lists are computed on every request with no caching, like the per-recruit
+  dashboard (Section 4.6); no scale or latency target is stated (Section 7).
+
+**Open questions**
+
+- **Q7** - Should an Admin (or a senior manager) eventually get a cross-manager or
+  organisation-wide rollup across all teams at once? Deferred to future scope by FD2; nothing is
+  built for it now.
+- **Q8** - Should the dashboard eventually gain charts/visualizations (trend of entries over time,
+  severity breakdowns)? Deferred to a separate future extension by Section 10.2; this extension is
+  counts and lists only.
+- **Q9** - Is 7 days the right inactivity threshold, and should it become configurable per
+  organisation? Fixed at 7 days for now (FD1); revisit only if a need is stated.

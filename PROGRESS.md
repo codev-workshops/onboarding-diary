@@ -26,6 +26,7 @@ cross-session feedback.
 | Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Done | 2026-07-28: `GET /api/reports` (PDF/CSV download) and `GET /api/reports/preview` (JSON), Apache PDFBox + Apache Commons CSV (D6), range validation, empty-range "no entries" reports, no new migration; 135 tests green (33 new). |
 | Phase 7 | UI completion - Thymeleaf pages for dashboard, task log, issue log, feedback, notes and reports with a shared navigation | Done | 2026-07-28: six pages wired to the existing REST API, shared nav fragment with role gating, sign-up/login land on `/dashboard`; no backend logic added; Admin UI deferred to a later dedicated phase; 138 tests green. |
 | Extension 1: Search | Free-text search across Task Log, Issue Log, Feedback Notes and Additional Notes with a single global search bar | Done | Additional scope beyond the original 7 phases. 2026-07-28: `GET /api/search?q=&userId=` returning the four groups with per-group counts and truncation flags, one `searchText` query per entry repository (`lower(field) like lower(concat('%', :q, '%'))`, `distinct` tag join for notes), `SearchService` with the section 9.6 `q` rules, PostgreSQL-only Flyway `V8` trigram/GIN indexes on `db/migration-postgresql`, the nav search bar and the `/search` page; 166 tests green (28 new). |
+| Extension 2: Manager Dashboards | Aggregate team-wide dashboard for a Manager across all overseen recruits (team counts, recruits with open CRITICAL/HIGH issues, recruits inactive 7 days) | Not Started | Elaboration only. 2026-07-28: `REQUIREMENTS.md` section 10 elaborated (US-MD01 Manager, US-MD02 Admin; `GET /api/manager-dashboard` with Admin-only `managerId`; counts/lists only, charts deferred; no new entities/tables/columns; 7-day inactivity and Admin per-manager view fixed as decisions). **This PR is documentation-only - no Java, SQL, Thymeleaf or test code added; the build is a separate future PR.** |
 
 ## Decisions Log
 
@@ -98,6 +99,13 @@ cross-session feedback.
 | 2026-07-28 | Extension 1 build: `q` is bound as an optional request parameter and validated in `SearchService` (trim, collapse whitespace, 2-100 characters) as `FieldValidationException`s, and `%`, `_` and `\` are escaped in the service before the JPQL `like ... escape '\'`. | Keeps a missing `q` in the same `$.errors.q` shape as a blank one instead of Spring's generic missing-parameter error, and keeps wildcard escaping in one place with the pattern it builds. |
 | 2026-07-28 | Extension 1 build: the excerpt is ~200 characters of the first searched field containing the query, centred on the match, with `…` markers; for a note matched only through a tag the tag list is the excerpt source. | §9.6 asks for an excerpt around the first match; a tag-only match has no matching title or content to excerpt, and showing the tags explains why the row is in the results. |
 | 2026-07-28 | Phase 6: every nullable filter parameter in the four repository `search` queries is wrapped in a `cast(...)`, for example `cast(:dateFrom as date) is null`. | PostgreSQL cannot infer the type of a bind parameter that is only compared with `null` and fails the whole query with "could not determine data type of parameter"; the cast makes the parameter typed. The H2 test database inferred the types, so the tests never saw it. |
+| 2026-07-28 | Extension 2 (Manager Dashboards) is **new scope beyond the original seven phases, `SOURCE_REQUIREMENTS.md` and Extension 1**; elaborated in `REQUIREMENTS.md` section 10, specification-only with no code. It is an **aggregate** team view (team-wide counts + attention lists) distinct from the existing per-recruit dashboard of US-M03/§4.6. | Product owner request after Extension 1; the requirement is elaborated before any code, matching how phases 1-7 and Extension 1 were run. |
+| 2026-07-28 | Extension 2 design decision - the dashboard is **counts and lists only; charts/visualizations are explicitly deferred to a separate future extension** (`REQUIREMENTS.md` §10.2, Q8). | Keeps the first iteration a thin aggregation over existing data with no charting library or client-side drawing code, consistent with the server-rendered, no-JS-build stance of §3/§5. |
+| 2026-07-28 | Extension 2 API shape - one endpoint `GET /api/manager-dashboard` returning team-wide counts, recruits with open `CRITICAL`/`HIGH` issues and recruits inactive for 7 days; `managerId` is **Admin-only** (a Manager sees their own oversight scope). | One authorization call and one round trip for the team view, consistent with `/api/dashboard`, `/api/reports` and `/api/search`. |
+| 2026-07-28 | Extension 2 authorization reuses the existing `EntryAccessService.resolveListTarget` pattern (default to caller, only Admin resolves another target, `403` for out-of-scope/unknown ids and for a non-Manager id, never `404`). | No new authorization concept; keeps id-existence hidden exactly like every other list, dashboard and report endpoint (§6.2). |
+| 2026-07-28 | Extension 2 data-model impact - **no new entities, tables, columns or migration**; the dashboard is aggregation (count/exists) queries over the existing `task_entry`, `issue_entry`, `feedback_note`, `additional_note` tables joined to `manager_assignment`, reusing the four entry repositories and `ManagerAssignmentRepository`. | The team view needs only aggregation over existing owned entries scoped to the manager's assignments; the schema stays at `V7`. |
+| 2026-07-28 | Extension 2 fixed decision (FD1) - **"recently inactive" = no entry of any type in the last 7 days**, a fixed default, not configurable and not a query parameter in this iteration. | Recorded as a settled decision so the build session does not re-open it (`REQUIREMENTS.md` §10.7). |
+| 2026-07-28 | Extension 2 fixed decision (FD2) - an Admin gets a **per-manager view only**, one manager's team at a time via `managerId`; there is **no** global all-managers / cohort rollup. | Mirrors Search A10 (one target at a time) and keeps the endpoint and authorization identical for Manager and Admin callers; a cross-manager rollup is deferred (`REQUIREMENTS.md` §10.7, Q7). |
 
 ## Known Issues
 
@@ -461,6 +469,37 @@ cross-session feedback.
   `REQUIREMENTS.md` section 9, both marked "Build note (2026-07-28)": the response groups are
   objects carrying their count and truncation flag rather than bare arrays (§9.4), and the trigram
   migration is skipped on H2 by living on the separate `db/migration-postgresql` path (§9.3).
+- 2026-07-28: **Extension 2 (Manager Dashboards) elaborated - documentation only, no code.** Manager
+  Dashboards is a second extension beyond the original seven phases and beyond Extension 1, giving a
+  Manager an **aggregate** team view across all their overseen recruits, distinct from the existing
+  per-recruit dashboard (US-M03/§4.6). `REQUIREMENTS.md` gained section 10 ("Extension: Manager
+  Dashboards") in the style of sections 1-9: user stories (US-MD01 Manager team-wide dashboard,
+  US-MD02 Admin viewing any single manager's team, both `403` out of scope), the exact aggregate set
+  (team size, total tasks/issues/feedback/notes across the team, recruits with open `CRITICAL`/`HIGH`
+  issues, recruits inactive for 7 days), the data-model impact (no new entities/tables/columns; an
+  aggregation query over the existing entry tables joined to `manager_assignment`; reuse of the four
+  entry repositories and `ManagerAssignmentRepository`), the `GET /api/manager-dashboard` endpoint
+  with an Admin-only `managerId`, the `/manager-dashboard` Thymeleaf page linked from the Manager nav
+  alongside the per-recruit dashboard, validation (zero-recruit empty state is a `200`, not an error;
+  `managerId` validation resolving to `403` not `404`), and the fixed decisions / assumptions. **No
+  code of any kind was added - no entity, migration, repository query, service, endpoint, template or
+  test - and the test suite is unchanged at 166 tests.** The scope is counts and lists only; charts
+  are deferred to a separate future extension.
+- 2026-07-28: Notes for the follow-up Manager Dashboards build session (Step 2, a separate PR
+  pending approval). Branch from the tip of **this** extension branch and read `REQUIREMENTS.md`
+  section 10 and this file from there - nothing has been merged to `main`, so the stack Phase 1 ->
+  Phase 7 -> Extension 1 -> Extension 2 is a chain of open PRs. Build order that fits the existing
+  code: resolve the target manager's overseen-recruit ids from `ManagerAssignmentRepository`, then
+  reuse the four entry repositories (`TaskEntryRepository`, `IssueEntryRepository`,
+  `FeedbackNoteRepository`, `AdditionalNoteRepository`) for the team-wide counts and the two
+  attention lists; assemble the grouped response in a new `ManagerDashboardService` the way
+  `DashboardService` and `ReportService` compose the four repositories; authorize solely through the
+  `EntryAccessService.resolveListTarget` pattern so an unknown or non-Manager id stays a `403`, never
+  `404`, and only an Admin may pass `managerId`. Remember the **Phase 6 lesson that every nullable
+  bind parameter needs a `cast(...)` on PostgreSQL** (for example the 7-day cut-off date), since the
+  H2 test suite will not catch it. Add no charts (deferred, Q8) and no new tables/columns (the schema
+  stays at `V7`). Keep FD1 (7-day inactivity) and FD2 (Admin per-manager view, no global rollup) as
+  settled - do not re-open them.
 
 
 ## Final Project Status (2026-07-28)
