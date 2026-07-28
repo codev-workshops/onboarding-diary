@@ -315,6 +315,10 @@ Needed because the Manager-to-Recruit oversight relationship is many-to-many.
 
 Unique constraint on (`manager_id`, `recruit_id`).
 
+**Delivery status:** the table, entity and repository are delivered in Phase 3 as a read-only
+dependency of the Manager-overseen read rules in Sections 4.2, 4.3 and 6.2. The Admin endpoints
+that create and remove assignments (Section 4.8) are deferred to the admin phase.
+
 ### 2.9 Relationships
 
 - `User` 1 - * `TaskEntry`, `IssueEntry`, `FeedbackNote`, `AdditionalNote` (via `owner_id`).
@@ -457,6 +461,10 @@ Authorization shorthand:
 | GET | `/api/users/me/recruits` | - | list of recruits overseen by caller | Manager, Admin |
 | POST | `/api/users/{managerId}/recruits` | recruitId | 201 assignment created | Admin |
 | DELETE | `/api/users/{managerId}/recruits/{recruitId}` | - | 204 | Admin |
+
+**Delivery status:** none of Section 4.8 is implemented yet. Admin user management and
+assignment maintenance are deferred to the admin phase; Phase 3 only reads existing
+`ManagerAssignment` rows (see Section 2.8).
 
 ### 4.9 Reference Data (task categories and departments)
 

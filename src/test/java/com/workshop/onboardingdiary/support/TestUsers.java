@@ -25,13 +25,17 @@ public class TestUsers {
     }
 
     public User create(String email, String rawPassword, Role role, boolean active) {
+        return create(email, rawPassword, role, active, LocalDate.of(2026, 1, 5));
+    }
+
+    public User create(String email, String rawPassword, Role role, boolean active, LocalDate startDate) {
         User user = new User();
         user.setName("Test User");
         user.setEmail(email.toLowerCase());
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         user.setRole(role);
         user.setDepartment(departmentRepository.findByNameIgnoreCase("Engineering").orElseThrow());
-        user.setStartDate(LocalDate.of(2026, 1, 5));
+        user.setStartDate(startDate);
         user.setActive(active);
         return userRepository.save(user);
     }

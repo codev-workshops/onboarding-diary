@@ -20,7 +20,7 @@ cross-session feedback.
 |---|---|---|---|
 | Phase 1 | Project scaffold - Spring Boot project, build config, database connection, base packages | Done | 2026-07-28: Maven/Spring Boot 3.2 scaffold, Flyway schema for `department` + `users`, Docker Compose Postgres, H2-backed tests, Admin bootstrap, public health check. |
 | Phase 2 | Auth + Profile - signup/login/logout, password hashing, roles, profile view/edit | Done | 2026-07-28: JWT auth (jjwt), signup/login/logout REST + Thymeleaf pages, `/api/me` profile view/edit, public `/api/departments`, 30 tests green. |
-| Phase 3 | Task Log + Issue Log - CRUD, filters, ownership rules | Not Started | |
+| Phase 3 | Task Log + Issue Log - CRUD, filters, ownership rules | Done | 2026-07-28: `/api/tasks` and `/api/issues` CRUD + filters, `GET /api/categories`, Flyway `V3`-`V6` (`task_category` + seed, `task_entry`, `issue_entry`, `manager_assignment`), owner/Admin write and Manager-overseen read authorization, 55 tests green. |
 | Phase 4 | Feedback Notes + Additional Notes - feedback submission, notes CRUD with tags | Not Started | |
 | Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Not Started | |
 | Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Not Started | |
@@ -55,6 +55,10 @@ cross-session feedback.
 | 2026-07-28 | Phase 2: department existence and `active` are enforced in `AuthService`/`ProfileService` (case-insensitive lookup), returning a field-level `department` error. | Closes the Phase 1 known issue that case-insensitive/active checks must live in the service layer. |
 | 2026-07-28 | Phase 2: security is stateless (`SessionCreationPolicy.STATELESS`) with CSRF disabled; unauthenticated HTML requests redirect to `/login` while `/api/**` returns `401`. | Stateless JWT needs no CSRF token, and pages and API clients need different unauthenticated behaviour. |
 | 2026-07-28 | Phase 2: login failures (wrong password, unknown email, deactivated account) all return the same `401` body "Invalid email or password". | US-R02: no user enumeration. |
+| 2026-07-28 | Phase 3: `ManagerAssignment` (§2.8) is built as a minimal read-only dependency of the Manager-overseen read requirement - table, entity, repository and the `existsByManagerIdAndRecruitId` oversight check only. No admin endpoints create or delete assignments; tests seed rows through the repository. | The Manager read path in §4.2/§4.3/§6.2 cannot be implemented or tested without oversight data, but assignment management is admin work (§4.8) belonging to a later phase. |
+| 2026-07-28 | Phase 3: admin task-category maintenance (`POST`/`PUT /api/categories`, §4.9) is deferred; only the authenticated read `GET /api/categories` is delivered. | US-A04 is admin maintenance and the Phase 3 notes did not include it; categories are seeded by migration `V4`. |
+| 2026-07-28 | Phase 3: entry authorization lives in `EntryAccessService` (owner or Admin may write, Manager may read only assigned recruits) and raises `AccessDeniedException`, mapped to `403` by `ApiExceptionHandler`. | Keeps one authorization implementation shared by the Task and Issue logs (§6.2). |
+| 2026-07-28 | Phase 3: filters are AND-combined in repository JPQL with null-tolerant parameters, and an unknown `category` filter is a field-level `400`. | Matches US-R05/US-R07; an empty result is an empty list, not an error. |
 | 2026-07-28 | Phase 2: CSRF stays disabled even though pages authenticate with the `ACCESS_TOKEN` cookie, which browsers send automatically. | Product owner decision after a review flagged it; `SameSite=Lax` plus HttpOnly covers the classic vectors and no CORS origins are allowed. Revisit if cross-site clients or non-Lax flows appear. |
 
 ## Known Issues
@@ -74,9 +78,16 @@ cross-session feedback.
 - CSRF tokens are not issued: state-changing endpoints such as `PUT /api/me` and
   `POST /api/auth/logout` rely on the cookie's `SameSite=Lax` flag rather than a CSRF token.
   Accepted deliberately (see the Decisions Log); it is a hardening gap, not an open hole.
-- Admin-only behaviour (role changes, deactivation, the last-active-admin rule, manager
-  assignments) and reference-data maintenance are not implemented; only the read-only
-  `GET /api/departments` exists.
+- Admin-only behaviour (role changes, deactivation, the last-active-admin rule, creating and
+  removing manager assignments) and reference-data maintenance are not implemented; only the
+  read-only `GET /api/departments` and `GET /api/categories` exist.
+- Phase 3: `manager_assignment` rows can only be created directly in the database (or by a test)
+  until the admin endpoints in §4.8 exist, so Manager oversight is not yet configurable from the
+  application.
+- Phase 3: entry lists are not paginated yet; §4.2/§4.3 mention paging and the endpoints return
+  the full filtered list ordered by entry date descending.
+- Phase 3: no Thymeleaf pages for `/tasks` and `/issues`; the REST API is the only interface so
+  far.
 
 ## Feedback / Cross-session Notes
 
@@ -112,6 +123,23 @@ cross-session feedback.
   `Principal`-based lookup used by `MeController`. Keep the active-lookup check pattern from
   `AuthService` when resolving task categories, and keep the suite runnable with
   `@ActiveProfiles("test")` and no external database.
+- 2026-07-28: Phase 3 complete. Validated with `./mvnw clean verify` (55 tests, all green) against
+  in-memory H2: Task and Issue field validation (required fields, title 1-150, description and
+  resolution notes max 5000, every enum value accepted and invalid values rejected, `yyyy-MM-dd`
+  accepted and other formats rejected, future dates and dates before the owner's start date
+  rejected, resolution notes required for `RESOLVED`/`CLOSED`), CRUD round-trips, every filter
+  individually and combined, the authenticated category list, `401` for unauthenticated access,
+  and the full role matrix (owner, non-owner recruit, overseeing Manager read-only, unassigned
+  Manager forbidden, Admin full). Not implemented or tested: Phase 4+ entry types, dashboard,
+  reports, admin user management and assignment endpoints (§4.8), admin category maintenance
+  (§4.9), and paging.
+- 2026-07-28: Notes for Phase 4 - Feedback Notes and Additional Notes with tags. Add `V7+`
+  migrations for `feedback_note`, `additional_note` and `note_tag` in the same portable SQL style,
+  and reuse `EntryAccessService` for ownership, Manager-overseen reads and the entry-date rules
+  instead of duplicating the checks. Only New Recruits may create feedback (§6.2), which is the
+  first role-restricted create in the codebase. Consider whether the admin phase (users, roles,
+  manager assignments, category and department maintenance) should be scheduled before the
+  dashboard, since oversight data is currently only seedable through the database.
 - 2026-07-27: Product owner answered the outstanding blockers; decisions D1-D7 are recorded above
   and in `REQUIREMENTS.md` section 8.2.1, with the details propagated into sections 1, 3, 4, 5,
   and 7. Phase 1 can begin: Spring Boot 3.2 + Thymeleaf + JPA scaffold, Docker Compose PostgreSQL,
