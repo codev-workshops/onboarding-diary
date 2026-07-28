@@ -1,0 +1,29 @@
+package com.workshop.onboardingdiary.repository;
+
+import com.workshop.onboardingdiary.entity.IssueEntry;
+import com.workshop.onboardingdiary.entity.IssueSeverity;
+import com.workshop.onboardingdiary.entity.IssueStatus;
+import java.time.LocalDate;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface IssueEntryRepository extends JpaRepository<IssueEntry, Long> {
+
+    /** Filters combine with AND semantics; a null filter is ignored (REQUIREMENTS 4.3, US-R07). */
+    @Query("""
+            select i from IssueEntry i
+            where i.owner.id = :ownerId
+              and (:dateFrom is null or i.entryDate >= :dateFrom)
+              and (:dateTo is null or i.entryDate <= :dateTo)
+              and (:status is null or i.status = :status)
+              and (:severity is null or i.severity = :severity)
+            order by i.entryDate desc, i.createdAt desc, i.id desc
+            """)
+    List<IssueEntry> search(@Param("ownerId") Long ownerId,
+                            @Param("dateFrom") LocalDate dateFrom,
+                            @Param("dateTo") LocalDate dateTo,
+                            @Param("status") IssueStatus status,
+                            @Param("severity") IssueSeverity severity);
+}
