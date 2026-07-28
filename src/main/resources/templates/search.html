@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Search')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav('search')}"></header>
+<main class="page page-wide">
+    <h1>Search</h1>
+    <p class="alert" id="page-alert" hidden></p>
+    <p class="muted" id="search-summary"></p>
+
+    <section class="card" id="search-results"></section>
+</main>
+<script th:src="@{/js/auth.js}"></script>
+<script th:src="@{/js/app.js}"></script>
+<script th:inline="javascript">
+    var currentUserId = /*[[${profile.id()}]]*/ 0;
+    var groups = [
+        { key: 'tasks', label: 'Tasks', href: '/tasks' },
+        { key: 'issues', label: 'Issues', href: '/issues' },
+        { key: 'feedback', label: 'Feedback Notes', href: '/feedback' },
+        { key: 'notes', label: 'Additional Notes', href: '/notes' }
+    ];
+
+    function parameter(name) {
+        return new URLSearchParams(window.location.search).get(name) || '';
+    }
+
+    function renderGroup(group, payload) {
+        var data = payload.results[group.key];
+        var rows = data.items.length === 0
+            ? emptyRow(2, 'No matching ' + group.label.toLowerCase())
+            : data.items.map(function (hit) {
+                return '<tr><td>' + escapeHtml(hit.entryDate) + '</td><td><a href="' + group.href + '">'
+                    + escapeHtml(hit.title) + '</a><div class="search-excerpt">' + escapeHtml(hit.excerpt)
+                    + '</div></td></tr>';
+            }).join('');
+        return '<div class="search-group"><h2>' + escapeHtml(group.label) + ' (' + data.count + ')</h2>'
+            + (data.truncated ? '<p class="muted">Only the first ' + data.count
+                + ' matches are shown; refine the query to see fewer.</p>' : '')
+            + '<table class="data-table"><thead><tr><th>Date</th><th>Entry</th></tr></thead><tbody>'
+            + rows + '</tbody></table></div>';
+    }
+
+    function renderResults(payload) {
+        var summary = payload.totalResults === 0
+            ? 'No entries match "' + payload.query + '". Try fewer or shorter words.'
+            : payload.totalResults + ' matching ' + (payload.totalResults === 1 ? 'entry' : 'entries')
+              + ' for "' + payload.query + '"';
+        if (payload.userId !== currentUserId) {
+            summary += ' (user ' + payload.userId + ', read only)';
+        }
+        document.getElementById('search-summary').textContent = summary;
+        document.getElementById('search-results').innerHTML = groups.map(function (group) {
+            return renderGroup(group, payload);
+        }).join('');
+    }
+
+    function runSearch() {
+        var query = parameter('q');
+        if (query.trim().length < 2) {
+            document.getElementById('search-summary').textContent =
+                'Enter at least 2 characters in the search box to search your entries.';
+            document.getElementById('search-results').hidden = true;
+            return;
+        }
+        document.getElementById('search-results').hidden = false;
+        apiGet('/api/search' + queryString({ q: query, userId: parameter('userId') }), renderResults);
+    }
+
+    runSearch();
+</script>
+</body>
+</html>

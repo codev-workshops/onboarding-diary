@@ -29,6 +29,17 @@
             <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
                th:href="@{/profile}" th:classappend="${active == 'profile'} ? ' active'">Profile</a>
         </nav>
+        <!--/* Global search bar (REQUIREMENTS 9.5): submits to the /search page, and stays disabled
+               below the minimum query length so the common case never reaches the server. */-->
+        <form class="topnav-search" method="get" th:action="@{/search}">
+            <label class="visually-hidden" for="nav-search-q">Search entries</label>
+            <input type="search" id="nav-search-q" name="q" maxlength="100" placeholder="Search entries"
+                   th:value="${param.q != null ? param.q[0] : ''}"/>
+            <input th:if="${profile.role().name() != 'NEW_RECRUIT'}" type="text" id="nav-search-userId"
+                   name="userId" inputmode="numeric" class="topnav-search-user" placeholder="Recruit id"
+                   th:value="${param.userId != null ? param.userId[0] : ''}"/>
+            <button type="submit" id="nav-search-submit" disabled>Search</button>
+        </form>
         <div class="topnav-user">
             <span class="topnav-name" th:text="${profile.name()} + ' (' + ${role} + ')'"></span>
             <button type="button" id="logout" class="link-button">Log out</button>

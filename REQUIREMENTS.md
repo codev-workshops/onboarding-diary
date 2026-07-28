@@ -922,6 +922,13 @@ columns, `note_tag.tag` included), delivered as one new Flyway migration. Becaus
 PostgreSQL-only while migrations have so far been deliberately portable ANSI SQL, the migration must
 either be guarded so the H2 test database skips it, or the index creation must live in a
 PostgreSQL-only migration path; the build phase decides which, and the decision is recorded then.
+
+**Build note (2026-07-28).** The PostgreSQL-only migration path was chosen over guarding the SQL:
+migration `V8__create_search_trigram_indexes.sql` lives in `db/migration-postgresql`, a sibling of
+`db/migration` (Flyway scans a location recursively, so a subdirectory would not be skipped), and
+only the application's `spring.flyway.locations` lists both paths. The H2 test database keeps
+scanning `db/migration` alone and therefore never sees the extension or the GIN indexes.
+
 Standard (non-trigram) indexes on the searched columns are the fallback if `pg_trgm` is unavailable:
 they do not accelerate a leading wildcard, which is acceptable at the data volumes this application
 targets (Section 7 states no scale targets).
@@ -977,6 +984,12 @@ Response shape (illustrative):
   }
 }
 ```
+
+**Build note (2026-07-28).** The illustrative shape above is refined by the implementation: each
+group is an object rather than a bare array, `{ "count": n, "truncated": false, "items": [ ... ] }`,
+so the per-type count and the per-group truncation flag required below travel with the group they
+describe. `query` carries the trimmed, whitespace-collapsed query, and each item is
+`{ type, id, entryDate, title, excerpt }`.
 
 - `title` carries the entity's headline field (`subject` for feedback notes), matching the
   `recentEntries` convention of Section 4.6, so clients render one result shape for all four types.
