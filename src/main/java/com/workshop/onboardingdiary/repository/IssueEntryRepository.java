@@ -45,6 +45,34 @@ public interface IssueEntryRepository extends JpaRepository<IssueEntry, Long> {
 
     long countByOwnerId(Long ownerId);
 
+    /** Team-wide count over the manager's recruits (REQUIREMENTS 10.2). */
+    long countByOwnerIdIn(Collection<Long> ownerIds);
+
+    /** The latest issue entry date per recruit, for the inactivity check (REQUIREMENTS 10.2). */
+    @Query("""
+            select i.owner.id as recruitId, max(i.entryDate) as lastEntryDate
+            from IssueEntry i
+            where i.owner.id in :ownerIds
+            group by i.owner.id
+            """)
+    List<RecruitLastEntryDate> findLastEntryDates(@Param("ownerIds") Collection<Long> ownerIds);
+
+    /**
+     * Per-recruit count of still-open high-priority issues for the manager dashboard's attention
+     * list (REQUIREMENTS 10.2); only recruits with at least one such issue are returned.
+     */
+    @Query("""
+            select i.owner.id as recruitId, count(i) as openCount
+            from IssueEntry i
+            where i.owner.id in :ownerIds
+              and i.severity in :severities
+              and i.status in :statuses
+            group by i.owner.id
+            """)
+    List<RecruitOpenIssueCount> countOpenHighPriorityByRecruit(@Param("ownerIds") Collection<Long> ownerIds,
+                                                               @Param("severities") Collection<IssueSeverity> severities,
+                                                               @Param("statuses") Collection<IssueStatus> statuses);
+
     /** Dashboard open issues are the ones still OPEN or IN_PROGRESS (REQUIREMENTS 4.6). */
     List<IssueEntry> findByOwnerIdAndStatusInOrderByEntryDateDescCreatedAtDescIdDesc(
             Long ownerId, Collection<IssueStatus> statuses);

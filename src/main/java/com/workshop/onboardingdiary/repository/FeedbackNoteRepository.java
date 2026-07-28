@@ -3,6 +3,7 @@ package com.workshop.onboardingdiary.repository;
 import com.workshop.onboardingdiary.entity.FeedbackNote;
 import com.workshop.onboardingdiary.entity.FeedbackType;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,6 +40,18 @@ public interface FeedbackNoteRepository extends JpaRepository<FeedbackNote, Long
     List<FeedbackNote> searchText(@Param("ownerId") Long ownerId, @Param("q") String q, Pageable pageable);
 
     long countByOwnerId(Long ownerId);
+
+    /** Team-wide count over the manager's recruits (REQUIREMENTS 10.2). */
+    long countByOwnerIdIn(Collection<Long> ownerIds);
+
+    /** The latest feedback note entry date per recruit, for the inactivity check (REQUIREMENTS 10.2). */
+    @Query("""
+            select f.owner.id as recruitId, max(f.entryDate) as lastEntryDate
+            from FeedbackNote f
+            where f.owner.id in :ownerIds
+            group by f.owner.id
+            """)
+    List<RecruitLastEntryDate> findLastEntryDates(@Param("ownerIds") Collection<Long> ownerIds);
 
     List<FeedbackNote> findByOwnerIdOrderByEntryDateDescCreatedAtDescIdDesc(Long ownerId, Pageable pageable);
 }

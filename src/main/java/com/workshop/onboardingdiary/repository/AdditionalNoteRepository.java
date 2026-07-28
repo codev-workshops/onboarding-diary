@@ -2,6 +2,7 @@ package com.workshop.onboardingdiary.repository;
 
 import com.workshop.onboardingdiary.entity.AdditionalNote;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -46,6 +47,18 @@ public interface AdditionalNoteRepository extends JpaRepository<AdditionalNote, 
     List<AdditionalNote> searchText(@Param("ownerId") Long ownerId, @Param("q") String q, Pageable pageable);
 
     long countByOwnerId(Long ownerId);
+
+    /** Team-wide count over the manager's recruits (REQUIREMENTS 10.2). */
+    long countByOwnerIdIn(Collection<Long> ownerIds);
+
+    /** The latest additional note entry date per recruit, for the inactivity check (REQUIREMENTS 10.2). */
+    @Query("""
+            select n.owner.id as recruitId, max(n.entryDate) as lastEntryDate
+            from AdditionalNote n
+            where n.owner.id in :ownerIds
+            group by n.owner.id
+            """)
+    List<RecruitLastEntryDate> findLastEntryDates(@Param("ownerIds") Collection<Long> ownerIds);
 
     List<AdditionalNote> findByOwnerIdOrderByEntryDateDescCreatedAtDescIdDesc(Long ownerId, Pageable pageable);
 }

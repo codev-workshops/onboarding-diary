@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Team Dashboard')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav('manager-dashboard')}"></header>
+<main class="page page-wide">
+    <h1>Team Dashboard</h1>
+    <p class="alert" id="page-alert" hidden></p>
+
+    <!--/* Only an Admin may target another manager (REQUIREMENTS 10.4); a Manager always sees their
+           own team, so the picker is Admin-only. */-->
+    <section class="card" th:if="${profile.role().name() == 'ADMIN'}">
+        <label for="targetManagerId">Manager user id (blank shows your own team)
+            <input type="text" id="targetManagerId" inputmode="numeric" placeholder="e.g. 3"/>
+        </label>
+        <button type="button" id="reload" class="inline">Show dashboard</button>
+    </section>
+
+    <section class="card">
+        <h2>Team summary</h2>
+        <div class="stat-grid">
+            <div class="stat"><span class="stat-label">Team size</span><span class="stat-value" id="count-team">-</span></div>
+            <div class="stat"><span class="stat-label">Tasks</span><span class="stat-value" id="count-tasks">-</span></div>
+            <div class="stat"><span class="stat-label">Issues</span><span class="stat-value" id="count-issues">-</span></div>
+            <div class="stat"><span class="stat-label">Feedback notes</span><span class="stat-value" id="count-feedback">-</span></div>
+            <div class="stat"><span class="stat-label">Additional notes</span><span class="stat-value" id="count-notes">-</span></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Recruits with open high-priority issues</h2>
+        <table class="data-table">
+            <thead>
+            <tr><th>Recruit id</th><th>Name</th><th>Open CRITICAL/HIGH</th></tr>
+            </thead>
+            <tbody id="high-priority"></tbody>
+        </table>
+    </section>
+
+    <section class="card">
+        <h2>Recruits inactive for 7 days</h2>
+        <table class="data-table">
+            <thead>
+            <tr><th>Recruit id</th><th>Name</th><th>Last entry</th></tr>
+            </thead>
+            <tbody id="inactive"></tbody>
+        </table>
+    </section>
+</main>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    function targetManagerId() {
+        var input = document.getElementById('targetManagerId');
+        return input ? input.value : '';
+    }
+
+    function renderManagerDashboard(data) {
+        document.getElementById('count-team').textContent = data.teamSize;
+        document.getElementById('count-tasks').textContent = data.counts.tasks;
+        document.getElementById('count-issues').textContent = data.counts.issues;
+        document.getElementById('count-feedback').textContent = data.counts.feedbackNotes;
+        document.getElementById('count-notes').textContent = data.counts.additionalNotes;
+
+        document.getElementById('high-priority').innerHTML = data.recruitsWithOpenHighPriorityIssues.length === 0
+            ? emptyRow(3, 'No recruits with open high-priority issues')
+            : data.recruitsWithOpenHighPriorityIssues.map(function (recruit) {
+                return '<tr><td>' + escapeHtml(recruit.userId) + '</td><td>' + escapeHtml(recruit.name)
+                    + '</td><td>' + escapeHtml(recruit.openCriticalOrHigh) + '</td></tr>';
+            }).join('');
+
+        document.getElementById('inactive').innerHTML = data.inactiveRecruits.length === 0
+            ? emptyRow(3, 'No inactive recruits')
+            : data.inactiveRecruits.map(function (recruit) {
+                return '<tr><td>' + escapeHtml(recruit.userId) + '</td><td>' + escapeHtml(recruit.name)
+                    + '</td><td>' + escapeHtml(recruit.lastEntryDate || 'No entries yet') + '</td></tr>';
+            }).join('');
+    }
+
+    function loadManagerDashboard() {
+        apiGet('/api/manager-dashboard' + queryString({ managerId: targetManagerId() }), renderManagerDashboard);
+    }
+
+    var reload = document.getElementById('reload');
+    if (reload) {
+        reload.addEventListener('click', loadManagerDashboard);
+    }
+    loadManagerDashboard();
+</script>
+</body>
+</html>

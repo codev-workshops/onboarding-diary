@@ -3,6 +3,7 @@ package com.workshop.onboardingdiary.repository;
 import com.workshop.onboardingdiary.entity.TaskEntry;
 import com.workshop.onboardingdiary.entity.TaskStatus;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -43,6 +44,18 @@ public interface TaskEntryRepository extends JpaRepository<TaskEntry, Long> {
     long countByOwnerId(Long ownerId);
 
     long countByOwnerIdAndStatus(Long ownerId, TaskStatus status);
+
+    /** Team-wide count over the manager's recruits (REQUIREMENTS 10.2). */
+    long countByOwnerIdIn(Collection<Long> ownerIds);
+
+    /** The latest task entry date per recruit, for the inactivity check (REQUIREMENTS 10.2). */
+    @Query("""
+            select t.owner.id as recruitId, max(t.entryDate) as lastEntryDate
+            from TaskEntry t
+            where t.owner.id in :ownerIds
+            group by t.owner.id
+            """)
+    List<RecruitLastEntryDate> findLastEntryDates(@Param("ownerIds") Collection<Long> ownerIds);
 
     List<TaskEntry> findByOwnerIdOrderByEntryDateDescCreatedAtDescIdDesc(Long ownerId, Pageable pageable);
 }

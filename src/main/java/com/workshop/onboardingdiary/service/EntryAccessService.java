@@ -42,6 +42,32 @@ public class EntryAccessService {
         return target;
     }
 
+    /**
+     * Resolves the manager whose team the manager dashboard covers (REQUIREMENTS 10.4), reusing the
+     * 403-not-404 spirit of {@link #resolveListTarget}. The dashboard is Manager/Admin only, so a New
+     * Recruit is always forbidden; a Manager only ever sees their own oversight scope, and only an
+     * Admin may pass another {@code managerId}, which must reference an existing Manager or it is a
+     * 403 exactly like an unknown or out-of-scope id.
+     */
+    @Transactional(readOnly = true)
+    public User resolveManagerTarget(User caller, Long managerId) {
+        if (caller.getRole() == Role.NEW_RECRUIT) {
+            throw new AccessDeniedException("Not allowed to view a manager dashboard");
+        }
+        if (managerId == null || managerId.equals(caller.getId())) {
+            return caller;
+        }
+        if (caller.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Not allowed to view another manager's dashboard");
+        }
+        User target = userRepository.findById(managerId)
+                .orElseThrow(() -> new AccessDeniedException("Not allowed to view another manager's dashboard"));
+        if (target.getRole() != Role.MANAGER) {
+            throw new AccessDeniedException("Not allowed to view another manager's dashboard");
+        }
+        return target;
+    }
+
     public void requireReadAccess(User caller, User owner) {
         if (caller.getId().equals(owner.getId()) || caller.getRole() == Role.ADMIN) {
             return;

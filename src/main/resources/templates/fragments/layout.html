@@ -16,6 +16,9 @@
         <nav class="topnav-links">
             <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
                th:href="@{/dashboard}" th:classappend="${active == 'dashboard'} ? ' active'">Dashboard</a>
+            <a th:if="${#lists.contains({'MANAGER', 'ADMIN'}, role)}"
+               th:href="@{/manager-dashboard}"
+               th:classappend="${active == 'manager-dashboard'} ? ' active'">Team Dashboard</a>
             <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
                th:href="@{/tasks}" th:classappend="${active == 'tasks'} ? ' active'">Task Log</a>
             <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
