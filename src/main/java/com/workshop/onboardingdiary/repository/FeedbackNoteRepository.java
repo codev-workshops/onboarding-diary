@@ -1,0 +1,26 @@
+package com.workshop.onboardingdiary.repository;
+
+import com.workshop.onboardingdiary.entity.FeedbackNote;
+import com.workshop.onboardingdiary.entity.FeedbackType;
+import java.time.LocalDate;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface FeedbackNoteRepository extends JpaRepository<FeedbackNote, Long> {
+
+    /** Filters combine with AND semantics; a null filter is ignored (REQUIREMENTS 4.4). */
+    @Query("""
+            select f from FeedbackNote f
+            where f.owner.id = :ownerId
+              and (:dateFrom is null or f.entryDate >= :dateFrom)
+              and (:dateTo is null or f.entryDate <= :dateTo)
+              and (:type is null or f.type = :type)
+            order by f.entryDate desc, f.createdAt desc, f.id desc
+            """)
+    List<FeedbackNote> search(@Param("ownerId") Long ownerId,
+                              @Param("dateFrom") LocalDate dateFrom,
+                              @Param("dateTo") LocalDate dateTo,
+                              @Param("type") FeedbackType type);
+}

@@ -21,7 +21,7 @@ cross-session feedback.
 | Phase 1 | Project scaffold - Spring Boot project, build config, database connection, base packages | Done | 2026-07-28: Maven/Spring Boot 3.2 scaffold, Flyway schema for `department` + `users`, Docker Compose Postgres, H2-backed tests, Admin bootstrap, public health check. |
 | Phase 2 | Auth + Profile - signup/login/logout, password hashing, roles, profile view/edit | Done | 2026-07-28: JWT auth (jjwt), signup/login/logout REST + Thymeleaf pages, `/api/me` profile view/edit, public `/api/departments`, 30 tests green. |
 | Phase 3 | Task Log + Issue Log - CRUD, filters, ownership rules | Done | 2026-07-28: `/api/tasks` and `/api/issues` CRUD + filters, `GET /api/categories`, Flyway `V3`-`V6` (`task_category` + seed, `task_entry`, `issue_entry`, `manager_assignment`), owner/Admin write and Manager-overseen read authorization, 55 tests green. |
-| Phase 4 | Feedback Notes + Additional Notes - feedback submission, notes CRUD with tags | Not Started | |
+| Phase 4 | Feedback Notes + Additional Notes - feedback submission, notes CRUD with tags | Done | 2026-07-28: `/api/feedback` and `/api/notes` CRUD + filters, Flyway `V7` (`feedback_note`, `additional_note`, `note_tag`), recruit-only feedback creation, tag normalisation and tag search, 85 tests green. |
 | Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Not Started | |
 | Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Not Started | |
 
@@ -59,6 +59,12 @@ cross-session feedback.
 | 2026-07-28 | Phase 3: admin task-category maintenance (`POST`/`PUT /api/categories`, §4.9) is deferred; only the authenticated read `GET /api/categories` is delivered. | US-A04 is admin maintenance and the Phase 3 notes did not include it; categories are seeded by migration `V4`. |
 | 2026-07-28 | Phase 3: entry authorization lives in `EntryAccessService` (owner or Admin may write, Manager may read only assigned recruits) and raises `AccessDeniedException`, mapped to `403` by `ApiExceptionHandler`. | Keeps one authorization implementation shared by the Task and Issue logs (§6.2). |
 | 2026-07-28 | Phase 3: filters are AND-combined in repository JPQL with null-tolerant parameters, and an unknown `category` filter is a field-level `400`. | Matches US-R05/US-R07; an empty result is an empty list, not an error. |
+| 2026-07-28 | Phase 4: `FeedbackNote` and `AdditionalNote` mirror the Phase 3 structure (entity, repository with a null-tolerant JPQL `search`, service, controller, request/response records) and reuse `EntryAccessService` for ownership, Manager-overseen reads and the entry-date rules. | One authorization implementation for all four entry types (§6.2); no duplicated checks. |
+| 2026-07-28 | Phase 4: the recruit-only feedback create rule (§6.2) is enforced in `FeedbackService` by raising `AccessDeniedException` (403) for any caller whose role is not `NEW_RECRUIT`; additional notes stay open to every role for their own data. | §4.4 restricts only the feedback create; §4.5 does not restrict notes by role. Keeping the check in the service keeps it testable and consistent with the rest of the authorization. |
+| 2026-07-28 | Phase 4: tags are normalised (trim, lower-case, de-duplicate) in `NoteService` before saving, and the `tag` filter is normalised the same way; tag length (1-30) and tag count (max 10, counted after de-duplication) raise a single `tags` field error. | US-R09 requires normalised tags and tag search. Per-element bean validation would produce `tags[0]` error keys, which breaks the `$.errors.<field>` error shape used everywhere else. |
+| 2026-07-28 | Phase 4: note tags live in `note_tag` (`note_id`, `tag`) as a JPA `@ElementCollection` with a composite primary key and `ON DELETE CASCADE`; `note_id` indexes the tag column for tag search. | §2.5/§2.9 model tags as a child table of values, not an entity; the composite key makes duplicate tags impossible in the database too. |
+| 2026-07-28 | Phase 4: `feedback_note.details` and `additional_note.content` are `NOT NULL` (`VARCHAR(5000)` / `VARCHAR(10000)`), matching the required long-text fields in §6.1. | Both fields are required by §2.4/§2.5, unlike the optional task/issue descriptions. |
+| 2026-07-28 | Phase 4: no §4.8 admin endpoints and no Thymeleaf pages for `/feedback` and `/notes`; oversight rows are still seeded through `ManagerAssignmentRepository` in tests. | §2.8/§4.8 delivery notes keep admin user management and assignment maintenance in the dedicated admin phase. |
 | 2026-07-28 | Phase 2: CSRF stays disabled even though pages authenticate with the `ACCESS_TOKEN` cookie, which browsers send automatically. | Product owner decision after a review flagged it; `SameSite=Lax` plus HttpOnly covers the classic vectors and no CORS origins are allowed. Revisit if cross-site clients or non-Lax flows appear. |
 
 ## Known Issues
@@ -88,6 +94,14 @@ cross-session feedback.
   the full filtered list ordered by entry date descending.
 - Phase 3: no Thymeleaf pages for `/tasks` and `/issues`; the REST API is the only interface so
   far.
+- Phase 4: no Thymeleaf pages for `/feedback` and `/notes` either; all four entry types are
+  API-only, so §5.1 still has only the login, signup and profile pages.
+- Phase 4: feedback and note lists are not paginated, like the Phase 3 lists; §4.4/§4.5 mention
+  paging and the endpoints return the full filtered list ordered by entry date descending.
+- Phase 4: the `tag` filter matches one tag at a time (exact match after normalisation); §4.5 does
+  not ask for multi-tag or partial-tag search, so neither is implemented.
+- Phase 4: nothing consumes the new entry types yet - dashboard counts (§4.6) and reports (§4.7)
+  come in Phases 5 and 6.
 
 ## Feedback / Cross-session Notes
 
@@ -144,6 +158,37 @@ cross-session feedback.
   first role-restricted create in the codebase. Consider whether the admin phase (users, roles,
   manager assignments, category and department maintenance) should be scheduled before the
   dashboard, since oversight data is currently only seedable through the database.
+- 2026-07-28: Phase 4 complete. Validated with `./mvnw clean verify` (85 tests, all green) against
+  in-memory H2: feedback field validation (`type` accepting every enum value and rejecting unknown
+  ones with `$.errors.type`, required `entryDate`/`subject`/`type`/`details`, subject 1-150 and
+  details 1-5000 at and over the limit, `yyyy-MM-dd` accepted and other formats rejected, future
+  dates and dates before the owner's start date rejected), note field validation (required
+  `entryDate`/`title`/`content`, title 1-150, content 1-10000, tags optional, tag length 1-30, at
+  most 10 tags, the same date checks), tag normalisation on write (trim, lower-case, de-duplicate)
+  and on search (mixed case and padded filters match the stored tag), CRUD round-trips for both
+  entities, every filter individually and combined (`type`, `tag`, `dateFrom`, `dateTo`), an unknown
+  `type` filter returning `400`, `401` for missing and invalid bearer tokens, the full role matrix
+  for both entities (owner full access, non-owner recruit denied, overseeing Manager read-only,
+  unassigned Manager forbidden, Admin full), and the recruit-only feedback create rule (New Recruit
+  `201`; Manager and Admin `403`, while both may still create their own notes). Not implemented or
+  tested: dashboard (§4.6), reports (§4.7), admin user management and assignment endpoints (§4.8),
+  admin category maintenance (§4.9), paging, and Thymeleaf pages for the entry types.
+- 2026-07-28: Phase 4 was delivered stacked on the Phase 3 branch
+  `devin/1785213965-phase3-task-issue-logs` (PR #75), which is still open. Phase 5 should branch
+  from the tip of the Phase 4 branch `devin/1785216240-phase4-feedback-notes` and read
+  `REQUIREMENTS.md` and `PROGRESS.md` from that tip, since no PR has been merged to `main`.
+- 2026-07-28: Notes for Phase 5 - Dashboard (§4.6, US-R10, US-M03, D7). All four entry
+  repositories now exist, so the summary can be assembled from `TaskEntryRepository`,
+  `IssueEntryRepository`, `FeedbackNoteRepository` and `AdditionalNoteRepository`; reuse
+  `EntryAccessService.resolveListTarget` for the `userId?` parameter so the Manager-overseen and
+  Admin read rules stay in one place. Task completion is completed / total tasks over all time with
+  the percentage rounded to a whole number (0% when there are no tasks), open issues are status
+  `OPEN` or `IN_PROGRESS`, and recent entries are the 10 latest across all four types by entry date
+  with the creation timestamp breaking ties - every entity exposes `createdAt` for that. No new
+  migration should be needed. Phase 5 is also the natural point to decide whether the admin phase
+  (§4.8 user management and manager assignments) should come first, since oversight data is still
+  only seedable through the database, and whether `/dashboard` should finally exist as a page so
+  sign-up and login stop landing on `/profile`.
 - 2026-07-27: Product owner answered the outstanding blockers; decisions D1-D7 are recorded above
   and in `REQUIREMENTS.md` section 8.2.1, with the details propagated into sections 1, 3, 4, 5,
   and 7. Phase 1 can begin: Spring Boot 3.2 + Thymeleaf + JPA scaffold, Docker Compose PostgreSQL,
