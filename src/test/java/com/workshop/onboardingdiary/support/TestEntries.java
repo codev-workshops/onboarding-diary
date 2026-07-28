@@ -93,6 +93,37 @@ public class TestEntries {
         return additionalNoteRepository.save(note);
     }
 
+    /** Task with the optional description filled in, for the searched-field fixtures of section 9.2. */
+    public TaskEntry taskWithText(User owner, LocalDate entryDate, String title, String description) {
+        TaskEntry task = task(owner, entryDate, title, "Training", TaskStatus.IN_PROGRESS);
+        task.setDescription(description);
+        return taskEntryRepository.save(task);
+    }
+
+    /** Issue with the optional description and resolution notes filled in. */
+    public IssueEntry issueWithText(User owner, LocalDate entryDate, String title, String description,
+                                    String resolutionNotes) {
+        IssueEntry issue = issue(owner, entryDate, title, IssueStatus.OPEN, IssueSeverity.LOW);
+        issue.setDescription(description);
+        issue.setResolutionNotes(resolutionNotes);
+        return issueEntryRepository.save(issue);
+    }
+
+    /** Feedback note with the details text chosen by the caller. */
+    public FeedbackNote feedbackWithText(User owner, LocalDate entryDate, String subject, String details) {
+        FeedbackNote feedback = feedback(owner, entryDate, subject, FeedbackType.POSITIVE);
+        feedback.setDetails(details);
+        return feedbackNoteRepository.save(feedback);
+    }
+
+    /** Additional note with the content text chosen by the caller; tags are seeded as given. */
+    public AdditionalNote noteWithText(User owner, LocalDate entryDate, String title, String content,
+                                       String... tags) {
+        AdditionalNote note = note(owner, entryDate, title, tags);
+        note.setContent(content);
+        return additionalNoteRepository.save(note);
+    }
+
     /** Oversight is seeded directly: the admin endpoints in section 4.8 are a later phase. */
     public ManagerAssignment assign(User manager, User recruit) {
         ManagerAssignment assignment = new ManagerAssignment();

@@ -73,6 +73,25 @@ class PageAccessTest {
     }
 
     @Test
+    void theSearchPageRendersAndTheNavCarriesTheSearchBar() throws Exception {
+        User user = testUsers.create("search-page@example.com", "sup3rsecret", Role.NEW_RECRUIT, true);
+        String token = jwtService.issueToken(user.getEmail(), user.getRole());
+
+        mockMvc.perform(get("/dashboard").accept(MediaType.TEXT_HTML).cookie(new Cookie("ACCESS_TOKEN", token)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"nav-search-q\"")));
+
+        mockMvc.perform(get("/search?q=onboarding").accept(MediaType.TEXT_HTML)
+                        .cookie(new Cookie("ACCESS_TOKEN", token)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("search"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"onboarding\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Feedback Notes")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("nav-search-userId"))));
+    }
+
+    @Test
     void homeRedirectsToTheDashboard() throws Exception {
         User user = testUsers.create("home@example.com", "sup3rsecret", Role.NEW_RECRUIT, true);
         String token = jwtService.issueToken(user.getEmail(), user.getRole());

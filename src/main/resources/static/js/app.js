@@ -135,4 +135,19 @@ function logoutOnClick() {
     });
 }
 
+/* The nav search bar submits only from the minimum query length on (REQUIREMENTS 9.6). */
+function navSearchMinimumLength() {
+    var input = document.getElementById('nav-search-q');
+    var submit = document.getElementById('nav-search-submit');
+    if (!input || !submit) {
+        return;
+    }
+    var sync = function () {
+        submit.disabled = input.value.trim().replace(/\s+/g, ' ').length < 2;
+    };
+    input.addEventListener('input', sync);
+    sync();
+}
+
 document.addEventListener('DOMContentLoaded', logoutOnClick);
+document.addEventListener('DOMContentLoaded', navSearchMinimumLength);

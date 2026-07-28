@@ -115,6 +115,24 @@ textarea {
 .topnav-links a:hover { color: #fff; }
 .topnav-links a.active { color: #fff; font-weight: 700; }
 
+.topnav-search { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
+.topnav-search input { margin: 0; padding: 0.3rem 0.5rem; font-size: 0.85rem; width: 12rem; }
+.topnav-search input.topnav-search-user { width: 6rem; }
+.topnav-search button { width: auto; margin: 0; padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+.topnav-search button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.search-group + .search-group { margin-top: 1.25rem; }
+.search-excerpt { color: #3e4c59; }
+
 .topnav-user { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
 .topnav-name { font-size: 0.85rem; color: #cbd2d9; }
 .topnav .link-button { color: #fff; }
