@@ -4,7 +4,9 @@ import com.workshop.onboardingdiary.entity.IssueEntry;
 import com.workshop.onboardingdiary.entity.IssueSeverity;
 import com.workshop.onboardingdiary.entity.IssueStatus;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +28,12 @@ public interface IssueEntryRepository extends JpaRepository<IssueEntry, Long> {
                             @Param("dateTo") LocalDate dateTo,
                             @Param("status") IssueStatus status,
                             @Param("severity") IssueSeverity severity);
+
+    long countByOwnerId(Long ownerId);
+
+    /** Dashboard open issues are the ones still OPEN or IN_PROGRESS (REQUIREMENTS 4.6). */
+    List<IssueEntry> findByOwnerIdAndStatusInOrderByEntryDateDescCreatedAtDescIdDesc(
+            Long ownerId, Collection<IssueStatus> statuses);
+
+    List<IssueEntry> findByOwnerIdOrderByEntryDateDescCreatedAtDescIdDesc(Long ownerId, Pageable pageable);
 }
