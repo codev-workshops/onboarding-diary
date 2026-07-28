@@ -133,6 +133,10 @@ cross-session feedback.
   Manager forbidden, Admin full). Not implemented or tested: Phase 4+ entry types, dashboard,
   reports, admin user management and assignment endpoints (§4.8), admin category maintenance
   (§4.9), and paging.
+- 2026-07-28: Phase 3 was delivered in PR #75
+  (https://github.com/codev-workshops/onboarding-diary/pull/75), stacked on the Phase 2 branch
+  `devin/phase-2-auth-profile` (PR #74). Phase 4 should branch from `devin/1785213965-phase3-task-issue-logs`
+  (PR #75's branch) while those PRs are still open.
 - 2026-07-28: Notes for Phase 4 - Feedback Notes and Additional Notes with tags. Add `V7+`
   migrations for `feedback_note`, `additional_note` and `note_tag` in the same portable SQL style,
   and reuse `EntryAccessService` for ownership, Manager-overseen reads and the entry-date rules
