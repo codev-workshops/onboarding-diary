@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Reports')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav('reports')}"></header>
+<main class="page page-wide">
+    <h1>Reports</h1>
+    <p class="muted">A report covers one recruit over the selected date range.</p>
+    <p class="alert" id="page-alert" hidden></p>
+
+    <section class="card">
+        <h2>Date range</h2>
+        <div th:replace="~{fragments/layout :: recruitPicker}"></div>
+        <div class="filter-grid">
+            <label for="dateFrom">From<input type="date" id="dateFrom" required/></label>
+            <label for="dateTo">To<input type="date" id="dateTo" required/></label>
+        </div>
+        <div class="button-row">
+            <button type="button" id="preview" class="inline">Preview</button>
+            <button type="button" id="download-pdf" class="inline">Download PDF</button>
+            <button type="button" id="download-csv" class="inline">Download CSV</button>
+        </div>
+    </section>
+
+    <section class="card" id="preview-card" hidden>
+        <h2 id="preview-heading">Preview</h2>
+        <p id="preview-summary"></p>
+        <h3>Tasks</h3>
+        <table class="data-table">
+            <thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Status</th></tr></thead>
+            <tbody id="preview-tasks"></tbody>
+        </table>
+        <h3>Issues</h3>
+        <table class="data-table">
+            <thead><tr><th>Date</th><th>Title</th><th>Severity</th><th>Status</th></tr></thead>
+            <tbody id="preview-issues"></tbody>
+        </table>
+        <h3>Feedback notes</h3>
+        <table class="data-table">
+            <thead><tr><th>Date</th><th>Subject</th><th>Type</th></tr></thead>
+            <tbody id="preview-feedback"></tbody>
+        </table>
+        <h3>Additional notes</h3>
+        <table class="data-table">
+            <thead><tr><th>Date</th><th>Title</th><th>Tags</th></tr></thead>
+            <tbody id="preview-notes"></tbody>
+        </table>
+    </section>
+</main>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    function reportParams() {
+        var input = document.getElementById('targetUserId');
+        return {
+            userId: input ? input.value : '',
+            dateFrom: document.getElementById('dateFrom').value,
+            dateTo: document.getElementById('dateTo').value
+        };
+    }
+
+    function renderPreview(report) {
+        document.getElementById('preview-card').hidden = false;
+        document.getElementById('preview-heading').textContent = 'Preview for ' + report.recruitName;
+        document.getElementById('preview-summary').textContent =
+            report.totalEntries + ' entries between ' + report.dateFrom + ' and ' + report.dateTo;
+
+        document.getElementById('preview-tasks').innerHTML = report.tasks.length === 0
+            ? emptyRow(4, 'No entries')
+            : report.tasks.map(function (task) {
+                return '<tr><td>' + escapeHtml(task.entryDate) + '</td><td>' + escapeHtml(task.title)
+                    + '</td><td>' + escapeHtml(task.category) + '</td><td>'
+                    + escapeHtml(readableEnum(task.status)) + '</td></tr>';
+            }).join('');
+
+        document.getElementById('preview-issues').innerHTML = report.issues.length === 0
+            ? emptyRow(4, 'No entries')
+            : report.issues.map(function (issue) {
+                return '<tr><td>' + escapeHtml(issue.entryDate) + '</td><td>' + escapeHtml(issue.title)
+                    + '</td><td>' + escapeHtml(readableEnum(issue.severity)) + '</td><td>'
+                    + escapeHtml(readableEnum(issue.status)) + '</td></tr>';
+            }).join('');
+
+        document.getElementById('preview-feedback').innerHTML = report.feedback.length === 0
+            ? emptyRow(3, 'No entries')
+            : report.feedback.map(function (feedback) {
+                return '<tr><td>' + escapeHtml(feedback.entryDate) + '</td><td>'
+                    + escapeHtml(feedback.subject) + '</td><td>'
+                    + escapeHtml(readableEnum(feedback.type)) + '</td></tr>';
+            }).join('');
+
+        document.getElementById('preview-notes').innerHTML = report.notes.length === 0
+            ? emptyRow(3, 'No entries')
+            : report.notes.map(function (note) {
+                return '<tr><td>' + escapeHtml(note.entryDate) + '</td><td>' + escapeHtml(note.title)
+                    + '</td><td>' + escapeHtml(note.tags.join(', ')) + '</td></tr>';
+            }).join('');
+    }
+
+    document.getElementById('preview').addEventListener('click', function () {
+        apiGet('/api/reports/preview' + queryString(reportParams()), renderPreview);
+    });
+
+    function download(format) {
+        var params = reportParams();
+        params.format = format;
+        downloadFile('/api/reports' + queryString(params), 'onboarding-report.' + format);
+    }
+
+    document.getElementById('download-pdf').addEventListener('click', function () {
+        download('pdf');
+    });
+
+    document.getElementById('download-csv').addEventListener('click', function () {
+        download('csv');
+    });
+</script>
+</body>
+</html>

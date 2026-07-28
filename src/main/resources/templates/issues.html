@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Issue Log')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav('issues')}"></header>
+<main class="page page-wide">
+    <h1>Issue Log</h1>
+    <p class="alert" id="page-alert" hidden></p>
+
+    <section class="card">
+        <h2>Filters</h2>
+        <div th:replace="~{fragments/layout :: recruitPicker}"></div>
+        <div class="filter-grid">
+            <label for="filter-dateFrom">From<input type="date" id="filter-dateFrom"/></label>
+            <label for="filter-dateTo">To<input type="date" id="filter-dateTo"/></label>
+            <label for="filter-status">Status
+                <select id="filter-status">
+                    <option value="">All</option>
+                    <option value="OPEN">Open</option>
+                    <option value="IN_PROGRESS">In progress</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLOSED">Closed</option>
+                </select>
+            </label>
+            <label for="filter-severity">Severity
+                <select id="filter-severity">
+                    <option value="">All</option>
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="CRITICAL">Critical</option>
+                </select>
+            </label>
+        </div>
+        <div class="button-row">
+            <button type="button" id="apply-filters" class="inline">Apply filters</button>
+            <button type="button" id="reset-filters" class="inline secondary">Reset</button>
+            <button type="button" id="new-issue" class="inline">New issue</button>
+        </div>
+    </section>
+
+    <section class="card" id="form-card" hidden>
+        <h2 id="form-title">New issue</h2>
+        <form id="issue-form" novalidate>
+            <p class="alert" hidden></p>
+            <input type="hidden" id="issue-id"/>
+            <label for="entryDate">Date
+                <input type="date" id="entryDate" name="entryDate" required/>
+            </label>
+            <span class="field-error" data-error-for="entryDate"></span>
+
+            <label for="title">Title
+                <input type="text" id="title" name="title" maxlength="150" required/>
+            </label>
+            <span class="field-error" data-error-for="title"></span>
+
+            <label for="description">Description
+                <textarea id="description" name="description" rows="4" maxlength="5000"></textarea>
+            </label>
+            <span class="field-error" data-error-for="description"></span>
+
+            <label for="severity">Severity
+                <select id="severity" name="severity">
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM" selected>Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="CRITICAL">Critical</option>
+                </select>
+            </label>
+            <span class="field-error" data-error-for="severity"></span>
+
+            <label for="status">Status
+                <select id="status" name="status">
+                    <option value="OPEN">Open</option>
+                    <option value="IN_PROGRESS">In progress</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLOSED">Closed</option>
+                </select>
+            </label>
+            <span class="field-error" data-error-for="status"></span>
+
+            <label for="resolutionNotes">Resolution notes (required for resolved and closed issues)
+                <textarea id="resolutionNotes" name="resolutionNotes" rows="3" maxlength="5000"></textarea>
+            </label>
+            <span class="field-error" data-error-for="resolutionNotes"></span>
+
+            <div class="button-row">
+                <button type="submit" class="inline">Save issue</button>
+                <button type="button" id="cancel-form" class="inline secondary">Cancel</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Issues</h2>
+        <table class="data-table">
+            <thead>
+            <tr><th>Date</th><th>Title</th><th>Severity</th><th>Status</th><th>Resolution notes</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="issue-rows"></tbody>
+        </table>
+    </section>
+</main>
+<script th:src="@{/js/auth.js}"></script>
+<script th:src="@{/js/app.js}"></script>
+<script th:inline="javascript">
+    var currentUserId = /*[[${profile.id()}]]*/ 0;
+    var isAdmin = /*[[${profile.role().name() == 'ADMIN'}]]*/ false;
+    var issues = [];
+
+    function targetUserId() {
+        var input = document.getElementById('targetUserId');
+        return input ? input.value : '';
+    }
+
+    function mayEdit(issue) {
+        return isAdmin || issue.ownerId === currentUserId;
+    }
+
+    function renderIssues() {
+        document.getElementById('issue-rows').innerHTML = issues.length === 0
+            ? emptyRow(6, 'No issues match the current filters')
+            : issues.map(function (issue) {
+                var actions = mayEdit(issue)
+                    ? '<button type="button" class="link-button" data-edit="' + issue.id + '">Edit</button>'
+                      + ' <button type="button" class="link-button danger" data-delete="' + issue.id + '">Delete</button>'
+                    : '<span class="muted">Read only</span>';
+                return '<tr><td>' + escapeHtml(issue.entryDate) + '</td><td>' + escapeHtml(issue.title)
+                    + '</td><td>' + escapeHtml(readableEnum(issue.severity)) + '</td><td>'
+                    + escapeHtml(readableEnum(issue.status)) + '</td><td>'
+                    + escapeHtml(issue.resolutionNotes) + '</td><td class="row-actions">' + actions
+                    + '</td></tr>';
+            }).join('');
+    }
+
+    function loadIssues(successMessage) {
+        var url = '/api/issues' + queryString({
+            userId: targetUserId(),
+            dateFrom: document.getElementById('filter-dateFrom').value,
+            dateTo: document.getElementById('filter-dateTo').value,
+            status: document.getElementById('filter-status').value,
+            severity: document.getElementById('filter-severity').value
+        });
+        apiGet(url, function (payload) {
+            issues = payload;
+            renderIssues();
+            if (successMessage) {
+                pageAlert(successMessage, 'success');
+            }
+        });
+    }
+
+    function openForm(issue) {
+        var form = document.getElementById('issue-form');
+        clearErrors(form);
+        document.getElementById('form-card').hidden = false;
+        document.getElementById('form-title').textContent = issue ? 'Edit issue' : 'New issue';
+        document.getElementById('issue-id').value = issue ? issue.id : '';
+        form.entryDate.value = issue ? issue.entryDate : '';
+        form.title.value = issue ? issue.title : '';
+        form.description.value = issue && issue.description ? issue.description : '';
+        form.severity.value = issue ? issue.severity : 'MEDIUM';
+        form.status.value = issue ? issue.status : 'OPEN';
+        form.resolutionNotes.value = issue && issue.resolutionNotes ? issue.resolutionNotes : '';
+    }
+
+    document.getElementById('new-issue').addEventListener('click', function () {
+        openForm(null);
+    });
+
+    document.getElementById('cancel-form').addEventListener('click', function () {
+        document.getElementById('form-card').hidden = true;
+    });
+
+    document.getElementById('apply-filters').addEventListener('click', function () {
+        loadIssues();
+    });
+
+    document.getElementById('reset-filters').addEventListener('click', function () {
+        document.getElementById('filter-dateFrom').value = '';
+        document.getElementById('filter-dateTo').value = '';
+        document.getElementById('filter-status').value = '';
+        document.getElementById('filter-severity').value = '';
+        loadIssues();
+    });
+
+    document.getElementById('issue-rows').addEventListener('click', function (event) {
+        var editId = event.target.getAttribute('data-edit');
+        var deleteId = event.target.getAttribute('data-delete');
+        if (editId) {
+            openForm(issues.filter(function (issue) {
+                return String(issue.id) === editId;
+            })[0]);
+        } else if (deleteId && window.confirm('Delete this issue?')) {
+            apiDelete('/api/issues/' + deleteId, function () {
+                loadIssues('Issue deleted');
+            });
+        }
+    });
+
+    document.getElementById('issue-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var form = event.target;
+        var id = document.getElementById('issue-id').value;
+        submitJson(form, id ? '/api/issues/' + id : '/api/issues', id ? 'PUT' : 'POST', {
+            entryDate: form.entryDate.value,
+            title: form.title.value,
+            description: form.description.value,
+            severity: form.severity.value,
+            status: form.status.value,
+            resolutionNotes: form.resolutionNotes.value
+        }, function () {
+            document.getElementById('form-card').hidden = true;
+            loadIssues(id ? 'Issue updated' : 'Issue created');
+        });
+    });
+
+    loadIssues();
+</script>
+</body>
+</html>

@@ -7,7 +7,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-/** Server-rendered pages (decision D5): login, sign up and profile. */
+/**
+ * Server-rendered pages (decision D5). The authenticated pages are shells around the existing REST
+ * API: they only need the caller's profile for the shared navigation and its role gating, and the
+ * data itself is fetched from {@code /api/**} by the page scripts.
+ */
 @Controller
 public class PageController {
 
@@ -21,7 +25,7 @@ public class PageController {
 
     @GetMapping("/")
     public String home() {
-        return "redirect:/profile";
+        return "redirect:/dashboard";
     }
 
     @GetMapping("/login")
@@ -35,10 +39,44 @@ public class PageController {
         return "signup";
     }
 
+    @GetMapping("/dashboard")
+    public String dashboard(Principal principal, Model model) {
+        return page(principal, model, "dashboard");
+    }
+
+    @GetMapping("/tasks")
+    public String tasks(Principal principal, Model model) {
+        return page(principal, model, "tasks");
+    }
+
+    @GetMapping("/issues")
+    public String issues(Principal principal, Model model) {
+        return page(principal, model, "issues");
+    }
+
+    @GetMapping("/feedback")
+    public String feedback(Principal principal, Model model) {
+        return page(principal, model, "feedback");
+    }
+
+    @GetMapping("/notes")
+    public String notes(Principal principal, Model model) {
+        return page(principal, model, "notes");
+    }
+
+    @GetMapping("/reports")
+    public String reports(Principal principal, Model model) {
+        return page(principal, model, "reports");
+    }
+
     @GetMapping("/profile")
     public String profile(Principal principal, Model model) {
-        model.addAttribute("profile", profileService.getCurrentProfile(principal.getName()));
         model.addAttribute("departments", departmentService.list(true));
-        return "profile";
+        return page(principal, model, "profile");
+    }
+
+    private String page(Principal principal, Model model, String view) {
+        model.addAttribute("profile", profileService.getCurrentProfile(principal.getName()));
+        return view;
     }
 }
