@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Feedback Notes')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav('feedback')}"></header>
+<main class="page page-wide">
+    <h1>Feedback Notes</h1>
+    <p class="alert" id="page-alert" hidden></p>
+
+    <section class="card">
+        <h2>Filters</h2>
+        <div th:replace="~{fragments/layout :: recruitPicker}"></div>
+        <div class="filter-grid">
+            <label for="filter-dateFrom">From<input type="date" id="filter-dateFrom"/></label>
+            <label for="filter-dateTo">To<input type="date" id="filter-dateTo"/></label>
+            <label for="filter-type">Type
+                <select id="filter-type">
+                    <option value="">All</option>
+                    <option value="POSITIVE">Positive</option>
+                    <option value="SUGGESTION">Suggestion</option>
+                    <option value="CONCERN">Concern</option>
+                </select>
+            </label>
+        </div>
+        <div class="button-row">
+            <button type="button" id="apply-filters" class="inline">Apply filters</button>
+            <button type="button" id="reset-filters" class="inline secondary">Reset</button>
+            <!--/* Only New Recruits may create feedback (REQUIREMENTS 5.1, 6.2). */-->
+            <button type="button" id="new-feedback" class="inline"
+                    th:if="${profile.role().name() == 'NEW_RECRUIT'}">New feedback note</button>
+        </div>
+        <p class="muted" th:unless="${profile.role().name() == 'NEW_RECRUIT'}">
+            Feedback notes are read-only for your role.
+        </p>
+    </section>
+
+    <section class="card" id="form-card" th:if="${profile.role().name() == 'NEW_RECRUIT'}" hidden>
+        <h2 id="form-title">New feedback note</h2>
+        <form id="feedback-form" novalidate>
+            <p class="alert" hidden></p>
+            <input type="hidden" id="feedback-id"/>
+            <label for="entryDate">Date
+                <input type="date" id="entryDate" name="entryDate" required/>
+            </label>
+            <span class="field-error" data-error-for="entryDate"></span>
+
+            <label for="subject">Subject
+                <input type="text" id="subject" name="subject" maxlength="150" required/>
+            </label>
+            <span class="field-error" data-error-for="subject"></span>
+
+            <label for="type">Type
+                <select id="type" name="type">
+                    <option value="POSITIVE">Positive</option>
+                    <option value="SUGGESTION">Suggestion</option>
+                    <option value="CONCERN">Concern</option>
+                </select>
+            </label>
+            <span class="field-error" data-error-for="type"></span>
+
+            <label for="details">Details
+                <textarea id="details" name="details" rows="5" maxlength="5000" required></textarea>
+            </label>
+            <span class="field-error" data-error-for="details"></span>
+
+            <div class="button-row">
+                <button type="submit" class="inline">Save feedback note</button>
+                <button type="button" id="cancel-form" class="inline secondary">Cancel</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Feedback</h2>
+        <table class="data-table">
+            <thead>
+            <tr><th>Date</th><th>Subject</th><th>Type</th><th>Details</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="feedback-rows"></tbody>
+        </table>
+    </section>
+</main>
+<script th:src="@{/js/auth.js}"></script>
+<script th:src="@{/js/app.js}"></script>
+<script th:inline="javascript">
+    var currentUserId = /*[[${profile.id()}]]*/ 0;
+    var isRecruit = /*[[${profile.role().name() == 'NEW_RECRUIT'}]]*/ false;
+    var isAdmin = /*[[${profile.role().name() == 'ADMIN'}]]*/ false;
+    var feedbackNotes = [];
+
+    function targetUserId() {
+        var input = document.getElementById('targetUserId');
+        return input ? input.value : '';
+    }
+
+    function mayEdit(feedback) {
+        return isAdmin || (isRecruit && feedback.ownerId === currentUserId);
+    }
+
+    function renderFeedback() {
+        document.getElementById('feedback-rows').innerHTML = feedbackNotes.length === 0
+            ? emptyRow(5, 'No feedback notes match the current filters')
+            : feedbackNotes.map(function (feedback) {
+                var actions = mayEdit(feedback)
+                    ? '<button type="button" class="link-button" data-edit="' + feedback.id + '">Edit</button>'
+                      + ' <button type="button" class="link-button danger" data-delete="' + feedback.id
+                      + '">Delete</button>'
+                    : '<span class="muted">Read only</span>';
+                return '<tr><td>' + escapeHtml(feedback.entryDate) + '</td><td>' + escapeHtml(feedback.subject)
+                    + '</td><td>' + escapeHtml(readableEnum(feedback.type)) + '</td><td>'
+                    + escapeHtml(feedback.details) + '</td><td class="row-actions">' + actions + '</td></tr>';
+            }).join('');
+    }
+
+    function loadFeedback() {
+        var url = '/api/feedback' + queryString({
+            userId: targetUserId(),
+            dateFrom: document.getElementById('filter-dateFrom').value,
+            dateTo: document.getElementById('filter-dateTo').value,
+            type: document.getElementById('filter-type').value
+        });
+        apiGet(url, function (payload) {
+            feedbackNotes = payload;
+            renderFeedback();
+        });
+    }
+
+    function openForm(feedback) {
+        var form = document.getElementById('feedback-form');
+        clearErrors(form);
+        document.getElementById('form-card').hidden = false;
+        document.getElementById('form-title').textContent = feedback ? 'Edit feedback note' : 'New feedback note';
+        document.getElementById('feedback-id').value = feedback ? feedback.id : '';
+        form.entryDate.value = feedback ? feedback.entryDate : '';
+        form.subject.value = feedback ? feedback.subject : '';
+        form.type.value = feedback ? feedback.type : 'POSITIVE';
+        form.details.value = feedback ? feedback.details : '';
+    }
+
+    document.getElementById('apply-filters').addEventListener('click', loadFeedback);
+
+    document.getElementById('reset-filters').addEventListener('click', function () {
+        document.getElementById('filter-dateFrom').value = '';
+        document.getElementById('filter-dateTo').value = '';
+        document.getElementById('filter-type').value = '';
+        loadFeedback();
+    });
+
+    document.getElementById('feedback-rows').addEventListener('click', function (event) {
+        var editId = event.target.getAttribute('data-edit');
+        var deleteId = event.target.getAttribute('data-delete');
+        if (editId) {
+            openForm(feedbackNotes.filter(function (feedback) {
+                return String(feedback.id) === editId;
+            })[0]);
+        } else if (deleteId && window.confirm('Delete this feedback note?')) {
+            apiDelete('/api/feedback/' + deleteId, loadFeedback);
+        }
+    });
+
+    if (isRecruit) {
+        document.getElementById('new-feedback').addEventListener('click', function () {
+            openForm(null);
+        });
+
+        document.getElementById('cancel-form').addEventListener('click', function () {
+            document.getElementById('form-card').hidden = true;
+        });
+
+        document.getElementById('feedback-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            var form = event.target;
+            var id = document.getElementById('feedback-id').value;
+            submitJson(form, id ? '/api/feedback/' + id : '/api/feedback', id ? 'PUT' : 'POST', {
+                entryDate: form.entryDate.value,
+                subject: form.subject.value,
+                type: form.type.value,
+                details: form.details.value
+            }, function () {
+                document.getElementById('form-card').hidden = true;
+                pageAlert(id ? 'Feedback note updated' : 'Feedback note created', 'success');
+                loadFeedback();
+            });
+        });
+    }
+
+    loadFeedback();
+</script>
+</body>
+</html>

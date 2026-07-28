@@ -24,6 +24,7 @@ cross-session feedback.
 | Phase 4 | Feedback Notes + Additional Notes - feedback submission, notes CRUD with tags | Done | 2026-07-28: `/api/feedback` and `/api/notes` CRUD + filters, Flyway `V7` (`feedback_note`, `additional_note`, `note_tag`), recruit-only feedback creation, tag normalisation and tag search, 85 tests green. |
 | Phase 5 | Dashboard - summary counts, task completion progress, open issues, recent entries | Done | 2026-07-28: `GET /api/dashboard` with `userId?`, counts for all four entry types, task completion over all time, open issues (`OPEN`/`IN_PROGRESS`) and the 10 most recent entries; no new migration; 102 tests green. |
 | Phase 6 | Reports - date-range reports with PDF/CSV export, manager reporting on overseen recruits | Done | 2026-07-28: `GET /api/reports` (PDF/CSV download) and `GET /api/reports/preview` (JSON), Apache PDFBox + Apache Commons CSV (D6), range validation, empty-range "no entries" reports, no new migration; 135 tests green (33 new). |
+| Phase 7 | UI completion - Thymeleaf pages for dashboard, task log, issue log, feedback, notes and reports with a shared navigation | Done | 2026-07-28: six pages wired to the existing REST API, shared nav fragment with role gating, sign-up/login land on `/dashboard`; no backend logic added; Admin UI deferred to a later dedicated phase; 138 tests green. |
 
 ## Decisions Log
 
@@ -79,6 +80,11 @@ cross-session feedback.
 | 2026-07-28 | Phase 6: an empty range renders a complete report with a "No entries in the selected date range" line plus a "No entries" marker in each empty section, in both formats. | US-R11 requires an empty range to produce a report rather than an error, and a zero-byte file would look like a failed download. |
 | 2026-07-28 | Phase 6: the download filename is `onboarding-report-<recruit-name>-<dateFrom>-to-<dateTo>.<pdf\|csv>`, with the name lower-cased and reduced to `a-z0-9-`. | US-R11 asks for a descriptive filename; restricting the character set keeps the `Content-Disposition` header and the saved file portable. |
 | 2026-07-28 | Phase 6: the PDF is laid out as a paginated list of text lines (Helvetica, wrapped at 95 characters) rather than a table library. | PDFBox draws text, not tables; a line list keeps the renderer small and makes the content extractable with `PDFTextStripper` in tests. |
+| 2026-07-28 | Phase 7: the six pages (`/dashboard`, `/tasks`, `/issues`, `/feedback`, `/notes`, `/reports`) are Thymeleaf shells that fetch their data from the existing `/api/**` endpoints with the `ACCESS_TOKEN` cookie; `PageController` only resolves the caller's profile for the navigation. | Phase 7 scope is UI completion with no new backend logic, and D4/D5 already give pages a cookie-authenticated fetch path. |
+| 2026-07-28 | Phase 7: one navigation fragment (`templates/fragments/layout.html`) provides the `head` and `nav` blocks for every authenticated page, with each link gated by the roles the Section 5.1 table grants it. | Section 5.2 asks for one top navigation; a fragment keeps the role rules in a single place rather than repeated per page. |
+| 2026-07-28 | Phase 7: the Admin UI (`/admin/users`, `/admin/reference-data`) is deferred to a later dedicated phase together with the Section 4.8 backend, and no admin nav entry is rendered. `/recruits` is deferred with it, because it needs `GET /api/users/me/recruits`. | Section 4.8 was never implemented, so an admin page would have no endpoints to call; manager assignments stay seeded directly in the database. |
+| 2026-07-28 | Phase 7: Managers and Admins pick the user they are reading with a recruit-user-id field that is passed as the existing `userId` query parameter, instead of a recruit picker backed by a new endpoint. | Same reason as above - the recruit list endpoint is part of the deferred admin phase, while `userId` is already supported by every list, dashboard and report endpoint. |
+| 2026-07-28 | Phase 7: sign-up, login and `/` land on `/dashboard`; `/profile` stays reachable from the navigation. | US-R01/US-R02 promise the dashboard as the landing page, and the Phase 5 known issue about landing on `/profile` is now closed. |
 | 2026-07-28 | Phase 6: every nullable filter parameter in the four repository `search` queries is wrapped in a `cast(...)`, for example `cast(:dateFrom as date) is null`. | PostgreSQL cannot infer the type of a bind parameter that is only compared with `null` and fails the whole query with "could not determine data type of parameter"; the cast makes the parameter typed. The H2 test database inferred the types, so the tests never saw it. |
 
 ## Known Issues
@@ -149,6 +155,20 @@ cross-session feedback.
   service check that counts after de-duplication is therefore unreachable for longer lists. The
   deviation is documented in `REQUIREMENTS.md` §4.5; deciding which of the two rules wins is a
   product question and no code was changed for it in Phase 6.
+
+- Phase 7: the Section 5.1 pages `/recruits`, `/recruits/{id}`, `/admin/users` and
+  `/admin/reference-data` still do not exist, so US-M01 ("see my recruits") has no page and Admins
+  have no UI; a Manager or Admin reads another user's data by typing the recruit's user id into the
+  recruit field on the dashboard, entry list and report pages.
+- Phase 7: pages are open to every role, so the "unauthorized page access redirects to the caller's
+  dashboard with an explanatory message" rule in Section 5.1 is not implemented; a forbidden
+  `userId` surfaces as the API's `403` message rendered in the page alert instead.
+- Phase 7: entry lists on the pages show the full unpaginated result the API returns, matching the
+  existing Phase 3/4 known issue - no paging controls were added.
+- Phase 7: page behaviour is covered only by the server-side rendering tests in `PageAccessTest`
+  (each page renders, `/` redirects to `/dashboard`, the feedback create form is absent for a
+  Manager); there is no browser-level or JavaScript test suite, so the client-side fetch, form and
+  download code is validated manually.
 
 ## Feedback / Cross-session Notes
 
@@ -307,6 +327,34 @@ cross-session feedback.
   (PR #77) as PR #78 (https://github.com/codev-workshops/onboarding-diary/pull/78) on branch
   `devin/1785219953-phase6-reports`, which is still open, as is every PR from Phase 1 onwards -
   nothing has been merged to `main`, so `main` still holds only the initial commit.
+- 2026-07-28: Notes for Phase 7 - UI completion (REQUIREMENTS sections 5.1 and 5.2). The six pages
+  reuse the endpoints delivered in Phases 3-6 and add no backend logic: `/dashboard` reads
+  `GET /api/dashboard`, `/tasks` and `/issues` do full CRUD against `/api/tasks` and `/api/issues`
+  (with `GET /api/categories` filling the category dropdown), `/feedback` and `/notes` do CRUD
+  against `/api/feedback` and `/api/notes`, and `/reports` drives `GET /api/reports/preview` plus
+  the `format=pdf|csv` downloads. The Admin UI and `/recruits` are out of scope and stay with the
+  deferred section 4.8 backend.
+- 2026-07-28: Phase 7 complete. Validated with `./mvnw clean verify` (138 tests, all green, 3 new
+  page tests) plus a manual pass in a browser against a Docker Compose PostgreSQL 16 instance.
+  **Tested in Phase 7:** every page renders for a New Recruit and carries the shared navigation
+  with no Admin entry, `/` redirects to `/dashboard`, sign-up and login land on `/dashboard`, the
+  feedback create form is rendered only for New Recruits (a Manager sees the read-only notice
+  instead), the dashboard renders counts, task completion, open issues and recent entries, task and
+  issue create/edit/delete round-trips including server-side field errors rendered next to the
+  field, the note tag input and tag filter, the report date range with the JSON preview and both
+  file downloads, and a Manager reading an overseen recruit by user id while an unassigned target
+  surfaces the API's `403` message.
+  **Not tested or built in Phase 7, because it is out of scope:** the Admin pages and the section
+  4.8 endpoints behind them, `/recruits` and `/recruits/{id}`, paging controls, the "redirect an
+  unauthorized page request to the caller's dashboard" rule of section 5.1, and any JavaScript-level
+  automated test - the client-side code is only exercised manually.
+- 2026-07-28: Phase 7 was delivered stacked on the Phase 6 branch `devin/1785219953-phase6-reports`
+  (PR #78). Every PR from Phase 1 onwards is still open and nothing has been merged to `main`, so a
+  follow-up build session must branch from the tip of the Phase 7 branch and read `REQUIREMENTS.md`
+  and `PROGRESS.md` from there. The natural next phase is the admin phase: the section 4.8
+  endpoints, `/admin/users`, `/admin/reference-data`, `/recruits` and the section 4.9 write half,
+  after which the nav gains its Admin and My Recruits entries and manager assignments stop being
+  database-seeded.
 
 ## Final Project Status (2026-07-28)
 
@@ -355,6 +403,11 @@ End-of-project audit of `REQUIREMENTS.md` sections 1-7 after Phase 6, the last p
   therefore land on `/profile` instead of the dashboard promised by US-R01/US-R02, the navigation
   and flows of section 5.2 are not built, and the responsive-UI expectation in section 7 is only met
   for the three pages that exist.
+  **Amended 2026-07-28 by Phase 7:** `/dashboard`, `/tasks`, `/issues`, `/feedback`, `/notes` and
+  `/reports` now exist with the shared section 5.2 navigation, and sign-up and login land on
+  `/dashboard`. Detail routes (`/tasks/{id}`, `/issues/{id}`) were folded into the list pages as
+  inline edit forms rather than separate pages. `/recruits`, `/recruits/{id}`, `/admin/users` and
+  `/admin/reference-data` are still missing and are deferred with the section 4.8 admin phase.
 - **Section 6.2 rules that depend on the admin phase** - Admin-only role changes and
   activation/deactivation, the "last active Admin cannot be demoted or deactivated" rule, the
   "a user cannot be their own manager" rule, and Admin-only reference-data maintenance are not

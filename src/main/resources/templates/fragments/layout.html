@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:fragment="head(title)">
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title th:text="${title} + ' - Onboarding Diary'">Onboarding Diary</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<!--/* Shared navigation (REQUIREMENTS 5.1 page table, 5.2 navigation). Each link is gated by the
+       roles the table grants the page to; the Admin pages are not built yet, so no Admin entry
+       exists. */-->
+<header th:fragment="nav(active)" class="topnav" th:with="role=${profile.role().name()}">
+    <div class="topnav-inner">
+        <span class="brand">Onboarding Diary</span>
+        <nav class="topnav-links">
+            <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
+               th:href="@{/dashboard}" th:classappend="${active == 'dashboard'} ? ' active'">Dashboard</a>
+            <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
+               th:href="@{/tasks}" th:classappend="${active == 'tasks'} ? ' active'">Task Log</a>
+            <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
+               th:href="@{/issues}" th:classappend="${active == 'issues'} ? ' active'">Issue Log</a>
+            <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
+               th:href="@{/feedback}" th:classappend="${active == 'feedback'} ? ' active'">Feedback</a>
+            <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
+               th:href="@{/notes}" th:classappend="${active == 'notes'} ? ' active'">Notes</a>
+            <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
+               th:href="@{/reports}" th:classappend="${active == 'reports'} ? ' active'">Reports</a>
+            <a th:if="${#lists.contains({'NEW_RECRUIT', 'MANAGER', 'ADMIN'}, role)}"
+               th:href="@{/profile}" th:classappend="${active == 'profile'} ? ' active'">Profile</a>
+        </nav>
+        <div class="topnav-user">
+            <span class="topnav-name" th:text="${profile.name()} + ' (' + ${role} + ')'"></span>
+            <button type="button" id="logout" class="link-button">Log out</button>
+        </div>
+    </div>
+</header>
+<!--/* Recruit picker for the roles that may read another user's data (REQUIREMENTS 5.1). */-->
+<div th:fragment="recruitPicker" th:if="${profile.role().name() != 'NEW_RECRUIT'}" class="recruit-picker">
+    <label for="targetUserId">Recruit user id (blank shows your own data)
+        <input type="text" id="targetUserId" name="targetUserId" inputmode="numeric" placeholder="e.g. 4"/>
+    </label>
+</div>
+</body>
+</html>

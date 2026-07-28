@@ -2,6 +2,7 @@ package com.workshop.onboardingdiary.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -54,6 +55,44 @@ class PageAccessTest {
         mockMvc.perform(get("/profile").accept(MediaType.TEXT_HTML))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("**/login"));
+    }
+
+    @Test
+    void everyPageOfThePhase7NavigationRendersForARecruit() throws Exception {
+        User user = testUsers.create("nav@example.com", "sup3rsecret", Role.NEW_RECRUIT, true);
+        String token = jwtService.issueToken(user.getEmail(), user.getRole());
+
+        for (String path : new String[] {"/dashboard", "/tasks", "/issues", "/feedback", "/notes", "/reports"}) {
+            mockMvc.perform(get(path).accept(MediaType.TEXT_HTML).cookie(new Cookie("ACCESS_TOKEN", token)))
+                    .andExpect(status().isOk())
+                    .andExpect(view().name(path.substring(1)))
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString("Task Log")))
+                    .andExpect(content().string(org.hamcrest.Matchers.not(
+                            org.hamcrest.Matchers.containsString("/admin/"))));
+        }
+    }
+
+    @Test
+    void homeRedirectsToTheDashboard() throws Exception {
+        User user = testUsers.create("home@example.com", "sup3rsecret", Role.NEW_RECRUIT, true);
+        String token = jwtService.issueToken(user.getEmail(), user.getRole());
+
+        mockMvc.perform(get("/").accept(MediaType.TEXT_HTML).cookie(new Cookie("ACCESS_TOKEN", token)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/dashboard"));
+    }
+
+    @Test
+    void feedbackPageIsReadOnlyForManagers() throws Exception {
+        User manager = testUsers.create("manager-page@example.com", "sup3rsecret", Role.MANAGER, true);
+        String token = jwtService.issueToken(manager.getEmail(), manager.getRole());
+
+        mockMvc.perform(get("/feedback").accept(MediaType.TEXT_HTML).cookie(new Cookie("ACCESS_TOKEN", token)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "Feedback notes are read-only for your role")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("id=\"new-feedback\""))));
     }
 
     @Test

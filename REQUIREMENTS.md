@@ -512,6 +512,10 @@ in Section 5.1 is not built; reports are API-only.
 assignment maintenance are deferred to the admin phase; Phase 3 only reads existing
 `ManagerAssignment` rows (see Section 2.8).
 
+**Decision (2026-07-28, Phase 7):** the Admin UI is deferred to a later dedicated phase together
+with these endpoints. Phase 7 built the six recruit/manager pages only and deliberately added no
+admin backend logic, so `manager_assignment` rows stay seeded directly in the database.
+
 ### 4.9 Reference Data (task categories and departments)
 
 | Method | Path | Request | Response | Auth / Role |
@@ -549,6 +553,28 @@ assignment maintenance are deferred to the admin phase; Phase 3 only reads exist
 
 Unauthorized page access redirects to the caller's dashboard with an explanatory message;
 unauthenticated access redirects to `/login`.
+
+**Delivery status (2026-07-28, Phase 7):** six pages were built on top of the existing REST API -
+`/dashboard`, `/tasks`, `/issues`, `/feedback`, `/notes` and `/reports` - alongside the `/login`,
+`/signup` and `/profile` pages from Phase 2. Every page is a Thymeleaf shell that shares one
+navigation fragment (`templates/fragments/layout.html`) and fetches its data from `/api/**` with
+the HttpOnly `ACCESS_TOKEN` cookie (decision D4); no backend query, authorization or endpoint code
+was added. `/` and a successful sign-up or login now land on `/dashboard` instead of `/profile`.
+The Task Log page fills its category dropdown from `GET /api/categories`, and the Reports page
+offers a date range with a JSON preview plus PDF and CSV downloads (one recruit per report).
+Role gating follows the table above: the six pages are open to all three roles, the feedback
+create/edit form is rendered only for New Recruits (Section 6.2), row actions appear only for the
+owner or an Admin, and Managers and Admins get a recruit-id field that passes `userId` to the
+list, dashboard and report endpoints.
+
+**Not built in Phase 7:** `/recruits`, `/recruits/{id}`, `/admin/users` and
+`/admin/reference-data`. The two admin pages are deferred with their backend (see Section 4.8), and
+the My Recruits pages need `GET /api/users/me/recruits`, which is part of that same deferred admin
+work - so the navigation has no Admin or My Recruits entry, and Managers reach an overseen
+recruit's data by entering the recruit's user id. Entry lists are still unpaginated, so no paging
+controls exist. Unauthorized page access is not redirected to the dashboard with a message: the
+pages themselves are open to every role, and a forbidden `userId` surfaces as the API's `403`
+message on the page.
 
 ### 5.2 Navigation
 
