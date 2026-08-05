@@ -131,3 +131,12 @@ export interface DashboardSummary {
   issuesBySeverity: Record<string, number>;
   recentActivity: RecentActivity[];
 }
+
+export interface UpdateUserRequest {
+  fullName: string;
+  department: string;
+  startDate: string;
+  role: UserRole;
+  managerId: string | null;
+  isActive: boolean;
+}

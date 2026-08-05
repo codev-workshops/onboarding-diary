@@ -6,6 +6,9 @@ import FeedbackPage from './pages/FeedbackPage';
 import IssuesPage from './pages/IssuesPage';
 import NotesPage from './pages/NotesPage';
 import TasksPage from './pages/TasksPage';
+import TeamPage from './pages/TeamPage';
+import RecruitDiaryPage from './pages/RecruitDiaryPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import SignupPage from './pages/SignupPage';
@@ -23,6 +26,13 @@ export default function App() {
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route element={<RequireAuth roles={['Manager', 'Admin']} />}>
+            <Route path="/team" element={<TeamPage />} />
+            <Route path="/team/:userId" element={<RecruitDiaryPage />} />
+          </Route>
+          <Route element={<RequireAuth roles={['Admin']} />}>
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
