@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { feedbackApi, issuesApi, notesApi, tasksApi } from '../api/entries';
+import { downloadReport } from '../api/reports';
 import { getUser } from '../api/users';
 import type { FeedbackResponse, IssueResponse, NoteResponse, TaskResponse, User } from '../api/types';
 import DashboardView from '../components/DashboardView';
@@ -44,6 +45,15 @@ export default function RecruitDiaryPage() {
       <p className="muted">
         {recruit.department} · started {recruit.startDate} · read-only
       </p>
+
+      <div className="form-actions">
+        <button type="button" onClick={() => void downloadReport('pdf', { userId })}>
+          Download PDF report
+        </button>
+        <button type="button" className="secondary" onClick={() => void downloadReport('csv', { userId })}>
+          Download CSV report
+        </button>
+      </div>
 
       <DashboardView userId={userId} />
 
