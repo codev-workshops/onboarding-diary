@@ -16,6 +16,10 @@ export default function AppShell() {
         <span className="brand">Onboarding Diary</span>
         <nav>
           <NavLink to="/dashboard">Dashboard</NavLink>
+          <NavLink to="/tasks">Tasks</NavLink>
+          <NavLink to="/issues">Issues</NavLink>
+          <NavLink to="/feedback">Feedback</NavLink>
+          <NavLink to="/notes">Notes</NavLink>
           <NavLink to="/profile">Profile</NavLink>
         </nav>
         <div className="user-menu">
