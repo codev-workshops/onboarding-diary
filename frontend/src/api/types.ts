@@ -107,3 +107,27 @@ export interface NoteResponse extends NoteRequest {
   id: string;
   userId: string;
 }
+
+export interface RecentActivity {
+  kind: string;
+  id: string;
+  title: string;
+  date: string;
+  status: string;
+}
+
+export interface DashboardSummary {
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  blockedTasks: number;
+  completionRate: number;
+  openIssues: number;
+  totalIssues: number;
+  feedbackCount: number;
+  noteCount: number;
+  tasksByStatus: Record<string, number>;
+  tasksByCategory: Record<string, number>;
+  issuesBySeverity: Record<string, number>;
+  recentActivity: RecentActivity[];
+}
