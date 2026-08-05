@@ -12,6 +12,7 @@ import AdminUsersPage from './pages/AdminUsersPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import ReportsPage from './pages/ReportsPage';
+import SearchPage from './pages/SearchPage';
 import SignupPage from './pages/SignupPage';
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/issues" element={<IssuesPage />} />
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/notes" element={<NotesPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route element={<RequireAuth roles={['Manager', 'Admin']} />}>

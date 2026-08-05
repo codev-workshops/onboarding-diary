@@ -13,6 +13,17 @@ specification ([`Requirement.md`](Requirements/Requirement.md)).
 | Backend | ASP.NET Core 8 Web API |
 | Database | PostgreSQL via EF Core |
 
+## Features
+
+- Email/password auth with JWT, lockout after 5 failed attempts, and New Recruit / Manager / Admin roles.
+- Task, issue, feedback and note logs with filtering.
+- Recruit dashboard with summary tiles, charts and recent activity.
+- Manager read-only views of assigned recruits; admin user management.
+- CSV and PDF diary reports for a date range.
+- Cross-log search and an entries-per-week activity chart.
+
+The development seed admin (`SeedAdmin` in `appsettings.Development.json`) is `admin@example.com` / `Admin12345`.
+
 ## Layout
 
 ```

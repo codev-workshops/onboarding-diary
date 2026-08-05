@@ -20,6 +20,7 @@ export default function AppShell() {
           <NavLink to="/issues">Issues</NavLink>
           <NavLink to="/feedback">Feedback</NavLink>
           <NavLink to="/notes">Notes</NavLink>
+          <NavLink to="/search">Search</NavLink>
           <NavLink to="/reports">Reports</NavLink>
           {user?.role === 'Manager' && <NavLink to="/team">Team</NavLink>}
           {user?.role === 'Admin' && <NavLink to="/admin/users">Users</NavLink>}

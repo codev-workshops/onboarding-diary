@@ -129,6 +129,7 @@ export interface DashboardSummary {
   tasksByStatus: Record<string, number>;
   tasksByCategory: Record<string, number>;
   issuesBySeverity: Record<string, number>;
+  activityByWeek: Record<string, number>;
   recentActivity: RecentActivity[];
 }
 
@@ -139,4 +140,12 @@ export interface UpdateUserRequest {
   role: UserRole;
   managerId: string | null;
   isActive: boolean;
+}
+
+export interface SearchResult {
+  kind: string;
+  id: string;
+  title: string;
+  snippet: string;
+  date: string;
 }

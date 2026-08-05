@@ -43,6 +43,7 @@ export default function DashboardView({ userId }: { userId?: string }) {
         <BarChart title="Tasks by status" data={summary.tasksByStatus} />
         <BarChart title="Tasks by category" data={summary.tasksByCategory} />
         <BarChart title="Issues by severity" data={summary.issuesBySeverity} />
+        <BarChart title="Entries per week" data={summary.activityByWeek} />
       </div>
 
       <div className="card">

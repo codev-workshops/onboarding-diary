@@ -51,6 +51,25 @@ public class DashboardController(AppDbContext db, EntryAccess access) : Controll
                 .ToDictionary(category => category.ToString(), category => tasks.Count(t => t.Category == category)),
             IssuesBySeverity: Enum.GetValues<IssueSeverity>()
                 .ToDictionary(severity => severity.ToString(), severity => issues.Count(i => i.Severity == severity)),
+            ActivityByWeek: ActivityByWeek(
+                tasks.Select(t => t.Date)
+                    .Concat(issues.Select(i => i.Date))
+                    .Concat(await db.Feedback.Where(f => f.UserId == ownerId).Select(f => f.Date).ToListAsync())
+                    .Concat(await db.Notes.Where(n => n.UserId == ownerId).Select(n => n.Date).ToListAsync())),
             RecentActivity: recent));
+    }
+
+    /// Entry counts for each of the last eight weeks, keyed by the Monday starting the week.
+    private static Dictionary<string, int> ActivityByWeek(IEnumerable<DateOnly> dates)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var thisMonday = today.AddDays(-(int)today.DayOfWeek + (today.DayOfWeek == DayOfWeek.Sunday ? -6 : 1));
+        var counts = dates.ToList();
+
+        return Enumerable.Range(0, 8)
+            .Select(offset => thisMonday.AddDays(-7 * (7 - offset)))
+            .ToDictionary(
+                weekStart => weekStart.ToString("MM-dd"),
+                weekStart => counts.Count(date => date >= weekStart && date < weekStart.AddDays(7)));
     }
 }
