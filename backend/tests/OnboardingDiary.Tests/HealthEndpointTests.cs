@@ -1,18 +1,13 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace OnboardingDiary.Tests;
 
-public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class HealthEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public HealthEndpointTests(WebApplicationFactory<Program> factory) => _factory = factory;
-
     [Fact]
     public async Task Health_returns_ok()
     {
-        var client = _factory.CreateClient();
+        var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/health");
 
