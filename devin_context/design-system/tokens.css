@@ -1,0 +1,66 @@
+/**
+ * Design tokens — generated from tokens.json.
+ * Source: UI Design Daily Day 805 (Style Guide: Button, Dropdown, Input).
+ * Do not hardcode raw values in components; reference these custom properties.
+ */
+
+:root {
+  /* Shape / surface */
+  --color-primary: #3457dc;
+  --color-primary-hover: #2d4dc8;
+  --color-primary-light: #869ffd;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f9fd;
+  --color-border-special: #dcdff1;
+
+  /* Text */
+  --color-text-heading: #202842;
+  --color-text-body: #202842;
+  --color-text-muted: #5d698d;
+  --color-text-link: #3457dc;
+  --color-text-on-primary: #ffffff;
+  --color-text-on-primary-muted: #687dcf;
+  --color-text-disabled: #dcdff1;
+
+  /* Feedback */
+  --color-danger: #ea4d67;
+  --color-danger-hover: #e63f5b;
+
+  /* Typography */
+  --font-family-base: 'Open Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-size-lg: 20px;
+  --font-size-md: 16px;
+  --font-size-sm: 14px;
+  --font-size-xs: 12px;
+  --font-size-overline: 10px;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Radius */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-pill: 9999px;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Borders */
+  --border-width: 1px;
+  --border-color: #dcdff1;
+  --border-color-focus: #3457dc;
+  --border-color-error: #ea4d67;
+
+  /* Elevation */
+  --shadow-hover: 0 6px 14px rgba(52, 87, 220, 0.24);
+  --shadow-danger: 0 6px 14px rgba(234, 77, 103, 0.24);
+  --shadow-panel: 0 8px 24px rgba(32, 40, 66, 0.1);
+
+  /* Motion */
+  --motion-duration: 150ms;
+  --motion-easing: ease-in-out;
+}
