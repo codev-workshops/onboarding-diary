@@ -561,6 +561,7 @@ textarea.field__control {
 }
 
 .bar__fill {
+  display: block;
   height: 100%;
   border-radius: var(--radius-pill);
   background: var(--color-primary);
@@ -581,21 +582,29 @@ textarea.field__control {
 
 .spark {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   gap: var(--space-xs);
   height: calc(var(--space-xl) * 4);
 }
 
 .spark__col {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-rows: 1fr auto;
   gap: var(--space-xs);
   min-width: 0;
 }
 
+.spark__stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  height: 100%;
+}
+
 .spark__segment {
+  display: block;
   border-radius: var(--radius-sm);
   background: var(--color-primary);
   min-height: var(--space-xs);

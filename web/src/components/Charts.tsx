@@ -41,26 +41,29 @@ export interface ActivityPoint {
 }
 
 export const ActivityChart = ({ data }: { data: ReadonlyArray<ActivityPoint> }) => {
-  const max = Math.max(1, ...data.map((point) => point.tasks + point.issues));
+  /** Minimum axis of 4 so a single entry does not fill the whole column. */
+  const max = Math.max(4, ...data.map((point) => point.tasks + point.issues));
   return (
     <div className="stack">
       <div className="spark">
         {data.map((point) => (
           <div className="spark__col" key={point.date}>
-            {point.issues > 0 ? (
-              <span
-                className="spark__segment spark__segment--issues"
-                style={{ height: `${(point.issues / max) * 100}%` }}
-                title={`${point.issues} issues on ${point.date}`}
-              />
-            ) : null}
-            {point.tasks > 0 ? (
-              <span
-                className="spark__segment"
-                style={{ height: `${(point.tasks / max) * 100}%` }}
-                title={`${point.tasks} tasks on ${point.date}`}
-              />
-            ) : null}
+            <span className="spark__stack">
+              {point.issues > 0 ? (
+                <span
+                  className="spark__segment spark__segment--issues"
+                  style={{ height: `${(point.issues / max) * 100}%` }}
+                  title={`${point.issues} issues on ${point.date}`}
+                />
+              ) : null}
+              {point.tasks > 0 ? (
+                <span
+                  className="spark__segment"
+                  style={{ height: `${(point.tasks / max) * 100}%` }}
+                  title={`${point.tasks} tasks on ${point.date}`}
+                />
+              ) : null}
+            </span>
             <span className="spark__label">{point.date.slice(5)}</span>
           </div>
         ))}

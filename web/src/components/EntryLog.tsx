@@ -184,7 +184,7 @@ export const EntryLog = ({
                 value={filters[field.name] ?? 'all'}
                 placeholder="All"
                 options={[
-                  { value: 'all', label: `All ${field.label.toLowerCase()}` },
+                  { value: 'all', label: 'All' },
                   ...(field.options ?? []).map((option) => ({ value: option, label: option })),
                 ]}
                 onChange={(value) =>
