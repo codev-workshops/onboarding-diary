@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="OnboardingDiary.Api/OnboardingDiary.Api.csproj" />
+  <Project Path="OnboardingDiary.Application/OnboardingDiary.Application.csproj" />
+  <Project Path="OnboardingDiary.Domain/OnboardingDiary.Domain.csproj" />
+  <Project Path="OnboardingDiary.Infrastructure/OnboardingDiary.Infrastructure.csproj" />
+  <Project Path="OnboardingDiary.Tests/OnboardingDiary.Tests.csproj" />
+</Solution>
