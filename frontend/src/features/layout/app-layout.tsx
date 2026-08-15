@@ -27,6 +27,7 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { RecruitSelector } from '../recruits/recruit-selector';
+import { ThemeToggle } from '../theme/theme-toggle';
 
 const drawerWidth = 240;
 
@@ -90,6 +91,7 @@ export function AppLayout() {
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
             <RecruitSelector />
             {isDesktop ? <Typography variant="body2">{user?.fullName}</Typography> : null}
+            <ThemeToggle />
             <Tooltip title="Sign out">
               <IconButton color="inherit" aria-label="Sign out" onClick={handleSignOut}>
                 <LogoutIcon />

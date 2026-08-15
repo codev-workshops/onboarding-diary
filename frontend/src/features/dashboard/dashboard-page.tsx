@@ -1,43 +1,18 @@
-import {
-  Card,
-  CardContent,
-  Chip,
-  Divider,
-  Grid,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Card, CardContent, Chip, Divider, Grid, List, ListItem, ListItemText, Typography } from '@mui/material';
 import { getErrorMessage } from '../../shared/api/api-client';
 import { formatDate, humanize } from '../../shared/lib/format';
 import { PageHeader } from '../../shared/ui/page-header';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/ui/states';
+import { useAuth } from '../auth/auth-context';
 import { useRecruitContext } from '../recruits/recruit-context';
+import { AdminDashboard } from './admin-dashboard';
 import { useDashboardSummary } from './api';
+import { SummaryCard } from './dashboard-widgets';
+import { JourneyTimeline } from './journey-timeline';
+import { ManagerDashboard } from './manager-dashboard';
+import { OnboardingChecklist } from './onboarding-checklist';
 
-function SummaryCard({ title, value, caption }: { title: string; value: number | string; caption?: string }) {
-  return (
-    <Card variant="outlined" sx={{ height: '100%' }}>
-      <CardContent>
-        <Typography variant="overline" color="text.secondary">
-          {title}
-        </Typography>
-        <Typography variant="h4">{value}</Typography>
-        {caption ? (
-          <Typography variant="body2" color="text.secondary">
-            {caption}
-          </Typography>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-export function DashboardPage() {
-  const { recruitId } = useRecruitContext();
+function RecruitDashboard({ recruitId }: { recruitId: number | null }) {
   const summary = useDashboardSummary(recruitId);
 
   if (summary.isPending) {
@@ -54,7 +29,9 @@ export function DashboardPage() {
     <>
       <PageHeader title="Dashboard" subtitle={`Onboarding overview for ${data.recruitName}`} />
 
-      <Grid container spacing={2}>
+      <JourneyTimeline journey={data.journey} />
+
+      <Grid container spacing={2} sx={{ mt: 1 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <SummaryCard
             title="Tasks"
@@ -81,19 +58,7 @@ export function DashboardPage() {
         </Grid>
       </Grid>
 
-      <Card variant="outlined" sx={{ mt: 3 }}>
-        <CardContent>
-          <Typography variant="subtitle1">Task completion</Typography>
-          <Stack direction="row" spacing={2} sx={{ mt: 1, alignItems: 'center' }}>
-            <LinearProgress
-              variant="determinate"
-              value={data.taskCompletionPercent}
-              sx={{ flexGrow: 1, height: 10, borderRadius: 5 }}
-            />
-            <Typography variant="body2">{data.taskCompletionPercent}%</Typography>
-          </Stack>
-        </CardContent>
-      </Card>
+      <OnboardingChecklist checklist={data.checklist} />
 
       <Card variant="outlined" sx={{ mt: 3 }}>
         <CardContent>
@@ -118,4 +83,19 @@ export function DashboardPage() {
       </Card>
     </>
   );
+}
+
+export function DashboardPage() {
+  const { recruitId } = useRecruitContext();
+  const { user } = useAuth();
+
+  if (recruitId === null && user?.role === 'Admin') {
+    return <AdminDashboard />;
+  }
+
+  if (recruitId === null && user?.role === 'Manager') {
+    return <ManagerDashboard />;
+  }
+
+  return <RecruitDashboard recruitId={recruitId} />;
 }
