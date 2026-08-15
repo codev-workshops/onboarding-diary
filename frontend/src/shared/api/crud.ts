@@ -12,9 +12,18 @@ export interface ListParams {
   [key: string]: string | number | null | undefined;
 }
 
+const dateKeys = ['from', 'to'];
+const isCompleteDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+/** Drops empty values, and partially typed dates that the API would reject. */
 function cleanParams(params: ListParams): Record<string, string | number> {
   return Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== null && value !== undefined && value !== ''),
+    Object.entries(params).filter(([key, value]) => {
+      if (value === null || value === undefined || value === '') {
+        return false;
+      }
+      return !(dateKeys.includes(key) && !isCompleteDate(String(value)));
+    }),
   ) as Record<string, string | number>;
 }
 
