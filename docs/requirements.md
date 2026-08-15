@@ -207,8 +207,8 @@ an Admin):
 ```json
 {
   "userCount": 12,
-  "usersByRole": [ { "role": "NewRecruit", "count": 9 } ],
-  "usersByDepartment": [ { "department": "Engineering", "count": 5 } ],
+  "usersByRole": [ { "label": "NewRecruit", "count": 9 } ],
+  "usersByDepartment": [ { "label": "Engineering", "count": 5 } ],
   "activityByWeek": [ { "weekStartDate": "2026-06-01", "tasks": 10, "issues": 2, "feedback": 3, "notes": 4 } ],
   "totals": { "tasks": 120, "issues": 18, "feedback": 22, "notes": 31 }
 }

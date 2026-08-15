@@ -22,4 +22,14 @@ public class DashboardController : ControllerBase
         [FromQuery] int? recruitId,
         CancellationToken cancellationToken) =>
         Ok(await _dashboardService.GetSummaryAsync(recruitId, cancellationToken));
+
+    [HttpGet("manager")]
+    [Authorize(Roles = "Manager,Admin")]
+    public async Task<ActionResult<ManagerDashboardDto>> GetManagerDashboard(CancellationToken cancellationToken) =>
+        Ok(await _dashboardService.GetManagerDashboardAsync(cancellationToken));
+
+    [HttpGet("admin")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<AdminDashboardDto>> GetAdminDashboard(CancellationToken cancellationToken) =>
+        Ok(await _dashboardService.GetAdminDashboardAsync(cancellationToken));
 }
