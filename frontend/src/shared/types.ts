@@ -75,6 +75,42 @@ export interface NoteEntry extends EntryBase {
   tags: string[];
 }
 
+export type JourneyStageStatus = 'NotStarted' | 'InProgress' | 'Blocked' | 'Completed';
+export type ChecklistState = 'Completed' | 'InProgress' | 'Pending';
+
+export interface JourneyStage {
+  key: string;
+  label: string;
+  total: number;
+  notStarted: number;
+  inProgress: number;
+  blocked: number;
+  completed: number;
+  completionPercent: number;
+  status: JourneyStageStatus;
+  firstActivityDate?: string | null;
+  lastActivityDate?: string | null;
+  dayOffset: number;
+}
+
+export interface ChecklistItem {
+  id: number;
+  title: string;
+  category: TaskCategory;
+  date: string;
+  state: ChecklistState;
+  isBlocked: boolean;
+}
+
+export interface Checklist {
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  progressPercent: number;
+  items: ChecklistItem[];
+}
+
 export interface DashboardSummary {
   recruitId: number;
   recruitName: string;
@@ -84,6 +120,41 @@ export interface DashboardSummary {
   feedbackCounts: { total: number; positive: number; suggestion: number; concern: number };
   notesCount: number;
   recentActivity: { type: string; id: number; title: string; date: string; status?: string | null }[];
+  startDate: string;
+  journey: { startDate: string; daysSinceStart: number; stages: JourneyStage[] };
+  checklist: Checklist;
+}
+
+export interface RecruitProgress {
+  recruitId: number;
+  recruitName: string;
+  department?: string | null;
+  startDate: string;
+  taskTotal: number;
+  taskCompleted: number;
+  taskCompletionPercent: number;
+  openIssues: number;
+}
+
+export interface ManagerDashboard {
+  recruitCount: number;
+  recruits: RecruitProgress[];
+  openIssuesBySeverity: { low: number; medium: number; high: number; critical: number };
+  feedbackCounts: { total: number; positive: number; suggestion: number; concern: number };
+  totals: { tasks: number; completedTasks: number; openIssues: number; notes: number };
+}
+
+export interface LabelCount {
+  label: string;
+  count: number;
+}
+
+export interface AdminDashboard {
+  userCount: number;
+  usersByRole: LabelCount[];
+  usersByDepartment: LabelCount[];
+  activityByWeek: { weekStartDate: string; tasks: number; issues: number; feedback: number; notes: number }[];
+  totals: { tasks: number; issues: number; feedback: number; notes: number };
 }
 
 export interface ApiErrorBody {
