@@ -1,0 +1,29 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+
+[*.{cs,csx}]
+indent_size = 4
+dotnet_sort_system_directives_first = true
+
+# High-performance logging delegates add noise without value in this app.
+dotnet_diagnostic.CA1848.severity = none
+# Records used purely as data carriers do not need to be sealed.
+dotnet_diagnostic.CA1812.severity = none
+
+# EF Core generates these files; they are not hand maintained.
+[**/Data/Migrations/*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+
+[*.{md,yml,yaml}]
+indent_size = 2
+
+[*.{cs,ts,tsx,js,jsx,json,css,html}]
+max_line_length = 120

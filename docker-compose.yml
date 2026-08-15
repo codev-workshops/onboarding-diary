@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: OnboardingDiary.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5080
+      ConnectionStrings__Default: Data Source=/data/onboarding-diary.db
+      Cors__Origins__0: http://localhost:5173
+    ports:
+      - "5080:5080"
+    volumes:
+      - api-data:/data
+
+  web:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:5080
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  api-data:
