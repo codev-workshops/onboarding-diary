@@ -61,6 +61,9 @@ jobs:
       - name: Seed database
         run: npm run db:seed
 
+      - name: Authorization matrix (integration)
+        run: npm run test:integration
+
       - name: Build
         run: npm run build
 
