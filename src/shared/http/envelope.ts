@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server';
-import { ZodError, type ZodType } from 'zod';
+import { ZodError, type ZodTypeAny, type output } from 'zod';
 
+import { recordAuditBestEffort } from '@/src/modules/audit/service';
 import { AppError, type ErrorDetail } from '@/src/shared/http/errors';
+import { requestContextFrom, withRequestContext } from '@/src/shared/http/request-context';
+
+/** Every denial that is worth an intrusion-detection signal (§22.1). */
+const AUDITED_DENIALS = new Set([
+  'OUT_OF_SCOPE',
+  'INSUFFICIENT_ROLE',
+  'FIELD_NOT_PERMITTED',
+  'FORBIDDEN_FIELD',
+  'SECTION_NOT_PERMITTED',
+]);
 
 export type SuccessBody<T> = { data: T };
 
@@ -36,43 +47,56 @@ export function route<Args extends unknown[]>(
 ): (request: Request, ...args: Args) => Promise<NextResponse> {
   return async (request, ...args) => {
     const requestId = crypto.randomUUID();
-    try {
-      return await handler(request, ...args);
-    } catch (error) {
-      const appError =
-        error instanceof ZodError
-          ? new AppError('VALIDATION_ERROR', 'The request contains invalid fields.', zodDetails(error))
-          : error instanceof AppError
-            ? error
-            : null;
 
-      if (!appError) {
-        console.error(`[${requestId}] Unhandled error on ${request.method} ${request.url}`, error);
+    return withRequestContext(requestContextFrom(request, requestId), async () => {
+      try {
+        return await handler(request, ...args);
+      } catch (error) {
+        const appError =
+          error instanceof ZodError
+            ? new AppError('VALIDATION_ERROR', 'The request contains invalid fields.', zodDetails(error))
+            : error instanceof AppError
+              ? error
+              : null;
+
+        if (!appError) {
+          console.error(`[${requestId}] Unhandled error on ${request.method} ${request.url}`, error);
+          return NextResponse.json<ErrorBody>(
+            {
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Something went wrong. Please try again.',
+                request_id: requestId,
+                details: [],
+              },
+            },
+            { status: 500 }
+          );
+        }
+
+        // The wrapper is the only place that sees every denial, whichever guard
+        // raised it, so AUTHZ.DENIED is recorded here rather than in each guard.
+        if (AUDITED_DENIALS.has(appError.code)) {
+          recordAuditBestEffort({
+            action: 'AUTHZ.DENIED',
+            entityType: 'REQUEST',
+            before: { method: request.method, path: new URL(request.url).pathname, code: appError.code },
+          });
+        }
+
         return NextResponse.json<ErrorBody>(
           {
             error: {
-              code: 'INTERNAL_ERROR',
-              message: 'Something went wrong. Please try again.',
+              code: appError.code,
+              message: appError.message,
               request_id: requestId,
-              details: [],
+              details: appError.details,
             },
           },
-          { status: 500 }
+          { status: appError.status }
         );
       }
-
-      return NextResponse.json<ErrorBody>(
-        {
-          error: {
-            code: appError.code,
-            message: appError.message,
-            request_id: requestId,
-            details: appError.details,
-          },
-        },
-        { status: appError.status }
-      );
-    }
+    });
   };
 }
 
@@ -89,7 +113,10 @@ export function requireJsonContentType(request: Request): void {
 }
 
 /** Reads a JSON body under a strict schema. */
-export async function readJson<T>(request: Request, schema: ZodType<T>): Promise<T> {
+export async function readJson<Schema extends ZodTypeAny>(
+  request: Request,
+  schema: Schema
+): Promise<output<Schema>> {
   requireJsonContentType(request);
 
   let body: unknown;

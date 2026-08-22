@@ -139,10 +139,41 @@ model User {
   feedbackUpdated FeedbackEntry[] @relation("FeedbackUpdatedBy")
   notesUpdated    NoteEntry[]     @relation("NoteUpdatedBy")
 
+  auditEvents    AuditLog[] @relation("AuditActor")
+  auditedChanges AuditLog[] @relation("AuditTarget")
+
   // manager_id drives readable_user_ids() for every manager-scoped query.
   @@index([managerId])
   @@index([departmentId])
   @@map("users")
+}
+
+/// Append-only security ledger (§22). Written in migration 2 rather than the
+/// initial migration (O7) and cut to the six actions that carry a security
+/// story (O2); the admin viewer is Phase 2.
+model AuditLog {
+  id           BigInt    @id @default(autoincrement())
+  actorUserId  String?   @map("actor_user_id") @db.Uuid
+  actorRole    UserRole? @map("actor_role")
+  action       String    @db.VarChar(60)
+  entityType   String?   @map("entity_type") @db.VarChar(40)
+  entityId     String?   @map("entity_id") @db.Uuid
+  targetUserId String?   @map("target_user_id") @db.Uuid
+  before       Json?
+  after        Json?
+  ip           String?   @db.VarChar(64)
+  userAgent    String?   @map("user_agent") @db.VarChar(400)
+  requestId    String?   @map("request_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor  User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  target User? @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([targetUserId, createdAt(sort: Desc)])
+  @@map("audit_logs")
 }
 
 model TaskEntry {

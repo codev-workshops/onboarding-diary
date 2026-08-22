@@ -6,10 +6,12 @@ with manager-scoped views and reporting on top.
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
 
-> **Status: Milestone 3 of 10 complete.** The skeleton, database, seed data, authentication and the
-> authorization core are in place: `readable_user_ids` is enforced in SQL by scoped repositories, and the
-> authorization matrix runs in CI. **The diary APIs and UI are not implemented yet** — the guards exist
-> before the endpoints that must use them. See [Implementation status](#implementation-status).
+> **Status: Milestone 4 of 10 complete.** The skeleton, database, seed data, authentication, the
+> authorization core and the **task diary** are in place: `readable_user_ids` is enforced in SQL by scoped
+> repositories, the task API and UI sit on top of those repositories, and the authorization matrix is
+> proved twice — once against the guards and once through the HTTP handlers. **Issues, feedback, notes,
+> the dashboard, reports and admin screens are not implemented yet.** See
+> [Implementation status](#implementation-status).
 
 ## Quick start
 
@@ -78,11 +80,13 @@ in one place.
 ```
 app/
   (public)/            login, signup                         done
-  (app)/               dashboard, tasks, issues, feedback,
-                       notes, team, reports, profile        [M4-M8]
+  (app)/tasks          task diary: list, filters, CRUD       done
+  (app)/               dashboard, issues, feedback,
+                       notes, team, reports, profile        [M5-M8]
   (app)/admin/users    user and department administration    [M10]
   api/v1/auth/...      signup, login, logout, me             done
-  api/v1/...           the rest of the REST API              [M4+]
+  api/v1/tasks         list, create, read, patch, delete     done
+  api/v1/...           the rest of the REST API              [M5+]
   api/health           liveness + readiness probe            done
 middleware.ts          cookie-signature gate for app routes  done
 src/
@@ -90,7 +94,9 @@ src/
     auth/              password hashing, sessions, cookies   done
     authz/             readable_user_ids(actor), guards      done
     users/             profiles, scoped directory reads      done (admin CRUD [M10])
-    entries/           scoped repositories                   done (CRUD [M4-M5])
+    entries/           scoped repositories                   done
+    tasks/             task schemas, DTOs and service        done
+    audit/             append-only audit writer              done
     dashboard/         aggregation queries                   [M6]
     reports/           date-ranged reports, CSV and PDF      [M8-M9]
   shared/
@@ -258,8 +264,8 @@ and Playwright against a PostgreSQL 16 service container.
 | M1        | Skeleton, tooling, Docker, schema, migration, seed, `/health`      | Done    |
 | M2        | Signup, login, logout, session cookie, protected shell             | Done    |
 | M3        | Authorization module, scoped repository, authorization test matrix | Done    |
-| M4        | Task CRUD with filters and pagination                              | Next    |
-| M5        | Issues, feedback and notes                                         | Planned |
+| M4        | Task CRUD with filters and pagination                              | Done    |
+| M5        | Issues, feedback and notes                                         | Next    |
 | M6        | Recruit dashboard                                                  | Planned |
 | M7        | Manager team list and recruit detail views                         | Planned |
 | M8        | Date-ranged reports and CSV export                                 | Planned |
@@ -292,8 +298,24 @@ Delivered in M3:
 - `tests/integration/authz-matrix.spec.ts` — AZ-M1…M10 and AZ-R1…R6 against seeded Postgres, run in CI
   after `db:seed` (`npm run test:integration`)
 
-Not implemented yet, by design: entry APIs and UI, dashboard, reports, exports, and admin screens. The
-`/team`, `/reports` and `/admin/users` routes exist only as role-gated placeholders.
+Delivered in M4:
+
+- `GET|POST /api/v1/tasks` and `GET|PATCH|DELETE /api/v1/tasks/{id}` — thin handlers that resolve the
+  actor, validate with Zod and delegate; they hold no `where` clause of their own
+- `src/modules/tasks/{schemas,service,dto}.ts` — validation, filtering, deterministic paging and an
+  e-mail-free task DTO
+- `src/modules/audit/service.ts` and the append-only `audit_logs` table: `AUTHZ.DENIED` for refused
+  requests, and `ENTRY.CROSS_USER_UPDATED` written in the **same transaction** as any admin write into
+  another user's diary
+- An ESLint boundary rule plus `tests/unit/module-boundaries.spec.ts`: no route, page or component may
+  import the Prisma client, and no module outside `src/modules/entries` may touch an entry delegate
+- `/tasks` — server-rendered list with URL-driven filters, a responsive table/card layout, create, edit
+  and delete, and read-only rows for entries the caller does not own
+- `tests/integration/task-endpoints.spec.ts` — the authorization matrix re-proved through the handlers
+  with real signed cookies, including the admin `{kind:'ALL'}` scope and the 403/404 policy
+
+Not implemented yet, by design: issue, feedback and note APIs and UI, dashboard, reports, exports, and
+admin screens. The `/team`, `/reports` and `/admin/users` routes exist only as role-gated placeholders.
 
 ## Assumptions
 
@@ -314,7 +336,8 @@ Carried over from the specification and the architecture review; each is a defau
 
 ## Deferred
 
-**Phase 2** — audit log for admin cross-user writes and authentication events, refresh-token rotation,
+**Phase 2** — audit coverage for authentication events and privileged reads (cross-user writes and
+authorization denials are audited already), refresh-token rotation,
 rate limiting on authentication endpoints, OpenAPI document, full-text search across entries, dashboard
 charts, optimistic-concurrency enforcement using the existing `version` column, bulk operations, email
 notifications.

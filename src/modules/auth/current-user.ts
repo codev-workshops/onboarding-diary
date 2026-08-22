@@ -4,6 +4,7 @@ import { readSession, SESSION_COOKIE } from '@/src/modules/auth/session';
 import { selfProfileSelect, toSelfProfile, type SelfProfile } from '@/src/modules/users/dto';
 import { prisma } from '@/src/shared/db/prisma';
 import { unauthenticated } from '@/src/shared/http/errors';
+import { setContextActor } from '@/src/shared/http/request-context';
 
 /**
  * Resolves the actor for the current request. The cookie only proves *which*
@@ -24,6 +25,11 @@ export async function getCurrentUser(request?: Request): Promise<SelfProfile | n
     select: selfProfileSelect,
   });
   if (!user || !user.isActive) return null;
+
+  // Audit rows are written from deep inside services and from the error
+  // wrapper, neither of which is handed the actor; recording it here means
+  // every request that authenticated at all can be attributed.
+  setContextActor({ id: user.id, role: user.role });
 
   return toSelfProfile(user);
 }

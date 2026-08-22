@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { prisma } from '@/src/shared/db/prisma';
+import { databaseIsUp } from '@/src/modules/health/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,13 +16,7 @@ type HealthBody = {
  * server log, never to the client (S14).
  */
 export async function GET(): Promise<NextResponse<HealthBody>> {
-  let database: HealthBody['database'] = 'down';
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    database = 'up';
-  } catch (error) {
-    console.error('Health check database probe failed', error);
-  }
+  const database: HealthBody['database'] = (await databaseIsUp()) ? 'up' : 'down';
 
   const body: HealthBody = {
     status: database === 'up' ? 'ok' : 'degraded',
