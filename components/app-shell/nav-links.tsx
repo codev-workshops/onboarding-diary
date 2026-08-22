@@ -30,6 +30,7 @@ export function NavLinks({ permissions }: { permissions: Permissions }) {
           <li key={link.href}>
             <Link
               href={link.href}
+              prefetch={false}
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'hover:bg-muted rounded-md px-3 py-1.5 transition-colors',

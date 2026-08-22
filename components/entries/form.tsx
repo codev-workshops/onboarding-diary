@@ -59,7 +59,13 @@ export function EntryDialog({
           {title}
         </h2>
 
-        <form action={onSubmit} className="mt-4 space-y-4">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit(new FormData(event.currentTarget));
+          }}
+          className="mt-4 space-y-4"
+        >
           {children}
 
           {message ? (
@@ -135,12 +141,25 @@ export function DialogChoice({
   );
 }
 
+/** What a write leaves behind: enough to tell whether a refresh has caught up. */
+export type SavedEntry = { id: string; version: number };
+
+function isSavedEntry(value: unknown): value is SavedEntry {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as { id?: unknown; version?: unknown };
+  return typeof candidate.id === 'string' && typeof candidate.version === 'number';
+}
+
 /**
  * The submit half of every entry dialog: POST to create, PATCH to edit, and
  * render the server's field-level 422 details against their own inputs rather
  * than collapsing them into one banner.
  */
-export function useEntrySubmit(endpoint: string, id: string | undefined, onSaved: () => void) {
+export function useEntrySubmit(
+  endpoint: string,
+  id: string | undefined,
+  onSaved: (saved: SavedEntry | null) => void
+) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -158,12 +177,14 @@ export function useEntrySubmit(endpoint: string, id: string | undefined, onSaved
 
     setSaving(false);
 
+    const payload = await response.json().catch(() => null);
+
     if (response.ok) {
-      onSaved();
+      const saved: unknown = payload?.data;
+      onSaved(isSavedEntry(saved) ? saved : null);
       return;
     }
 
-    const payload = await response.json().catch(() => null);
     const details: { field: string; message?: string }[] = payload?.error?.details ?? [];
     setFieldErrors(
       Object.fromEntries(details.map((detail) => [detail.field, detail.message ?? 'Check this field.']))

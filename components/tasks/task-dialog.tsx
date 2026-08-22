@@ -9,6 +9,7 @@ import {
   dialogId,
   textareaClass,
   useEntrySubmit,
+  type SavedEntry,
 } from '@/components/entries/form';
 import { Input } from '@/components/ui/input';
 import type { TaskDto } from '@/src/modules/tasks/dto';
@@ -24,7 +25,7 @@ export function TaskDialog({
 }: {
   task?: TaskDto;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (saved: SavedEntry | null) => void;
 }) {
   const { saving, message, fieldErrors, send } = useEntrySubmit('/api/v1/tasks', task?.id, onSaved);
 

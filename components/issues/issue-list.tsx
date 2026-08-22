@@ -65,9 +65,9 @@ export function IssueList({
   /** An issue you do not own can still be triaged if the API will allow it. */
   const actions = (issue: IssueDto) =>
     issue.owner.id === actorId ? (
-      <EntryRowActions owned onEdit={() => onEdit(issue)} onDelete={() => onDelete(issue)} />
+      <EntryRowActions owned busy={busy} onEdit={() => onEdit(issue)} onDelete={() => onDelete(issue)} />
     ) : canTriage ? (
-      <Button variant="outline" size="sm" onClick={() => onEdit(issue)}>
+      <Button variant="outline" size="sm" disabled={busy} onClick={() => onEdit(issue)}>
         Update status
       </Button>
     ) : (

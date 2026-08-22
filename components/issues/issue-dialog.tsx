@@ -9,6 +9,7 @@ import {
   dialogId,
   textareaClass,
   useEntrySubmit,
+  type SavedEntry,
 } from '@/components/entries/form';
 import { Input } from '@/components/ui/input';
 import type { IssueDto } from '@/src/modules/issues/dto';
@@ -28,7 +29,7 @@ export function IssueDialog({
   issue?: IssueDto;
   restricted?: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (saved: SavedEntry | null) => void;
 }) {
   const { saving, message, fieldErrors, send } = useEntrySubmit('/api/v1/issues', issue?.id, onSaved);
 

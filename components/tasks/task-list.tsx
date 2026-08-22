@@ -87,6 +87,7 @@ export function TaskList({
                 <TableCell className="text-right">
                   <EntryRowActions
                     owned={task.owner.id === actorId}
+                    busy={busy}
                     onEdit={() => onEdit(task)}
                     onDelete={() => onDelete(task)}
                   />
@@ -110,6 +111,7 @@ export function TaskList({
             <p className="text-muted-foreground text-sm">{task.owner.full_name}</p>
             <EntryRowActions
               owned={task.owner.id === actorId}
+              busy={busy}
               onEdit={() => onEdit(task)}
               onDelete={() => onDelete(task)}
             />

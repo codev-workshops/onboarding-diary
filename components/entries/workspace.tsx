@@ -1,11 +1,21 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 
 import { EntryFilterBar, type SelectFilter } from '@/components/entries/filter-bar';
+import type { SavedEntry } from '@/components/entries/form';
 import type { EntryPage } from '@/components/entries/list-chrome';
 import { Button } from '@/components/ui/button';
+
+type PendingWrite = { id: string; version?: number; deleted?: boolean };
+
+/** Whether the rows the server just sent already carry the write we made. */
+function reflects<T extends { id: string; version: number }>(items: T[], write: PendingWrite): boolean {
+  const row = items.find((item) => item.id === write.id);
+  if (write.deleted) return row === undefined;
+  return row !== undefined && row.version >= (write.version ?? 0);
+}
 
 export type WorkspaceRenderArgs<T> = {
   items: T[];
@@ -17,14 +27,26 @@ export type WorkspaceRenderArgs<T> = {
   onDelete: (entry: T) => void;
 };
 
+const REFRESH_ATTEMPTS = 5;
+const REFRESH_RETRY_MS = 300;
+
 /**
  * Owns the client state that a server page cannot: which dialog is open and
  * whether a mutation is in flight. Everything else — filters, pagination, the
  * rows themselves — is server state addressed by the URL, refreshed with
  * `router.refresh()` after a write so the list re-renders through the same
  * scoped query rather than being patched locally.
+ *
+ * A refresh can be dropped before it is applied: the router aborts an
+ * in-flight payload when a render or navigation overtakes it, which would
+ * leave the list showing a row the server has already changed. Each write
+ * reports the id and version it produced, so the refresh is re-issued until
+ * the list carries that write. The retries are bounded because an entry can
+ * legitimately land outside the current page or filter, where no refresh will
+ * ever show it. Actions stay disabled until the write settles, so a second
+ * write cannot race the first.
  */
-export function EntryWorkspace<T extends { id: string }>({
+export function EntryWorkspace<T extends { id: string; version: number }>({
   heading,
   countNoun,
   createLabel,
@@ -53,20 +75,48 @@ export function EntryWorkspace<T extends { id: string }>({
   page: EntryPage;
   items: T[];
   renderList: (args: WorkspaceRenderArgs<T>) => React.ReactNode;
-  renderDialog: (args: { entry?: T; onClose: () => void; onSaved: () => void }) => React.ReactNode;
+  renderDialog: (args: {
+    entry?: T;
+    onClose: () => void;
+    onSaved: (saved: SavedEntry | null) => void;
+  }) => React.ReactNode;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [pending, startTransition] = useTransition();
 
   const [editing, setEditing] = useState<T | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [write, setWrite] = useState<PendingWrite | null>(null);
 
+  const pending = write !== null;
   const filtered = Array.from(searchParams.keys()).some((key) => key !== 'page');
 
-  function refresh() {
-    startTransition(() => router.refresh());
+  useEffect(() => {
+    if (!write) return;
+
+    let attempt = 0;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const askServer = () => {
+      attempt += 1;
+      router.refresh();
+      timer =
+        attempt < REFRESH_ATTEMPTS
+          ? setTimeout(askServer, REFRESH_RETRY_MS)
+          : setTimeout(() => setWrite(null), REFRESH_RETRY_MS);
+    };
+
+    askServer();
+    return () => clearTimeout(timer);
+  }, [write, router]);
+
+  useEffect(() => {
+    if (write && reflects(items, write)) setWrite(null);
+  }, [write, items]);
+
+  function refresh(saved: PendingWrite | null) {
+    setWrite(saved ?? { id: '', version: 0 });
   }
 
   async function remove(entry: T) {
@@ -79,7 +129,7 @@ export function EntryWorkspace<T extends { id: string }>({
       setError(body?.error?.message ?? 'The entry could not be deleted.');
       return;
     }
-    refresh();
+    refresh({ id: entry.id, deleted: true });
   }
 
   return (
@@ -92,7 +142,9 @@ export function EntryWorkspace<T extends { id: string }>({
             {filtered ? ' matching your filters' : ' in your diary'}.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>{createLabel}</Button>
+        <Button disabled={pending} onClick={() => setCreating(true)}>
+          {createLabel}
+        </Button>
       </div>
 
       <EntryFilterBar
@@ -126,9 +178,9 @@ export function EntryWorkspace<T extends { id: string }>({
       {creating
         ? renderDialog({
             onClose: () => setCreating(false),
-            onSaved: () => {
+            onSaved: (saved) => {
               setCreating(false);
-              refresh();
+              refresh(saved);
             },
           })
         : null}
@@ -137,9 +189,9 @@ export function EntryWorkspace<T extends { id: string }>({
         ? renderDialog({
             entry: editing,
             onClose: () => setEditing(null),
-            onSaved: () => {
+            onSaved: (saved) => {
               setEditing(null);
-              refresh();
+              refresh(saved);
             },
           })
         : null}

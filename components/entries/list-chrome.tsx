@@ -73,14 +73,18 @@ export function EntryPagination({ basePath, page }: { basePath: string; page: En
 /**
  * Buttons are hidden for entries the actor does not own — presentation only.
  * The API refuses the same operations regardless of what was rendered (S3).
+ * They are disabled while the list is refreshing, so an action is never sent
+ * for a row the server has already replaced.
  */
 export function EntryRowActions({
   owned,
+  busy = false,
   editable = true,
   onEdit,
   onDelete,
 }: {
   owned: boolean;
+  busy?: boolean;
   editable?: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -90,11 +94,11 @@ export function EntryRowActions({
   return (
     <div className="flex flex-wrap justify-end gap-2">
       {editable ? (
-        <Button variant="outline" size="sm" onClick={onEdit}>
+        <Button variant="outline" size="sm" disabled={busy} onClick={onEdit}>
           Edit
         </Button>
       ) : null}
-      <Button variant="ghost" size="sm" onClick={onDelete}>
+      <Button variant="ghost" size="sm" disabled={busy} onClick={onDelete}>
         Delete
       </Button>
     </div>

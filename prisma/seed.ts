@@ -53,6 +53,11 @@ function daysAgo(days: number): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - days));
 }
 
+/** A plausible moment during the working day the entry describes. */
+function loggedAt(entryDate: Date): Date {
+  return new Date(entryDate.getTime() + randomInt(8, 18) * 3_600_000 + randomInt(0, 59) * 60_000);
+}
+
 const DEPARTMENTS = [
   { name: 'Engineering', description: 'Software engineering and platform' },
   { name: 'Product', description: 'Product management and research' },
@@ -348,6 +353,7 @@ async function main(): Promise<void> {
       const entryDate = daysAgo(randomInt(0, span));
       tasks.push({
         ownerId,
+        createdAt: loggedAt(entryDate),
         updatedById: ownerId,
         entryDate,
         title: pick(TASK_TITLES[category] ?? ['Onboarding task']),
@@ -369,6 +375,7 @@ async function main(): Promise<void> {
       const isClosed = status === 'RESOLVED' || status === 'CLOSED';
       issues.push({
         ownerId,
+        createdAt: loggedAt(entryDate),
         // Resolved issues are attributed to the recruit's manager where there is
         // one, which is what makes the "updated by <manager>" path visible in M5.
         updatedById:
@@ -387,10 +394,12 @@ async function main(): Promise<void> {
 
     // Guarantee at least one open CRITICAL issue per manager scope for the demo.
     if (recruit.email === 'priya.sharma@onboarding.test' || recruit.email === 'aisha.khan@onboarding.test') {
+      const entryDate = daysAgo(randomInt(1, 4));
       issues.push({
         ownerId,
+        createdAt: loggedAt(entryDate),
         updatedById: ownerId,
-        entryDate: daysAgo(randomInt(1, 4)),
+        entryDate,
         title: 'Blocked from production incident channel',
         description:
           'I am on the on-call shadow rota tomorrow but cannot join the incident channel or the paging tool.',
@@ -404,10 +413,12 @@ async function main(): Promise<void> {
     const feedbackCount = randomInt(1, 3);
     for (let i = 0; i < feedbackCount; i += 1) {
       const template = pick(FEEDBACK);
+      const entryDate = daysAgo(randomInt(0, span));
       feedback.push({
         ownerId,
+        createdAt: loggedAt(entryDate),
         updatedById: ownerId,
-        entryDate: daysAgo(randomInt(0, span)),
+        entryDate,
         subject: template.subject,
         type: template.type,
         details: template.details,
@@ -418,10 +429,12 @@ async function main(): Promise<void> {
     const noteCount = randomInt(1, 3);
     for (let i = 0; i < noteCount; i += 1) {
       const template = pick(NOTES);
+      const entryDate = daysAgo(randomInt(0, span));
       notes.push({
         ownerId,
+        createdAt: loggedAt(entryDate),
         updatedById: ownerId,
-        entryDate: daysAgo(randomInt(0, span)),
+        entryDate,
         title: template.title,
         content: template.content,
         tags: template.tags,
