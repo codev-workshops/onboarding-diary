@@ -16,6 +16,7 @@ export function NavLinks({ permissions }: { permissions: Permissions }) {
   const links = [
     { href: '/dashboard', label: 'Dashboard', visible: true },
     { href: '/tasks', label: 'Tasks', visible: true },
+    { href: '/issues', label: 'Issues', visible: true },
     { href: '/team', label: 'Team', visible: permissions.can_view_team },
     { href: '/reports', label: 'Reports', visible: true },
     { href: '/admin/users', label: 'Users', visible: permissions.can_manage_users },
@@ -29,6 +30,7 @@ export function NavLinks({ permissions }: { permissions: Permissions }) {
           <li key={link.href}>
             <Link
               href={link.href}
+              prefetch={false}
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'hover:bg-muted rounded-md px-3 py-1.5 transition-colors',

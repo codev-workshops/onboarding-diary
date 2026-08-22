@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import type { Actor } from '@/src/modules/authz/scope';
+import { orderByWithTiebreak, skipFor, toPage, type Page } from '@/src/modules/entries/paging';
 import { taskRepository } from '@/src/modules/entries/repositories';
 import { toTaskDto, type TaskDto, type TaskRow } from '@/src/modules/tasks/dto';
 import {
@@ -10,11 +11,6 @@ import {
   updateTaskSchema,
   type ListTasksQuery,
 } from '@/src/modules/tasks/schemas';
-
-export type Page<T> = {
-  items: T[];
-  page: { page: number; page_size: number; total: number; total_pages: number };
-};
 
 /**
  * Filters are handed to the repository as a separate list; the service never
@@ -51,29 +47,17 @@ export async function listTasks(actor: Actor, query: ListTasksQuery): Promise<Pa
   const filters = taskFilters(query);
   const options = { ownerId: query.owner_id, filters };
 
-  // `id` breaks ties so that page 2 cannot repeat or skip a row that shares an
-  // entry_date with the last row of page 1 (API-6).
-  const orderBy = [{ [sortColumn(query.sort)]: query.order }, { id: 'desc' as const }];
-
   const [rows, total] = await Promise.all([
     taskRepository.list(actor, {
       ...options,
-      orderBy,
-      skip: (query.page - 1) * query.page_size,
+      orderBy: orderByWithTiebreak(sortColumn(query.sort), query.order),
+      skip: skipFor(query),
       take: query.page_size,
     }),
     taskRepository.count(actor, options),
   ]);
 
-  return {
-    items: rows.map(toTaskDto),
-    page: {
-      page: query.page,
-      page_size: query.page_size,
-      total,
-      total_pages: Math.max(1, Math.ceil(total / query.page_size)),
-    },
-  };
+  return toPage(rows, total, query, toTaskDto);
 }
 
 export async function getTask(actor: Actor, id: string): Promise<TaskDto> {
@@ -104,26 +88,40 @@ export async function updateTask(
   id: string,
   body: z.infer<typeof updateTaskSchema>
 ): Promise<TaskDto> {
-  const row = await taskRepository.update(actor, id, body, (existing: TaskRow) => {
-    const data: Prisma.TaskEntryUncheckedUpdateInput = {
-      ...(body.entry_date !== undefined && { entryDate: body.entry_date }),
-      ...(body.title !== undefined && { title: body.title }),
-      ...(body.description !== undefined && { description: body.description ?? null }),
-      ...(body.category !== undefined && { category: body.category }),
-      ...(body.status !== undefined && { status: body.status }),
-      ...(body.priority !== undefined && { priority: body.priority }),
-      version: { increment: 1 },
-      updatedById: actor.id,
-    };
+  const { expected_version, ...fields } = body;
 
-    // Moving to DONE stamps the completion; moving away from it clears the
-    // stamp, which the one-way CHECK (C1) permits and the progress metric needs.
-    if (body.status !== undefined && body.status !== existing.status) {
-      data.completedAt = body.status === 'DONE' ? new Date() : null;
-    }
+  // Change keys are the persisted column names, so the policy allow-list and
+  // the audit record talk about the same fields the row is made of.
+  const changes: Prisma.TaskEntryUncheckedUpdateInput = {
+    ...(fields.entry_date !== undefined && { entryDate: fields.entry_date }),
+    ...(fields.title !== undefined && { title: fields.title }),
+    ...(fields.description !== undefined && { description: fields.description ?? null }),
+    ...(fields.category !== undefined && { category: fields.category }),
+    ...(fields.status !== undefined && { status: fields.status }),
+    ...(fields.priority !== undefined && { priority: fields.priority }),
+  };
 
-    return data;
-  });
+  const row = await taskRepository.update(
+    actor,
+    id,
+    changes,
+    (existing: TaskRow) => {
+      const data: Prisma.TaskEntryUncheckedUpdateInput = {
+        ...changes,
+        version: { increment: 1 },
+        updatedById: actor.id,
+      };
+
+      // Moving to DONE stamps the completion; moving away from it clears the
+      // stamp, which the one-way CHECK (C1) permits and the progress metric needs.
+      if (fields.status !== undefined && fields.status !== existing.status) {
+        data.completedAt = fields.status === 'DONE' ? new Date() : null;
+      }
+
+      return data;
+    },
+    { expectedVersion: expected_version }
+  );
 
   return toTaskDto(row);
 }

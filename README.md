@@ -6,10 +6,11 @@ with manager-scoped views and reporting on top.
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
 
-> **Status: Milestone 4 of 10 complete.** The skeleton, database, seed data, authentication, the
-> authorization core and the **task diary** are in place: `readable_user_ids` is enforced in SQL by scoped
-> repositories, the task API and UI sit on top of those repositories, and the authorization matrix is
-> proved twice — once against the guards and once through the HTTP handlers. **Issues, feedback, notes,
+> **Status: Milestone 5 of 10 complete.** The skeleton, database, seed data, authentication, the
+> authorization core, the **task diary** and the **issue log** are in place: `readable_user_ids` is
+> enforced in SQL by scoped repositories, the task and issue APIs and UIs sit on top of those
+> repositories, and the authorization matrix is proved twice — once against the guards and once through
+> the HTTP handlers. **Feedback, notes,
 > the dashboard, reports and admin screens are not implemented yet.** See
 > [Implementation status](#implementation-status).
 
@@ -81,12 +82,14 @@ in one place.
 app/
   (public)/            login, signup                         done
   (app)/tasks          task diary: list, filters, CRUD       done
-  (app)/               dashboard, issues, feedback,
-                       notes, team, reports, profile        [M5-M8]
+  (app)/issues         issue log: list, filters, CRUD        done
+  (app)/               dashboard, feedback,
+                       notes, team, reports, profile        [M6-M9]
   (app)/admin/users    user and department administration    [M10]
   api/v1/auth/...      signup, login, logout, me             done
   api/v1/tasks         list, create, read, patch, delete     done
-  api/v1/...           the rest of the REST API              [M5+]
+  api/v1/issues        list, create, read, patch, delete     done
+  api/v1/...           the rest of the REST API              [M6+]
   api/health           liveness + readiness probe            done
 middleware.ts          cookie-signature gate for app routes  done
 src/
@@ -265,9 +268,9 @@ and Playwright against a PostgreSQL 16 service container.
 | M2        | Signup, login, logout, session cookie, protected shell             | Done    |
 | M3        | Authorization module, scoped repository, authorization test matrix | Done    |
 | M4        | Task CRUD with filters and pagination                              | Done    |
-| M5        | Issues, feedback and notes                                         | Next    |
-| M6        | Recruit dashboard                                                  | Planned |
-| M7        | Manager team list and recruit detail views                         | Planned |
+| M5        | Issue CRUD with triage, filters and pagination                     | Done    |
+| M6        | Feedback and notes                                                 | Next    |
+| M7        | Recruit dashboard, manager team list and recruit detail views      | Planned |
 | M8        | Date-ranged reports and CSV export                                 | Planned |
 | M9        | PDF export                                                         | Planned |
 | M10       | Admin user/department management and hardening                     | Planned |
@@ -314,7 +317,20 @@ Delivered in M4:
 - `tests/integration/task-endpoints.spec.ts` — the authorization matrix re-proved through the handlers
   with real signed cookies, including the admin `{kind:'ALL'}` scope and the 403/404 policy
 
-Not implemented yet, by design: issue, feedback and note APIs and UI, dashboard, reports, exports, and
+Delivered in M5:
+
+- `GET|POST /api/v1/issues` and `GET|PATCH|DELETE /api/v1/issues/{id}`, on the same scoped repositories
+- `src/modules/issues/{schemas,service,dto}.ts` — validation, status transitions and an e-mail-free DTO;
+  `resolved_at` is derived server-side and cannot be supplied by a client
+- Manager triage: a manager may patch **only** `status` and `resolution_notes` on a direct report's
+  issue, all-or-nothing, audited as a cross-user write; they still cannot create or delete one
+- Optimistic concurrency that is actually enforced: `expected_version` is carried into the SQL `UPDATE`
+  predicate, so a stale write loses the race with `409 VERSION_CONFLICT` rather than overwriting
+- `/issues` — server-rendered list with URL-driven status/severity filters, responsive table/card
+  layout, and a triage-only dialog for managers
+- `tests/integration/issue-endpoints.spec.ts` and `tests/unit/issue-schemas.spec.ts`
+
+Not implemented yet, by design: feedback and note APIs and UI, dashboard, reports, exports, and
 admin screens. The `/team`, `/reports` and `/admin/users` routes exist only as role-gated placeholders.
 
 ## Assumptions

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { requireCurrentUser } from '@/src/modules/auth/current-user';
-import { updateTaskSchema } from '@/src/modules/tasks/schemas';
-import { deleteTask, getTask, updateTask } from '@/src/modules/tasks/service';
+import { updateIssueSchema } from '@/src/modules/issues/schemas';
+import { deleteIssue, getIssue, updateIssue } from '@/src/modules/issues/service';
 import { ok, readJson, route } from '@/src/shared/http/envelope';
 import { resourceId, type IdContext } from '@/src/shared/http/resource-id';
 
@@ -11,23 +11,18 @@ export const dynamic = 'force-dynamic';
 
 export const GET = route(async (request: Request, context: IdContext) => {
   const actor = await requireCurrentUser(request);
-  return ok(await getTask(actor, await resourceId(context)));
+  return ok(await getIssue(actor, await resourceId(context)));
 });
 
 export const PATCH = route(async (request: Request, context: IdContext) => {
   const actor = await requireCurrentUser(request);
   const id = await resourceId(context);
-  const body = await readJson(request, updateTaskSchema);
-  return ok(await updateTask(actor, id, body));
+  const body = await readJson(request, updateIssueSchema);
+  return ok(await updateIssue(actor, id, body));
 });
 
-/**
- * No JSON content-type guard here: an HTML form cannot issue a DELETE at all,
- * so `SameSite=Lax` already covers it and demanding a content type on a bodiless
- * request would only break well-behaved clients.
- */
 export const DELETE = route(async (request: Request, context: IdContext) => {
   const actor = await requireCurrentUser(request);
-  await deleteTask(actor, await resourceId(context));
+  await deleteIssue(actor, await resourceId(context));
   return new NextResponse(null, { status: 204 });
 });
