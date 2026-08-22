@@ -1,0 +1,74 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: onboarding-diary-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-onboarding}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-onboarding}
+      POSTGRES_DB: ${POSTGRES_DB:-onboarding_diary}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-onboarding} -d ${POSTGRES_DB:-onboarding_diary}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: applies migrations and seeds demo data, then exits. Runs from the
+  # builder image because that is where the Prisma CLI and the seed script live;
+  # the application image deliberately ships neither. Both steps are idempotent,
+  # so this is safe to re-run on every `docker compose up`.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: onboarding-diary-migrate
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-onboarding}:${POSTGRES_PASSWORD:-onboarding}@db:5432/${POSTGRES_DB:-onboarding_diary}?schema=public
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: onboarding-diary-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      # The Next.js standalone server binds to $HOSTNAME, which defaults to the
+      # container id; the healthcheck below (and any other in-container client)
+      # then cannot reach it on the loopback address.
+      HOSTNAME: '0.0.0.0'
+      DATABASE_URL: postgresql://${POSTGRES_USER:-onboarding}:${POSTGRES_PASSWORD:-onboarding}@db:5432/${POSTGRES_DB:-onboarding_diary}?schema=public
+      SESSION_SECRET: ${SESSION_SECRET:-dev-only-insecure-secret-change-me-0123456789}
+      PORT: '3000'
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  db-data:
