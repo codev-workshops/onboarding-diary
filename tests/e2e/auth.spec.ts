@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { prisma } from '@/src/shared/db/prisma';
+
 /**
  * End-to-end auth smoke tests against the seeded database. They use the demo
  * accounts documented in the README; all seeded users share one password.
@@ -94,6 +96,31 @@ test('signup creates a recruit and lands on the dashboard', async ({ page }) => 
   await expect(page.getByRole('link', { name: 'Users' })).toHaveCount(0);
 });
 
+test('a session that no longer resolves to an active user is cleared, not bounced in a loop', async ({
+  page,
+}) => {
+  const email = `e2e-deactivated-${Date.now()}@onboarding.test`;
+
+  await page.goto('/signup');
+  await page.getByLabel('Full name').fill('Deactivated Soon');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill('Onboard1ngDiary');
+  await page.getByLabel('Start date').fill('2026-03-02');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await prisma.user.update({ where: { email }, data: { isActive: false } });
+
+  // The cookie is still signature-valid, so middleware alone would keep sending
+  // this back to /dashboard; the visit must instead land on /login for good.
+  await page.goto('/dashboard');
+  await expect(page).toHaveURL(/\/login$/);
+  expect((await page.context().cookies()).find((cookie) => cookie.name === 'od_session')?.value).toBeFalsy();
+
+  await page.goto('/login');
+  await expect(page).toHaveURL(/\/login$/);
+});
+
 test('the auth API enforces authentication on /auth/me', async ({ request }) => {
   const anonymous = await request.get('/api/v1/auth/me');
   expect(anonymous.status()).toBe(401);
@@ -117,7 +144,7 @@ test('the auth API enforces authentication on /auth/me', async ({ request }) => 
   expect(body.data.permissions.can_manage_users).toBe(true);
   expect(JSON.stringify(body)).not.toContain('passwordHash');
 
-  const loggedOut = await request.post('/api/v1/auth/logout', { headers: { cookie } });
+  const loggedOut = await request.post('/api/v1/auth/logout', { headers: { cookie }, data: {} });
   expect(loggedOut.status()).toBe(204);
   expect(loggedOut.headers()['set-cookie']).toContain('Max-Age=0');
 });

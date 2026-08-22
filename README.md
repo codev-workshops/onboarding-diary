@@ -159,12 +159,15 @@ How the session works, and why:
 - **The token carries only the user id.** Role and `is_active` are re-read from the database on every
   request, so a deactivation or a role change takes effect on the next request rather than in eight hours.
 - **No CSRF token.** `SameSite=Lax` plus a mandatory `application/json` content type means a cross-site
-  form post cannot both carry the cookie and be accepted. Revisit this if a non-JSON endpoint appears.
+  form post cannot both carry the cookie and be accepted. Every state-changing handler enforces the
+  content type, including logout, which reads no body. Revisit this if a non-JSON endpoint appears.
 - **Login is timing-flat and message-flat.** An unknown email and a wrong password return the same
   `401 INVALID_CREDENTIALS`, and the unknown-email path still performs a bcrypt comparison.
 - **`middleware.ts` only verifies the cookie signature** so anonymous visitors get a redirect instead of a
   flash of an empty page. It is not the authorization boundary: layouts, pages and route handlers each
-  re-resolve the user from the database.
+  re-resolve the user from the database. Because middleware cannot reach the database, a session whose
+  user has since been deactivated is bounced through `/signed-out`, which clears the cookie — redirecting
+  straight to `/login` would ping-pong until the token expired.
 - **Role-aware navigation is presentation only.** The admin page 404s for a manager whether or not the
   link was rendered.
 

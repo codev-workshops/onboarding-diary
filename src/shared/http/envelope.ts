@@ -77,15 +77,20 @@ export function route<Args extends unknown[]>(
 }
 
 /**
- * Reads a JSON body under a strict schema. Requiring the JSON content type is
- * what lets a `SameSite=Lax` cookie stand in for CSRF tokens: a cross-site
- * form post cannot set it.
+ * Requiring the JSON content type is what lets a `SameSite=Lax` cookie stand in
+ * for CSRF tokens: a cross-site form post cannot set it. Every state-changing
+ * handler must call this, including the ones that read no body.
  */
-export async function readJson<T>(request: Request, schema: ZodType<T>): Promise<T> {
+export function requireJsonContentType(request: Request): void {
   const contentType = request.headers.get('content-type') ?? '';
   if (!contentType.toLowerCase().includes('application/json')) {
     throw new AppError('UNSUPPORTED_MEDIA_TYPE', 'Requests must use Content-Type: application/json.');
   }
+}
+
+/** Reads a JSON body under a strict schema. */
+export async function readJson<T>(request: Request, schema: ZodType<T>): Promise<T> {
+  requireJsonContentType(request);
 
   let body: unknown;
   try {

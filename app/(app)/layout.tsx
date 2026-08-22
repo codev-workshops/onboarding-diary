@@ -10,11 +10,13 @@ export const dynamic = 'force-dynamic';
 /**
  * The authoritative gate for the signed-in area. Middleware only checks the
  * cookie signature; this re-reads the user, so a deactivated or deleted account
- * is bounced to the login screen even with a still-valid token.
+ * is bounced out even with a still-valid token. The bounce goes through
+ * /signed-out rather than straight to /login so the stale cookie is cleared —
+ * otherwise middleware would send the request back here on every attempt.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/signed-out');
 
   return (
     <AppShell user={user} permissions={permissionsFor(user.role)}>

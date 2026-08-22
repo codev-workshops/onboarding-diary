@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FormError } from '@/components/auth/form-error';
 import { postJson } from '@/src/shared/http/client';
+import { safeRedirectPath } from '@/src/shared/http/safe-path';
 
 export function LoginForm() {
   const router = useRouter();
@@ -34,8 +35,7 @@ export function LoginForm() {
 
     // A full navigation, so the new session cookie is picked up by middleware
     // and every server component on the next render.
-    const next = searchParams.get('next');
-    router.replace(next?.startsWith('/') ? next : '/dashboard');
+    router.replace(safeRedirectPath(searchParams.get('next')));
     router.refresh();
   }
 

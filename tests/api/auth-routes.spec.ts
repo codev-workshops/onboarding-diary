@@ -235,6 +235,21 @@ describe('POST /api/v1/auth/logout', () => {
     expect(response.status).toBe(204);
     expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
   });
+
+  it('refuses a cross-site form post, which cannot set the JSON content type', async () => {
+    const response = await logout(
+      new Request('http://localhost/api/v1/auth/logout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'a=1',
+      })
+    );
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(415);
+    expect(body.error.code).toBe('UNSUPPORTED_MEDIA_TYPE');
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
 });
 
 describe('GET /api/v1/auth/me', () => {
