@@ -1,0 +1,242 @@
+// Onboarding Diary — database schema (M1)
+//
+// Design notes (see docs/ARCHITECTURE.md and the architecture review):
+//  * Four sibling entry tables rather than one polymorphic table, so that NOT NULL
+//    constraints and enums stay meaningful per entry type (DB2). The de-duplication
+//    lives in the service layer, not the schema.
+//  * Users are deactivated, never soft-deleted (DB4): `is_active` is the whole
+//    lifecycle, so there is no `deleted_at` on users and email is plainly unique.
+//  * Entries carry `updated_by` but not `created_by` (DB5): `created_by` would equal
+//    `owner_id` in every supported flow, while `updated_by` is what makes a manager's
+//    write to a recruit's issue visible in the UI.
+//  * `version` exists from day one so optimistic concurrency can be switched on later
+//    without a migration (D3).
+//  * CHECK constraints and enum-ordering rules that Prisma cannot express live in the
+//    migration SQL; Prisma has no concept of CHECK constraints, so they do not drift.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  RECRUIT
+  MANAGER
+  ADMIN
+
+  @@map("user_role")
+}
+
+enum TaskCategory {
+  ORIENTATION
+  TRAINING
+  SETUP
+  DOCUMENTATION
+  MEETING
+  PROJECT_WORK
+  SHADOWING
+  COMPLIANCE
+  OTHER
+
+  @@map("task_category")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELLED
+
+  @@map("task_status")
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+
+  @@map("priority_level")
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+
+  @@map("issue_severity")
+}
+
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+
+  @@map("issue_status")
+}
+
+enum FeedbackType {
+  POSITIVE
+  SUGGESTION
+  CONCERN
+
+  @@map("feedback_type")
+}
+
+enum FeedbackVisibility {
+  MANAGER_VISIBLE
+  ADMIN_ONLY
+
+  @@map("feedback_visibility")
+}
+
+model Department {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(80)
+  description String?  @db.VarChar(255)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users User[]
+
+  @@map("departments")
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique @db.VarChar(254)
+  passwordHash String    @map("password_hash")
+  fullName     String    @map("full_name") @db.VarChar(120)
+  role         UserRole  @default(RECRUIT)
+  departmentId String?   @map("department_id") @db.Uuid
+  startDate    DateTime  @map("start_date") @db.Date
+  managerId    String?   @map("manager_id") @db.Uuid
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  manager    User?       @relation("ManagerRecruits", fields: [managerId], references: [id], onDelete: Restrict)
+  recruits   User[]      @relation("ManagerRecruits")
+
+  tasks    TaskEntry[]     @relation("TaskOwner")
+  issues   IssueEntry[]    @relation("IssueOwner")
+  feedback FeedbackEntry[] @relation("FeedbackOwner")
+  notes    NoteEntry[]     @relation("NoteOwner")
+
+  tasksUpdated    TaskEntry[]     @relation("TaskUpdatedBy")
+  issuesUpdated   IssueEntry[]    @relation("IssueUpdatedBy")
+  feedbackUpdated FeedbackEntry[] @relation("FeedbackUpdatedBy")
+  notesUpdated    NoteEntry[]     @relation("NoteUpdatedBy")
+
+  // manager_id drives readable_user_ids() for every manager-scoped query.
+  @@index([managerId])
+  @@index([departmentId])
+  @@map("users")
+}
+
+model TaskEntry {
+  id          String        @id @default(uuid()) @db.Uuid
+  ownerId     String        @map("owner_id") @db.Uuid
+  entryDate   DateTime      @map("entry_date") @db.Date
+  title       String        @db.VarChar(140)
+  description String?
+  category    TaskCategory  @default(OTHER)
+  status      TaskStatus    @default(TODO)
+  priority    PriorityLevel @default(MEDIUM)
+  completedAt DateTime?     @map("completed_at") @db.Timestamptz(6)
+  version     Int           @default(1)
+  updatedById String        @map("updated_by") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime?     @map("deleted_at") @db.Timestamptz(6)
+
+  owner     User @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  updatedBy User @relation("TaskUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  // owner_id leads every index because it is also the authorization predicate:
+  // the fast path and the safe path are the same path.
+  @@index([ownerId, entryDate(sort: Desc)])
+  @@index([ownerId, status])
+  @@index([updatedById])
+  @@map("task_entries")
+}
+
+model IssueEntry {
+  id              String        @id @default(uuid()) @db.Uuid
+  ownerId         String        @map("owner_id") @db.Uuid
+  entryDate       DateTime      @map("entry_date") @db.Date
+  title           String        @db.VarChar(140)
+  description     String
+  severity        IssueSeverity @default(MEDIUM)
+  status          IssueStatus   @default(OPEN)
+  resolutionNotes String?       @map("resolution_notes")
+  resolvedAt      DateTime?     @map("resolved_at") @db.Timestamptz(6)
+  version         Int           @default(1)
+  updatedById     String        @map("updated_by") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz(6)
+
+  owner     User @relation("IssueOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  updatedBy User @relation("IssueUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([ownerId, entryDate(sort: Desc)])
+  @@index([ownerId, status])
+  @@index([updatedById])
+  @@map("issue_entries")
+}
+
+model FeedbackEntry {
+  id          String             @id @default(uuid()) @db.Uuid
+  ownerId     String             @map("owner_id") @db.Uuid
+  entryDate   DateTime           @map("entry_date") @db.Date
+  subject     String             @db.VarChar(140)
+  type        FeedbackType
+  details     String
+  visibility  FeedbackVisibility @default(MANAGER_VISIBLE)
+  version     Int                @default(1)
+  updatedById String             @map("updated_by") @db.Uuid
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime?          @map("deleted_at") @db.Timestamptz(6)
+
+  owner     User @relation("FeedbackOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  updatedBy User @relation("FeedbackUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([ownerId, entryDate(sort: Desc)])
+  @@index([updatedById])
+  @@map("feedback_entries")
+}
+
+model NoteEntry {
+  id          String    @id @default(uuid()) @db.Uuid
+  ownerId     String    @map("owner_id") @db.Uuid
+  entryDate   DateTime  @map("entry_date") @db.Date
+  title       String    @db.VarChar(140)
+  content     String
+  tags        String[]  @default([])
+  version     Int       @default(1)
+  updatedById String    @map("updated_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  owner     User @relation("NoteOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  updatedBy User @relation("NoteUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([ownerId, entryDate(sort: Desc)])
+  @@index([tags(ops: ArrayOps)], type: Gin)
+  @@index([updatedById])
+  @@map("note_entries")
+}
