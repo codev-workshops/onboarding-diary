@@ -1,7 +1,7 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 
 import { recordAudit } from '@/src/modules/audit/service';
-import { notFound } from '@/src/modules/authz/errors';
+import { notFound, versionConflict } from '@/src/modules/authz/errors';
 import {
   assertCanCreateEntry,
   assertCanDeleteEntry,
@@ -48,8 +48,18 @@ export type EntryAccessors<Row, CreateData, UpdateData, Filter> = {
   findFirst(client: DbClient, args: { where: EntryWhere<Filter> }): Promise<Row | null>;
   count(client: DbClient, args: { where: EntryWhere<Filter> }): Promise<number>;
   create(client: DbClient, data: CreateData): Promise<Row>;
-  update(client: DbClient, id: string, data: UpdateData): Promise<Row>;
+  /**
+   * `guard` becomes part of the `WHERE` of the `UPDATE` itself. That is what
+   * makes the version check a check and not a suggestion: without it the
+   * comparison would sit in application code with an open window between the
+   * read and the write.
+   */
+  update(client: DbClient, id: string, data: UpdateData, guard?: VersionGuard): Promise<Row>;
 };
+
+export type VersionGuard = { version: number };
+
+export type UpdateOptions = { expectedVersion?: number };
 
 export type ScopedListOptions<Filter> = {
   ownerId?: string;
@@ -111,7 +121,7 @@ async function authorizationWhere<Filter>(
  * Services get one of these; they never get the delegate.
  */
 export function createScopedRepository<
-  Row extends { id: string; ownerId: string },
+  Row extends { id: string; ownerId: string; version: number },
   CreateData,
   UpdateData,
   Filter,
@@ -176,15 +186,25 @@ export function createScopedRepository<
       actor: Actor,
       id: string,
       changes: Record<string, unknown>,
-      toData: (existing: Row) => UpdateData
+      toData: (existing: Row) => UpdateData,
+      options: UpdateOptions = {}
     ): Promise<Row> {
       const existing = await this.findByIdOrThrow(actor, id);
       await assertCanUpdateEntry(actor, kind, existing, Object.keys(changes));
 
-      if (existing.ownerId === actor.id) return accessors.update(prisma, id, toData(existing));
+      const { expectedVersion } = options;
+      if (expectedVersion !== undefined && existing.version !== expectedVersion) {
+        throw versionConflict(existing.version);
+      }
+
+      const guard = expectedVersion === undefined ? undefined : { version: expectedVersion };
+      const write = (client: DbClient) =>
+        guarded(() => accessors.update(client, id, toData(existing), guard), existing.version);
+
+      if (existing.ownerId === actor.id) return write(prisma);
 
       return prisma.$transaction(async (tx) => {
-        const row = await accessors.update(tx, id, toData(existing));
+        const row = await write(tx);
         await recordAudit(
           {
             action: 'ENTRY.CROSS_USER_UPDATED',
@@ -226,6 +246,27 @@ export function createScopedRepository<
       });
     },
   };
+}
+
+/**
+ * Optimistic concurrency, and only when the caller opts in by sending
+ * `expected_version`. The version is compared twice: once after the scoped read
+ * so a mismatch answers 409 with the version to reload — and never before the
+ * visibility check, so a stale version cannot be used to probe for entries the
+ * caller cannot see — and once inside the `UPDATE` predicate, which is the
+ * comparison that actually holds when two writers race. Prisma raises P2025
+ * when the guarded row matched nothing, which here can only mean the version
+ * moved between the read and the write.
+ */
+async function guarded<Row>(write: () => Promise<Row>, seenVersion: number): Promise<Row> {
+  try {
+    return await write();
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      throw versionConflict(seenVersion);
+    }
+    throw error;
+  }
 }
 
 function pick(row: Record<string, unknown>, keys: string[]): Record<string, unknown> {

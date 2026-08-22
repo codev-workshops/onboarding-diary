@@ -1,21 +1,35 @@
 'use client';
 
-import { PriorityLevel, TaskCategory, TaskStatus } from '@prisma/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { labelize } from '@/components/entries/labels';
+import { selectClass } from '@/components/entries/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { labelize } from '@/components/tasks/labels';
 
-const selectClass =
-  'border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border px-2 text-sm focus-visible:ring-[3px] focus-visible:outline-none';
+export type SelectFilter = { name: string; label: string; anyLabel: string; values: string[] };
 
 /**
  * Filters are written to the query string rather than to component state, so
  * back/forward and a copied link all behave, and the server does the filtering.
+ * Every entry kind gets the same bar with a different set of selects.
  */
-export function TaskFilterBar({ canFilterByOwner }: { canFilterByOwner: boolean }) {
+export function EntryFilterBar({
+  basePath,
+  legend,
+  canFilterByOwner,
+  searchPlaceholder,
+  selects,
+  extra,
+}: {
+  basePath: string;
+  legend: string;
+  canFilterByOwner: boolean;
+  searchPlaceholder: string;
+  selects: SelectFilter[];
+  extra?: { name: string; label: string; placeholder: string };
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -24,7 +38,7 @@ export function TaskFilterBar({ canFilterByOwner }: { canFilterByOwner: boolean 
     for (const [key, value] of form.entries()) {
       if (typeof value === 'string' && value.trim().length > 0) next.set(key, value.trim());
     }
-    router.push(next.size > 0 ? `/tasks?${next}` : '/tasks');
+    router.push(next.size > 0 ? `${basePath}?${next}` : basePath);
   }
 
   const current = (key: string) => searchParams.get(key) ?? '';
@@ -32,45 +46,41 @@ export function TaskFilterBar({ canFilterByOwner }: { canFilterByOwner: boolean 
   return (
     <form
       action={apply}
-      aria-label="Filter tasks"
+      aria-label={legend}
       className="bg-card grid gap-3 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-4"
     >
       <Field label="Search" htmlFor="q">
-        <Input id="q" name="q" defaultValue={current('q')} placeholder="Title or description" />
+        <Input id="q" name="q" defaultValue={current('q')} placeholder={searchPlaceholder} />
       </Field>
 
-      <Field label="Status" htmlFor="status">
-        <select id="status" name="status" defaultValue={current('status')} className={selectClass}>
-          <option value="">Any status</option>
-          {Object.values(TaskStatus).map((value) => (
-            <option key={value} value={value}>
-              {labelize(value)}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {selects.map((select) => (
+        <Field key={select.name} label={select.label} htmlFor={select.name}>
+          <select
+            id={select.name}
+            name={select.name}
+            defaultValue={current(select.name)}
+            className={selectClass}
+          >
+            <option value="">{select.anyLabel}</option>
+            {select.values.map((value) => (
+              <option key={value} value={value}>
+                {labelize(value)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ))}
 
-      <Field label="Category" htmlFor="category">
-        <select id="category" name="category" defaultValue={current('category')} className={selectClass}>
-          <option value="">Any category</option>
-          {Object.values(TaskCategory).map((value) => (
-            <option key={value} value={value}>
-              {labelize(value)}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <Field label="Priority" htmlFor="priority">
-        <select id="priority" name="priority" defaultValue={current('priority')} className={selectClass}>
-          <option value="">Any priority</option>
-          {Object.values(PriorityLevel).map((value) => (
-            <option key={value} value={value}>
-              {labelize(value)}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {extra ? (
+        <Field label={extra.label} htmlFor={extra.name}>
+          <Input
+            id={extra.name}
+            name={extra.name}
+            defaultValue={current(extra.name)}
+            placeholder={extra.placeholder}
+          />
+        </Field>
+      ) : null}
 
       <Field label="From" htmlFor="date_from">
         <Input id="date_from" name="date_from" type="date" defaultValue={current('date_from')} />
@@ -93,7 +103,7 @@ export function TaskFilterBar({ canFilterByOwner }: { canFilterByOwner: boolean 
 
       <div className="flex items-end gap-2">
         <Button type="submit">Apply</Button>
-        <Button type="button" variant="ghost" onClick={() => router.push('/tasks')}>
+        <Button type="button" variant="ghost" onClick={() => router.push(basePath)}>
           Reset
         </Button>
       </div>

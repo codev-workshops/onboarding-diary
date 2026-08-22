@@ -46,6 +46,16 @@ export const sectionNotPermitted = (section: string): AppError =>
 
 export const notFound = (): AppError => new AppError('NOT_FOUND', 'The requested resource was not found.');
 
+/**
+ * The current version is disclosed because the caller already reached the row —
+ * this is only ever raised after the scoped read succeeded — and because
+ * without it the client cannot re-read and retry.
+ */
+export const versionConflict = (currentVersion: number): AppError =>
+  new AppError('VERSION_CONFLICT', 'This entry changed since you loaded it. Reload and try again.', [
+    { field: 'expected_version', code: 'VERSION_CONFLICT', message: String(currentVersion) },
+  ]);
+
 function details(fields: string[]): ErrorDetail[] {
   return fields.map((field) => ({ field, code: 'FIELD_NOT_PERMITTED' }));
 }
