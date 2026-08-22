@@ -1,32 +1,59 @@
+import type { Prisma, PrismaClient } from '@prisma/client';
+
+import { recordAudit } from '@/src/modules/audit/service';
 import { notFound } from '@/src/modules/authz/errors';
-import type { EntryKind } from '@/src/modules/authz/policy';
+import {
+  assertCanCreateEntry,
+  assertCanDeleteEntry,
+  assertCanUpdateEntry,
+  type EntryKind,
+} from '@/src/modules/authz/policy';
 import { ownerFilter, readableUserIds, resolveOwnerFilter, type Actor } from '@/src/modules/authz/scope';
+import { prisma } from '@/src/shared/db/prisma';
+
+/** The client or a transaction — writes take whichever the caller is inside. */
+export type DbClient = PrismaClient | Prisma.TransactionClient;
 
 /**
- * The only `where` an entry query is ever built from. Every clause here is
- * authorization or soft deletion — feature filters are merged in by the caller
- * on top of it, never in place of it.
+ * Feature filters (date range, status, search…) live under `AND` rather than
+ * alongside the authorization clauses, so a filter can never overwrite one:
+ * merging `{ ownerId: ... }` at the top level would silently widen scope. The
+ * filter shape is the table's own Prisma `where` type, supplied by the
+ * repository, so a filter stays type-checked without this module knowing the
+ * table's columns.
  */
-export type EntryWhere = {
+export type EntryWhere<Filter> = {
   id?: string;
   deletedAt: null;
   ownerId?: { in: string[] };
   OR?: { ownerId?: string; visibility?: { not: 'ADMIN_ONLY' } }[];
+  AND?: Filter[];
 };
 
-export type EntryDelegate<Row> = {
-  findMany(args: {
-    where: EntryWhere;
-    orderBy?: Record<string, 'asc' | 'desc'>[];
-    skip?: number;
-    take?: number;
-  }): Promise<Row[]>;
-  findFirst(args: { where: EntryWhere }): Promise<Row | null>;
-  count(args: { where: EntryWhere }): Promise<number>;
+export type ReadArgs<Filter> = {
+  where: EntryWhere<Filter>;
+  orderBy?: Record<string, 'asc' | 'desc'>[];
+  skip?: number;
+  take?: number;
 };
 
-export type ScopedListOptions = {
+/**
+ * Bound accessors for one entry table. Repositories supply these closures over
+ * a concrete Prisma delegate; nothing outside this module ever holds the
+ * delegate itself, which is what makes "no caller can query an entry table
+ * unscoped" structural rather than a convention.
+ */
+export type EntryAccessors<Row, CreateData, UpdateData, Filter> = {
+  findMany(client: DbClient, args: ReadArgs<Filter>): Promise<Row[]>;
+  findFirst(client: DbClient, args: { where: EntryWhere<Filter> }): Promise<Row | null>;
+  count(client: DbClient, args: { where: EntryWhere<Filter> }): Promise<number>;
+  create(client: DbClient, data: CreateData): Promise<Row>;
+  update(client: DbClient, id: string, data: UpdateData): Promise<Row>;
+};
+
+export type ScopedListOptions<Filter> = {
   ownerId?: string;
+  filters?: Filter[];
   orderBy?: Record<string, 'asc' | 'desc'>[];
   skip?: number;
   take?: number;
@@ -44,23 +71,31 @@ export type ScopedListOptions = {
  *   3. Entitlement on top of scope: notes are owner-private even for the
  *      owner's manager, and ADMIN_ONLY feedback is owner-and-admin only.
  */
-export async function scopedEntryWhere(
+export async function scopedEntryWhere<Filter>(
   actor: Actor,
   kind: EntryKind,
-  options: { ownerId?: string } = {}
-): Promise<EntryWhere> {
+  options: { ownerId?: string; filters?: Filter[] } = {}
+): Promise<EntryWhere<Filter>> {
+  const where = await authorizationWhere<Filter>(actor, kind, options.ownerId);
+  if (options.filters?.length) where.AND = options.filters;
+  return where;
+}
+
+async function authorizationWhere<Filter>(
+  actor: Actor,
+  kind: EntryKind,
+  ownerId?: string
+): Promise<EntryWhere<Filter>> {
   // Notes never leave their owner, so scope resolution is not even consulted;
   // an admin is the sole exception and reads them as a privileged action.
   if (kind === 'NOTE' && actor.role !== 'ADMIN') {
-    if (options.ownerId && options.ownerId !== actor.id) throw notFound();
+    if (ownerId && ownerId !== actor.id) throw notFound();
     return { deletedAt: null, ownerId: { in: [actor.id] } };
   }
 
-  const where: EntryWhere = {
+  const where: EntryWhere<Filter> = {
     deletedAt: null,
-    ...(options.ownerId
-      ? await resolveOwnerFilter(actor, options.ownerId)
-      : ownerFilter(await readableUserIds(actor))),
+    ...(ownerId ? await resolveOwnerFilter(actor, ownerId) : ownerFilter(await readableUserIds(actor))),
   };
 
   if (kind === 'FEEDBACK' && actor.role !== 'ADMIN') {
@@ -71,28 +106,35 @@ export async function scopedEntryWhere(
 }
 
 /**
- * Wraps a Prisma delegate so that an entry table cannot be queried without the
- * predicate above. Route handlers and services get one of these; they never get
- * the delegate, which is what makes "no endpoint hand-rolls a scope check"
- * structurally true rather than a convention.
+ * Wraps a Prisma delegate so that an entry table cannot be read or written
+ * without the predicate above and without the M3 policy having been consulted.
+ * Services get one of these; they never get the delegate.
  */
-export function createScopedRepository<Row>(kind: EntryKind, delegate: EntryDelegate<Row>) {
+export function createScopedRepository<
+  Row extends { id: string; ownerId: string },
+  CreateData,
+  UpdateData,
+  Filter,
+>(kind: EntryKind, accessors: EntryAccessors<Row, CreateData, UpdateData, Filter>) {
   return {
     kind,
 
-    async list(actor: Actor, options: ScopedListOptions = {}): Promise<Row[]> {
-      const { ownerId, ...page } = options;
-      return delegate.findMany({ where: await scopedEntryWhere(actor, kind, { ownerId }), ...page });
+    async list(actor: Actor, options: ScopedListOptions<Filter> = {}): Promise<Row[]> {
+      const { ownerId, filters, ...page } = options;
+      return accessors.findMany(prisma, {
+        where: await scopedEntryWhere(actor, kind, { ownerId, filters }),
+        ...page,
+      });
     },
 
-    async count(actor: Actor, options: { ownerId?: string } = {}): Promise<number> {
-      return delegate.count({ where: await scopedEntryWhere(actor, kind, options) });
+    async count(actor: Actor, options: { ownerId?: string; filters?: Filter[] } = {}): Promise<number> {
+      return accessors.count(prisma, { where: await scopedEntryWhere(actor, kind, options) });
     },
 
     /** Null rather than throwing, so a caller can choose 404 versus a redirect. */
     async findById(actor: Actor, id: string): Promise<Row | null> {
-      const where = await scopedEntryWhere(actor, kind);
-      return delegate.findFirst({ where: { ...where, id } });
+      const where = await scopedEntryWhere<Filter>(actor, kind);
+      return accessors.findFirst(prisma, { where: { ...where, id } });
     },
 
     /** The usual case: an unreachable id is indistinguishable from a missing one. */
@@ -101,5 +143,91 @@ export function createScopedRepository<Row>(kind: EntryKind, delegate: EntryDele
       if (!row) throw notFound();
       return row;
     },
+
+    async create(actor: Actor, ownerId: string, data: CreateData): Promise<Row> {
+      await assertCanCreateEntry(actor, ownerId);
+
+      if (ownerId === actor.id) return accessors.create(prisma, data);
+
+      // A write to somebody else's diary is the one entry event that must
+      // always be audited (§22.1), and it commits with the row it describes.
+      return prisma.$transaction(async (tx) => {
+        const row = await accessors.create(tx, data);
+        await recordAudit(
+          {
+            action: 'ENTRY.CROSS_USER_UPDATED',
+            entityType: kind,
+            entityId: row.id,
+            targetUserId: ownerId,
+            after: { operation: 'CREATE' },
+          },
+          tx
+        );
+        return row;
+      });
+    },
+
+    /**
+     * `changes` is the client-supplied field set, checked against the policy
+     * allow-list before anything is written; `data` is the persisted shape the
+     * service derived from it.
+     */
+    async update(
+      actor: Actor,
+      id: string,
+      changes: Record<string, unknown>,
+      toData: (existing: Row) => UpdateData
+    ): Promise<Row> {
+      const existing = await this.findByIdOrThrow(actor, id);
+      await assertCanUpdateEntry(actor, kind, existing, Object.keys(changes));
+
+      if (existing.ownerId === actor.id) return accessors.update(prisma, id, toData(existing));
+
+      return prisma.$transaction(async (tx) => {
+        const row = await accessors.update(tx, id, toData(existing));
+        await recordAudit(
+          {
+            action: 'ENTRY.CROSS_USER_UPDATED',
+            entityType: kind,
+            entityId: id,
+            targetUserId: existing.ownerId,
+            before: pick(existing, Object.keys(changes)),
+            after: { operation: 'UPDATE', ...changes },
+          },
+          tx
+        );
+        return row;
+      });
+    },
+
+    /** Soft delete: the row stays, every read predicate stops returning it. */
+    async softDelete(actor: Actor, id: string, toData: (deletedAt: Date) => UpdateData): Promise<void> {
+      const existing = await this.findByIdOrThrow(actor, id);
+      await assertCanDeleteEntry(actor, kind, existing);
+
+      const data = toData(new Date());
+      if (existing.ownerId === actor.id) {
+        await accessors.update(prisma, id, data);
+        return;
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await accessors.update(tx, id, data);
+        await recordAudit(
+          {
+            action: 'ENTRY.CROSS_USER_UPDATED',
+            entityType: kind,
+            entityId: id,
+            targetUserId: existing.ownerId,
+            after: { operation: 'DELETE' },
+          },
+          tx
+        );
+      });
+    },
   };
+}
+
+function pick(row: Record<string, unknown>, keys: string[]): Record<string, unknown> {
+  return Object.fromEntries(keys.filter((key) => key in row).map((key) => [key, row[key]]));
 }
