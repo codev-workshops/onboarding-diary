@@ -91,6 +91,17 @@ export async function scopedEntryWhere<Filter>(
   return where;
 }
 
+/**
+ * Whether the caller may read this owner's notes at all — the predicate behind
+ * the note branch below, exposed because an aggregate cannot use the branch.
+ * A direct read of somebody else's note is refused with a 404; a dashboard has
+ * no single row to refuse, so it asks first and lets notes contribute nothing
+ * rather than failing the whole page.
+ */
+export function canReadNotesOf(actor: Actor, ownerId?: string): boolean {
+  return actor.role === 'ADMIN' || ownerId === undefined || ownerId === actor.id;
+}
+
 async function authorizationWhere<Filter>(
   actor: Actor,
   kind: EntryKind,

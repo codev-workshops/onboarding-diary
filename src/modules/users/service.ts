@@ -22,6 +22,20 @@ export async function listVisibleUsers(actor: Actor): Promise<UserSummary[]> {
   return users.map(toUserSummary);
 }
 
+/**
+ * Identity for a dashboard subject. Reading one's own summary needs no
+ * directory privilege — a recruit has no directory at all — so self is served
+ * directly and anybody else goes through the scoped read below.
+ */
+export async function getScopedUser(actor: Actor, userId: string): Promise<UserSummary> {
+  if (userId !== actor.id) return getVisibleUser(actor, userId);
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: userSummarySelect });
+  if (!user) throw notFound();
+
+  return toUserSummary(user);
+}
+
 export async function getVisibleUser(actor: Actor, userId: string): Promise<UserSummary> {
   assertRole(actor, ['MANAGER', 'ADMIN']);
 

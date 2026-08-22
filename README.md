@@ -6,12 +6,12 @@ with manager-scoped views and reporting on top.
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
 
-> **Status: Milestone 6 of 10 complete.** The skeleton, database, seed data, authentication, the
-> authorization core, the **task diary**, the **issue log**, **onboarding feedback** and **personal
-> notes** are in place: `readable_user_ids` is enforced in SQL by scoped repositories, every entry API
-> and UI sits on top of those repositories, and the authorization matrix is proved twice — once against
-> the guards and once through the HTTP handlers. **The dashboard, reports and admin screens are not
-> implemented yet.** See
+> **Status: Milestone 7 of 10 complete.** The skeleton, database, seed data, authentication, the
+> authorization core, the **task diary**, the **issue log**, **onboarding feedback**, **personal
+> notes** and the **dashboards** are in place: `readable_user_ids` is enforced in SQL by scoped
+> repositories, every entry API, aggregate and UI sits on top of those repositories, and the
+> authorization matrix is proved twice — once against the guards and once through the HTTP handlers.
+> **Reports, exports and admin user management are not implemented yet.** See
 > [Implementation status](#implementation-status).
 
 ## Quick start
@@ -85,14 +85,18 @@ app/
   (app)/issues         issue log: list, filters, CRUD        done
   (app)/feedback       onboarding feedback: list, CRUD       done
   (app)/notes          personal notes: list, tags, CRUD      done
-  (app)/               dashboard, team, reports, profile     [M7-M9]
+  (app)/dashboard      own summary, open issues, activity    done
+  (app)/team           roster and recruit detail (mgr/admin) done
+  (app)/admin/overview organisation-wide summary (admin)     done
+  (app)/reports        date-ranged reports and exports       [M8-M9]
   (app)/admin/users    user and department administration    [M10]
   api/v1/auth/...      signup, login, logout, me             done
   api/v1/tasks         list, create, read, patch, delete     done
   api/v1/issues        list, create, read, patch, delete     done
   api/v1/feedback      list, create, read, patch, delete     done
   api/v1/notes         list, create, read, patch, delete     done
-  api/v1/...           the rest of the REST API              [M7+]
+  api/v1/dashboard     me, team, org and per-user summaries  done
+  api/v1/...           the rest of the REST API              [M8+]
   api/health           liveness + readiness probe            done
 middleware.ts          cookie-signature gate for app routes  done
 src/
@@ -103,7 +107,7 @@ src/
     entries/           scoped repositories                   done
     tasks/             task schemas, DTOs and service        done
     audit/             append-only audit writer              done
-    dashboard/         aggregation queries                   [M6]
+    dashboard/         grouped aggregates and rollups        done
     reports/           date-ranged reports, CSV and PDF      [M8-M9]
   shared/
     config/            environment parsing
@@ -273,7 +277,7 @@ and Playwright against a PostgreSQL 16 service container.
 | M4        | Task CRUD with filters and pagination                              | Done    |
 | M5        | Issue CRUD with triage, filters and pagination                     | Done    |
 | M6        | Feedback and notes                                                 | Done    |
-| M7        | Recruit dashboard, manager team list and recruit detail views      | Planned |
+| M7        | Recruit dashboard, manager team list and recruit detail views      | Done    |
 | M8        | Date-ranged reports and CSV export                                 | Planned |
 | M9        | PDF export                                                         | Planned |
 | M10       | Admin user/department management and hardening                     | Planned |
@@ -353,8 +357,28 @@ Delivered in M6:
 - `tests/integration/{feedback,note}-endpoints.spec.ts`, `tests/unit/{feedback,note}-schemas.spec.ts`,
   `tests/unit/entry-refresh.spec.ts` and `tests/e2e/feedback-notes.spec.ts`
 
-Not implemented yet, by design: dashboard, reports, exports and admin screens. The `/team`, `/reports`
-and `/admin/users` routes exist only as role-gated placeholders.
+Delivered in M7:
+
+- `GET /api/v1/dashboard/me`, `/team`, `/org` and `/users/{id}` — one summary per scope, with a
+  `days` period of 7, 30, 90 or 365 (default 30) and no other accepted query parameter
+- `src/modules/dashboard/{schemas,service,dto}.ts` — the completion percentage is defined once (C3:
+  cancelled tasks leave the denominator) and every metric is folded in memory from grouped rows
+- **The aggregates are scoped by the same predicate as the lists.** `src/modules/entries/repositories.ts`
+  holds the grouped queries because that module is the only place a Prisma delegate may be named; a
+  dashboard is therefore an aggregate over exactly the rows the caller could have listed one by one, so
+  a manager's roster counts zero notes and no `ADMIN_ONLY` feedback without restating either rule
+- **No per-recruit query**: a manager's roster costs five grouped queries whether the team is 1 or 50,
+  asserted in `tests/unit/dashboard-fanout.spec.ts`
+- `/dashboard` for every role (a manager's own diary, kept separate from their team's), `/team` and
+  `/team/{id}` for managers and admins, `/admin/overview` for admins, each with the period in the URL
+  so a view can be shared and reloaded
+- Pages answer an authorization denial with the not-found screen — the API keeps the 403/404 split,
+  but a browser URL should not tell a recruit that a page exists and is refused
+- `tests/integration/dashboard-endpoints.spec.ts`, `tests/unit/dashboard-{metrics,fanout}.spec.ts` and
+  `tests/e2e/dashboard.spec.ts`
+
+Not implemented yet, by design: reports, exports and admin user management. The `/reports` and
+`/admin/users` routes exist only as role-gated placeholders.
 
 ### Running the integration suite
 
@@ -385,11 +409,23 @@ Carried over from the specification and the architecture review; each is a defau
    that the caller cannot see returns `404`. Reports are never silently narrowed to the visible subset.
 9. A single 8-hour `HttpOnly` `SameSite` session cookie, rather than access/refresh token rotation.
 10. Reports are generated synchronously; the seeded data volume is far below the point where that hurts.
+11. Dashboard periods are the fixed set 7/30/90/365 days ending today (UTC), rather than an arbitrary
+    range; the open-issue panel deliberately ignores the period, since an issue raised outside it and
+    still blocking someone is the most important row on the page.
+12. A team roster lists direct reports whose role is `RECRUIT`; a manager reporting to another manager
+    is in scope for entry reads but is not a roster row.
+13. Feedback authors may still reclassify an entry to `ADMIN_ONLY` after a manager has read it. The
+    requirements set a default and a per-entry opt-out (A-03) and nowhere freeze the choice at
+    creation, so the product semantics are "the author decides, at any time"; the manager's next read,
+    count and dashboard reflect it immediately.
 
 ## Deferred
 
-**Phase 2** — audit coverage for authentication events and privileged reads (cross-user writes and
-authorization denials are audited already), refresh-token rotation,
+**Phase 2** — audit coverage for authentication events and privileged reads (§21: an admin reading
+another user's note or `ADMIN_ONLY` feedback, including through the organisation dashboard, should write
+`ENTRY.READ_PRIVILEGED`; cross-user writes and authorization denials are audited already),
+the remaining specified dashboard metrics (activity-by-day heatmap, streak days, average issue
+resolution time), refresh-token rotation,
 rate limiting on authentication endpoints, OpenAPI document, full-text search across entries, dashboard
 charts, optimistic-concurrency enforcement using the existing `version` column, bulk operations, email
 notifications.
