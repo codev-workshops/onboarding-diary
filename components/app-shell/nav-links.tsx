@@ -20,6 +20,7 @@ export function NavLinks({ permissions }: { permissions: Permissions }) {
     { href: '/feedback', label: 'Feedback', visible: true },
     { href: '/notes', label: 'Notes', visible: true },
     { href: '/team', label: 'Team', visible: permissions.can_view_team },
+    { href: '/admin/overview', label: 'Organisation', visible: permissions.can_manage_users },
     { href: '/reports', label: 'Reports', visible: true },
     { href: '/admin/users', label: 'Users', visible: permissions.can_manage_users },
   ].filter((link) => link.visible);
