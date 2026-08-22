@@ -170,11 +170,13 @@ describe('authentication', () => {
     }
   });
 
-  it('refuses a well-formed cookie for a deactivated user', async () => {
+  it('answers 403 ACCOUNT_DEACTIVATED for a well-formed cookie on a disabled account', async () => {
     const id = users.unassigned.id;
     await prisma.user.update({ where: { id }, data: { isActive: false } });
     try {
-      expect((await me('unassigned')).status).toBe(401);
+      const response = await me('unassigned');
+      expect(response.status).toBe(403);
+      expect(response.json.error?.code).toBe('ACCOUNT_DEACTIVATED');
     } finally {
       await prisma.user.update({ where: { id }, data: { isActive: true } });
     }
@@ -191,6 +193,12 @@ describe('GET /dashboard/me', () => {
     expect(userData(response.json).recent_entries.every((row) => row.owner.id === users.recruitA.id)).toBe(
       true
     );
+  });
+
+  // The onboarding-day caption is rendered from this, and only for recruits.
+  it('reports the subject’s role so recruit-only copy can be suppressed', async () => {
+    expect(userData((await me('recruitA')).json).user.role).toBe('RECRUIT');
+    expect(userData((await me('managerA')).json).user.role).toBe('MANAGER');
   });
 
   it('gives a manager their own diary here, not their team’s', async () => {

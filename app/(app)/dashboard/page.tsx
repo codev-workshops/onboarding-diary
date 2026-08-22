@@ -29,13 +29,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Welcome, {actor.full_name}</h1>
           <p className="text-muted-foreground text-sm">
-            Day {dashboard.user.days_since_start} of onboarding · last {dashboard.period.days} days
+            {dashboard.user.role === 'RECRUIT'
+              ? `Day ${dashboard.user.days_since_start} of onboarding · `
+              : ''}
+            last {dashboard.period.days} days
           </p>
         </div>
         <PeriodTabs basePath="/dashboard" days={dashboard.period.days} />
       </div>
 
-      <SummaryCards summary={dashboard.summary} showNotes daysSinceStart={dashboard.user.days_since_start} />
+      <SummaryCards summary={dashboard.summary} showNotes />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <OpenIssuesPanel issues={dashboard.open_issues} ownerNames={false} />

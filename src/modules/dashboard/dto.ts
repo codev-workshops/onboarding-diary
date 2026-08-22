@@ -1,3 +1,5 @@
+import type { UserRole } from '@prisma/client';
+
 import type { IssueDto } from '@/src/modules/issues/dto';
 
 export type DashboardPeriod = { date_from: string; date_to: string; days: number };
@@ -30,7 +32,13 @@ export type RecentEntry = {
 };
 
 export type UserDashboard = {
-  user: { id: string; full_name: string; start_date: string; days_since_start: number };
+  user: {
+    id: string;
+    full_name: string;
+    role: UserRole;
+    start_date: string;
+    days_since_start: number;
+  };
   period: DashboardPeriod;
   summary: DashboardSummary;
   open_issues: IssueDto[];

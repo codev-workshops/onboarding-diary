@@ -212,6 +212,11 @@ How the session works, and why:
   re-resolve the user from the database. Because middleware cannot reach the database, a session whose
   user has since been deactivated is bounced through `/signed-out`, which clears the cookie — redirecting
   straight to `/login` would ping-pong until the token expired.
+- **A genuine cookie on a disabled account answers `403 ACCOUNT_DEACTIVATED`, not `401`.** The credential
+  is valid and the caller is identified; only the account is switched off (AC3). A missing, expired,
+  forged or orphaned cookie still answers `401 UNAUTHENTICATED`, so the pair says "who are you?" and
+  "you, specifically, are disabled" without conflating them. Browser pages are unaffected: the signed-in
+  layout treats both as signed out and bounces through `/signed-out`.
 - **Role-aware navigation is presentation only.** The admin page 404s for a manager whether or not the
   link was rendered.
 
@@ -414,7 +419,17 @@ Carried over from the specification and the architecture review; each is a defau
     still blocking someone is the most important row on the page.
 12. A team roster lists direct reports whose role is `RECRUIT`; a manager reporting to another manager
     is in scope for entry reads but is not a roster row.
-13. Feedback authors may still reclassify an entry to `ADMIN_ONLY` after a manager has read it. The
+13. The organisation dashboard's department breakdown lists only departments that currently have at
+    least one recruit. US-52 asks for a "breakdown by department" without saying whether empty
+    departments are rows; the table is built from the recruit rollup, so a department with no recruits
+    contributes nothing and is omitted rather than shown as a row of zeroes. Admin department
+    management (M10) is where the full department list, including empty ones, belongs.
+14. `days_since_start` is computed for every subject per §16.2 (`today − start_date`, floored at 0), but
+    the "Day N of onboarding" caption is rendered only when the subject's role is `RECRUIT`. The
+    requirements attach that caption to recruit dashboards and the manager roster; on a manager's or
+    admin's own dashboard it read as "Day 700 of onboarding", which is arithmetically right and
+    semantically meaningless.
+15. Feedback authors may still reclassify an entry to `ADMIN_ONLY` after a manager has read it. The
     requirements set a default and a per-entry opt-out (A-03) and nowhere freeze the choice at
     creation, so the product semantics are "the author decides, at any time"; the manager's next read,
     count and dashboard reflect it immediately.

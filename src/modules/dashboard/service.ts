@@ -229,6 +229,7 @@ export async function getUserDashboard(
     user: {
       id: subject.id,
       full_name: subject.full_name,
+      role: subject.role,
       start_date: subject.start_date,
       days_since_start: daysSinceStart(subject.start_date),
     },

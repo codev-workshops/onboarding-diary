@@ -112,3 +112,15 @@ test('an admin sees the organisation view, including recruits with no manager', 
   await expect(page.getByText('Recruits without a manager', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Noah Silva' })).toBeVisible();
 });
+
+test('the onboarding-day caption is a recruit’s, not everyone’s', async ({ page }) => {
+  await signIn(page, RECRUIT);
+  await expect(page.getByText(/Day \d+ of onboarding/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await signIn(page, MANAGER);
+  // Arithmetically "day 700" for someone who joined years ago; meaningless copy.
+  await expect(page.getByText(/of onboarding/)).toHaveCount(0);
+  await expect(page.getByText(/last 30 days/)).toBeVisible();
+});
