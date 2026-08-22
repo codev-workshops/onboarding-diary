@@ -17,8 +17,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV BUILD_STANDALONE=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# next build only needs DATABASE_URL to be syntactically valid; nothing connects.
+# Build-time placeholders: the env parser runs while pages are collected, but
+# nothing connects and nothing is signed here. Both are supplied for real by
+# compose at run time.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
+ENV SESSION_SECRET="build-time-placeholder-not-used-at-runtime"
 RUN npm run build
 
 # The builder stage doubles as the migration image: it is the only place with the
