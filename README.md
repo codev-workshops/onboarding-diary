@@ -6,12 +6,12 @@ with manager-scoped views and reporting on top.
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
 
-> **Status: Milestone 5 of 10 complete.** The skeleton, database, seed data, authentication, the
-> authorization core, the **task diary** and the **issue log** are in place: `readable_user_ids` is
-> enforced in SQL by scoped repositories, the task and issue APIs and UIs sit on top of those
-> repositories, and the authorization matrix is proved twice — once against the guards and once through
-> the HTTP handlers. **Feedback, notes,
-> the dashboard, reports and admin screens are not implemented yet.** See
+> **Status: Milestone 6 of 10 complete.** The skeleton, database, seed data, authentication, the
+> authorization core, the **task diary**, the **issue log**, **onboarding feedback** and **personal
+> notes** are in place: `readable_user_ids` is enforced in SQL by scoped repositories, every entry API
+> and UI sits on top of those repositories, and the authorization matrix is proved twice — once against
+> the guards and once through the HTTP handlers. **The dashboard, reports and admin screens are not
+> implemented yet.** See
 > [Implementation status](#implementation-status).
 
 ## Quick start
@@ -83,13 +83,16 @@ app/
   (public)/            login, signup                         done
   (app)/tasks          task diary: list, filters, CRUD       done
   (app)/issues         issue log: list, filters, CRUD        done
-  (app)/               dashboard, feedback,
-                       notes, team, reports, profile        [M6-M9]
+  (app)/feedback       onboarding feedback: list, CRUD       done
+  (app)/notes          personal notes: list, tags, CRUD      done
+  (app)/               dashboard, team, reports, profile     [M7-M9]
   (app)/admin/users    user and department administration    [M10]
   api/v1/auth/...      signup, login, logout, me             done
   api/v1/tasks         list, create, read, patch, delete     done
   api/v1/issues        list, create, read, patch, delete     done
-  api/v1/...           the rest of the REST API              [M6+]
+  api/v1/feedback      list, create, read, patch, delete     done
+  api/v1/notes         list, create, read, patch, delete     done
+  api/v1/...           the rest of the REST API              [M7+]
   api/health           liveness + readiness probe            done
 middleware.ts          cookie-signature gate for app routes  done
 src/
@@ -241,20 +244,20 @@ Decisions worth knowing before reading the schema:
 
 ## Commands
 
-| Command                    | Purpose                                        |
-| -------------------------- | ---------------------------------------------- |
-| `npm run dev`              | Development server                             |
-| `npm run build`            | Production build                               |
-| `npm run lint`             | ESLint                                         |
-| `npm run format:check`     | Prettier check (`npm run format` to write)     |
-| `npm run typecheck`        | `tsc --noEmit`                                 |
-| `npm test`                 | Vitest unit and API tests                      |
-| `npm run test:integration` | Authorization matrix against a seeded database |
-| `npm run test:e2e`         | Playwright end-to-end tests                    |
-| `npm run db:migrate`       | Create/apply migrations in development         |
-| `npm run db:deploy`        | Apply migrations in CI and production          |
-| `npm run db:seed`          | Seed demo data (idempotent)                    |
-| `npm run db:reset`         | Drop, re-migrate and re-seed                   |
+| Command                    | Purpose                                                                 |
+| -------------------------- | ----------------------------------------------------------------------- |
+| `npm run dev`              | Development server                                                      |
+| `npm run build`            | Production build                                                        |
+| `npm run lint`             | ESLint                                                                  |
+| `npm run format:check`     | Prettier check (`npm run format` to write)                              |
+| `npm run typecheck`        | `tsc --noEmit`                                                          |
+| `npm test`                 | Vitest unit and API tests                                               |
+| `npm run test:integration` | Authorization and endpoint suites against a **freshly seeded** database |
+| `npm run test:e2e`         | Playwright end-to-end tests                                             |
+| `npm run db:migrate`       | Create/apply migrations in development                                  |
+| `npm run db:deploy`        | Apply migrations in CI and production                                   |
+| `npm run db:seed`          | Seed demo data (idempotent)                                             |
+| `npm run db:reset`         | Drop, re-migrate and re-seed                                            |
 
 CI (`.github/workflows/ci.yml`) runs lint, format check, typecheck, unit tests, migrations, seed, the
 authorization matrix (`npm run test:integration`), build
@@ -269,7 +272,7 @@ and Playwright against a PostgreSQL 16 service container.
 | M3        | Authorization module, scoped repository, authorization test matrix | Done    |
 | M4        | Task CRUD with filters and pagination                              | Done    |
 | M5        | Issue CRUD with triage, filters and pagination                     | Done    |
-| M6        | Feedback and notes                                                 | Next    |
+| M6        | Feedback and notes                                                 | Done    |
 | M7        | Recruit dashboard, manager team list and recruit detail views      | Planned |
 | M8        | Date-ranged reports and CSV export                                 | Planned |
 | M9        | PDF export                                                         | Planned |
@@ -330,8 +333,41 @@ Delivered in M5:
   layout, and a triage-only dialog for managers
 - `tests/integration/issue-endpoints.spec.ts` and `tests/unit/issue-schemas.spec.ts`
 
-Not implemented yet, by design: feedback and note APIs and UI, dashboard, reports, exports, and
-admin screens. The `/team`, `/reports` and `/admin/users` routes exist only as role-gated placeholders.
+Delivered in M6:
+
+- `GET|POST /api/v1/feedback`, `GET|PATCH|DELETE /api/v1/feedback/{id}`, and the same five for
+  `/api/v1/notes`, on the same scoped repositories
+- `src/modules/{feedback,notes}/{schemas,service,dto}.ts` — validation, filtering, deterministic paging
+  and e-mail-free DTOs
+- **Feedback visibility is a database predicate, not a UI decision**: `ADMIN_ONLY` feedback is excluded
+  from a manager's list, count and direct read (404), including when the manager explicitly filters
+  `visibility=ADMIN_ONLY`, and including the moment its author reclassifies it
+- **Notes never leave their author**: being in a manager's scope buys nothing, and asking for a
+  report's notes by `owner_id` answers 404 rather than the 403 that would confirm the reporting line
+- Note tags are lower-cased and de-duplicated on write and capped at 10, so `#Access` and `#access` are
+  one tag and the `tag=` filter is an indexed `has` rather than a scan
+- Managers may neither author nor edit nor delete a recruit's feedback or notes — there is no triage
+  equivalent here; an admin writing into another user's diary is audited in the same transaction
+- `/feedback` and `/notes` — server-rendered lists with URL-driven filters, responsive card layouts,
+  create, edit and delete
+- `tests/integration/{feedback,note}-endpoints.spec.ts`, `tests/unit/{feedback,note}-schemas.spec.ts`,
+  `tests/unit/entry-refresh.spec.ts` and `tests/e2e/feedback-notes.spec.ts`
+
+Not implemented yet, by design: dashboard, reports, exports and admin screens. The `/team`, `/reports`
+and `/admin/users` routes exist only as role-gated placeholders.
+
+### Running the integration suite
+
+`npm run test:integration` reads the seeded users by e-mail and asserts against seeded row counts, so it
+requires a **freshly seeded** database:
+
+```bash
+npm run db:reset && npm run test:integration
+```
+
+The endpoint suites create their own fixtures and delete them again, but rows left behind by an earlier
+end-to-end run (which writes through the UI as a real recruit) will fail the count assertions. CI gets
+this for free because it seeds a fresh service container.
 
 ## Assumptions
 

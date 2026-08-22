@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { EntryFilterBar, type SelectFilter } from '@/components/entries/filter-bar';
 import type { SavedEntry } from '@/components/entries/form';
 import type { EntryPage } from '@/components/entries/list-chrome';
+import { scheduleRefreshes } from '@/components/entries/refresh';
 import { Button } from '@/components/ui/button';
 
 type PendingWrite = { id: string; version?: number; deleted?: boolean };
@@ -26,9 +27,6 @@ export type WorkspaceRenderArgs<T> = {
   onEdit: (entry: T) => void;
   onDelete: (entry: T) => void;
 };
-
-const REFRESH_ATTEMPTS = 5;
-const REFRESH_RETRY_MS = 300;
 
 /**
  * Owns the client state that a server page cannot: which dialog is open and
@@ -95,20 +93,10 @@ export function EntryWorkspace<T extends { id: string; version: number }>({
   useEffect(() => {
     if (!write) return;
 
-    let attempt = 0;
-    let timer: ReturnType<typeof setTimeout>;
-
-    const askServer = () => {
-      attempt += 1;
-      router.refresh();
-      timer =
-        attempt < REFRESH_ATTEMPTS
-          ? setTimeout(askServer, REFRESH_RETRY_MS)
-          : setTimeout(() => setWrite(null), REFRESH_RETRY_MS);
-    };
-
-    askServer();
-    return () => clearTimeout(timer);
+    return scheduleRefreshes({
+      refresh: () => router.refresh(),
+      onExhausted: () => setWrite(null),
+    });
   }, [write, router]);
 
   useEffect(() => {
