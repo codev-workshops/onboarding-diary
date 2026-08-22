@@ -6,10 +6,10 @@ with manager-scoped views and reporting on top.
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
 
-> **Status: Milestone 2 of 10 complete.** The skeleton, database, seed data and authentication are in
-> place: you can sign up, sign in and reach a protected shell. **Authorization scope and the diary APIs
-> are not implemented yet** — there is nothing to read across users yet, and the scoped repository that
-> enforces `readable_user_ids` lands in M3. See [Implementation status](#implementation-status).
+> **Status: Milestone 3 of 10 complete.** The skeleton, database, seed data, authentication and the
+> authorization core are in place: `readable_user_ids` is enforced in SQL by scoped repositories, and the
+> authorization matrix runs in CI. **The diary APIs and UI are not implemented yet** — the guards exist
+> before the endpoints that must use them. See [Implementation status](#implementation-status).
 
 ## Quick start
 
@@ -88,9 +88,9 @@ middleware.ts          cookie-signature gate for app routes  done
 src/
   modules/
     auth/              password hashing, sessions, cookies   done
-    authz/             readable_user_ids(actor), guards      [M3]
-    users/             profiles, admin user management       [M10]
-    entries/           tasks, issues, feedback, notes        [M4-M5]
+    authz/             readable_user_ids(actor), guards      done
+    users/             profiles, scoped directory reads      done (admin CRUD [M10])
+    entries/           scoped repositories                   done (CRUD [M4-M5])
     dashboard/         aggregation queries                   [M6]
     reports/           date-ranged reports, CSV and PDF      [M8-M9]
   shared/
@@ -104,12 +104,13 @@ prisma/
   migrations/          SQL migrations, including CHECK constraints
   seed.ts              demo data
 tests/
-  unit/                Vitest
-  api/                 Vitest, route-level (authorization matrix lands in M3)
+  unit/                Vitest, no infrastructure required
+  api/                 Vitest, route-level
+  integration/         Vitest against seeded Postgres — the authorization matrix
   e2e/                 Playwright
 ```
 
-Layering rule, enforced from M3 onwards: **route handler → service → scoped repository**. Handlers parse
+Layering rule: **route handler → service → scoped repository**. Handlers parse
 and serialize; services hold the rules; the repository is the only thing that talks to Prisma, and it
 applies the caller's scope in the SQL query itself. Handlers never construct their own `where` clause.
 
@@ -128,6 +129,33 @@ and it is evaluated live from `users.manager_id`, so a re-assignment takes effec
 Notes stay private to their owner: a manager cannot read a recruit's notes. On an in-scope recruit's
 issue a manager may update `status` and `resolution_notes` and nothing else, and may never author or
 delete entries on a recruit's behalf.
+
+### Authorization core (M3)
+
+| Module                       | Responsibility                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------------- |
+| `authz/scope.ts`             | `readableUserIds(actor)` and the `owner_id IN (…)` clause it compiles to            |
+| `authz/policy.ts`            | Visibility, create/update/delete, field allow-lists, report targets                 |
+| `authz/errors.ts`            | The 403-versus-404 policy, in one place                                             |
+| `entries/base-repository.ts` | The only `where` an entry query is built from: scope + `deleted_at IS NULL` + notes |
+
+The rules, and why they are shaped this way:
+
+- **Scope is SQL, not a filter.** `scopedEntryWhere` composes the predicate; the delegate is private to the
+  repository, so a handler cannot query an entry table without it.
+- **403 when you named the subject, 404 when you addressed the resource.** A client-supplied `owner_id` or
+  `user_ids` outside scope fails `403 OUT_OF_SCOPE`; an entry id the caller cannot see is `404`, so
+  existence is never disclosed. Denials carry no identifiers.
+- **In scope ≠ entitled.** Notes are owner-private even from the owner's manager, and `ADMIN_ONLY` feedback
+  behaves the same way.
+- **Field-level, all-or-nothing.** A manager's issue patch is limited to `status` and `resolutionNotes`; any
+  other field rejects the whole request (`403 FIELD_NOT_PERMITTED`). `role`, `managerId`, `isActive` and
+  `email` are never settable through the self-service profile route (`403 FORBIDDEN_FIELD`).
+- **No silent narrowing.** A report naming an out-of-scope user fails; it is never quietly trimmed to the
+  readable subset, because a report that looks complete and is not is worse than an error.
+- **Live scope.** Nothing is cached: an admin's reassignment applies on the manager's next request.
+- **Middleware is not the boundary.** It only avoids a blank flash on protected routes; every decision is
+  re-made server-side from the database-backed actor.
 
 ### Authentication (M2)
 
@@ -204,21 +232,23 @@ Decisions worth knowing before reading the schema:
 
 ## Commands
 
-| Command                | Purpose                                    |
-| ---------------------- | ------------------------------------------ |
-| `npm run dev`          | Development server                         |
-| `npm run build`        | Production build                           |
-| `npm run lint`         | ESLint                                     |
-| `npm run format:check` | Prettier check (`npm run format` to write) |
-| `npm run typecheck`    | `tsc --noEmit`                             |
-| `npm test`             | Vitest unit and API tests                  |
-| `npm run test:e2e`     | Playwright end-to-end tests                |
-| `npm run db:migrate`   | Create/apply migrations in development     |
-| `npm run db:deploy`    | Apply migrations in CI and production      |
-| `npm run db:seed`      | Seed demo data (idempotent)                |
-| `npm run db:reset`     | Drop, re-migrate and re-seed               |
+| Command                    | Purpose                                        |
+| -------------------------- | ---------------------------------------------- |
+| `npm run dev`              | Development server                             |
+| `npm run build`            | Production build                               |
+| `npm run lint`             | ESLint                                         |
+| `npm run format:check`     | Prettier check (`npm run format` to write)     |
+| `npm run typecheck`        | `tsc --noEmit`                                 |
+| `npm test`                 | Vitest unit and API tests                      |
+| `npm run test:integration` | Authorization matrix against a seeded database |
+| `npm run test:e2e`         | Playwright end-to-end tests                    |
+| `npm run db:migrate`       | Create/apply migrations in development         |
+| `npm run db:deploy`        | Apply migrations in CI and production          |
+| `npm run db:seed`          | Seed demo data (idempotent)                    |
+| `npm run db:reset`         | Drop, re-migrate and re-seed                   |
 
-CI (`.github/workflows/ci.yml`) runs lint, format check, typecheck, unit tests, migrations, seed, build
+CI (`.github/workflows/ci.yml`) runs lint, format check, typecheck, unit tests, migrations, seed, the
+authorization matrix (`npm run test:integration`), build
 and Playwright against a PostgreSQL 16 service container.
 
 ## Implementation status
@@ -227,8 +257,8 @@ and Playwright against a PostgreSQL 16 service container.
 | --------- | ------------------------------------------------------------------ | ------- |
 | M1        | Skeleton, tooling, Docker, schema, migration, seed, `/health`      | Done    |
 | M2        | Signup, login, logout, session cookie, protected shell             | Done    |
-| M3        | Authorization module, scoped repository, authorization test matrix | Next    |
-| M4        | Task CRUD with filters and pagination                              | Planned |
+| M3        | Authorization module, scoped repository, authorization test matrix | Done    |
+| M4        | Task CRUD with filters and pagination                              | Next    |
 | M5        | Issues, feedback and notes                                         | Planned |
 | M6        | Recruit dashboard                                                  | Planned |
 | M7        | Manager team list and recruit detail views                         | Planned |
@@ -253,9 +283,17 @@ Delivered in M2:
 - Login and signup screens, a role-aware application shell, and middleware-protected routes
 - 40 Vitest unit/route tests and 7 Playwright auth journeys covering both roles and the failure paths
 
-Not implemented yet, by design: the authorization scope module and scoped repository, entry APIs and UI,
-dashboard, reports, exports, and admin screens. The `/team`, `/reports` and `/admin/users` routes exist
-only as role-gated placeholders.
+Delivered in M3:
+
+- `src/modules/authz/{scope,policy,errors}.ts` — the single implementation of `readable_user_ids`, the
+  entry policies and the 403/404 rules
+- `src/modules/entries/base-repository.ts` and one scoped repository per entry table
+- Scoped directory reads with an e-mail-free `UserSummary` DTO (managers never receive other addresses)
+- `tests/integration/authz-matrix.spec.ts` — AZ-M1…M10 and AZ-R1…R6 against seeded Postgres, run in CI
+  after `db:seed` (`npm run test:integration`)
+
+Not implemented yet, by design: entry APIs and UI, dashboard, reports, exports, and admin screens. The
+`/team`, `/reports` and `/admin/users` routes exist only as role-gated placeholders.
 
 ## Assumptions
 
