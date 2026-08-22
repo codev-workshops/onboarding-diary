@@ -45,6 +45,13 @@ export class AppError extends Error {
 export const unauthenticated = (): AppError => new AppError('UNAUTHENTICATED', 'Authentication is required.');
 
 /**
+ * The caller proved who they are, but the account is disabled — a different
+ * answer from "not authenticated" because the credential is genuine (AC3).
+ */
+export const accountDeactivated = (): AppError =>
+  new AppError('ACCOUNT_DEACTIVATED', 'This account has been deactivated.');
+
+/**
  * Identical for an unknown email and a wrong password, so the response cannot
  * be used to enumerate accounts (S12).
  */

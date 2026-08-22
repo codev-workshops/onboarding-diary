@@ -39,15 +39,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
  * zero would read as "this recruit writes no notes" rather than "you cannot
  * see them".
  */
-export function SummaryCards({
-  summary,
-  showNotes,
-  daysSinceStart,
-}: {
-  summary: DashboardSummary;
-  showNotes: boolean;
-  daysSinceStart?: number;
-}) {
+export function SummaryCards({ summary, showNotes }: { summary: DashboardSummary; showNotes: boolean }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Stat
@@ -72,11 +64,7 @@ export function SummaryCards({
           hint="Feedback shared · private notes"
         />
       ) : (
-        <Stat
-          label="Feedback"
-          value={String(summary.feedback_total)}
-          hint={daysSinceStart === undefined ? 'Shared with you' : `Day ${daysSinceStart} of onboarding`}
-        />
+        <Stat label="Feedback" value={String(summary.feedback_total)} hint="Shared with you" />
       )}
     </div>
   );

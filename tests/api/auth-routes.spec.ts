@@ -287,12 +287,24 @@ describe('GET /api/v1/auth/me', () => {
     });
   });
 
-  it('treats a still-valid cookie for a deactivated user as unauthenticated', async () => {
+  it('answers 403 ACCOUNT_DEACTIVATED for a still-valid cookie on a disabled account', async () => {
     prismaMock.user.findUnique.mockResolvedValue(userRow({ isActive: false }));
 
     const response = await get(`${SESSION_COOKIE}=${await signSession(USER_ID)}`);
+    const body = (await response.json()) as { error?: { code?: string } };
+
+    expect(response.status).toBe(403);
+    expect(body.error?.code).toBe('ACCOUNT_DEACTIVATED');
+  });
+
+  it('answers 401 when the cookie names a user who no longer exists', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(null);
+
+    const response = await get(`${SESSION_COOKIE}=${await signSession(USER_ID)}`);
+    const body = (await response.json()) as { error?: { code?: string } };
 
     expect(response.status).toBe(401);
+    expect(body.error?.code).toBe('UNAUTHENTICATED');
   });
 
   it('ignores a forged cookie without hitting the database', async () => {

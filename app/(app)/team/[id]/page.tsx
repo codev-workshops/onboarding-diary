@@ -35,7 +35,10 @@ export default async function RecruitPage({ params, searchParams }: PageProps) {
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight">{dashboard.user.full_name}</h1>
           <p className="text-muted-foreground text-sm">
-            Day {dashboard.user.days_since_start} of onboarding · last {dashboard.period.days} days
+            {dashboard.user.role === 'RECRUIT'
+              ? `Day ${dashboard.user.days_since_start} of onboarding · `
+              : ''}
+            last {dashboard.period.days} days
           </p>
         </div>
         <PeriodTabs basePath={`/team/${dashboard.user.id}`} days={dashboard.period.days} />

@@ -109,12 +109,13 @@ describe('authentication', () => {
     expect(response.json.error?.code).toBe('UNAUTHENTICATED');
   });
 
-  it('refuses a well-formed cookie for a deactivated user', async () => {
+  it('answers 403 ACCOUNT_DEACTIVATED for a well-formed cookie on a disabled account', async () => {
     const id = users.unassigned.id;
     await prisma.user.update({ where: { id }, data: { isActive: false } });
     try {
       const response = await list({ as: 'unassigned' });
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(403);
+      expect(response.json.error?.code).toBe('ACCOUNT_DEACTIVATED');
     } finally {
       await prisma.user.update({ where: { id }, data: { isActive: true } });
     }
