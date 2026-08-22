@@ -35,7 +35,8 @@ To run the whole stack (app + database) in containers instead:
 docker compose up --build
 ```
 
-The app container applies migrations and runs the seed on every start; both steps are idempotent.
+A one-shot `migrate` service applies migrations and runs the seed before the app starts; both steps are
+idempotent, so this is safe on every `up`. The application image itself ships no migration tooling.
 
 ## Demo credentials
 

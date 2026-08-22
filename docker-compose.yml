@@ -48,6 +48,10 @@ services:
         condition: service_completed_successfully
     environment:
       NODE_ENV: production
+      # The Next.js standalone server binds to $HOSTNAME, which defaults to the
+      # container id; the healthcheck below (and any other in-container client)
+      # then cannot reach it on the loopback address.
+      HOSTNAME: '0.0.0.0'
       DATABASE_URL: postgresql://${POSTGRES_USER:-onboarding}:${POSTGRES_PASSWORD:-onboarding}@db:5432/${POSTGRES_DB:-onboarding_diary}?schema=public
       SESSION_SECRET: ${SESSION_SECRET:-dev-only-insecure-secret-change-me-0123456789}
       PORT: '3000'
