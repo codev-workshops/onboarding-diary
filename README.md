@@ -6,9 +6,10 @@ with manager-scoped views and reporting on top.
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
 
-> **Status: Milestone 1 of 10 complete.** The skeleton, database schema and seed data exist and are
-> verified. **Authentication, authorization and the application APIs are not implemented yet** — the
-> only route today is the health probe. See [Implementation status](#implementation-status).
+> **Status: Milestone 2 of 10 complete.** The skeleton, database, seed data and authentication are in
+> place: you can sign up, sign in and reach a protected shell. **Authorization scope and the diary APIs
+> are not implemented yet** — there is nothing to read across users yet, and the scoped repository that
+> enforces `readable_user_ids` lands in M3. See [Implementation status](#implementation-status).
 
 ## Quick start
 
@@ -76,15 +77,17 @@ in one place.
 
 ```
 app/
-  (public)/            login, signup                        [M2]
+  (public)/            login, signup                         done
   (app)/               dashboard, tasks, issues, feedback,
                        notes, team, reports, profile        [M4-M8]
-  (admin)/admin/users  user and department administration    [M10]
-  api/v1/...           REST API                              [M2+]
+  (app)/admin/users    user and department administration    [M10]
+  api/v1/auth/...      signup, login, logout, me             done
+  api/v1/...           the rest of the REST API              [M4+]
   api/health           liveness + readiness probe            done
+middleware.ts          cookie-signature gate for app routes  done
 src/
   modules/
-    auth/              password hashing, sessions            [M2]
+    auth/              password hashing, sessions, cookies   done
     authz/             readable_user_ids(actor), guards      [M3]
     users/             profiles, admin user management       [M10]
     entries/           tasks, issues, feedback, notes        [M4-M5]
@@ -93,6 +96,8 @@ src/
   shared/
     config/            environment parsing
     db/                Prisma client
+    http/              error envelope, request wrapper
+    schemas/           Zod schemas shared by API and forms
     testing/           fixtures shared by tests
 prisma/
   schema.prisma        models, enums, indexes
@@ -123,6 +128,45 @@ and it is evaluated live from `users.manager_id`, so a re-assignment takes effec
 Notes stay private to their owner: a manager cannot read a recruit's notes. On an in-scope recruit's
 issue a manager may update `status` and `resolution_notes` and nothing else, and may never author or
 delete entries on a recruit's behalf.
+
+### Authentication (M2)
+
+| Method | Path                  | Auth   | Success | Notes                                 |
+| ------ | --------------------- | ------ | ------- | ------------------------------------- |
+| POST   | `/api/v1/auth/signup` | public | 201     | Always creates a `RECRUIT`            |
+| POST   | `/api/v1/auth/login`  | public | 200     | Sets the session cookie               |
+| POST   | `/api/v1/auth/logout` | any    | 204     | Idempotent; expires the cookie        |
+| GET    | `/api/v1/auth/me`     | cookie | 200     | Current profile plus role permissions |
+| GET    | `/api/v1/departments` | public | 200     | Names only; the signup form needs it  |
+
+Every failure uses one envelope, with a `request_id` that matches the server log line:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "The request contains invalid fields.",
+    "request_id": "6f1c…",
+    "details": [{ "field": "password", "code": "TOO_SMALL", "message": "…" }]
+  }
+}
+```
+
+How the session works, and why:
+
+- **One signed JWT in an `HttpOnly; SameSite=Lax; Secure` cookie, 8-hour TTL.** Nothing is kept in
+  `localStorage`, so a script injection cannot read the session.
+- **The token carries only the user id.** Role and `is_active` are re-read from the database on every
+  request, so a deactivation or a role change takes effect on the next request rather than in eight hours.
+- **No CSRF token.** `SameSite=Lax` plus a mandatory `application/json` content type means a cross-site
+  form post cannot both carry the cookie and be accepted. Revisit this if a non-JSON endpoint appears.
+- **Login is timing-flat and message-flat.** An unknown email and a wrong password return the same
+  `401 INVALID_CREDENTIALS`, and the unknown-email path still performs a bcrypt comparison.
+- **`middleware.ts` only verifies the cookie signature** so anonymous visitors get a redirect instead of a
+  flash of an empty page. It is not the authorization boundary: layouts, pages and route handlers each
+  re-resolve the user from the database.
+- **Role-aware navigation is presentation only.** The admin page 404s for a manager whether or not the
+  link was rendered.
 
 ### Database
 
@@ -179,8 +223,8 @@ and Playwright against a PostgreSQL 16 service container.
 | Milestone | Scope                                                              | Status  |
 | --------- | ------------------------------------------------------------------ | ------- |
 | M1        | Skeleton, tooling, Docker, schema, migration, seed, `/health`      | Done    |
-| M2        | Signup, login, logout, session cookie, protected shell             | Next    |
-| M3        | Authorization module, scoped repository, authorization test matrix | Planned |
+| M2        | Signup, login, logout, session cookie, protected shell             | Done    |
+| M3        | Authorization module, scoped repository, authorization test matrix | Next    |
 | M4        | Task CRUD with filters and pagination                              | Planned |
 | M5        | Issues, feedback and notes                                         | Planned |
 | M6        | Recruit dashboard                                                  | Planned |
@@ -198,8 +242,17 @@ Delivered in M1:
 - ESLint, Prettier, Vitest, Playwright, GitHub Actions CI
 - `Dockerfile` (standalone multi-stage build) and `docker-compose.yml` (app + PostgreSQL)
 
-Not implemented yet, by design: authentication, sessions, authorization, entry APIs and UI, dashboard,
-reports, exports, and admin screens.
+Delivered in M2:
+
+- `POST /api/v1/auth/signup|login|logout` and `GET /api/v1/auth/me`, plus public `GET /api/v1/departments`
+- bcrypt (cost 12) hashing and an 8-hour signed session cookie; deactivated accounts cannot authenticate
+- Shared error envelope with request ids, and Zod schemas shared by the API and the forms
+- Login and signup screens, a role-aware application shell, and middleware-protected routes
+- 40 Vitest unit/route tests and 7 Playwright auth journeys covering both roles and the failure paths
+
+Not implemented yet, by design: the authorization scope module and scoped repository, entry APIs and UI,
+dashboard, reports, exports, and admin screens. The `/team`, `/reports` and `/admin/users` routes exist
+only as role-gated placeholders.
 
 ## Assumptions
 
