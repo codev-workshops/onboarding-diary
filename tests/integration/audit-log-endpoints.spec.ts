@@ -177,6 +177,13 @@ describe('GET /audit-logs', () => {
     // Every seeded diary body is longer than the audit redaction ceiling, so a
     // leak would have to show up as one of these titles.
     expect(serialised).not.toContain('Private scribble');
-    expect(serialised).not.toContain('password');
+
+    // A credential, not the word: `/reset-password` is a legitimate path in an
+    // AUTHZ.DENIED payload, while the seed password or a bcrypt hash is not.
+    expect(serialised).not.toContain('Passw0rd!23');
+    expect(serialised).not.toMatch(/\$2[aby]\$/);
+    expect(serialised).not.toMatch(
+      /"(password|current_password|new_password|temporary_password|password_hash)":\s*"/
+    );
   });
 });
