@@ -50,6 +50,9 @@ const eslintConfig = [
       'src/modules/entries/repositories.ts',
       'src/modules/entries/base-repository.ts',
       'src/modules/audit/service.ts',
+      // Report-run metadata is not entry data — parameters only, no titles or
+      // bodies — so it is written directly rather than through a repository.
+      'src/modules/reports/runs.ts',
       'src/modules/auth/**',
       'src/modules/users/**',
       'src/modules/departments/**',

@@ -139,8 +139,9 @@ model User {
   feedbackUpdated FeedbackEntry[] @relation("FeedbackUpdatedBy")
   notesUpdated    NoteEntry[]     @relation("NoteUpdatedBy")
 
-  auditEvents    AuditLog[] @relation("AuditActor")
-  auditedChanges AuditLog[] @relation("AuditTarget")
+  auditEvents    AuditLog[]  @relation("AuditActor")
+  auditedChanges AuditLog[]  @relation("AuditTarget")
+  reportRuns     ReportRun[] @relation("ReportRequester")
 
   // manager_id drives readable_user_ids() for every manager-scoped query.
   @@index([managerId])
@@ -174,6 +175,61 @@ model AuditLog {
   @@index([action, createdAt(sort: Desc)])
   @@index([targetUserId, createdAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+enum ReportScopeType {
+  SELF
+  USER
+  USERS
+  DEPARTMENT
+  ORG
+
+  @@map("report_scope_type")
+}
+
+enum ReportFormat {
+  JSON
+  PDF
+  CSV
+
+  @@map("report_format")
+}
+
+enum ReportRunStatus {
+  SUCCESS
+  FAILED
+  DENIED
+
+  @@map("report_run_status")
+}
+
+/// Metadata for every report generation attempt (§21.1) — including the ones
+/// that were refused, because "who tried to export whose diary" is the question
+/// this table exists to answer (AZ-M6). No report content is stored, only the
+/// parameters it ran under.
+model ReportRun {
+  id                 String          @id @default(uuid()) @db.Uuid
+  requestedById      String          @map("requested_by") @db.Uuid
+  scopeType          ReportScopeType @map("scope_type")
+  targetUserIds      String[]        @map("target_user_ids") @db.Uuid
+  // Plain uuid, not a foreign key: the row records what was asked for, and an
+  // attempt naming a department that does not exist must still be recorded.
+  targetDepartmentId String?         @map("target_department_id") @db.Uuid
+  dateFrom           DateTime        @map("date_from") @db.Date
+  dateTo             DateTime        @map("date_to") @db.Date
+  sections           String[]
+  format             ReportFormat
+  rowCount           Int             @default(0) @map("row_count")
+  status             ReportRunStatus
+  errorCode          String?         @map("error_code") @db.VarChar(60)
+  durationMs         Int             @map("duration_ms")
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  requestedBy User @relation("ReportRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+
+  @@index([requestedById, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("report_runs")
 }
 
 model TaskEntry {

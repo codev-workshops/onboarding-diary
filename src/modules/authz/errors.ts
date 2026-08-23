@@ -47,6 +47,22 @@ export const sectionNotPermitted = (section: string): AppError =>
 export const notFound = (): AppError => new AppError('NOT_FOUND', 'The requested resource was not found.');
 
 /**
+ * The cap is what makes synchronous report generation safe (§17.5, O3), so the
+ * refusal has to be actionable: it says how big the report would have been and
+ * points at the two inputs the caller can change.
+ */
+export function reportTooLarge(section: string, rows: number, limit: number): AppError {
+  return new AppError(
+    'REPORT_TOO_LARGE',
+    `This report would contain ${rows.toLocaleString('en-GB')} ${section.toLowerCase()} rows (limit ${limit.toLocaleString('en-GB')}). Narrow the date range or select fewer users.`,
+    [
+      { field: 'date_from', code: 'RANGE_TOO_WIDE' },
+      { field: 'user_ids', code: 'TOO_MANY_ROWS', message: section },
+    ]
+  );
+}
+
+/**
  * The current version is disclosed because the caller already reached the row —
  * this is only ever raised after the scoped read succeeded — and because
  * without it the client cannot re-read and retry.

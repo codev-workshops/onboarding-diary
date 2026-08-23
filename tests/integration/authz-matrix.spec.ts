@@ -252,9 +252,11 @@ describe('AZ-M6 / AZ-M7 / AZ-R6 — report scope', () => {
       scopeType: 'USERS',
       sections: ['TASKS', 'ISSUES'],
     });
-    expect(targets).toContain(actors.recruitA.id);
-    expect(targets).not.toContain(actors.recruitB.id);
-    expect(targets).not.toContain(actors.managerA.id);
+    expect(targets.kind).toBe('IDS');
+    const ids = targets.kind === 'IDS' ? targets.ids : [];
+    expect(ids).toContain(actors.recruitA.id);
+    expect(ids).not.toContain(actors.recruitB.id);
+    expect(ids).not.toContain(actors.managerA.id);
   });
 
   it('fails the whole report rather than silently narrowing it', async () => {
@@ -286,13 +288,13 @@ describe('AZ-M6 / AZ-M7 / AZ-R6 — report scope', () => {
     );
     await expect(
       resolveReportTargets(actors.managerA, { scopeType: 'SELF', sections: ['NOTES'] })
-    ).resolves.toEqual([actors.managerA.id]);
+    ).resolves.toEqual({ kind: 'IDS', ids: [actors.managerA.id] });
   });
 
   it('limits a recruit to a report about themselves', async () => {
     await expect(
       resolveReportTargets(actors.recruitA, { scopeType: 'SELF', sections: ['TASKS'] })
-    ).resolves.toEqual([actors.recruitA.id]);
+    ).resolves.toEqual({ kind: 'IDS', ids: [actors.recruitA.id] });
 
     for (const scopeType of ['USER', 'USERS', 'ORG'] as const) {
       await expectDenied(
