@@ -104,7 +104,7 @@ export function assertSelfProfileFields(fields: readonly string[]): void {
   if (rejected.length > 0) throw forbiddenField(rejected);
 }
 
-export type ReportScopeType = 'SELF' | 'USER' | 'USERS' | 'ORG';
+export type ReportScopeType = 'SELF' | 'USER' | 'USERS' | 'DEPARTMENT' | 'ORG';
 export type ReportSection = 'TASKS' | 'ISSUES' | 'FEEDBACK' | 'NOTES';
 
 export type ReportRequest = {
@@ -113,10 +113,18 @@ export type ReportRequest = {
   sections: readonly ReportSection[];
 };
 
+/**
+ * The users a report will cover. `ALL` is kept distinct from a list for the
+ * same reason `ReadableUsers` does it, and — more importantly here — so that an
+ * empty list means "nobody" rather than "everybody": a department with no
+ * members must produce an empty report, not the organisation.
+ */
+export type ReportTargets = { kind: 'ALL' } | { kind: 'IDS'; ids: string[] };
+
 const REPORT_SCOPES: Record<UserRole, readonly ReportScopeType[]> = {
   RECRUIT: ['SELF'],
   MANAGER: ['SELF', 'USER', 'USERS'],
-  ADMIN: ['SELF', 'USER', 'USERS', 'ORG'],
+  ADMIN: ['SELF', 'USER', 'USERS', 'DEPARTMENT', 'ORG'],
 };
 
 /**
@@ -125,26 +133,35 @@ const REPORT_SCOPES: Record<UserRole, readonly ReportScopeType[]> = {
  * readable subset would hand a manager a report that silently omits rows while
  * looking complete, which is worse than an error (AZ-M6, §17.3).
  */
-export async function resolveReportTargets(actor: Actor, request: ReportRequest): Promise<string[]> {
+export async function resolveReportTargets(actor: Actor, request: ReportRequest): Promise<ReportTargets> {
   if (!REPORT_SCOPES[actor.role].includes(request.scopeType)) throw insufficientRole();
 
   if (actor.role !== 'ADMIN' && request.sections.includes('NOTES') && request.scopeType !== 'SELF') {
     throw sectionNotPermitted('NOTES');
   }
 
-  if (request.scopeType === 'SELF') return [actor.id];
+  if (request.scopeType === 'SELF') return { kind: 'IDS', ids: [actor.id] };
 
   const readable = await readableUserIds(actor);
 
   if (request.scopeType === 'ORG') {
     if (readable.kind !== 'ALL') throw insufficientRole();
-    return [];
+    return { kind: 'ALL' };
   }
 
   const requested = request.userIds ?? [];
+
+  // A department is expanded to its members by the caller, which is an
+  // admin-only directory read; the ids arrive here already enumerated so that
+  // an empty department stays empty instead of falling through to "all".
+  if (request.scopeType === 'DEPARTMENT') {
+    if (readable.kind !== 'ALL') throw insufficientRole();
+    return { kind: 'IDS', ids: requested };
+  }
+
   if (requested.length === 0) {
-    if (readable.kind === 'ALL') return [];
-    return readable.ids.filter((id) => id !== actor.id);
+    if (readable.kind === 'ALL') return { kind: 'ALL' };
+    return { kind: 'IDS', ids: readable.ids.filter((id) => id !== actor.id) };
   }
 
   const offending = requested
@@ -152,5 +169,5 @@ export async function resolveReportTargets(actor: Actor, request: ReportRequest)
     .filter((index): index is number => index !== null);
   if (offending.length > 0) throw outOfScopeAt(offending);
 
-  return requested;
+  return { kind: 'IDS', ids: requested };
 }

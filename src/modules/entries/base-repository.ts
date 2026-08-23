@@ -1,6 +1,6 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type FeedbackVisibility, type PrismaClient } from '@prisma/client';
 
-import { recordAudit } from '@/src/modules/audit/service';
+import { recordAudit, recordAuditBestEffort } from '@/src/modules/audit/service';
 import { notFound, versionConflict } from '@/src/modules/authz/errors';
 import {
   assertCanCreateEntry,
@@ -131,8 +131,49 @@ async function authorizationWhere<Filter>(
  * without the predicate above and without the M3 policy having been consulted.
  * Services get one of these; they never get the delegate.
  */
+const PRIVILEGED_IDS_LOGGED = 50;
+
+/**
+ * §22.1: an admin reading somebody else's note, or feedback its author marked
+ * ADMIN_ONLY, is the one read the authorization model deliberately permits and
+ * nobody else can perform — so it is recorded. It sits on the repository read
+ * paths rather than in each service, because that is where every content read
+ * passes, reports and detail views alike.
+ *
+ * One row per subject rather than per entry (a report over a year would
+ * otherwise write thousands), carrying ids and a count and never the bodies
+ * (DB8). Best-effort: a failed audit write must not turn a legitimate read
+ * into a 500.
+ */
+function auditPrivilegedReads(
+  actor: Actor,
+  kind: EntryKind,
+  rows: readonly { id: string; ownerId: string; visibility?: FeedbackVisibility }[]
+): void {
+  if (actor.role !== 'ADMIN') return;
+
+  const bySubject = new Map<string, string[]>();
+  for (const row of rows) {
+    if (row.ownerId === actor.id) continue;
+    if (kind !== 'NOTE' && !(kind === 'FEEDBACK' && row.visibility === 'ADMIN_ONLY')) continue;
+    const seen = bySubject.get(row.ownerId);
+    if (seen) seen.push(row.id);
+    else bySubject.set(row.ownerId, [row.id]);
+  }
+
+  for (const [targetUserId, ids] of bySubject) {
+    recordAuditBestEffort({
+      action: 'ENTRY.READ_PRIVILEGED',
+      entityType: kind,
+      entityId: ids.length === 1 ? ids[0] : undefined,
+      targetUserId,
+      after: { entry_count: ids.length, entry_ids: ids.slice(0, PRIVILEGED_IDS_LOGGED) },
+    });
+  }
+}
+
 export function createScopedRepository<
-  Row extends { id: string; ownerId: string; version: number },
+  Row extends { id: string; ownerId: string; version: number; visibility?: FeedbackVisibility },
   CreateData,
   UpdateData,
   Filter,
@@ -142,10 +183,13 @@ export function createScopedRepository<
 
     async list(actor: Actor, options: ScopedListOptions<Filter> = {}): Promise<Row[]> {
       const { ownerId, filters, ...page } = options;
-      return accessors.findMany(prisma, {
+      const rows = await accessors.findMany(prisma, {
         where: await scopedEntryWhere(actor, kind, { ownerId, filters }),
         ...page,
       });
+
+      auditPrivilegedReads(actor, kind, rows);
+      return rows;
     },
 
     async count(actor: Actor, options: { ownerId?: string; filters?: Filter[] } = {}): Promise<number> {
@@ -155,7 +199,10 @@ export function createScopedRepository<
     /** Null rather than throwing, so a caller can choose 404 versus a redirect. */
     async findById(actor: Actor, id: string): Promise<Row | null> {
       const where = await scopedEntryWhere<Filter>(actor, kind);
-      return accessors.findFirst(prisma, { where: { ...where, id } });
+      const row = await accessors.findFirst(prisma, { where: { ...where, id } });
+
+      if (row) auditPrivilegedReads(actor, kind, [row]);
+      return row;
     },
 
     /** The usual case: an unreachable id is indistinguishable from a missing one. */

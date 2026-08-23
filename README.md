@@ -283,7 +283,7 @@ and Playwright against a PostgreSQL 16 service container.
 | M5        | Issue CRUD with triage, filters and pagination                     | Done    |
 | M6        | Feedback and notes                                                 | Done    |
 | M7        | Recruit dashboard, manager team list and recruit detail views      | Done    |
-| M8        | Date-ranged reports and CSV export                                 | Planned |
+| M8        | Date-ranged reports and CSV export                                 | Done    |
 | M9        | PDF export                                                         | Planned |
 | M10       | Admin user/department management and hardening                     | Planned |
 
@@ -382,8 +382,31 @@ Delivered in M7:
 - `tests/integration/dashboard-endpoints.spec.ts`, `tests/unit/dashboard-{metrics,fanout}.spec.ts` and
   `tests/e2e/dashboard.spec.ts`
 
-Not implemented yet, by design: reports, exports and admin user management. The `/reports` and
-`/admin/users` routes exist only as role-gated placeholders.
+Delivered in M8:
+
+- `POST /api/v1/reports` — one endpoint for both the on-screen JSON preview and the CSV download
+  (O4), selected by `format`. `SELF`, `USER`, `USERS`, `DEPARTMENT` and `ORG` scopes, an inclusive
+  `entry_date` range capped at 366 days, section selection and per-section filters, summary and detail
+  blocks
+- **A report never silently narrows.** An explicitly named out-of-scope user fails the whole request
+  with `403 OUT_OF_SCOPE` rather than intersecting the request with the caller's scope; only an
+  omitted `user_ids` means "everyone I may read". Rows are still read through the scoped repositories,
+  so the SQL carries `owner_id ∈ readable_user_ids(actor)` as well
+- Caps: 50 users, 10 000 rows per section, checked with a `count` **before** the rows are loaded, so an
+  oversized report is refused with `422 REPORT_TOO_LARGE` instead of being assembled and then rejected
+- `src/modules/reports/csv.ts` — UTF-8 BOM, CRLF, RFC 4180 quoting, and a leading `'` on any cell
+  starting with `=`, `+`, `-`, `@`, tab or CR so a diary entry cannot become a formula in Excel. A
+  multi-section export is one file with a leading `record_type` column; metadata stays out of the body
+- `ENTRY.READ_PRIVILEGED` is now written whenever an admin reads another user's note or `ADMIN_ONLY`
+  feedback — through a report, a list or a single fetch — one row per subject, entry ids only, never
+  bodies (this was the M7 Phase 2 item; reporting made it required)
+- `report_runs` records every attempt with its parameters, row count, duration and outcome, including
+  `DENIED`, written best-effort so a metadata failure cannot change the response
+- `tests/unit/report-{csv,schemas,service}.spec.ts`, `tests/integration/report-endpoints.spec.ts` and
+  `tests/e2e/reports.spec.ts`
+
+Not implemented yet, by design: PDF export (M9) and admin user management (M10). The `/admin/users`
+route exists only as a role-gated placeholder.
 
 ### Running the integration suite
 
@@ -436,10 +459,10 @@ Carried over from the specification and the architecture review; each is a defau
 
 ## Deferred
 
-**Phase 2** — audit coverage for authentication events and privileged reads (§21: an admin reading
-another user's note or `ADMIN_ONLY` feedback, including through the organisation dashboard, should write
-`ENTRY.READ_PRIVILEGED`; cross-user writes and authorization denials are audited already),
-the remaining specified dashboard metrics (activity-by-day heatmap, streak days, average issue
+**Phase 2** — report `group_by`, custom `sort` and the "since start date" per-user range preset (D11 of
+the architecture review: the date range plus section selection satisfies the brief), a
+`/reports/history` view over the `report_runs` rows that are already written (D12),
+audit coverage for authentication events, the remaining specified dashboard metrics (activity-by-day heatmap, streak days, average issue
 resolution time), refresh-token rotation,
 rate limiting on authentication endpoints, OpenAPI document, full-text search across entries, dashboard
 charts, optimistic-concurrency enforcement using the existing `version` column, bulk operations, email

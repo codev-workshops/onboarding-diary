@@ -1,6 +1,6 @@
-import type { IssueSeverity, IssueStatus, Prisma, TaskStatus } from '@prisma/client';
+import type { FeedbackType, IssueSeverity, IssueStatus, Prisma, TaskStatus } from '@prisma/client';
 
-import type { Actor } from '@/src/modules/authz/scope';
+import { ownerFilter, readableUserIds, type Actor } from '@/src/modules/authz/scope';
 import {
   canReadNotesOf,
   createScopedRepository,
@@ -73,6 +73,44 @@ export const noteRepository = createScopedRepository<
   update: (client: DbClient, id, data, guard) =>
     client.noteEntry.update({ where: { id, ...guard }, data, select: noteSelect }),
 });
+
+/**
+ * How many feedback entries the report deliberately left out (§17.3). A manager
+ * is told the count and nothing else: the number is what makes the omission
+ * honest — a report that silently drops rows reads as complete — while subject,
+ * author and body stay behind the same visibility rule as everywhere else.
+ *
+ * This is the one query that looks past the ADMIN_ONLY predicate, so it is
+ * confined to counting, and still to owners inside `readable_user_ids(actor)`.
+ */
+export async function withheldFeedbackCount(
+  actor: Actor,
+  period: Period,
+  targets: { ownerIds: string[] | null },
+  types?: readonly FeedbackType[]
+): Promise<number> {
+  // Nothing is withheld from an admin, and a recruit's own ADMIN_ONLY feedback
+  // is visible to them as its owner.
+  if (actor.role === 'ADMIN') return 0;
+
+  const readable = await readableUserIds(actor);
+  const scoped = targets.ownerIds
+    ? { ownerId: { in: targets.ownerIds } }
+    : (ownerFilter(readable) as Prisma.FeedbackEntryWhereInput);
+
+  return prisma.feedbackEntry.count({
+    where: {
+      deletedAt: null,
+      visibility: 'ADMIN_ONLY',
+      ownerId: { not: actor.id },
+      entryDate: { gte: period.from, lte: period.to },
+      // Counted over the same population as the rows that were shown, so a
+      // type-filtered report cannot overstate what visibility removed.
+      ...(types && types.length > 0 ? { type: { in: [...types] } } : {}),
+      AND: [scoped, ownerFilter(readable) as Prisma.FeedbackEntryWhereInput],
+    },
+  });
+}
 
 /**
  * Dashboard aggregates.
