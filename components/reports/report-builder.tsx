@@ -93,7 +93,7 @@ export function ReportBuilder({
   const [sections, setSections] = useState<SectionName[]>(['TASKS', 'ISSUES', 'FEEDBACK']);
   const [includeSummary, setIncludeSummary] = useState(true);
   const [includeDetails, setIncludeDetails] = useState(true);
-  const [busy, setBusy] = useState<'preview' | 'csv' | null>(null);
+  const [busy, setBusy] = useState<'preview' | 'csv' | 'pdf' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<ReportModel | null>(null);
 
@@ -112,7 +112,7 @@ export function ReportBuilder({
       current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
     );
 
-  function body(format: 'JSON' | 'CSV') {
+  function body(format: 'JSON' | 'CSV' | 'PDF') {
     const chosen = sections.filter((section) => section !== 'NOTES' || canRequestNotes);
     return {
       scope_type: scopeType,
@@ -142,14 +142,14 @@ export function ReportBuilder({
     setReport(result.data);
   }
 
-  async function download() {
-    setBusy('csv');
+  async function download(format: 'CSV' | 'PDF') {
+    setBusy(format === 'CSV' ? 'csv' : 'pdf');
     setError(null);
 
     const response = await fetch('/api/v1/reports', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body('CSV')),
+      body: JSON.stringify(body(format)),
     }).catch(() => null);
 
     setBusy(null);
@@ -174,7 +174,7 @@ export function ReportBuilder({
     const anchor = document.createElement('a');
 
     anchor.href = url;
-    anchor.download = match?.[1] ?? 'onboarding-report.csv';
+    anchor.download = match?.[1] ?? `onboarding-report.${format.toLowerCase()}`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -355,8 +355,11 @@ export function ReportBuilder({
             <Button type="button" onClick={preview} disabled={busy !== null}>
               {busy === 'preview' ? 'Generating…' : 'Preview'}
             </Button>
-            <Button type="button" variant="outline" onClick={download} disabled={busy !== null}>
+            <Button type="button" variant="outline" onClick={() => download('CSV')} disabled={busy !== null}>
               {busy === 'csv' ? 'Preparing…' : 'Download CSV'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => download('PDF')} disabled={busy !== null}>
+              {busy === 'pdf' ? 'Preparing…' : 'Download PDF'}
             </Button>
           </div>
         </CardContent>

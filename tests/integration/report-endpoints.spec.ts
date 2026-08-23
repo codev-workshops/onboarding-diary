@@ -18,6 +18,7 @@ import { POST as reportRoute } from '@/app/api/v1/reports/route';
 import { SESSION_COOKIE, signSession } from '@/src/modules/auth/session';
 import type { ReportModel } from '@/src/modules/reports/model';
 import { prisma } from '@/src/shared/db/prisma';
+import { pdfPageTexts } from '@/tests/support/pdf-text';
 
 const EMAILS = {
   admin: 'admin@onboarding.test',
@@ -559,6 +560,122 @@ describe('CSV export', () => {
     const run = await eventually(() =>
       prisma.reportRun.findFirst({
         where: { requestedById: users.managerB.id, format: 'CSV' },
+        orderBy: { createdAt: 'desc' },
+      })
+    );
+    expect(run.status).toBe('SUCCESS');
+  });
+});
+
+/**
+ * The PDF is the copy that gets attached to an email and printed for a
+ * probation review, so what matters here is what a reader can find in it —
+ * hence the text is extracted back out of the document rather than trusting
+ * that the renderer was handed the right model.
+ */
+describe('PDF export', () => {
+  it('downloads as a named PDF that is not cached', async () => {
+    const { status, response } = await post(
+      { ...RANGE, scope_type: 'SELF', sections: ['TASKS'], format: 'PDF' },
+      'recruitA'
+    );
+
+    expect(status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/pdf');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(response.headers.get('content-disposition')).toContain('attachment; filename="onboarding-report_');
+    expect(response.headers.get('content-disposition')).toContain(`_${RANGE.date_from}_${RANGE.date_to}.pdf`);
+    expect(response.headers.get('content-disposition')).toContain("filename*=UTF-8''");
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(Buffer.from(bytes.slice(0, 5)).toString('latin1')).toBe('%PDF-');
+  });
+
+  it('shows a recruit their own entries, including their private note', async () => {
+    const { response } = await post(
+      { ...RANGE, scope_type: 'SELF', sections: ['TASKS', 'NOTES'], format: 'PDF' },
+      'recruitA'
+    );
+    const text = (await pdfPageTexts(new Uint8Array(await response.arrayBuffer()))).join('\n');
+
+    expect(text).toContain('Nobody else reads this');
+    expect(text).toContain('HYPERLINK');
+  });
+
+  it('carries no private note and no admin-only feedback into a manager’s PDF', async () => {
+    const { response } = await post(
+      {
+        ...RANGE,
+        scope_type: 'USERS',
+        user_ids: [users.recruitA.id],
+        sections: ['TASKS', 'ISSUES', 'FEEDBACK'],
+        format: 'PDF',
+      },
+      'managerA'
+    );
+    const text = (await pdfPageTexts(new Uint8Array(await response.arrayBuffer()))).join('\n');
+
+    expect(text).not.toContain('Nobody else reads this');
+    expect(text).not.toContain('Private reflection');
+    expect(text).not.toContain('Escalation about my manager');
+    expect(text).not.toContain('Not for the manager to read');
+    // The withholding is stated rather than silently applied.
+    expect(text).toContain('admin-only feedback');
+  });
+
+  it('carries no recruit from outside the manager’s team', async () => {
+    const { response } = await post(
+      { ...RANGE, scope_type: 'USERS', sections: ['TASKS'], format: 'PDF' },
+      'managerA'
+    );
+    const text = (await pdfPageTexts(new Uint8Array(await response.arrayBuffer()))).join('\n');
+
+    expect(text).toContain('Priya Sharma');
+    expect(text).not.toContain('Aisha Khan');
+    expect(text).not.toContain('Noah Silva');
+  });
+
+  it('lets an admin read the note and the admin-only feedback the manager could not', async () => {
+    const { response } = await post(
+      {
+        ...RANGE,
+        scope_type: 'USER',
+        user_ids: [users.recruitA.id],
+        sections: ['NOTES', 'FEEDBACK'],
+        format: 'PDF',
+      },
+      'admin'
+    );
+    const text = (await pdfPageTexts(new Uint8Array(await response.arrayBuffer()))).join('\n');
+
+    expect(text).toContain('Nobody else reads this');
+    expect(text).toContain('Escalation about my manager');
+  });
+
+  it('refuses an out-of-scope target instead of returning a narrowed document', async () => {
+    const { status, response } = await post(
+      {
+        ...RANGE,
+        scope_type: 'USERS',
+        user_ids: [users.recruitA.id, users.recruitB.id],
+        sections: ['TASKS'],
+        format: 'PDF',
+      },
+      'managerA'
+    );
+
+    expect(status).toBe(403);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(((await response.json()) as Json).error?.code).toBe('OUT_OF_SCOPE');
+  });
+
+  it('records the PDF run in the report metadata', async () => {
+    await post({ ...WIDE, scope_type: 'SELF', sections: ['TASKS'], format: 'PDF' }, 'managerB');
+
+    const run = await eventually(() =>
+      prisma.reportRun.findFirst({
+        where: { requestedById: users.managerB.id, format: 'PDF' },
         orderBy: { createdAt: 'desc' },
       })
     );

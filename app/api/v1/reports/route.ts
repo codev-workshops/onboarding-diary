@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { requireCurrentUser } from '@/src/modules/auth/current-user';
 import { contentDisposition, renderCsv } from '@/src/modules/reports/csv';
+import { renderPdf } from '@/src/modules/reports/pdf';
 import { reportRequestSchema } from '@/src/modules/reports/schemas';
 import { buildReport } from '@/src/modules/reports/service';
 import { ok, readJson, route } from '@/src/shared/http/envelope';
@@ -26,11 +27,18 @@ export const POST = route(async (request) => {
 
   if (body.format === 'JSON') return ok(report);
 
-  return new NextResponse(renderCsv(report), {
+  const [payload, contentType, extension] =
+    body.format === 'PDF'
+      ? // `.slice()` hands the response the exact bytes rather than whatever
+        // backing buffer the renderer happened to allocate.
+        ([(await renderPdf(report)).slice().buffer as ArrayBuffer, 'application/pdf', 'pdf'] as const)
+      : ([renderCsv(report), 'text/csv; charset=utf-8', 'csv'] as const);
+
+  return new NextResponse(payload, {
     status: 200,
     headers: {
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': contentDisposition(`${report.filename_base}.csv`),
+      'Content-Type': contentType,
+      'Content-Disposition': contentDisposition(`${report.filename_base}.${extension}`),
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
     },
