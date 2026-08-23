@@ -1,4 +1,4 @@
-import type { IssueSeverity, IssueStatus, Prisma, TaskStatus } from '@prisma/client';
+import type { FeedbackType, IssueSeverity, IssueStatus, Prisma, TaskStatus } from '@prisma/client';
 
 import { ownerFilter, readableUserIds, type Actor } from '@/src/modules/authz/scope';
 import {
@@ -86,7 +86,8 @@ export const noteRepository = createScopedRepository<
 export async function withheldFeedbackCount(
   actor: Actor,
   period: Period,
-  targets: { ownerIds: string[] | null }
+  targets: { ownerIds: string[] | null },
+  types?: readonly FeedbackType[]
 ): Promise<number> {
   // Nothing is withheld from an admin, and a recruit's own ADMIN_ONLY feedback
   // is visible to them as its owner.
@@ -103,6 +104,9 @@ export async function withheldFeedbackCount(
       visibility: 'ADMIN_ONLY',
       ownerId: { not: actor.id },
       entryDate: { gte: period.from, lte: period.to },
+      // Counted over the same population as the rows that were shown, so a
+      // type-filtered report cannot overstate what visibility removed.
+      ...(types && types.length > 0 ? { type: { in: [...types] } } : {}),
       AND: [scoped, ownerFilter(readable) as Prisma.FeedbackEntryWhereInput],
     },
   });

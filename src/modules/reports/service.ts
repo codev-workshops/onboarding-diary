@@ -136,7 +136,12 @@ async function assembleReport(actor: ReportActor, request: ReportRequestInput): 
 
   const rows = await readSections(actor, sections, ownerIds, range, request.filters);
   const withheld = sections.includes('FEEDBACK')
-    ? await withheldFeedbackCount(actor, { from: range.from, to: range.to }, { ownerIds })
+    ? await withheldFeedbackCount(
+        actor,
+        { from: range.from, to: range.to },
+        { ownerIds },
+        request.filters?.feedback?.type
+      )
     : 0;
 
   const model: ReportModel = {

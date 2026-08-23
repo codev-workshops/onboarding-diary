@@ -293,6 +293,50 @@ describe('privacy inside a permitted scope', () => {
     expect(audit).toBeNull();
   });
 
+  it('counts the withheld feedback over the same population the filter selected', async () => {
+    const filtered = report(
+      await json(
+        {
+          ...RANGE,
+          scope_type: 'USER',
+          user_ids: [users.recruitA.id],
+          sections: ['FEEDBACK'],
+          filters: { feedback: { type: ['POSITIVE'] } },
+        },
+        'managerA'
+      )
+    );
+
+    // The fixture's hidden entry is a CONCERN, so a report restricted to
+    // POSITIVE must not claim it was withheld from this report.
+    const positiveAdminOnly = await prisma.feedbackEntry.count({
+      where: {
+        ownerId: users.recruitA.id,
+        deletedAt: null,
+        visibility: 'ADMIN_ONLY',
+        type: 'POSITIVE',
+        entryDate: { gte: new Date(RANGE.date_from), lte: new Date(RANGE.date_to) },
+      },
+    });
+
+    expect(filtered.withheld.feedback).toBe(positiveAdminOnly);
+
+    const concerns = report(
+      await json(
+        {
+          ...RANGE,
+          scope_type: 'USER',
+          user_ids: [users.recruitA.id],
+          sections: ['FEEDBACK'],
+          filters: { feedback: { type: ['CONCERN'] } },
+        },
+        'managerA'
+      )
+    );
+
+    expect(concerns.withheld.feedback).toBeGreaterThan(filtered.withheld.feedback);
+  });
+
   it('includes it for an admin, and audits the privileged read', async () => {
     const model = report(
       await json(
