@@ -352,14 +352,17 @@ describe('privacy inside a permitted scope', () => {
     expect(rowsOf(model, 'notes').map((row) => String(row.title))).toContain('Private reflection');
     expect(model.withheld.feedback).toBe(0);
 
+    // Both sections are privileged, and the two rows can share a timestamp, so
+    // the note read is asked for by name rather than by being the newest row.
     const audit = await eventually(() =>
       prisma.auditLog.findFirst({
         where: {
           action: 'ENTRY.READ_PRIVILEGED',
           actorUserId: users.admin.id,
           targetUserId: users.recruitA.id,
+          entityType: 'NOTE',
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { id: 'desc' },
       })
     );
 

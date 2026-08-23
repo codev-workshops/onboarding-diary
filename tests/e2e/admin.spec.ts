@@ -120,3 +120,32 @@ test('the last active admin cannot deactivate themselves', async ({ page }) => {
   await expect(page.getByText(/last active admin/i)).toBeVisible();
   await expect(row).not.toContainText('Deactivated');
 });
+
+test('an admin reads and filters the audit log, and a manager cannot', async ({ page }) => {
+  await signIn(page, ADMIN);
+
+  await page.getByRole('link', { name: 'Audit log' }).click();
+  await expect(page.getByRole('heading', { name: 'Audit log' })).toBeVisible();
+
+  // Signing in just wrote one, so the table cannot be empty.
+  const successes = page.getByRole('cell', { name: 'AUTH.LOGIN_SUCCESS' });
+  await expect(successes.first()).toBeVisible();
+
+  // Filtering is a navigation, so it survives the round trip in the URL.
+  await page.getByLabel('Action').selectOption('AUTH.LOGIN_SUCCESS');
+  await page.getByRole('button', { name: 'Filter' }).click();
+  await expect(page).toHaveURL(/action=AUTH\.LOGIN_SUCCESS/);
+  await expect(page.getByRole('cell', { name: 'AUTH.LOGIN_FAILED' })).toHaveCount(0);
+
+  // A date range that predates the application shows nothing rather than everything.
+  await page.getByLabel('To').fill('2020-01-01');
+  await page.getByLabel('From').fill('2019-01-01');
+  await page.getByRole('button', { name: 'Filter' }).click();
+  await expect(page.getByText('No audit events match these filters.')).toBeVisible();
+
+  await page.goto('/signed-out');
+  await signIn(page, MANAGER);
+  await expect(page.getByRole('link', { name: 'Audit log' })).toHaveCount(0);
+  await page.goto('/admin/audit');
+  await expect(page.getByText(/not be found|404/i).first()).toBeVisible();
+});

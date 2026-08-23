@@ -5,14 +5,16 @@ with manager-scoped views and reporting on top.
 
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
+- Final engineering handoff (status, validation results, gaps, readiness): `docs/FINAL_HANDOFF.md`
 
-> **Status: Milestone 9 of 10 complete.** The skeleton, database, seed data, authentication, the
+> **Status: all eleven milestones complete.** The skeleton, database, seed data, authentication, the
 > authorization core, the **task diary**, the **issue log**, **onboarding feedback**, **personal
 > notes** and the **dashboards** are in place: `readable_user_ids` is enforced in SQL by scoped
 > repositories, every entry API, aggregate and UI sits on top of those repositories, and the
 > authorization matrix is proved twice — once against the guards and once through the HTTP handlers.
-> **Reports with CSV and PDF export** are in place; **admin user management is not implemented yet.** See
-> [Implementation status](#implementation-status).
+> **Reports with CSV and PDF export**, **admin user and department management** and the **admin audit
+> log** are in place. See [Implementation status](#implementation-status) and, for what is deliberately
+> not built, [Deferred](#deferred).
 
 ## Quick start
 
@@ -25,6 +27,27 @@ npm run db:migrate          # apply migrations
 npm run db:seed             # demo departments, users and ~130 diary entries
 npm run dev                 # http://localhost:3000
 ```
+
+### Prerequisites
+
+Node.js 20 (the version CI and the Docker image use), npm 10, Docker (for the PostgreSQL 16 container),
+and — for `npm run test:e2e` — the Playwright Chromium browser (`npx playwright install --with-deps chromium`).
+
+### Configuration
+
+`.env` is read by Prisma, the application and Docker Compose. Copy `.env.example` and adjust:
+
+| Variable                                                             | Required     | Purpose                                                                      |
+| -------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                       | yes          | Postgres connection string used by Prisma and the app                        |
+| `SESSION_SECRET`                                                     | yes          | Signing key for the session JWT; generate with `openssl rand -base64 48`     |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | compose only | Credentials and port for the `db` service                                    |
+| `APP_PORT`                                                           | compose only | Host port for the `app` service                                              |
+| `SEED_PASSWORD`                                                      | no           | Overrides the demo password used by `prisma/seed.ts` (default `Passw0rd!23`) |
+| `BUILD_STANDALONE`                                                   | no           | Set to `1` to emit the Next.js standalone output the Docker image needs      |
+
+The cookie is marked `Secure` only when `NODE_ENV=production`, so a non-production deployment served over
+plain HTTP would transmit the session in the clear.
 
 Health probe:
 
@@ -90,6 +113,7 @@ app/
   (app)/admin/overview organisation-wide summary (admin)     done
   (app)/reports        date-ranged reports and exports       done
   (app)/admin/users    user and department administration    done
+  (app)/admin/audit    audit-log listing and filters (admin) done
   change-password      forced change of a temporary password done
   api/v1/auth/...      signup, login, logout, me             done
   api/v1/tasks         list, create, read, patch, delete     done
@@ -100,6 +124,7 @@ app/
   api/v1/reports       JSON preview, CSV and PDF export      done
   api/v1/users         directory, admin CRUD, me, password   done
   api/v1/departments   public list plus admin lifecycle      done
+  api/v1/audit-logs    filtered audit-event listing (admin)  done
   api/health           liveness + readiness probe            done
 middleware.ts          cookie-signature gate for app routes  done
 src/
@@ -109,7 +134,7 @@ src/
     users/             profiles, admin CRUD, self-service    done
     entries/           scoped repositories                   done
     tasks/             task schemas, DTOs and service        done
-    audit/             append-only audit writer              done
+    audit/             append-only audit writer and reader   done
     dashboard/         grouped aggregates and rollups        done
     reports/           date-ranged reports, CSV and PDF      done
   shared/
@@ -275,20 +300,44 @@ CI (`.github/workflows/ci.yml`) runs lint, format check, typecheck, unit tests, 
 authorization matrix (`npm run test:integration`), build
 and Playwright against a PostgreSQL 16 service container.
 
+### Final validation
+
+Reproduced from a clean clone of the M11 branch and a freshly reset database:
+
+```bash
+npm ci
+cp .env.example .env        # adjust DATABASE_URL / SESSION_SECRET
+npm run db:reset            # migrate + seed
+npm run lint                # 0 errors, 1 warning (unused `_kind` in tests/unit/safe-path.spec.ts)
+npm run format:check        # clean
+npm run typecheck           # clean
+npm test                    # 257 passed (23 files)
+npm run test:integration    # 276 passed (10 files)
+npm run build               # succeeds
+npm run db:reset && npm run test:e2e   # 39 passed
+```
+
+The integration suite asserts against seeded row counts, so it needs the `db:reset` immediately before
+it; running it after an end-to-end run without resetting will fail on data the browser tests wrote.
+
 ## Implementation status
 
-| Milestone | Scope                                                              | Status |
-| --------- | ------------------------------------------------------------------ | ------ |
-| M1        | Skeleton, tooling, Docker, schema, migration, seed, `/health`      | Done   |
-| M2        | Signup, login, logout, session cookie, protected shell             | Done   |
-| M3        | Authorization module, scoped repository, authorization test matrix | Done   |
-| M4        | Task CRUD with filters and pagination                              | Done   |
-| M5        | Issue CRUD with triage, filters and pagination                     | Done   |
-| M6        | Feedback and notes                                                 | Done   |
-| M7        | Recruit dashboard, manager team list and recruit detail views      | Done   |
-| M8        | Date-ranged reports and CSV export                                 | Done   |
-| M9        | PDF export                                                         | Done   |
-| M10       | Admin user/department management and hardening                     | Done   |
+Each milestone is a separate pull request stacked on its predecessor, so the stack merges bottom-up.
+
+| Milestone  | Scope                                                                       | PR                                                                   | Status |
+| ---------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------ |
+| M1         | Skeleton, tooling, Docker, schema, migration, seed, `/health`               | [#90](https://github.com/codev-workshops/onboarding-diary/pull/90)   | Done   |
+| M2         | Signup, login, logout, session cookie, protected shell                      | [#92](https://github.com/codev-workshops/onboarding-diary/pull/92)   | Done   |
+| M3         | Authorization module, scoped repository, authorization test matrix          | [#93](https://github.com/codev-workshops/onboarding-diary/pull/93)   | Done   |
+| M4         | Task CRUD with filters and pagination                                       | [#94](https://github.com/codev-workshops/onboarding-diary/pull/94)   | Done   |
+| M5         | Issue CRUD with triage, filters and pagination                              | [#95](https://github.com/codev-workshops/onboarding-diary/pull/95)   | Done   |
+| M6         | Feedback and notes                                                          | [#96](https://github.com/codev-workshops/onboarding-diary/pull/96)   | Done   |
+| M7         | Recruit dashboard, manager team list and recruit detail views               | [#97](https://github.com/codev-workshops/onboarding-diary/pull/97)   | Done   |
+| M7 cleanup | `403 ACCOUNT_DEACTIVATED`, recruit-only onboarding-day caption, period tabs | [#98](https://github.com/codev-workshops/onboarding-diary/pull/98)   | Done   |
+| M8         | Date-ranged reports, CSV export, privileged-read auditing                   | [#100](https://github.com/codev-workshops/onboarding-diary/pull/100) | Done   |
+| M9         | PDF export                                                                  | [#101](https://github.com/codev-workshops/onboarding-diary/pull/101) | Done   |
+| M10        | Admin user/department management, temporary passwords, full audit set       | [#102](https://github.com/codev-workshops/onboarding-diary/pull/102) | Done   |
+| M11        | Admin audit-log listing and UI (US-75)                                      | [#103](https://github.com/codev-workshops/onboarding-diary/pull/103) | Done   |
 
 Delivered in M1:
 
@@ -455,6 +504,18 @@ Delivered in M10:
 - `tests/unit/{admin,self}-schemas.spec.ts`, `tests/integration/{admin-endpoints,self-service}.spec.ts`
   and `tests/e2e/admin.spec.ts`
 
+Delivered in M11:
+
+- The admin audit log (US-75): `GET /api/v1/audit-logs` and `/admin/audit`, filterable by actor, target,
+  action, entity type and an inclusive date range, newest first and paginated. `ADMIN` only, enforced in
+  the service rather than by the page, so the API refuses a manager with `403 INSUFFICIENT_ROLE` and the
+  page 404s them
+- The log reads what the writer already redacted: no diary bodies, no passwords and no session tokens
+  reach a row, and the reader adds nothing — strings longer than 120 characters were replaced with
+  `{ redacted: true, length }` at write time
+- `tests/unit/audit-schemas.spec.ts`, `tests/integration/audit-log-endpoints.spec.ts` and the audit case
+  in `tests/e2e/admin.spec.ts`
+
 ### Running the integration suite
 
 `npm run test:integration` reads the seeded users by e-mail and asserts against seeded row counts, so it
@@ -467,6 +528,11 @@ npm run db:reset && npm run test:integration
 The endpoint suites create their own fixtures and delete them again, but rows left behind by an earlier
 end-to-end run (which writes through the UI as a real recruit) will fail the count assertions. CI gets
 this for free because it seeds a fresh service container.
+
+One suite is deliberately an exception: `audit-log-endpoints.spec.ts` cannot clean up after itself,
+because a database trigger rejects any delete on `audit_logs` — that append-only guarantee is the point
+of the table. It tags its fixture rows with a random per-run action marker so runs cannot see each
+other's data, and a `db:reset` is what actually clears them.
 
 ## Assumptions
 
@@ -510,6 +576,11 @@ Carried over from the specification and the architecture review; each is a defau
 17. Charts in the PDF are a SHOULD in the requirements (§18.2) and are not implemented.
 
 ## Deferred
+
+**Not implemented, and a MUST in the specification:** authentication rate limiting and account lockout
+(**US-02 AC4**, FR-A6, SEC-10 — D13 of the architecture review). Login is open to online guessing; there
+is no `429` after repeated failures. This is the one required acceptance criterion this build does not
+meet, and it is called out here rather than implied to be covered.
 
 **Phase 2** — report `group_by`, custom `sort` and the "since start date" per-user range preset (D11 of
 the architecture review: the date range plus section selection satisfies the brief), a

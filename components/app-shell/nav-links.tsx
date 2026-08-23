@@ -24,6 +24,7 @@ export function NavLinks({ permissions }: { permissions: Permissions }) {
     { href: '/reports', label: 'Reports', visible: true },
     { href: '/admin/users', label: 'Users', visible: permissions.can_manage_users },
     { href: '/admin/departments', label: 'Departments', visible: permissions.can_manage_users },
+    { href: '/admin/audit', label: 'Audit log', visible: permissions.can_manage_users },
   ].filter((link) => link.visible);
 
   return (
