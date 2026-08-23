@@ -20,6 +20,19 @@ export function setSessionCookie(response: NextResponse, token: string): void {
   });
 }
 
+/** Reads the session token out of a raw `Cookie` header, for route handlers. */
+export function sessionTokenFrom(header: string | null): string | undefined {
+  if (!header) return undefined;
+  for (const part of header.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator === -1) continue;
+    if (part.slice(0, separator).trim() === SESSION_COOKIE) {
+      return decodeURIComponent(part.slice(separator + 1).trim());
+    }
+  }
+  return undefined;
+}
+
 export function clearSessionCookie(response: NextResponse): void {
   response.cookies.set({
     name: SESSION_COOKIE,

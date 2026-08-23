@@ -5,9 +5,12 @@
 export const ERROR_CODES = {
   VALIDATION_ERROR: 422,
   REPORT_TOO_LARGE: 422,
+  LAST_ADMIN: 422,
+  MANAGER_HAS_REPORTS: 422,
   INVALID_CREDENTIALS: 401,
   UNAUTHENTICATED: 401,
   ACCOUNT_DEACTIVATED: 403,
+  PASSWORD_CHANGE_REQUIRED: 403,
   INSUFFICIENT_ROLE: 403,
   OUT_OF_SCOPE: 403,
   FIELD_NOT_PERMITTED: 403,
@@ -15,6 +18,7 @@ export const ERROR_CODES = {
   SECTION_NOT_PERMITTED: 403,
   EMAIL_ALREADY_REGISTERED: 409,
   VERSION_CONFLICT: 409,
+  DEPARTMENT_IN_USE: 409,
   UNSUPPORTED_MEDIA_TYPE: 415,
   MALFORMED_JSON: 400,
   NOT_FOUND: 404,
@@ -51,6 +55,13 @@ export const unauthenticated = (): AppError => new AppError('UNAUTHENTICATED', '
  */
 export const accountDeactivated = (): AppError =>
   new AppError('ACCOUNT_DEACTIVATED', 'This account has been deactivated.');
+
+/**
+ * The account holds a temporary password. Everything but reading one's own
+ * profile and changing the password waits until it is replaced (US-70, S-04).
+ */
+export const passwordChangeRequired = (): AppError =>
+  new AppError('PASSWORD_CHANGE_REQUIRED', 'Change your temporary password before continuing.');
 
 /**
  * Identical for an unknown email and a wrong password, so the response cannot

@@ -89,7 +89,8 @@ app/
   (app)/team           roster and recruit detail (mgr/admin) done
   (app)/admin/overview organisation-wide summary (admin)     done
   (app)/reports        date-ranged reports and exports       done
-  (app)/admin/users    user and department administration    [M10]
+  (app)/admin/users    user and department administration    done
+  change-password      forced change of a temporary password done
   api/v1/auth/...      signup, login, logout, me             done
   api/v1/tasks         list, create, read, patch, delete     done
   api/v1/issues        list, create, read, patch, delete     done
@@ -97,14 +98,15 @@ app/
   api/v1/notes         list, create, read, patch, delete     done
   api/v1/dashboard     me, team, org and per-user summaries  done
   api/v1/reports       JSON preview, CSV and PDF export      done
-  api/v1/...           the rest of the REST API              [M10]
+  api/v1/users         directory, admin CRUD, me, password   done
+  api/v1/departments   public list plus admin lifecycle      done
   api/health           liveness + readiness probe            done
 middleware.ts          cookie-signature gate for app routes  done
 src/
   modules/
     auth/              password hashing, sessions, cookies   done
     authz/             readable_user_ids(actor), guards      done
-    users/             profiles, scoped directory reads      done (admin CRUD [M10])
+    users/             profiles, admin CRUD, self-service    done
     entries/           scoped repositories                   done
     tasks/             task schemas, DTOs and service        done
     audit/             append-only audit writer              done
@@ -275,18 +277,18 @@ and Playwright against a PostgreSQL 16 service container.
 
 ## Implementation status
 
-| Milestone | Scope                                                              | Status  |
-| --------- | ------------------------------------------------------------------ | ------- |
-| M1        | Skeleton, tooling, Docker, schema, migration, seed, `/health`      | Done    |
-| M2        | Signup, login, logout, session cookie, protected shell             | Done    |
-| M3        | Authorization module, scoped repository, authorization test matrix | Done    |
-| M4        | Task CRUD with filters and pagination                              | Done    |
-| M5        | Issue CRUD with triage, filters and pagination                     | Done    |
-| M6        | Feedback and notes                                                 | Done    |
-| M7        | Recruit dashboard, manager team list and recruit detail views      | Done    |
-| M8        | Date-ranged reports and CSV export                                 | Done    |
-| M9        | PDF export                                                         | Done    |
-| M10       | Admin user/department management and hardening                     | Planned |
+| Milestone | Scope                                                              | Status |
+| --------- | ------------------------------------------------------------------ | ------ |
+| M1        | Skeleton, tooling, Docker, schema, migration, seed, `/health`      | Done   |
+| M2        | Signup, login, logout, session cookie, protected shell             | Done   |
+| M3        | Authorization module, scoped repository, authorization test matrix | Done   |
+| M4        | Task CRUD with filters and pagination                              | Done   |
+| M5        | Issue CRUD with triage, filters and pagination                     | Done   |
+| M6        | Feedback and notes                                                 | Done   |
+| M7        | Recruit dashboard, manager team list and recruit detail views      | Done   |
+| M8        | Date-ranged reports and CSV export                                 | Done   |
+| M9        | PDF export                                                         | Done   |
+| M10       | Admin user/department management and hardening                     | Done   |
 
 Delivered in M1:
 
@@ -424,8 +426,34 @@ Delivered in M9:
   private note and no `ADMIN_ONLY` feedback" is checked against what a reader can actually find in the
   file rather than against the model that was handed to the renderer
 
-Not implemented yet, by design: admin user management (M10). The `/admin/users` route exists only as a
-role-gated placeholder.
+Delivered in M10:
+
+- Admin user lifecycle: `GET/POST /api/v1/users`, `GET/PATCH /api/v1/users/{id}`,
+  `POST /api/v1/users/{id}/{deactivate,reactivate,reset-password}` and `GET /api/v1/users/{id}/recruits`,
+  behind `ADMIN` (the directory `GET` still answers managers and recruits with their own scoped view)
+- The validation that makes the authorization model hold: `422 LAST_ADMIN` when the last active admin
+  would be demoted or deactivated, `422 MANAGER_HAS_REPORTS` unless a demotion names `reassign_to`,
+  a manager must be an active `MANAGER` or `ADMIN`, and self-assignment or a cycle in the reporting
+  line is refused — a reassignment moves the recruit between managers' scopes on the next request
+- Deactivation is reversible and never deletes: entries stay, stay reportable, and the account simply
+  cannot authenticate. There is no hard delete of a user anywhere in the API
+- Department lifecycle: create, rename, deactivate and delete, where delete is refused with
+  `409 DEPARTMENT_IN_USE` while anyone is assigned; a deactivated department keeps its existing members
+  and is refused for new assignments. The public `GET /api/v1/departments` still lists active names only
+- Temporary passwords (US-70): an admin-created or reset account gets a generated password, returned
+  exactly once in the response and never stored in plaintext or written to an audit row, and is flagged
+  `must_change_password`. Until it is replaced, every API call but `GET /users/me` and
+  `POST /users/me/password` is refused with `403 PASSWORD_CHANGE_REQUIRED`, and the browser shell
+  redirects to `/change-password`
+- Self-service `GET/PATCH /api/v1/users/me` and `POST /api/v1/users/me/password`; naming `role`,
+  `manager_id`, `is_active` or `email` in the PATCH fails the whole request with `403 FORBIDDEN_FIELD`
+  rather than being quietly ignored
+- The audit actions the specification asks for are now all written: `AUTH.LOGIN_SUCCESS`,
+  `AUTH.LOGIN_FAILED`, `AUTH.LOGOUT`, `AUTH.PASSWORD_CHANGED`, `AUTH.PASSWORD_RESET`, `USER.*` and
+  `DEPARTMENT.*`. User and department changes share the write's transaction; authentication events are
+  best-effort, because a failed audit write must not turn a valid sign-in into an error
+- `tests/unit/{admin,self}-schemas.spec.ts`, `tests/integration/{admin-endpoints,self-service}.spec.ts`
+  and `tests/e2e/admin.spec.ts`
 
 ### Running the integration suite
 
@@ -461,11 +489,12 @@ Carried over from the specification and the architecture review; each is a defau
     still blocking someone is the most important row on the page.
 12. A team roster lists direct reports whose role is `RECRUIT`; a manager reporting to another manager
     is in scope for entry reads but is not a roster row.
-13. The organisation dashboard's department breakdown lists only departments that currently have at
-    least one recruit. US-52 asks for a "breakdown by department" without saying whether empty
-    departments are rows; the table is built from the recruit rollup, so a department with no recruits
-    contributes nothing and is omitted rather than shown as a row of zeroes. Admin department
-    management (M10) is where the full department list, including empty ones, belongs.
+13. The organisation dashboard's department breakdown lists **every active department**, including ones
+    with no recruits, as a row of zeroes. This reverses the M7 assumption: once departments can be
+    created from the admin screens (M10), a newly created or emptied department that silently fails to
+    appear reads as a bug, and "nobody has been onboarded here yet" is a fact an admin needs. Inactive
+    departments are not rows — they appear in the admin department list, which is where their state is
+    managed.
 14. `days_since_start` is computed for every subject per §16.2 (`today − start_date`, floored at 0), but
     the "Day N of onboarding" caption is rendered only when the subject's role is `RECRUIT`. The
     requirements attach that caption to recruit dashboards and the manager roster; on a manager's or
@@ -485,11 +514,10 @@ Carried over from the specification and the architecture review; each is a defau
 **Phase 2** — report `group_by`, custom `sort` and the "since start date" per-user range preset (D11 of
 the architecture review: the date range plus section selection satisfies the brief), a
 `/reports/history` view over the `report_runs` rows that are already written (D12),
-audit coverage for authentication events, the remaining specified dashboard metrics (activity-by-day heatmap, streak days, average issue
+the remaining specified dashboard metrics (activity-by-day heatmap, streak days, average issue
 resolution time), refresh-token rotation,
 rate limiting on authentication endpoints, OpenAPI document, full-text search across entries, dashboard
-charts, optimistic-concurrency enforcement using the existing `version` column, bulk operations, email
-notifications.
+charts, bulk operations, email notifications.
 
 **Phase 3** — multi-manager and transitive scopes, comments on entries, entry attachments, scheduled
 report delivery, i18n, SSO, dark mode, mobile applications, asynchronous report generation.

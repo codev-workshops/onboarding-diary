@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 
+import { recordAuditBestEffort } from '@/src/modules/audit/service';
 import { containsEmailLocalPart, hashPassword, verifyPassword } from '@/src/modules/auth/password';
 import { signSession } from '@/src/modules/auth/session';
 import { selfProfileSelect, toSelfProfile, type SelfProfile } from '@/src/modules/users/dto';
@@ -72,16 +73,37 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     : await verifyPassword(input.password, DUMMY_HASH).then(() => false);
 
   if (!user || !passwordMatches) {
+    // Records the attempt, not the account: the email is what an intrusion
+    // review needs, and the password never leaves this function (§22.1).
+    recordAuditBestEffort({
+      action: 'AUTH.LOGIN_FAILED',
+      entityType: 'USER',
+      targetUserId: user?.id ?? null,
+      after: { email: input.email },
+    });
     throw invalidCredentials();
   }
 
   // S13: deactivated users cannot authenticate. Checked after the password so a
   // wrong password on a disabled account still reads as invalid credentials.
   if (!user.isActive) {
+    recordAuditBestEffort({
+      action: 'AUTH.LOGIN_FAILED',
+      entityType: 'USER',
+      targetUserId: user.id,
+      after: { email: input.email, reason: 'ACCOUNT_DEACTIVATED' },
+    });
     throw new AppError('ACCOUNT_DEACTIVATED', 'This account has been deactivated.');
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+
+  recordAuditBestEffort({
+    action: 'AUTH.LOGIN_SUCCESS',
+    entityType: 'USER',
+    entityId: user.id,
+    targetUserId: user.id,
+  });
 
   return { user: toSelfProfile(user), token: await signSession(user.id) };
 }

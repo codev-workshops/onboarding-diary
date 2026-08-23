@@ -112,18 +112,20 @@ model Department {
 }
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique @db.VarChar(254)
-  passwordHash String    @map("password_hash")
-  fullName     String    @map("full_name") @db.VarChar(120)
-  role         UserRole  @default(RECRUIT)
-  departmentId String?   @map("department_id") @db.Uuid
-  startDate    DateTime  @map("start_date") @db.Date
-  managerId    String?   @map("manager_id") @db.Uuid
-  isActive     Boolean   @default(true) @map("is_active")
-  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique @db.VarChar(254)
+  passwordHash       String    @map("password_hash")
+  fullName           String    @map("full_name") @db.VarChar(120)
+  role               UserRole  @default(RECRUIT)
+  departmentId       String?   @map("department_id") @db.Uuid
+  startDate          DateTime  @map("start_date") @db.Date
+  managerId          String?   @map("manager_id") @db.Uuid
+  isActive           Boolean   @default(true) @map("is_active")
+  // Set when an admin issues a temporary password; cleared by the first change (US-70).
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   department Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   manager    User?       @relation("ManagerRecruits", fields: [managerId], references: [id], onDelete: Restrict)

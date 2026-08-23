@@ -1,9 +1,10 @@
 import { cookies } from 'next/headers';
 
+import { sessionTokenFrom } from '@/src/modules/auth/cookies';
 import { readSession, SESSION_COOKIE } from '@/src/modules/auth/session';
 import { selfProfileSelect, toSelfProfile, type SelfProfile } from '@/src/modules/users/dto';
 import { prisma } from '@/src/shared/db/prisma';
-import { accountDeactivated, unauthenticated } from '@/src/shared/http/errors';
+import { accountDeactivated, passwordChangeRequired, unauthenticated } from '@/src/shared/http/errors';
 import { setContextActor } from '@/src/shared/http/request-context';
 
 /**
@@ -17,10 +18,20 @@ export async function getCurrentUser(request?: Request): Promise<SelfProfile | n
   return resolved.status === 'active' ? resolved.user : null;
 }
 
-export async function requireCurrentUser(request?: Request): Promise<SelfProfile> {
+/**
+ * `allowPasswordChange` is for the two endpoints a user holding a temporary
+ * password may still reach — reading their own profile and changing the
+ * password. Everything else is refused until the change is done (S-04), which
+ * is why the rule lives here rather than in each handler.
+ */
+export async function requireCurrentUser(
+  request?: Request,
+  options: { allowPasswordChange?: boolean } = {}
+): Promise<SelfProfile> {
   const resolved = await resolveActor(request);
   if (resolved.status === 'deactivated') throw accountDeactivated();
   if (resolved.status === 'anonymous') throw unauthenticated();
+  if (resolved.user.must_change_password && !options.allowPasswordChange) throw passwordChangeRequired();
   return resolved.user;
 }
 
@@ -35,7 +46,7 @@ type ResolvedActor =
  */
 async function resolveActor(request?: Request): Promise<ResolvedActor> {
   const token = request
-    ? parseCookie(request.headers.get('cookie'), SESSION_COOKIE)
+    ? sessionTokenFrom(request.headers.get('cookie'))
     : (await cookies()).get(SESSION_COOKIE)?.value;
 
   const claims = await readSession(token);
@@ -54,16 +65,4 @@ async function resolveActor(request?: Request): Promise<ResolvedActor> {
   setContextActor({ id: user.id, role: user.role });
 
   return { status: 'active', user: toSelfProfile(user) };
-}
-
-function parseCookie(header: string | null, name: string): string | undefined {
-  if (!header) return undefined;
-  for (const part of header.split(';')) {
-    const separator = part.indexOf('=');
-    if (separator === -1) continue;
-    if (part.slice(0, separator).trim() === name) {
-      return decodeURIComponent(part.slice(separator + 1).trim());
-    }
-  }
-  return undefined;
 }
