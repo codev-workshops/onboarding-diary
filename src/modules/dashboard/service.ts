@@ -301,11 +301,14 @@ export async function getOrgDashboard(actor: Actor, query: DashboardQuery): Prom
     activeDepartments.map((department) => [department.name, new Set<string>()])
   );
 
+  // A deactivated department keeps its existing members (US-73), but it is not a
+  // row: those recruits count as unassigned until an admin moves them.
   for (const recruit of recruits) {
-    const name = recruit.department?.name ?? 'Unassigned';
-    const members = byDepartment.get(name) ?? new Set<string>();
+    const name = recruit.department?.name ?? '';
+    const key = byDepartment.has(name) ? name : 'Unassigned';
+    const members = byDepartment.get(key) ?? new Set<string>();
     members.add(recruit.id);
-    byDepartment.set(name, members);
+    byDepartment.set(key, members);
   }
 
   const departments: DepartmentRollup[] = [...byDepartment]

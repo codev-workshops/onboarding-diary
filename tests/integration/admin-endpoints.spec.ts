@@ -401,6 +401,49 @@ describe('reassignment and the reporting graph', () => {
       expect.arrayContaining(['USER.ROLE_CHANGED', 'USER.MANAGER_CHANGED'])
     );
   });
+
+  it('promotes a manager with reports to admin without demanding a reassignment', async () => {
+    const manager = await makeUser({ role: 'MANAGER' });
+    const recruit = await makeUser({ managerId: manager });
+
+    const promoted = await patchUser('admin', manager, { role: 'ADMIN' });
+    expect(promoted.status).toBe(200);
+    expect(adminUser(promoted.json).role).toBe('ADMIN');
+
+    // The reporting line survives the promotion: an admin may hold reports.
+    expect(
+      (await prisma.user.findUniqueOrThrow({ where: { id: recruit }, select: { managerId: true } })).managerId
+    ).toBe(manager);
+
+    // Put the fixture back so the seeded admin is once more the only one and
+    // the last-admin protections below still describe the real state.
+    await prisma.user.update({ where: { id: manager }, data: { role: 'MANAGER' } });
+  });
+
+  it('validates reassign_to even when the change is not a demotion', async () => {
+    const manager = await makeUser({ role: 'MANAGER' });
+    const recruit = await makeUser({ managerId: manager });
+    const notAManager = await makeUser({ role: 'RECRUIT' });
+    const deactivated = await makeUser({ role: 'MANAGER' });
+    await prisma.user.update({ where: { id: deactivated }, data: { isActive: false } });
+
+    const attempts = await Promise.all([
+      patchUser('admin', manager, { full_name: 'Renamed Manager', reassign_to: notAManager }),
+      patchUser('admin', manager, { full_name: 'Renamed Manager', reassign_to: deactivated }),
+      patchUser('admin', manager, { full_name: 'Renamed Manager', reassign_to: manager }),
+    ]);
+
+    for (const attempt of attempts) {
+      expect(attempt.status).toBe(422);
+      expect(attempt.json.error?.details).toEqual([expect.objectContaining({ code: 'INVALID_MANAGER' })]);
+    }
+
+    const untouched = await prisma.user.findUniqueOrThrow({
+      where: { id: recruit },
+      select: { managerId: true },
+    });
+    expect(untouched.managerId).toBe(manager);
+  });
 });
 
 describe('the last admin', () => {

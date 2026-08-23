@@ -133,8 +133,13 @@ export async function updateUser(
   if (input.manager_id !== undefined) {
     await assertAssignableManager(input.manager_id, userId);
   }
-  if (nextRole !== 'MANAGER' && before.role === 'MANAGER') {
-    await assertManagerCanBeDemoted(userId, before._count.recruits, input.reassign_to ?? null);
+  const reassignTo = input.reassign_to ?? null;
+  if (reassignTo !== null) {
+    await assertReassignmentTarget(userId, reassignTo);
+  }
+  // ADMIN keeps the manager capability (FR-AD4), so promotion is not a demotion.
+  if (before.role === 'MANAGER' && nextRole !== 'MANAGER' && nextRole !== 'ADMIN') {
+    await assertManagerCanBeDemoted(before._count.recruits, reassignTo);
   }
   if (before.role === 'ADMIN' && before.isActive && (nextRole !== 'ADMIN' || !nextActive)) {
     await assertNotLastAdmin(userId);
@@ -142,8 +147,8 @@ export async function updateUser(
 
   try {
     const after = await prisma.$transaction(async (tx) => {
-      if (input.reassign_to !== undefined && input.reassign_to !== null && before.role === 'MANAGER') {
-        await reassignReports(tx, userId, input.reassign_to);
+      if (reassignTo !== null && before.role !== 'RECRUIT') {
+        await reassignReports(tx, userId, reassignTo);
       }
 
       const updated = await tx.user.update({
@@ -304,12 +309,18 @@ async function isDescendantOf(startId: string, ancestorId: string): Promise<bool
   return false;
 }
 
+/**
+ * A reassignment target is a manager assignment like any other, so it is held to
+ * FR-AD4/FR-AD5: validated whenever it is supplied, not only on the demotion
+ * path, otherwise reports could be moved to a recruit or a deactivated user.
+ */
+async function assertReassignmentTarget(userId: string, reassignTo: string): Promise<void> {
+  if (reassignTo === userId) throw invalidManager('Reassign the reports to a different manager.');
+  await assertAssignableManager(reassignTo, null);
+}
+
 /** FR-AD6: a demotion may not orphan direct reports without saying where they go. */
-async function assertManagerCanBeDemoted(
-  userId: string,
-  reportCount: number,
-  reassignTo: string | null
-): Promise<void> {
+async function assertManagerCanBeDemoted(reportCount: number, reassignTo: string | null): Promise<void> {
   if (reportCount === 0) return;
 
   if (reassignTo === null) {
@@ -319,9 +330,6 @@ async function assertManagerCanBeDemoted(
       [{ field: 'reassign_to', code: 'MANAGER_HAS_REPORTS', message: String(reportCount) }]
     );
   }
-
-  if (reassignTo === userId) throw invalidManager('Reassign the reports to a different manager.');
-  await assertAssignableManager(reassignTo, null);
 }
 
 async function reassignReports(

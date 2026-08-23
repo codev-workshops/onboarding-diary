@@ -380,6 +380,41 @@ describe('GET /dashboard/org', () => {
     expect(summed).toBe(response.totals.recruits);
   });
 
+  it('drops a deactivated department from the breakdown even when it still has members', async () => {
+    const department = await prisma.department.create({
+      data: { name: `Ephemeral ${crypto.randomUUID().slice(0, 8)}` },
+      select: { id: true, name: true },
+    });
+    const recruit = await prisma.user.create({
+      data: {
+        email: `dash-${crypto.randomUUID()}@onboarding.test`,
+        passwordHash: 'x'.repeat(60),
+        fullName: 'Department Fixture',
+        role: 'RECRUIT',
+        startDate: new Date('2026-01-05T00:00:00Z'),
+        departmentId: department.id,
+      },
+      select: { id: true },
+    });
+
+    try {
+      const active = orgData((await org('admin')).json);
+      expect(active.departments.map((row) => row.department)).toContain(department.name);
+
+      await prisma.department.update({ where: { id: department.id }, data: { isActive: false } });
+
+      const inactive = orgData((await org('admin')).json);
+      expect(inactive.departments.map((row) => row.department)).not.toContain(department.name);
+      // The member is still there — deactivation keeps assignments (US-73) — so
+      // the totals must still reconcile with the rows.
+      const summed = inactive.departments.reduce((total, row) => total + row.recruits, 0);
+      expect(summed).toBe(inactive.totals.recruits);
+    } finally {
+      await prisma.user.delete({ where: { id: recruit.id } });
+      await prisma.department.delete({ where: { id: department.id } });
+    }
+  });
+
   it('never exposes an email address', async () => {
     expect(JSON.stringify((await org('admin')).json)).not.toContain('@onboarding.test');
   });
