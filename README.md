@@ -6,13 +6,14 @@ with manager-scoped views and reporting on top.
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
 
-> **Status: Milestone 9 of 10 complete.** The skeleton, database, seed data, authentication, the
+> **Status: all eleven milestones complete.** The skeleton, database, seed data, authentication, the
 > authorization core, the **task diary**, the **issue log**, **onboarding feedback**, **personal
 > notes** and the **dashboards** are in place: `readable_user_ids` is enforced in SQL by scoped
 > repositories, every entry API, aggregate and UI sits on top of those repositories, and the
 > authorization matrix is proved twice — once against the guards and once through the HTTP handlers.
-> **Reports with CSV and PDF export** are in place; **admin user management is not implemented yet.** See
-> [Implementation status](#implementation-status).
+> **Reports with CSV and PDF export**, **admin user and department management** and the **admin audit
+> log** are in place. See [Implementation status](#implementation-status) and, for what is deliberately
+> not built, [Deferred](#deferred).
 
 ## Quick start
 
@@ -530,6 +531,11 @@ Carried over from the specification and the architecture review; each is a defau
 17. Charts in the PDF are a SHOULD in the requirements (§18.2) and are not implemented.
 
 ## Deferred
+
+**Not implemented, and a MUST in the specification:** authentication rate limiting and account lockout
+(**US-02 AC4**, FR-A6, SEC-10 — D13 of the architecture review). Login is open to online guessing; there
+is no `429` after repeated failures. This is the one required acceptance criterion this build does not
+meet, and it is called out here rather than implied to be covered.
 
 **Phase 2** — report `group_by`, custom `sort` and the "since start date" per-user range preset (D11 of
 the architecture review: the date range plus section selection satisfies the brief), a
