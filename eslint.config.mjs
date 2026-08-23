@@ -50,6 +50,9 @@ const eslintConfig = [
       'src/modules/entries/repositories.ts',
       'src/modules/entries/base-repository.ts',
       'src/modules/audit/service.ts',
+      // The audit table is not entry data: it holds the record of who acted, and
+      // reading it is admin-only rather than owner-scoped.
+      'src/modules/audit/query-service.ts',
       // Report-run metadata is not entry data — parameters only, no titles or
       // bodies — so it is written directly rather than through a repository.
       'src/modules/reports/runs.ts',

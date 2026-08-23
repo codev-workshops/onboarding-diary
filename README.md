@@ -90,6 +90,7 @@ app/
   (app)/admin/overview organisation-wide summary (admin)     done
   (app)/reports        date-ranged reports and exports       done
   (app)/admin/users    user and department administration    done
+  (app)/admin/audit    audit-log listing and filters (admin) done
   change-password      forced change of a temporary password done
   api/v1/auth/...      signup, login, logout, me             done
   api/v1/tasks         list, create, read, patch, delete     done
@@ -100,6 +101,7 @@ app/
   api/v1/reports       JSON preview, CSV and PDF export      done
   api/v1/users         directory, admin CRUD, me, password   done
   api/v1/departments   public list plus admin lifecycle      done
+  api/v1/audit-logs    filtered audit-event listing (admin)  done
   api/health           liveness + readiness probe            done
 middleware.ts          cookie-signature gate for app routes  done
 src/
@@ -109,7 +111,7 @@ src/
     users/             profiles, admin CRUD, self-service    done
     entries/           scoped repositories                   done
     tasks/             task schemas, DTOs and service        done
-    audit/             append-only audit writer              done
+    audit/             append-only audit writer and reader   done
     dashboard/         grouped aggregates and rollups        done
     reports/           date-ranged reports, CSV and PDF      done
   shared/
@@ -289,6 +291,7 @@ and Playwright against a PostgreSQL 16 service container.
 | M8        | Date-ranged reports and CSV export                                 | Done   |
 | M9        | PDF export                                                         | Done   |
 | M10       | Admin user/department management and hardening                     | Done   |
+| M11       | Admin audit-log listing and UI                                     | Done   |
 
 Delivered in M1:
 
@@ -455,6 +458,18 @@ Delivered in M10:
 - `tests/unit/{admin,self}-schemas.spec.ts`, `tests/integration/{admin-endpoints,self-service}.spec.ts`
   and `tests/e2e/admin.spec.ts`
 
+Delivered in M11:
+
+- The admin audit log (US-75): `GET /api/v1/audit-logs` and `/admin/audit`, filterable by actor, target,
+  action, entity type and an inclusive date range, newest first and paginated. `ADMIN` only, enforced in
+  the service rather than by the page, so the API refuses a manager with `403 INSUFFICIENT_ROLE` and the
+  page 404s them
+- The log reads what the writer already redacted: no diary bodies, no passwords and no session tokens
+  reach a row, and the reader adds nothing — strings longer than 120 characters were replaced with
+  `{ redacted: true, length }` at write time
+- `tests/unit/audit-schemas.spec.ts`, `tests/integration/audit-log-endpoints.spec.ts` and the audit case
+  in `tests/e2e/admin.spec.ts`
+
 ### Running the integration suite
 
 `npm run test:integration` reads the seeded users by e-mail and asserts against seeded row counts, so it
@@ -467,6 +482,11 @@ npm run db:reset && npm run test:integration
 The endpoint suites create their own fixtures and delete them again, but rows left behind by an earlier
 end-to-end run (which writes through the UI as a real recruit) will fail the count assertions. CI gets
 this for free because it seeds a fresh service container.
+
+One suite is deliberately an exception: `audit-log-endpoints.spec.ts` cannot clean up after itself,
+because a database trigger rejects any delete on `audit_logs` — that append-only guarantee is the point
+of the table. It tags its fixture rows with a random per-run action marker so runs cannot see each
+other's data, and a `db:reset` is what actually clears them.
 
 ## Assumptions
 
