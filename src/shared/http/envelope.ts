@@ -29,6 +29,10 @@ export function ok<T>(data: T, init?: ResponseInit): NextResponse<SuccessBody<T>
   return NextResponse.json({ data }, init);
 }
 
+export function noContent(): NextResponse {
+  return new NextResponse(null, { status: 204 });
+}
+
 function zodDetails(error: ZodError): ErrorDetail[] {
   return error.issues.map((issue) => ({
     field: issue.path.join('.') || '(body)',
@@ -112,10 +116,15 @@ export function requireJsonContentType(request: Request): void {
   }
 }
 
-/** Reads a JSON body under a strict schema. */
+/**
+ * Reads a JSON body under a strict schema. `inspect` sees the raw object before
+ * the schema does, for the rules that must answer something other than 422 —
+ * naming a privileged field is a 403, not a validation failure (AZ-R5).
+ */
 export async function readJson<Schema extends ZodTypeAny>(
   request: Request,
-  schema: Schema
+  schema: Schema,
+  inspect?: (body: Record<string, unknown>) => void
 ): Promise<output<Schema>> {
   requireJsonContentType(request);
 
@@ -125,6 +134,8 @@ export async function readJson<Schema extends ZodTypeAny>(
   } catch {
     throw new AppError('MALFORMED_JSON', 'The request body is not valid JSON.');
   }
+
+  if (inspect && typeof body === 'object' && body !== null) inspect(body as Record<string, unknown>);
 
   return schema.parse(body);
 }

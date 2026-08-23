@@ -4,17 +4,30 @@ import { prisma } from '@/src/shared/db/prisma';
 import { currentRequestContext } from '@/src/shared/http/request-context';
 
 /**
- * The six actions kept from §22.1 (O2). Each one answers a security question
- * that the entry tables cannot: who was denied, who wrote to somebody else's
- * diary, who read a private note, who changed a role or a reporting line, and
- * what was exported.
+ * The actions kept from §22.1 (O2). Each one answers a security question that
+ * the entry tables cannot: who was denied, who wrote to somebody else's diary,
+ * who read a private note, who changed a role, a reporting line or an account's
+ * existence, what happened to the departments, and what was exported.
  */
 export type AuditAction =
   | 'AUTHZ.DENIED'
   | 'ENTRY.CROSS_USER_UPDATED'
   | 'ENTRY.READ_PRIVILEGED'
+  | 'AUTH.LOGIN_SUCCESS'
+  | 'AUTH.LOGIN_FAILED'
+  | 'AUTH.LOGOUT'
+  | 'AUTH.PASSWORD_CHANGED'
+  | 'AUTH.PASSWORD_RESET'
+  | 'USER.CREATED'
+  | 'USER.UPDATED'
   | 'USER.ROLE_CHANGED'
   | 'USER.MANAGER_CHANGED'
+  | 'USER.DEACTIVATED'
+  | 'USER.REACTIVATED'
+  | 'DEPARTMENT.CREATED'
+  | 'DEPARTMENT.UPDATED'
+  | 'DEPARTMENT.DEACTIVATED'
+  | 'DEPARTMENT.DELETED'
   | 'REPORT.GENERATED';
 
 export type AuditInput = {

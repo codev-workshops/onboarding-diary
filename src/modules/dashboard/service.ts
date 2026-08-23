@@ -15,6 +15,7 @@ import type {
   UserDashboard,
 } from '@/src/modules/dashboard/dto';
 import type { DashboardQuery } from '@/src/modules/dashboard/schemas';
+import { listActiveDepartments } from '@/src/modules/departments/service';
 import { canReadNotesOf } from '@/src/modules/entries/base-repository';
 import { orderByWithTiebreak } from '@/src/modules/entries/paging';
 import {
@@ -285,16 +286,29 @@ export async function getOrgDashboard(actor: Actor, query: DashboardQuery): Prom
   assertRole(actor, ['ADMIN']);
 
   const period = periodFor(query);
-  const [users, grouped] = await Promise.all([listVisibleUsers(actor), groupedCounts(actor, period, {})]);
+  const [users, grouped, activeDepartments] = await Promise.all([
+    listVisibleUsers(actor),
+    groupedCounts(actor, period, {}),
+    listActiveDepartments(),
+  ]);
 
   const recruits = users.filter((user) => user.role === 'RECRUIT');
-  const byDepartment = new Map<string, Set<string>>();
 
+  // Seeded with every active department, so a newly created or emptied one is a
+  // visible zero rather than a missing row: §18.1 asks for a per-department
+  // breakdown, and "no recruits yet" is the answer an admin needs most.
+  const byDepartment = new Map<string, Set<string>>(
+    activeDepartments.map((department) => [department.name, new Set<string>()])
+  );
+
+  // A deactivated department keeps its existing members (US-73), but it is not a
+  // row: those recruits count as unassigned until an admin moves them.
   for (const recruit of recruits) {
-    const name = recruit.department?.name ?? 'Unassigned';
-    const members = byDepartment.get(name) ?? new Set<string>();
+    const name = recruit.department?.name ?? '';
+    const key = byDepartment.has(name) ? name : 'Unassigned';
+    const members = byDepartment.get(key) ?? new Set<string>();
     members.add(recruit.id);
-    byDepartment.set(name, members);
+    byDepartment.set(key, members);
   }
 
   const departments: DepartmentRollup[] = [...byDepartment]

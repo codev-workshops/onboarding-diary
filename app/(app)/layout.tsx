@@ -17,6 +17,9 @@ export const dynamic = 'force-dynamic';
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect('/signed-out');
+  // A temporary password reaches exactly one screen (S-04); the API enforces
+  // the same rule, so this only saves the user a wall of refusals.
+  if (user.must_change_password) redirect('/change-password');
 
   return (
     <AppShell user={user} permissions={permissionsFor(user.role)}>

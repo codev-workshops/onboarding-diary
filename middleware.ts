@@ -40,6 +40,7 @@ export const config = {
     '/team/:path*',
     '/reports/:path*',
     '/profile/:path*',
+    '/change-password',
     '/admin/:path*',
   ],
 };
