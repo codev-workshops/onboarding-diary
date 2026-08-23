@@ -297,6 +297,16 @@ describe('a temporary password', () => {
   });
 });
 
+/** Waits, briefly and boundedly, for the best-effort audit writes to land. */
+async function auditRowsFor(userId: string, expected: string[]) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const rows = await prisma.auditLog.findMany({ where: { targetUserId: userId } });
+    if (expected.every((action) => rows.some((row) => row.action === action))) return rows;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return prisma.auditLog.findMany({ where: { targetUserId: userId } });
+}
+
 describe('authentication auditing', () => {
   it('records a success, a failure and a sign-out, and never the password', async () => {
     const user = await makeUser('Passw0rd!23');
@@ -326,7 +336,9 @@ describe('authentication auditing', () => {
     });
     expect(signedOut.status).toBe(204);
 
-    const rows = await prisma.auditLog.findMany({ where: { targetUserId: user.id } });
+    // Authentication audits are written best-effort, off the response path, so
+    // the row can land just after the handler answers: poll rather than race it.
+    const rows = await auditRowsFor(user.id, ['AUTH.LOGIN_FAILED', 'AUTH.LOGIN_SUCCESS', 'AUTH.LOGOUT']);
     const actions = rows.map((row) => row.action);
     expect(actions).toContain('AUTH.LOGIN_FAILED');
     expect(actions).toContain('AUTH.LOGIN_SUCCESS');
