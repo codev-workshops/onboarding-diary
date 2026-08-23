@@ -6,12 +6,12 @@ with manager-scoped views and reporting on top.
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
 
-> **Status: Milestone 7 of 10 complete.** The skeleton, database, seed data, authentication, the
+> **Status: Milestone 9 of 10 complete.** The skeleton, database, seed data, authentication, the
 > authorization core, the **task diary**, the **issue log**, **onboarding feedback**, **personal
 > notes** and the **dashboards** are in place: `readable_user_ids` is enforced in SQL by scoped
 > repositories, every entry API, aggregate and UI sits on top of those repositories, and the
 > authorization matrix is proved twice — once against the guards and once through the HTTP handlers.
-> **Reports, exports and admin user management are not implemented yet.** See
+> **Reports with CSV and PDF export** are in place; **admin user management is not implemented yet.** See
 > [Implementation status](#implementation-status).
 
 ## Quick start
@@ -88,7 +88,7 @@ app/
   (app)/dashboard      own summary, open issues, activity    done
   (app)/team           roster and recruit detail (mgr/admin) done
   (app)/admin/overview organisation-wide summary (admin)     done
-  (app)/reports        date-ranged reports and exports       [M8-M9]
+  (app)/reports        date-ranged reports and exports       done
   (app)/admin/users    user and department administration    [M10]
   api/v1/auth/...      signup, login, logout, me             done
   api/v1/tasks         list, create, read, patch, delete     done
@@ -96,7 +96,8 @@ app/
   api/v1/feedback      list, create, read, patch, delete     done
   api/v1/notes         list, create, read, patch, delete     done
   api/v1/dashboard     me, team, org and per-user summaries  done
-  api/v1/...           the rest of the REST API              [M8+]
+  api/v1/reports       JSON preview, CSV and PDF export      done
+  api/v1/...           the rest of the REST API              [M10]
   api/health           liveness + readiness probe            done
 middleware.ts          cookie-signature gate for app routes  done
 src/
@@ -108,7 +109,7 @@ src/
     tasks/             task schemas, DTOs and service        done
     audit/             append-only audit writer              done
     dashboard/         grouped aggregates and rollups        done
-    reports/           date-ranged reports, CSV and PDF      [M8-M9]
+    reports/           date-ranged reports, CSV and PDF      done
   shared/
     config/            environment parsing
     db/                Prisma client
@@ -284,7 +285,7 @@ and Playwright against a PostgreSQL 16 service container.
 | M6        | Feedback and notes                                                 | Done    |
 | M7        | Recruit dashboard, manager team list and recruit detail views      | Done    |
 | M8        | Date-ranged reports and CSV export                                 | Done    |
-| M9        | PDF export                                                         | Planned |
+| M9        | PDF export                                                         | Done    |
 | M10       | Admin user/department management and hardening                     | Planned |
 
 Delivered in M1:
@@ -405,8 +406,26 @@ Delivered in M8:
 - `tests/unit/report-{csv,schemas,service}.spec.ts`, `tests/integration/report-endpoints.spec.ts` and
   `tests/e2e/reports.spec.ts`
 
-Not implemented yet, by design: PDF export (M9) and admin user management (M10). The `/admin/users`
-route exists only as a role-gated placeholder.
+Delivered in M9:
+
+- `format: 'PDF'` on the same `POST /api/v1/reports` endpoint. The renderer in
+  `src/modules/reports/pdf.ts` takes the **already-authorized `ReportModel`** and never touches Prisma,
+  so a PDF is byte-for-byte the same dataset the JSON preview and the CSV would have carried — there is
+  no second query to get the scope wrong in
+- A4 portrait, 15 mm margins, a cover block naming the scope, period, filters and confidentiality
+  notice, zebra-striped summary tables, one detail section per page with the column header repeated on
+  every page, and the report id, generated-at and `Page n of m` in every footer
+- Free text is wrapped, and `description`, `content`, `details` and `resolution_notes` are truncated at
+  500 characters with an ellipsis and a footnote pointing at the CSV for the full text
+- Only the two standard PDF fonts are embedded and no remote resource is ever fetched, so a diary entry
+  cannot make the renderer reach the network (SEC-14)
+- `tests/unit/report-pdf.spec.ts` and the `PDF export` block of `tests/integration/report-endpoints.spec.ts`
+  extract the text back out of the generated document and assert on it, so "a manager's PDF contains no
+  private note and no `ADMIN_ONLY` feedback" is checked against what a reader can actually find in the
+  file rather than against the model that was handed to the renderer
+
+Not implemented yet, by design: admin user management (M10). The `/admin/users` route exists only as a
+role-gated placeholder.
 
 ### Running the integration suite
 
@@ -456,6 +475,10 @@ Carried over from the specification and the architecture review; each is a defau
     requirements set a default and a per-entry opt-out (A-03) and nowhere freeze the choice at
     creation, so the product semantics are "the author decides, at any time"; the manager's next read,
     count and dashboard reflect it immediately.
+16. The PDF omits the `user_id` column that the CSV carries (a uuid is unreadable on paper and the
+    subject's name is already in the row), and characters outside WinAnsi — CJK, emoji — are rendered
+    as `?` because only the two standard PDF fonts are embedded. The CSV export is the lossless one.
+17. Charts in the PDF are a SHOULD in the requirements (§18.2) and are not implemented.
 
 ## Deferred
 

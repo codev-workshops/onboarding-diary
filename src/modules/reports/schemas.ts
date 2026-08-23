@@ -73,9 +73,7 @@ export const reportRequestSchema = z
     filters: reportFiltersSchema.optional(),
     include_summary: z.boolean().default(true),
     include_details: z.boolean().default(true),
-    // PDF joins the union in M9; accepting it here would promise a document
-    // this milestone cannot produce.
-    format: z.enum(['JSON', 'CSV']).default('JSON'),
+    format: z.enum(['JSON', 'CSV', 'PDF']).default('JSON'),
   })
   .strict()
   .superRefine((value, ctx) => {

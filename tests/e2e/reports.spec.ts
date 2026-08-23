@@ -52,6 +52,25 @@ test('a recruit previews and downloads their own diary', async ({ page }) => {
   expect(bytes.toString('utf8')).toContain('\r\n');
 });
 
+test('a manager downloads a PDF of their team and it opens as one', async ({ page }) => {
+  await signIn(page, MANAGER);
+  await page.getByLabel('Scope').selectOption('USERS');
+
+  const download = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download PDF' }).click(),
+  ]).then(([event]) => event);
+
+  expect(download.suggestedFilename()).toMatch(
+    /^onboarding-report_team_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.pdf$/
+  );
+
+  const path = await download.path();
+  const bytes = await import('node:fs/promises').then((fs) => fs.readFile(path));
+  expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  expect(bytes.byteLength).toBeGreaterThan(1000);
+});
+
 test('a manager reports on their own recruits and is not offered notes for them', async ({ page }) => {
   await signIn(page, MANAGER);
 
