@@ -71,6 +71,18 @@ describe('sanitizeText', () => {
     expect(sanitizeText('a\tb\u0007c')).toBe('a b c');
     expect(sanitizeText('first\nsecond')).toBe('first\nsecond');
   });
+
+  // WinAnsi maps 0x80–0x9F to €, “, — and friends rather than to the C1
+  // controls, so a pasted C1 byte throws at the font layer — a 500 instead of a
+  // download, which is the failure sanitizeText exists to prevent.
+  it('renders every C1 control rather than throwing at the font layer', async () => {
+    const c1 = Array.from({ length: 0x20 }, (_, index) => String.fromCharCode(0x80 + index)).join('');
+
+    expect(sanitizeText(`a${c1}b`)).toBe(`a${' '.repeat(0x20)}b`);
+    await expect(
+      renderPdf(model([section('tasks', ['title'], [{ title: `pasted${c1}text` }])]))
+    ).resolves.toBeInstanceOf(Uint8Array);
+  });
 });
 
 describe('truncateLongText', () => {

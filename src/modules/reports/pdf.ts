@@ -97,7 +97,10 @@ export function sanitizeText(value: string): string {
 
     if (char === '\n') out += '\n';
     else if (char === '\t') out += ' ';
-    else if (code < 0x20 || code === 0x7f) out += ' ';
+    // C0 and C1 controls alike: WinAnsi maps 0x80–0x9F to typographic glyphs,
+    // not to the control characters that share those code points, so a pasted
+    // C1 byte is exactly the thing that would throw at the font layer.
+    else if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) out += ' ';
     else if (code <= 0xff) out += char;
     else if (WINANSI_EXTRAS.has(char)) out += char;
     else out += '?';
