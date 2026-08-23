@@ -35,6 +35,10 @@ describe('auditLogQuerySchema', () => {
     ['a date that does not exist', { date_from: '2026-02-31' }],
     ['a reversed range', { date_from: '2026-02-02', date_to: '2026-02-01' }],
     ['an unknown field', { owner_id: '11111111-1111-4111-8111-111111111111' }],
+    // An empty filter would compile to `action = ''` and match nothing, which
+    // reads as "there are no events" rather than "you filtered on nothing".
+    ['an empty action', { action: '' }],
+    ['an empty entity type', { entity_type: '  ' }],
     ['a page size past the ceiling', { page_size: '5000' }],
   ])('rejects %s', (_label, query) => {
     expect(parse(query as Record<string, string>).success).toBe(false);

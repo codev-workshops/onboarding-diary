@@ -5,6 +5,7 @@ with manager-scoped views and reporting on top.
 
 - Full requirements: `docs/specification.md`
 - Architecture review that this build follows (MVP scope, simplifications, milestones): `docs/architecture-review.md`
+- Final engineering handoff (status, validation results, gaps, readiness): `docs/FINAL_HANDOFF.md`
 
 > **Status: all eleven milestones complete.** The skeleton, database, seed data, authentication, the
 > authorization core, the **task diary**, the **issue log**, **onboarding feedback**, **personal
@@ -26,6 +27,27 @@ npm run db:migrate          # apply migrations
 npm run db:seed             # demo departments, users and ~130 diary entries
 npm run dev                 # http://localhost:3000
 ```
+
+### Prerequisites
+
+Node.js 20 (the version CI and the Docker image use), npm 10, Docker (for the PostgreSQL 16 container),
+and — for `npm run test:e2e` — the Playwright Chromium browser (`npx playwright install --with-deps chromium`).
+
+### Configuration
+
+`.env` is read by Prisma, the application and Docker Compose. Copy `.env.example` and adjust:
+
+| Variable                                                             | Required     | Purpose                                                                      |
+| -------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                       | yes          | Postgres connection string used by Prisma and the app                        |
+| `SESSION_SECRET`                                                     | yes          | Signing key for the session JWT; generate with `openssl rand -base64 48`     |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | compose only | Credentials and port for the `db` service                                    |
+| `APP_PORT`                                                           | compose only | Host port for the `app` service                                              |
+| `SEED_PASSWORD`                                                      | no           | Overrides the demo password used by `prisma/seed.ts` (default `Passw0rd!23`) |
+| `BUILD_STANDALONE`                                                   | no           | Set to `1` to emit the Next.js standalone output the Docker image needs      |
+
+The cookie is marked `Secure` only when `NODE_ENV=production`, so a non-production deployment served over
+plain HTTP would transmit the session in the clear.
 
 Health probe:
 
@@ -278,21 +300,44 @@ CI (`.github/workflows/ci.yml`) runs lint, format check, typecheck, unit tests, 
 authorization matrix (`npm run test:integration`), build
 and Playwright against a PostgreSQL 16 service container.
 
+### Final validation
+
+Reproduced from a clean clone of the M11 branch and a freshly reset database:
+
+```bash
+npm ci
+cp .env.example .env        # adjust DATABASE_URL / SESSION_SECRET
+npm run db:reset            # migrate + seed
+npm run lint                # 0 errors, 1 warning (unused `_kind` in tests/unit/safe-path.spec.ts)
+npm run format:check        # clean
+npm run typecheck           # clean
+npm test                    # 257 passed (23 files)
+npm run test:integration    # 276 passed (10 files)
+npm run build               # succeeds
+npm run db:reset && npm run test:e2e   # 39 passed
+```
+
+The integration suite asserts against seeded row counts, so it needs the `db:reset` immediately before
+it; running it after an end-to-end run without resetting will fail on data the browser tests wrote.
+
 ## Implementation status
 
-| Milestone | Scope                                                              | Status |
-| --------- | ------------------------------------------------------------------ | ------ |
-| M1        | Skeleton, tooling, Docker, schema, migration, seed, `/health`      | Done   |
-| M2        | Signup, login, logout, session cookie, protected shell             | Done   |
-| M3        | Authorization module, scoped repository, authorization test matrix | Done   |
-| M4        | Task CRUD with filters and pagination                              | Done   |
-| M5        | Issue CRUD with triage, filters and pagination                     | Done   |
-| M6        | Feedback and notes                                                 | Done   |
-| M7        | Recruit dashboard, manager team list and recruit detail views      | Done   |
-| M8        | Date-ranged reports and CSV export                                 | Done   |
-| M9        | PDF export                                                         | Done   |
-| M10       | Admin user/department management and hardening                     | Done   |
-| M11       | Admin audit-log listing and UI                                     | Done   |
+Each milestone is a separate pull request stacked on its predecessor, so the stack merges bottom-up.
+
+| Milestone  | Scope                                                                       | PR                                                                   | Status |
+| ---------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------ |
+| M1         | Skeleton, tooling, Docker, schema, migration, seed, `/health`               | [#90](https://github.com/codev-workshops/onboarding-diary/pull/90)   | Done   |
+| M2         | Signup, login, logout, session cookie, protected shell                      | [#92](https://github.com/codev-workshops/onboarding-diary/pull/92)   | Done   |
+| M3         | Authorization module, scoped repository, authorization test matrix          | [#93](https://github.com/codev-workshops/onboarding-diary/pull/93)   | Done   |
+| M4         | Task CRUD with filters and pagination                                       | [#94](https://github.com/codev-workshops/onboarding-diary/pull/94)   | Done   |
+| M5         | Issue CRUD with triage, filters and pagination                              | [#95](https://github.com/codev-workshops/onboarding-diary/pull/95)   | Done   |
+| M6         | Feedback and notes                                                          | [#96](https://github.com/codev-workshops/onboarding-diary/pull/96)   | Done   |
+| M7         | Recruit dashboard, manager team list and recruit detail views               | [#97](https://github.com/codev-workshops/onboarding-diary/pull/97)   | Done   |
+| M7 cleanup | `403 ACCOUNT_DEACTIVATED`, recruit-only onboarding-day caption, period tabs | [#98](https://github.com/codev-workshops/onboarding-diary/pull/98)   | Done   |
+| M8         | Date-ranged reports, CSV export, privileged-read auditing                   | [#100](https://github.com/codev-workshops/onboarding-diary/pull/100) | Done   |
+| M9         | PDF export                                                                  | [#101](https://github.com/codev-workshops/onboarding-diary/pull/101) | Done   |
+| M10        | Admin user/department management, temporary passwords, full audit set       | [#102](https://github.com/codev-workshops/onboarding-diary/pull/102) | Done   |
+| M11        | Admin audit-log listing and UI (US-75)                                      | [#103](https://github.com/codev-workshops/onboarding-diary/pull/103) | Done   |
 
 Delivered in M1:
 

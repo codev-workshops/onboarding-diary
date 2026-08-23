@@ -170,6 +170,12 @@ describe('GET /audit-logs', () => {
     expect(response.json.error?.code).toBe('VALIDATION_ERROR');
   });
 
+  it('rejects an empty filter rather than answering with an empty page', async () => {
+    const response = await list('admin', '?action=');
+    expect(response.status).toBe(422);
+    expect(response.json.error?.code).toBe('VALIDATION_ERROR');
+  });
+
   it('carries no diary content — long values were reduced at write time', async () => {
     const response = await list('admin', '?page_size=100');
     const serialised = JSON.stringify(page(response.json).items);

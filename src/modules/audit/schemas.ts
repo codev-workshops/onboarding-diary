@@ -12,8 +12,8 @@ export const auditLogQuerySchema = z
     ...paginationFields,
     actor_user_id: z.string().uuid('Choose an actor from the list.').optional(),
     target_user_id: z.string().uuid('Choose a user from the list.').optional(),
-    action: z.string().trim().max(60).optional(),
-    entity_type: z.string().trim().max(40).optional(),
+    action: z.string().trim().min(1).max(60).optional(),
+    entity_type: z.string().trim().min(1).max(40).optional(),
     date_from: entryDateSchema.optional(),
     date_to: entryDateSchema.optional(),
   })
