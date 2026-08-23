@@ -132,7 +132,7 @@ export function ReportPreview({
           {report.withheld.feedback > 0 ? (
             <p data-testid="withheld-notice">
               {report.withheld.feedback} feedback{' '}
-              {report.withheld.feedback === 1 ? 'entry is' : 'entries are'} marked admin-only and are not
+              {report.withheld.feedback === 1 ? 'entry is' : 'entries are'} marked admin-only and not
               included.
             </p>
           ) : null}
