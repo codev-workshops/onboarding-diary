@@ -1,0 +1,79 @@
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.app-header h1 {
+  margin: 0;
+  color: var(--color-primary);
+}
+
+.tagline {
+  color: var(--color-text-muted);
+}
+
+.card {
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background-color: var(--color-surface);
+  text-align: left;
+}
+
+.card h2 {
+  margin-top: 0;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.swatch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.swatch::before {
+  content: '';
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 4px;
+  background-color: var(--swatch-color);
+  border: 1px solid var(--color-border);
+}
+
+.status-primary {
+  --swatch-color: var(--color-primary);
+}
+.status-secondary {
+  --swatch-color: var(--color-secondary);
+}
+.status-accent {
+  --swatch-color: var(--color-accent);
+}
+.status-success {
+  --swatch-color: var(--color-success);
+}
+.status-warning {
+  --swatch-color: var(--color-warning);
+}
+.status-error {
+  --swatch-color: var(--color-error);
+}
