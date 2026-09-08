@@ -6,7 +6,8 @@ assertions, and the
 approved dependency sets — Tailwind, TanStack Query over native `fetch`, ESLint + Prettier, no
 Axios, and a scoped Playwright suite from M6 (ADR-005). Companion to
 [requirements.md](requirements.md),
-[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0 is implemented; M1 is next.
+[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0 and M1 are implemented; M2 is
+next.
 
 Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** backend,
 **React + TypeScript + Vite + React Router + Tailwind** frontend, **JWT sent as
@@ -190,8 +191,9 @@ the next begins.
   the existing CI jobs.
 
 ### M1 — Authentication + Profile
-- Endpoints: `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`,
+- Endpoints (implemented under `/api/v1`): `POST /auth/signup`, `POST /auth/login`,
   `POST /auth/change-password`, `GET /me`, `PATCH /me`, `GET /departments` (list for pickers).
+  There is no logout endpoint: logout is client-side under ADR-006.
 - Password hashing, JWT issuing and `AddJwtBearer` validation, seeded admin from environment
   variables, auth rate limiting, policies and `EntryAccessHandler` (consumed from M2).
 - Frontend: login and signup pages (department dropdown from `GET /departments`), auth context

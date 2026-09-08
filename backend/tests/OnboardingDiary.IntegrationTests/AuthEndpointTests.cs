@@ -16,7 +16,7 @@ public class AuthEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/signup", Signup(email));
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
+        return (await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions.Api))!;
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class AuthEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
         Assert.False(
             string.IsNullOrWhiteSpace(
-                (await ok.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken
+                (await ok.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions.Api))!.AccessToken
             )
         );
 
@@ -119,7 +119,7 @@ public class AuthEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
             auth.AccessToken
         );
 
-        var me = await client.GetFromJsonAsync<UserProfileResponse>("/api/v1/me");
+        var me = await client.GetFromJsonAsync<UserProfileResponse>("/api/v1/me", JsonOptions.Api);
         Assert.Equal(auth.User.Id, me!.Id);
 
         var departments = await client.GetFromJsonAsync<List<DepartmentListItem>>(
@@ -138,7 +138,7 @@ public class AuthEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
         );
 
         Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
-        var updated = (await patch.Content.ReadFromJsonAsync<UserProfileResponse>())!;
+        var updated = (await patch.Content.ReadFromJsonAsync<UserProfileResponse>(JsonOptions.Api))!;
         Assert.Equal("Ada L.", updated.FullName);
         Assert.Equal(department.Id, updated.DepartmentId);
         Assert.Equal(department.Name, updated.DepartmentName);

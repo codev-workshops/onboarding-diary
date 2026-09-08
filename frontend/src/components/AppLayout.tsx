@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../auth/auth-context';
 
 const navItems = [
   { to: '/', label: 'Dashboard', end: true },
@@ -8,10 +9,12 @@ const navItems = [
   { to: '/feedback', label: 'Feedback' },
   { to: '/notes', label: 'Notes' },
   { to: '/reports', label: 'Reports' },
+  { to: '/profile', label: 'Profile' },
 ];
 
 export function AppLayout() {
   const [navOpen, setNavOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -26,6 +29,17 @@ export function AppLayout() {
           Menu
         </button>
         <span className="font-semibold">Onboarding Diary</span>
+
+        <div className="ml-auto flex items-center gap-3">
+          <span className="hidden text-sm text-slate-600 sm:inline">{user?.email}</span>
+          <button
+            type="button"
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+            onClick={signOut}
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       <div className="md:flex">
