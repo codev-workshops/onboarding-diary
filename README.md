@@ -14,6 +14,7 @@ exist; no feature code yet. Feature work starts at M1 (authentication and profil
 | [docs/architecture.md](docs/architecture.md) | Consolidated system view: components, request pipeline, data model, cross-cutting concerns, non-goals |
 | [docs/implementation-plan.md](docs/implementation-plan.md) | Milestones M0–M7, cross-cutting design, testing strategy, risks |
 | [docs/adr/](docs/adr/README.md) | Architecture decision records — one file per decision, index in the folder README |
+| [AGENTS.md](AGENTS.md) | Working instructions for AI agents and contributors: rules, commands, code placement, definition of done |
 
 Start with the architecture document for the system view; read the ADRs for why a given choice
 was made.
