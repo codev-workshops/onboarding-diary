@@ -16,6 +16,9 @@ const profile = {
 const summary = {
   userId: 1,
   tasks: { total: 4, done: 1, open: 3, completionPercentage: 25 },
+  issues: { total: 3, open: 2, openBySeverity: { High: 1, Critical: 1, Low: 0 } },
+  feedbackCount: 2,
+  noteCount: 5,
   recentTasks: [
     {
       id: 7,
@@ -28,6 +31,16 @@ const summary = {
       priority: 'Medium',
       createdAt: '2026-01-06T09:00:00Z',
       updatedAt: '2026-01-06T09:00:00Z',
+    },
+  ],
+  recentActivity: [
+    {
+      kind: 'Issue',
+      id: 3,
+      entryDate: '2026-01-07',
+      title: 'VPN access missing',
+      detail: 'High · Open',
+      updatedAt: '2026-01-07T09:00:00Z',
     },
   ],
 };
@@ -57,6 +70,12 @@ test('shows the task completion summary and recent activity', async () => {
   expect(await screen.findByText('25%')).toBeInTheDocument();
   expect(screen.getByText('Tasks logged').nextElementSibling).toHaveTextContent('4');
   expect(screen.getByText(/In progress/)).toBeInTheDocument();
+  expect(screen.getByText('Open issues').nextElementSibling).toHaveTextContent('2');
+  expect(screen.getByText('Feedback').nextElementSibling).toHaveTextContent('2');
+  expect(screen.getByText('Notes').nextElementSibling).toHaveTextContent('5');
+  expect(screen.getByText('High: 1')).toBeInTheDocument();
+  expect(screen.queryByText('Low: 0')).not.toBeInTheDocument();
+  expect(screen.getByText('VPN access missing')).toBeInTheDocument();
 });
 
 test('prompts an empty recruit to log a first task', async () => {
@@ -68,7 +87,11 @@ test('prompts an empty recruit to log a first task', async () => {
           : {
               userId: 1,
               tasks: { total: 0, done: 0, open: 0, completionPercentage: 0 },
+              issues: { total: 0, open: 0, openBySeverity: {} },
+              feedbackCount: 0,
+              noteCount: 0,
               recentTasks: [],
+              recentActivity: [],
             }
       )
     )

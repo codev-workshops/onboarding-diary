@@ -69,7 +69,7 @@ export interface Paged<T> {
   total: number;
 }
 
-export function taskQueryString(filters: TaskFilters): string {
+export function queryString<T extends object>(filters: T): string {
   const params = new URLSearchParams();
 
   for (const [key, value] of Object.entries(filters)) {
@@ -83,7 +83,7 @@ export function taskQueryString(filters: TaskFilters): string {
 }
 
 export const listTasks = (filters: TaskFilters) =>
-  apiRequest<Paged<Task>>(`/tasks${taskQueryString(filters)}`);
+  apiRequest<Paged<Task>>(`/tasks${queryString(filters)}`);
 
 export const createTask = (payload: TaskPayload) =>
   apiRequest<Task>('/tasks', { method: 'POST', body: payload });
@@ -93,10 +93,27 @@ export const updateTask = (id: number, payload: TaskPayload) =>
 
 export const deleteTask = (id: number) => apiRequest<void>(`/tasks/${id}`, { method: 'DELETE' });
 
+export interface ActivityItem {
+  kind: 'Task' | 'Issue' | 'Feedback' | 'Note';
+  id: number;
+  entryDate: string;
+  title: string;
+  detail: string;
+  updatedAt: string;
+}
+
 export interface DashboardSummary {
   userId: number;
   tasks: { total: number; done: number; open: number; completionPercentage: number };
+  issues: {
+    total: number;
+    open: number;
+    openBySeverity: Partial<Record<'Low' | 'Medium' | 'High' | 'Critical', number>>;
+  };
+  feedbackCount: number;
+  noteCount: number;
   recentTasks: Task[];
+  recentActivity: ActivityItem[];
 }
 
 export const getDashboard = (userId?: number) =>

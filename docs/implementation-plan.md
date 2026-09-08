@@ -6,7 +6,7 @@ assertions, and the
 approved dependency sets — Tailwind, TanStack Query over native `fetch`, ESLint + Prettier, no
 Axios, and a scoped Playwright suite from M6 (ADR-005). Companion to
 [requirements.md](requirements.md),
-[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0 and M1 are implemented; M2 is
+[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0–M3 are implemented; M4 is
 next.
 
 Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** backend,
@@ -235,6 +235,12 @@ the next begins.
 - Frontend: three list screens reusing the M2 components; resolve-issue dialog; tag chips.
 - **Tests**: transition matrix, resolution-notes enforcement, tag normalisation/de-duplication,
   filter correctness.
+- **Status — delivered** (`6239c09` backend, frontend follow-up commit). Built without a separate
+  resolve-issue dialog: the issue dialog offers only the statuses reachable from the current one
+  and requires resolution notes for `Resolved`/`Closed`. Manager and admin keep the M2
+  placeholders on the three new screens until the M4 team roster lands.
+- **Verification**: 51 backend tests (23 unit, 28 integration), 40 frontend tests,
+  lint/format/build green.
 
 ### M4 — Manager + Admin
 - Manager: `GET /dashboard` roster view (per-recruit completion %, open issues, last activity)
