@@ -152,6 +152,15 @@ if (app.Environment.IsDevelopment())
         app.Configuration,
         scope.ServiceProvider.GetRequiredService<TimeProvider>()
     );
+
+    if (E2eSeeder.IsEnabled(app.Environment, app.Configuration))
+    {
+        await E2eSeeder.SeedAsync(
+            db,
+            scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>(),
+            scope.ServiceProvider.GetRequiredService<TimeProvider>()
+        );
+    }
 }
 
 app.UseCors();
