@@ -1,10 +1,11 @@
 # Onboarding Diary — Architecture
 
 Consolidated system view, and the authoritative record for every design decision that does not
-have an ADR. Three decisions are recorded separately in [`adr/`](adr/README.md) — repository
-structure (ADR-001), stack (ADR-002) and database (ADR-003); everything else below is settled
-here. Scope and behaviour come from [`requirements.md`](requirements.md); the build order and the
-current state audit are in [`implementation-plan.md`](implementation-plan.md).
+have an ADR. Four decisions are recorded separately in [`adr/`](adr/README.md) — repository
+structure (ADR-001), stack (ADR-002), database (ADR-003) and authentication (ADR-004);
+everything else below is settled here. Scope and behaviour come from
+[`requirements.md`](requirements.md); the build order and the current state audit are in
+[`implementation-plan.md`](implementation-plan.md).
 
 Status: M0 partially complete — scaffold, tooling, CI and docs exist; data layer, health
 endpoint, test infrastructure and application shell do not.
@@ -19,7 +20,7 @@ JSON, with a SQLite file as the only persistent store.
 ```
 ┌──────────────────────────┐        HTTPS / JSON        ┌─────────────────────────────┐
 │  Browser (SPA)           │  ───────────────────────>  │  OnboardingDiary.Api        │
-│                          │   Authorization: Bearer    │  ASP.NET Core Minimal APIs  │
+│                          │   Cookie: access_token     │  ASP.NET Core Minimal APIs  │
 │  React + TS + Vite       │  <───────────────────────  │  .NET 10                    │
 │  React Router (guards)   │      JSON / ProblemDetails │                             │
 │  React Query + Axios     │      PDF / CSV streams     │  endpoint filters:          │
@@ -66,7 +67,7 @@ slice touches, for one feature:
 HTTP request
   → routing / MapGroup
   → rate limiter            (login endpoints only)
-  → JWT bearer authentication      → 401 on missing/expired/invalid token
+  → JWT authentication (cookie)    → 401 on missing/expired/invalid token
   → authorization policy           → 403 on wrong role
   → validation endpoint filter     → 400 ValidationProblem on bad input
   → handler service
@@ -94,10 +95,21 @@ Endpoint groups, by the milestone that introduces them:
 
 ### 2.4 Authentication and authorization
 
-Login returns a **JWT bearer access token** (8 h; claims: subject, email, role, name). There are
-no refresh tokens and no server-side token state; logout clears the token in the
-browser. Passwords are hashed with PBKDF2 (`PasswordHasher<T>`). Login is rate limited to 5
-attempts per 15 minutes per IP.
+Login issues a **JWT carried in an HttpOnly cookie** named `access_token`
+([ADR-004](adr/ADR-004-authentication-strategy.md)): `Secure` in production, `SameSite=Lax`, 24 h
+expiry, claims for user id, email and role. `JwtBearer` is configured to read the token from the
+cookie when no `Authorization` header is present, so the SPA never touches the token and XSS
+cannot exfiltrate it. There are no refresh tokens and no server-side token state; **logout clears
+the cookie server-side** (the JWT stays valid until expiry, but the browser stops sending it).
+Passwords are hashed with `PasswordHasher<User>` from the Identity shared framework — no Identity
+UI, no Identity tables. The initial admin account is seeded from environment variables at
+startup. Login is rate limited to 5 attempts per 15 minutes per IP.
+
+Because the credential is a cookie, CORS must allow credentials from the Vite dev origin
+(`AllowCredentials` with an explicit origin, never `*`), and state-changing requests need CSRF
+consideration: `SameSite=Lax` blocks cross-site form posts, and the API accepts JSON only, so a
+custom `Content-Type` is required and simple-request forgery is not possible. A cross-origin
+deployment would need `SameSite=None` plus an explicit anti-forgery token.
 
 Authorization runs in two layers: claim-based policies (`AdminOnly`, `RecruitOnly`,
 `ManagerOrAdmin`) for coarse gating, then `EntryAccessHandler` for the relationship check —
@@ -145,11 +157,12 @@ React + TypeScript on Vite, routed by React Router's data router
 ([ADR-002](adr/ADR-002-frontend-and-backend-stack.md)). `src/features/*` mirrors the backend
 feature names so a slice is traceable end to end; anything shared moves to `src/components/`.
 
-- **HTTP** goes through a single configured **Axios** instance in `src/api/`; components never
-  call `fetch` directly.
-- **Auth context** holds the token in memory with a `sessionStorage` fallback for reloads; an
-  Axios request interceptor attaches it, and a response interceptor clears state on 401 and
-  redirects to login preserving the attempted route.
+- **HTTP** goes through a single configured **Axios** instance in `src/api/` with
+  `withCredentials: true`; components never call `fetch` directly. The SPA never reads, stores or
+  attaches the token — the browser sends the `access_token` cookie automatically.
+- **Auth context** holds only the profile returned by `GET /me`, which is also how a session is
+  restored after reload; an Axios response interceptor clears that state on 401 and redirects to
+  login preserving the attempted route. Logout calls the server, which expires the cookie.
 - **Route guards** (`RequireRole`) keep users out of screens their role cannot use.
 - **Server state** lives in the **React Query** cache keyed per resource and filter set,
   invalidated after mutations; no global client store.
@@ -194,7 +207,7 @@ build — the only automated gate, so it must stay green.
 
 ## 6. Deliberate non-goals
 
-No refresh tokens or server-side session revocation; no outbound email of any kind; no SSO; no
+No refresh tokens, no token store and no server-side session revocation; no outbound email of any kind; no SSO; no
 soft delete, undo or audit trail; no Department CRUD UI (seeded reference data only);
 no fixed onboarding period — dashboard progress is task completion percentage; no manager
 comments or editing of recruit entries; no anonymous feedback; no background jobs, caching tier
@@ -207,7 +220,8 @@ or multi-tenancy.
 | Constraint | Consequence today | If it needs to change |
 |---|---|---|
 | SQLite single-writer | fine for this workload | swap the EF Core provider to PostgreSQL and regenerate migrations (supersedes ADR-003); revisit the lower-cased email index and the tag child table |
-| Tokens cannot be revoked before expiry | deactivating a user takes effect at expiry | add refresh tokens with a server-side store, recorded as a new ADR |
+| Tokens cannot be revoked before expiry | deactivating a user takes effect at expiry (up to 24 h) | add refresh tokens with a server-side store, recorded as a new ADR superseding ADR-004 |
+| Cookie auth is single-origin by design | the SPA must be served from the API origin or through the Vite proxy | `SameSite=None` + anti-forgery tokens for a split-origin deployment |
 | Hard deletes | no undo | add an append-only audit table rather than reinstating soft delete |
 | No review gate on `main` | CI is the only safety net | switch to PRs; a workflow change only |
 | Hand-maintained TypeScript DTOs | can drift from the backend contract | generate the client from the OpenAPI document |

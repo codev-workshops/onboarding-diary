@@ -15,13 +15,13 @@ shell do not — see the audit in
 | [docs/requirements.md](docs/requirements.md) | User stories with acceptance criteria, domain model, API specification, validation rules, UI flows |
 | [docs/architecture.md](docs/architecture.md) | Consolidated system view: components, request pipeline, data model, cross-cutting concerns, non-goals |
 | [docs/implementation-plan.md](docs/implementation-plan.md) | Milestones M0–M7, cross-cutting design, testing strategy, risks |
-| [docs/adr/](docs/adr/README.md) | Architecture decision records: repository structure, stack, database |
+| [docs/adr/](docs/adr/README.md) | Architecture decision records: repository structure, stack, database, authentication |
 | [AGENTS.md](AGENTS.md) | Working instructions for AI agents and contributors: rules, commands, code placement, definition of done |
 
 Start with the architecture document for the system view; read the ADRs for why the structure,
-stack and database were chosen. Decisions without an ADR (auth scope, trunk-based development,
-hard deletes, department reference data, incremental schema, no outbound email, API and
-authorization conventions, testing) are specified in the architecture document and the plan.
+stack, database and authentication were chosen. Decisions without an ADR (trunk-based
+development, hard deletes, department reference data, incremental schema, no outbound email, API
+and authorization conventions, testing) are specified in the architecture document and the plan.
 
 ## Stack
 
@@ -30,8 +30,8 @@ authorization conventions, testing) are specified in the architecture document a
 | Backend | .NET 10, ASP.NET Core Minimal APIs, EF Core | [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md) |
 | Frontend | React, TypeScript, Vite, React Router, React Query + Axios | [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md) |
 | Database | SQLite (`onboardingdiary.db`) via EF Core migrations | [ADR-003](docs/adr/ADR-003-database-choice.md) |
-| Auth | JWT bearer access tokens, no refresh tokens | [architecture §3](docs/architecture.md) |
-| Tests | xUnit (unit + integration), Vitest + React Testing Library, Playwright from M6 | [architecture §6](docs/architecture.md) |
+| Auth | JWT in an HttpOnly `access_token` cookie, no refresh tokens | [ADR-004](docs/adr/ADR-004-authentication-strategy.md) |
+| Tests | xUnit (unit + integration), Vitest + React Testing Library, Playwright from M6 | [architecture §5](docs/architecture.md) |
 
 Roles: **Recruit** authors entries, **Manager** reads assigned recruits' entries and generates
 their reports, **Admin** manages users and reads everything.
@@ -84,7 +84,8 @@ npm install
 npm run dev
 ```
 
-From M1 the Vite dev server proxies `/api` to the backend, so the browser sees a single origin.
+From M1 the Vite dev server proxies `/api` to the backend, so the browser sees a single origin —
+required by the cookie-based authentication.
 
 ## Checks
 

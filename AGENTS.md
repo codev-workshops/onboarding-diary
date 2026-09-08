@@ -8,8 +8,9 @@ Read before starting any task:
 1. [`docs/requirements.md`](docs/requirements.md) — what the product must do.
 2. [`docs/implementation-plan.md`](docs/implementation-plan.md) — which milestone the task belongs to.
 3. [`docs/architecture.md`](docs/architecture.md) — how the system fits together.
-4. The [ADRs](docs/adr/README.md) — only three are recorded (repository structure, stack,
-   database); every other binding decision lives in the plan and architecture documents.
+4. The [ADRs](docs/adr/README.md) — only four are recorded (repository structure, stack,
+   database, authentication); every other binding decision lives in the plan and architecture
+   documents.
 
 ---
 
@@ -21,15 +22,19 @@ seems to require breaking one, stop and ask.
 - **Commit to `main`.** No `devin/*` branches, no pull requests unless explicitly requested.
 - **Do not implement anything that is not in the approved requirements.** No speculative
   features, no extra endpoints, no "while I was here" refactors.
-- **Authentication is a JWT access token only.** Never add refresh tokens, token storage,
-  rotation, reuse detection, or revocation lists.
+- **Authentication is a JWT in an HttpOnly `access_token` cookie**
+  ([ADR-004](docs/adr/ADR-004-authentication-strategy.md)): `Secure` in production,
+  `SameSite=Lax`, 24 h. Never put the token in `localStorage`, `sessionStorage` or JavaScript
+  state, and never add refresh tokens, token storage, rotation, reuse detection or revocation
+  lists. Logout clears the cookie server-side.
 - **No outbound email**, no mailer abstraction, no password-reset flow.
 - **Deletes are hard deletes.** Never introduce `deleted_at` columns or global query filters.
 - **Departments are seeded reference data.** No Department CRUD UI.
 - **Schema grows per milestone.** Do not create tables for features you are not implementing in
   this task.
-- **Never commit secrets.** The JWT signing key comes from configuration or environment
-  variables; `onboardingdiary.db`, `.env` and build output are gitignored — keep them that way.
+- **Never commit secrets.** The JWT signing key and the seeded admin credentials come from
+  configuration or environment variables; `onboardingdiary.db`, `.env` and build output are
+  gitignored — keep them that way.
 - **Do not edit an accepted ADR** to change a decision. Add a new ADR that supersedes it and
   update the old record's status.
 
@@ -106,6 +111,10 @@ in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
 - Status codes: 201 + `Location` on create, 204 on delete, 403 when authenticated but not
   permitted, **404 for resources outside the caller's scope** (do not leak existence), 409 on
   conflict.
+- Auth wiring: `JwtBearer` reads the token from the `access_token` cookie when no
+  `Authorization` header is present; CORS is configured with credentials for an explicit origin,
+  never `*`; passwords use `PasswordHasher<User>` (Identity shared framework, no Identity UI or
+  tables).
 - **Authorization is mandatory on every endpoint**: a claim policy (`AdminOnly`,
   `RecruitOnly`, `ManagerOrAdmin`) plus `EntryAccessHandler` for the relationship check whenever
   entry data is involved. Managers and admins never write entry data. Frontend guards are never
@@ -119,9 +128,10 @@ in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
 
 - Data fetching is **React Query over an Axios client**
   ([ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md)). One configured Axios instance in
-  `src/api/`; no bare `fetch` calls in components.
-- Token is held in memory with a `sessionStorage` fallback; the Axios interceptor attaches it
-  and, on 401, clears auth state and redirects to login preserving the attempted route.
+  `src/api/` with `withCredentials: true`; no bare `fetch` calls in components.
+- **The SPA never handles the token** — the browser sends the cookie. Auth context holds the
+  profile from `GET /me`; the Axios response interceptor clears it on 401 and redirects to login
+  preserving the attempted route.
 - Server state goes through the React Query cache with explicit invalidation after mutations; no
   global client store.
 - Forms use schema validation mirroring the server rules — the server stays authoritative.
