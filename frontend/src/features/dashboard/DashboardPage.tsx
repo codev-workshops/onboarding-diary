@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getDashboard, statusLabels } from '../../api/tasks';
 import { useAuth } from '../../auth/auth-context';
+import { ActivitySection } from '../../components/charts/ActivitySection';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ListState';
 import { ChecklistProgressList } from '../checklists/ChecklistProgressList';
 
@@ -71,6 +72,8 @@ export function DashboardPage() {
         <StatCard label="Feedback" value={feedbackCount} />
         <StatCard label="Notes" value={noteCount} />
       </div>
+
+      <ActivitySection tasks={tasks} />
 
       <div>
         <h2 className="text-lg font-semibold">Checklists</h2>

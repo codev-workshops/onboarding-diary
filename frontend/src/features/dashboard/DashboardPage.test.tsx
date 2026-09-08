@@ -30,6 +30,7 @@ const summary = {
       status: 'InProgress',
       priority: 'Medium',
       checklistAssignmentId: null,
+      completedAt: null,
       createdAt: '2026-01-06T09:00:00Z',
       updatedAt: '2026-01-06T09:00:00Z',
     },
@@ -57,6 +58,49 @@ const summary = {
   ],
 };
 
+const trends = {
+  userId: 1,
+  from: '2026-01-05',
+  to: '2026-01-06',
+  days: [
+    {
+      date: '2026-01-05',
+      tasksLogged: 2,
+      tasksCompleted: 1,
+      issuesOpened: 1,
+      issuesResolved: 0,
+      feedbackCount: 1,
+      noteCount: 0,
+    },
+    {
+      date: '2026-01-06',
+      tasksLogged: 1,
+      tasksCompleted: 0,
+      issuesOpened: 0,
+      issuesResolved: 1,
+      feedbackCount: 0,
+      noteCount: 1,
+    },
+  ],
+};
+
+const emptyTrends = {
+  userId: 1,
+  from: '2026-01-05',
+  to: '2026-01-05',
+  days: [
+    {
+      date: '2026-01-05',
+      tasksLogged: 0,
+      tasksCompleted: 0,
+      issuesOpened: 0,
+      issuesResolved: 0,
+      feedbackCount: 0,
+      noteCount: 0,
+    },
+  ],
+};
+
 function json(body: unknown) {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -72,10 +116,14 @@ beforeEach(() => {
 
 afterEach(() => sessionStorage.clear());
 
-test('shows the task completion summary and recent activity', async () => {
-  vi.spyOn(globalThis, 'fetch').mockImplementation((input) =>
-    Promise.resolve(json(String(input).endsWith('/me') ? profile : summary))
-  );
+test('shows the task completion summary, activity charts and recent activity', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/me')) {
+      return Promise.resolve(json(profile));
+    }
+    return Promise.resolve(json(url.includes('/dashboard/trends') ? trends : summary));
+  });
 
   renderWithProviders(<DashboardPage />);
 
@@ -93,31 +141,43 @@ test('shows the task completion summary and recent activity', async () => {
   expect(
     screen.getByRole('progressbar', { name: 'Engineering week one completion' })
   ).toHaveAttribute('aria-valuenow', '25');
+
+  expect(await screen.findByRole('img', { name: /Entries logged per day/ })).toBeInTheDocument();
+  expect(
+    screen.getByRole('img', { name: /Issues opened and resolved per day/ })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('img', { name: 'Task completion status, 1 done and 3 open of 4 tasks' })
+  ).toBeInTheDocument();
 });
 
 test('prompts an empty recruit to log a first task', async () => {
-  vi.spyOn(globalThis, 'fetch').mockImplementation((input) =>
-    Promise.resolve(
-      json(
-        String(input).endsWith('/me')
-          ? profile
-          : {
-              userId: 1,
-              tasks: { total: 0, done: 0, open: 0, completionPercentage: 0 },
-              issues: { total: 0, open: 0, openBySeverity: {} },
-              feedbackCount: 0,
-              noteCount: 0,
-              recentTasks: [],
-              recentActivity: [],
-              checklists: [],
-            }
-      )
-    )
-  );
+  vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith('/me')) {
+      return Promise.resolve(json(profile));
+    }
+    if (url.includes('/dashboard/trends')) {
+      return Promise.resolve(json(emptyTrends));
+    }
+    return Promise.resolve(
+      json({
+        userId: 1,
+        tasks: { total: 0, done: 0, open: 0, completionPercentage: 0 },
+        issues: { total: 0, open: 0, openBySeverity: {} },
+        feedbackCount: 0,
+        noteCount: 0,
+        recentTasks: [],
+        recentActivity: [],
+        checklists: [],
+      })
+    );
+  });
 
   renderWithProviders(<DashboardPage />);
 
   expect(await screen.findByRole('link', { name: 'Log your first task' })).toBeInTheDocument();
+  expect(await screen.findAllByText('Nothing to chart yet.')).toHaveLength(3);
   expect(
     screen.getByRole('link', { name: 'browse the ones available to you' })
   ).toBeInTheDocument();

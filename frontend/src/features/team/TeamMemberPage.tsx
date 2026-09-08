@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client';
 import { issueStatusLabels, listFeedback, listIssues, listNotes } from '../../api/diary';
 import { getDashboard, listTasks, statusLabels } from '../../api/tasks';
 import { getTeamRecruit } from '../../api/team';
+import { ActivitySection } from '../../components/charts/ActivitySection';
 import { EmptyState, LoadingState } from '../../components/ListState';
 import { ChecklistProgressList } from '../checklists/ChecklistProgressList';
 
@@ -76,6 +77,10 @@ export function TeamMemberPage() {
           <StatCard label="Open issues" value={dashboard.data.issues.open} />
           <StatCard label="Feedback" value={dashboard.data.feedbackCount} />
         </div>
+      ) : null}
+
+      {dashboard.isSuccess ? (
+        <ActivitySection userId={userId} tasks={dashboard.data.tasks} />
       ) : null}
 
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Diary sections">

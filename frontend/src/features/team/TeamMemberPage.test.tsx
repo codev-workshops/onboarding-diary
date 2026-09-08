@@ -30,8 +30,34 @@ const member = {
   lastActivityAt: '2026-01-09T09:00:00Z',
 };
 
+const trends = {
+  userId: 9,
+  from: '2026-01-08',
+  to: '2026-01-09',
+  days: [
+    {
+      date: '2026-01-08',
+      tasksLogged: 1,
+      tasksCompleted: 0,
+      issuesOpened: 1,
+      issuesResolved: 0,
+      feedbackCount: 0,
+      noteCount: 0,
+    },
+    {
+      date: '2026-01-09',
+      tasksLogged: 1,
+      tasksCompleted: 2,
+      issuesOpened: 0,
+      issuesResolved: 1,
+      feedbackCount: 1,
+      noteCount: 1,
+    },
+  ],
+};
+
 const dashboard = {
-  tasks: { total: 4, completionPercentage: 50, byStatus: {} },
+  tasks: { total: 4, done: 2, open: 2, completionPercentage: 50 },
   issues: { open: 1, openBySeverity: {} },
   feedbackCount: 2,
   noteCount: 3,
@@ -72,6 +98,9 @@ function mockApi({ memberStatus = 200 }: { memberStatus?: number } = {}) {
           },
         ])
       );
+    }
+    if (url.includes('/dashboard/trends')) {
+      return Promise.resolve(json(trends));
     }
     if (url.includes('/dashboard')) {
       return Promise.resolve(json(dashboard));
@@ -158,6 +187,27 @@ test('shows read-only checklist progress for the recruit', async () => {
 
   const urls = fetchMock.mock.calls.map(([input]) => String(input));
   expect(urls.some((url) => url.includes('/checklists/progress?userId=9'))).toBe(true);
+});
+
+test('renders the recruit activity charts read-only', async () => {
+  const fetchMock = mockApi();
+
+  renderPage();
+
+  expect(await screen.findByRole('img', { name: /Entries logged per day/ })).toBeInTheDocument();
+  expect(
+    screen.getByRole('img', { name: /Issues opened and resolved per day/ })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('img', { name: 'Task completion status, 2 done and 2 open of 4 tasks' })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('table', { name: 'Issues opened and resolved per day' })
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /new|edit|delete/i })).not.toBeInTheDocument();
+
+  const urls = fetchMock.mock.calls.map(([input]) => String(input));
+  expect(urls.some((url) => url.includes('/dashboard/trends?userId=9'))).toBe(true);
 });
 
 test('explains a recruit who is not assigned to the caller', async () => {
