@@ -38,7 +38,7 @@ Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** ba
 
 ---
 
-## 0. Current State (audit as of the M0 scaffold commits)
+## 0. Current State (audit as of the M0 completion commits)
 
 What exists on `main` today, checked against this plan:
 
@@ -47,21 +47,21 @@ What exists on `main` today, checked against this plan:
 | Monorepo scaffold | `backend/` + `frontend/` + root tooling | present | done |
 | Solution file | `OnboardingDiary.sln` | `OnboardingDiary.slnx` (SDK 10 XML format) | done — plan corrected below |
 | Backend project | API project with feature folders | present, folders held by `.gitkeep` | done |
-| `Program.cs` | host with DI, EF Core, auth, CORS, `/healthz` | default template `MapGet("/", …)` only | **remaining** |
-| EF Core + SQLite | `AppDbContext`, `User`, `Department`, initial migration, seed | no packages, no entities, no migration | **remaining** |
-| Test projects | xUnit unit + integration, `WebApplicationFactory` fixture | both projects exist with template `UnitTest1.cs`; no fixture | **partial** |
+| `Program.cs` | host with DI, EF Core, CORS, `/healthz` | EF Core + SQLite at `backend/data/onboardingdiary.db`, explicit-origin CORS, `/healthz`, OpenAPI in development, migrate + seed on development startup | done — auth wiring belongs to M1 |
+| EF Core + SQLite | `AppDbContext`, `User`, `Department`, initial migration, seed | all present; `InitialCreate` creates only `Users` and `Departments`; idempotent departments-only seed | done |
+| Test projects | xUnit unit + integration, `WebApplicationFactory` fixture | `ApiFactory` on a temp-file SQLite database, health + seed integration tests, seeder idempotency unit test | done |
 | Frontend app | Vite React/TS app | present (React 19, Vite 8, TypeScript 6) | done |
-| Frontend shell | layout, nav, router skeleton, Tailwind, placeholder pages | default Vite template (`App.tsx`, demo assets); no React Router, no Tailwind | **remaining** |
-| Frontend tests | Vitest + RTL with a smoke test | not installed; no `test` script | **remaining** |
-| Lint | ESLint + Prettier | **oxlint** (`.oxlintrc.json`, `npm run lint`) from the Vite template | **remaining** — swap to the approved ESLint + Prettier in M0 |
-| CI | build + test both sides | `ci.yml` runs backend restore/build/test and frontend `npm ci`/lint/build; no frontend test step yet | **partial** |
+| Frontend shell | layout, nav, router skeleton, Tailwind, placeholder pages | Tailwind v4 via `@tailwindcss/vite`, React Router data router, responsive sidebar/topbar layout, six placeholder routes, `/api` dev proxy to `:5276` | done |
+| Frontend tests | Vitest + RTL with a smoke test | Vitest + RTL + jsdom, `src/test/setup.ts`, layout smoke test | done |
+| Lint | ESLint + Prettier | `eslint.config.js` + `.prettierrc.json`; oxlint removed | done |
+| CI | build + test both sides | backend restore/build/test; frontend `npm ci`, lint, `format:check`, test, build | done |
 | Tooling pins | `global.json`, Node version in CI | SDK 10.0.400 pinned, Node 24 in CI | done |
 | Docs | not in the original plan | `docs/requirements.md`, `docs/implementation-plan.md`, `docs/architecture.md`, five ADRs (structure, stack, database, authentication, frontend dependency set), root `AGENTS.md` | done, added since |
 | Remote | `codev-workshops/onboarding-diary` | local repo only, no remote configured | **blocked on you** |
 
-So **M0 is roughly half complete**: scaffold, tooling, CI and documentation are in place; the
-data layer, health endpoint, test infrastructure and application shell are not. M0 is finished
-when the items marked *remaining* above are done and its "done when" criterion holds.
+So **M0 is complete**: scaffold, data layer, health endpoint, test infrastructure, tooling, the
+application shell, CI and documentation are all in place. Users are deliberately not seeded and
+no authentication exists yet — both belong to M1.
 
 The environment itself is not reproducible yet: the .NET 10 SDK is absent from the VM snapshot
 and was installed ad hoc into `~/.dotnet`. That belongs in the environment blueprint before the
