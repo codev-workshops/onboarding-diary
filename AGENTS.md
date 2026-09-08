@@ -22,6 +22,15 @@ seems to require breaking one, stop and ask.
 - **Commit to `main`.** No `devin/*` branches, no pull requests unless explicitly requested.
 - **Do not implement anything that is not in the approved requirements.** No speculative
   features, no extra endpoints, no "while I was here" refactors.
+- **Do not introduce new architectural patterns, abstractions or implementation strategies
+  without explicit approval.** Follow the existing architecture, conventions and accepted ADRs.
+  No Strategy pattern, CQRS, MediatR-style dispatch, repository or unit-of-work wrappers over
+  `DbContext`, factories, or other structural layers unless the approved design requires them.
+- **Do not add dependencies without explicit approval** — no new npm packages, no new NuGet
+  packages. Prefer the framework, the standard library and already-approved dependencies. If one
+  is genuinely required, stop and explain why it is needed, what problem it solves, the
+  alternatives considered and the impact of adding it; wait for approval before installing or
+  referencing it. The approved list is §2.1; anything outside it needs approval.
 - **Authentication is a JWT in an HttpOnly `access_token` cookie**
   ([ADR-004](docs/adr/ADR-004-authentication-strategy.md)): `Secure` in production,
   `SameSite=Lax`, 24 h. Never put the token in `localStorage`, `sessionStorage` or JavaScript
@@ -49,6 +58,29 @@ seems to require breaking one, stop and ask.
 
 The solution uses the SDK 10 XML solution format: it is `backend/OnboardingDiary.slnx`, **not**
 `.sln`. Use the `.slnx` path in every `dotnet` command.
+
+### 2.1 Approved dependencies
+
+These are approved; add them to the project when the milestone that needs them arrives. Anything
+**not** on this list requires approval before it is installed or referenced.
+
+Already referenced: `Microsoft.NET.Sdk.Web`, the xUnit test template packages, `react`,
+`react-dom`, `vite`, `@vitejs/plugin-react`, `typescript`, `oxlint`.
+
+| Purpose | Package | Arrives |
+|---|---|---|
+| ORM + provider | `Microsoft.EntityFrameworkCore.Sqlite`, `.Design` (+ `dotnet-ef` tool) | M0 |
+| Authentication | `Microsoft.AspNetCore.Authentication.JwtBearer` | M1 |
+| Integration tests | `Microsoft.AspNetCore.Mvc.Testing` | M0 |
+| Assertions | assertion library — **which one is still open** (Shouldly proposed; FluentAssertions v8 is commercially licensed) | M0 |
+| Validation | `FluentValidation.AspNetCore` | M1 |
+| Reports | `QuestPDF` (PDF), `CsvHelper` (CSV) | M5 |
+| Routing | `react-router-dom` | M1 |
+| Server state / HTTP | `@tanstack/react-query`, `axios` (ADR-002) | M1 |
+| Forms | `react-hook-form`, `zod` | M1 |
+| Frontend tests | `vitest`, `@testing-library/react`, `@testing-library/user-event`, `jsdom` | M0 |
+| E2E | `@playwright/test` | M6 |
+| Styling | **still open** — no styling library chosen | M0 |
 
 ## 3. Commands
 
