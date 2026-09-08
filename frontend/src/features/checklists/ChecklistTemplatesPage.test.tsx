@@ -130,6 +130,21 @@ test('creates a template with reordered items', async () => {
   ]);
 });
 
+test('explains why an item cannot be saved', async () => {
+  const user = userEvent.setup();
+  mockApi();
+
+  renderWithProviders(<ChecklistTemplatesPage />);
+  await user.click(await screen.findByRole('button', { name: 'New template' }));
+
+  const dialog = screen.getByRole('dialog');
+  await user.type(within(dialog).getByLabelText('Name'), 'Sales week one');
+  await user.type(within(dialog).getByLabelText('Title'), 'ab');
+  await user.click(within(dialog).getByRole('button', { name: 'Save template' }));
+
+  expect(await within(dialog).findByText('Enter an item title.')).toBeInTheDocument();
+});
+
 test('sends the full ordered item list when editing', async () => {
   const user = userEvent.setup();
   const fetchMock = mockApi();
