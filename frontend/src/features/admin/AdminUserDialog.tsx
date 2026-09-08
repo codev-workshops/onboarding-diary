@@ -81,7 +81,11 @@ export function AdminUserDialog({
   };
 
   return (
-    <Modal title={user ? `Edit ${user.fullName}` : 'New user'} titleId="admin-user-dialog-title">
+    <Modal
+      title={user ? `Edit ${user.fullName}` : 'New user'}
+      titleId="admin-user-dialog-title"
+      onClose={onClose}
+    >
       <form className="mt-4 space-y-4" noValidate onSubmit={form.handleSubmit(submit)}>
         {user === null ? (
           <>

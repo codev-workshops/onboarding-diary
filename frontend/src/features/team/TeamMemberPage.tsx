@@ -5,6 +5,7 @@ import { ApiError } from '../../api/client';
 import { issueStatusLabels, listFeedback, listIssues, listNotes } from '../../api/diary';
 import { getDashboard, listTasks, statusLabels } from '../../api/tasks';
 import { getTeamRecruit } from '../../api/team';
+import { EmptyState, LoadingState } from '../../components/ListState';
 
 const pageSize = 10;
 
@@ -47,7 +48,7 @@ export function TeamMemberPage() {
   }
 
   if (member.isPending) {
-    return <p className="text-sm text-slate-600">Loading recruit…</p>;
+    return <LoadingState label="Loading recruit…" />;
   }
 
   return (
@@ -81,7 +82,9 @@ export function TeamMemberPage() {
             key={name}
             type="button"
             role="tab"
+            id={`tab-${name}`}
             aria-selected={tab === name}
+            aria-controls="diary-panel"
             className={`rounded-md border px-3 py-1 text-sm ${
               tab === name
                 ? 'border-slate-900 bg-slate-900 text-white'
@@ -94,10 +97,12 @@ export function TeamMemberPage() {
         ))}
       </div>
 
-      {tab === 'Tasks' ? <TaskList userId={userId} /> : null}
-      {tab === 'Issues' ? <IssueList userId={userId} /> : null}
-      {tab === 'Feedback' ? <FeedbackList userId={userId} /> : null}
-      {tab === 'Notes' ? <NoteList userId={userId} /> : null}
+      <div id="diary-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
+        {tab === 'Tasks' ? <TaskList userId={userId} /> : null}
+        {tab === 'Issues' ? <IssueList userId={userId} /> : null}
+        {tab === 'Feedback' ? <FeedbackList userId={userId} /> : null}
+        {tab === 'Notes' ? <NoteList userId={userId} /> : null}
+      </div>
     </section>
   );
 }
@@ -123,15 +128,11 @@ function EntryList({
   children: React.ReactNode;
 }) {
   if (isPending) {
-    return <p className="text-sm text-slate-600">Loading…</p>;
+    return <LoadingState label="Loading…" />;
   }
 
   if (isEmpty) {
-    return (
-      <p className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
-        {emptyLabel}
-      </p>
-    );
+    return <EmptyState message={emptyLabel} />;
   }
 
   return (

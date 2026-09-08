@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiError } from '../../api/client';
 import { listTeamRecruits } from '../../api/team';
 import { useAuth } from '../../auth/auth-context';
 import { inputClass } from '../../components/FormField';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ListState';
 
 const pageSize = 10;
 
@@ -46,29 +46,18 @@ export function TeamPage() {
         />
       </label>
 
-      {query.isPending ? <p className="text-sm text-slate-600">Loading team…</p> : null}
+      {query.isPending ? <LoadingState label="Loading team…" /> : null}
 
       {query.isError ? (
-        <div role="alert" className="space-y-2 text-sm text-red-600">
-          <p>
-            {query.error instanceof ApiError
-              ? query.error.message
-              : 'Could not load the team. Try again.'}
-          </p>
-          <button
-            type="button"
-            className="rounded-md border border-slate-300 px-3 py-1 text-slate-700"
-            onClick={() => void query.refetch()}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorState
+          error={query.error}
+          fallback="Could not load the team. Try again."
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
 
       {query.isSuccess && recruits.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
-          No recruits assigned yet.
-        </div>
+        <EmptyState message="No recruits assigned yet." />
       ) : null}
 
       {recruits.length > 0 ? (

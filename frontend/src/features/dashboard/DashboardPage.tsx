@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ApiError } from '../../api/client';
 import { getDashboard, statusLabels } from '../../api/tasks';
 import { useAuth } from '../../auth/auth-context';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ListState';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -39,25 +39,16 @@ export function DashboardPage() {
   }
 
   if (query.isPending) {
-    return <p className="text-sm text-slate-600">Loading dashboard…</p>;
+    return <LoadingState label="Loading dashboard…" />;
   }
 
   if (query.isError) {
     return (
-      <div role="alert" className="space-y-2 text-sm text-red-600">
-        <p>
-          {query.error instanceof ApiError
-            ? query.error.message
-            : 'Could not load the dashboard. Try again.'}
-        </p>
-        <button
-          type="button"
-          className="rounded-md border border-slate-300 px-3 py-1 text-slate-700"
-          onClick={() => void query.refetch()}
-        >
-          Retry
-        </button>
-      </div>
+      <ErrorState
+        error={query.error}
+        fallback="Could not load the dashboard. Try again."
+        onRetry={() => void query.refetch()}
+      />
     );
   }
 
@@ -100,11 +91,15 @@ export function DashboardPage() {
       <div>
         <h2 className="text-lg font-semibold">Recent tasks</h2>
         {recentTasks.length === 0 ? (
-          <div className="mt-3 rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
-            <p>Nothing logged yet.</p>
-            <Link className="mt-2 inline-block font-medium text-slate-900 underline" to="/tasks">
-              Log your first task
-            </Link>
+          <div className="mt-3">
+            <EmptyState message="Nothing logged yet.">
+              <Link
+                className="mt-2 inline-block text-sm font-medium text-slate-900 underline"
+                to="/tasks"
+              >
+                Log your first task
+              </Link>
+            </EmptyState>
           </div>
         ) : (
           <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">

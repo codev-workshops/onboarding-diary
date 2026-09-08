@@ -59,7 +59,11 @@ export function IssueFormDialog({
   const showResolution = requiresResolutionNotes(form.watch('status'));
 
   return (
-    <Modal title={issue ? 'Edit issue' : 'New issue'} titleId="issue-dialog-title">
+    <Modal
+      title={issue ? 'Edit issue' : 'New issue'}
+      titleId="issue-dialog-title"
+      onClose={onClose}
+    >
       <form
         className="mt-4 space-y-4"
         noValidate

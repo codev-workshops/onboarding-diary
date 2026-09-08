@@ -8,6 +8,7 @@ import { statusLabels } from '../../api/tasks';
 import { listTeamRecruits } from '../../api/team';
 import { useAuth } from '../../auth/auth-context';
 import { buttonClass, inputClass } from '../../components/FormField';
+import { EmptyState, LoadingState } from '../../components/ListState';
 
 const presets = {
   '7': 'Last 7 days',
@@ -243,14 +244,10 @@ export function ReportsPage() {
       ) : null}
 
       {picksRecruit && recruitId === null ? (
-        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
-          Select a recruit to preview their report.
-        </div>
+        <EmptyState message="Select a recruit to preview their report." />
       ) : null}
 
-      {report.isPending && ready ? (
-        <p className="text-sm text-slate-600">Building the report…</p>
-      ) : null}
+      {report.isPending && ready ? <LoadingState label="Building the report…" /> : null}
 
       {report.isError ? (
         <div role="alert" className="space-y-2 text-sm text-red-600">

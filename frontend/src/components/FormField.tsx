@@ -1,3 +1,4 @@
+import { cloneElement, isValidElement } from 'react';
 import type { ReactNode } from 'react';
 
 export function FormField({
@@ -11,14 +12,20 @@ export function FormField({
   error?: string;
   children: ReactNode;
 }) {
+  const errorId = `${htmlFor}-error`;
+  const control =
+    error && isValidElement<{ 'aria-describedby'?: string; 'aria-invalid'?: boolean }>(children)
+      ? cloneElement(children, { 'aria-describedby': errorId, 'aria-invalid': true })
+      : children;
+
   return (
     <div className="space-y-1">
       <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
         {label}
       </label>
-      {children}
+      {control}
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p id={errorId} role="alert" className="text-sm text-red-600">
           {error}
         </p>
       ) : null}

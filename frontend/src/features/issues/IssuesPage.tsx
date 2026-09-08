@@ -12,6 +12,7 @@ import {
 } from '../../api/diary';
 import { useAuth } from '../../auth/auth-context';
 import { buttonClass, inputClass } from '../../components/FormField';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ListState';
 import { ConfirmDelete, RecruitOnlyNotice } from '../../components/Modal';
 import { IssueFormDialog } from './IssueFormDialog';
 
@@ -163,18 +164,18 @@ export function IssuesPage() {
         </label>
       </div>
 
-      {query.isPending ? <p className="text-sm text-slate-600">Loading issues…</p> : null}
+      {query.isPending ? <LoadingState label="Loading issues…" /> : null}
 
       {query.isError ? (
-        <p role="alert" className="text-sm text-red-600">
-          Could not load issues. Try again.
-        </p>
+        <ErrorState
+          error={query.error}
+          fallback="Could not load issues. Try again."
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
 
-      {!query.isPending && !query.isError && issues.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
-          No issues recorded. Raise one when something blocks you.
-        </div>
+      {query.isSuccess && issues.length === 0 ? (
+        <EmptyState message="No issues recorded. Raise one when something blocks you." />
       ) : null}
 
       {issues.length > 0 ? (

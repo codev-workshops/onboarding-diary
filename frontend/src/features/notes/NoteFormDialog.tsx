@@ -50,7 +50,7 @@ export function NoteFormDialog({
   const previewTags = parseTags(form.watch('tags') ?? '');
 
   return (
-    <Modal title={note ? 'Edit note' : 'New note'} titleId="note-dialog-title">
+    <Modal title={note ? 'Edit note' : 'New note'} titleId="note-dialog-title" onClose={onClose}>
       <form
         className="mt-4 space-y-4"
         noValidate

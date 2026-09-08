@@ -4,6 +4,7 @@ import type { Note, NoteFilters, NotePayload } from '../../api/diary';
 import { createNote, deleteNote, listNotes, updateNote } from '../../api/diary';
 import { useAuth } from '../../auth/auth-context';
 import { buttonClass, inputClass } from '../../components/FormField';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ListState';
 import { ConfirmDelete, RecruitOnlyNotice } from '../../components/Modal';
 import { NoteFormDialog } from './NoteFormDialog';
 
@@ -115,18 +116,18 @@ export function NotesPage() {
         </label>
       </div>
 
-      {query.isPending ? <p className="text-sm text-slate-600">Loading notes…</p> : null}
+      {query.isPending ? <LoadingState label="Loading notes…" /> : null}
 
       {query.isError ? (
-        <p role="alert" className="text-sm text-red-600">
-          Could not load notes. Try again.
-        </p>
+        <ErrorState
+          error={query.error}
+          fallback="Could not load notes. Try again."
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
 
-      {!query.isPending && !query.isError && notes.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
-          No notes captured yet.
-        </div>
+      {query.isSuccess && notes.length === 0 ? (
+        <EmptyState message="No notes captured yet." />
       ) : null}
 
       {notes.length > 0 ? (

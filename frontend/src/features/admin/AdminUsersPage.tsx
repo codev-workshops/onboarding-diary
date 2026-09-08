@@ -8,8 +8,8 @@ import type {
 } from '../../api/admin';
 import { createUser, getAdminStats, listUsers, updateUser, userRoles } from '../../api/admin';
 import { listDepartments } from '../../api/auth';
-import { ApiError } from '../../api/client';
 import { buttonClass, inputClass } from '../../components/FormField';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ListState';
 import { AdminUserDialog } from './AdminUserDialog';
 
 const pageSize = 10;
@@ -130,29 +130,18 @@ export function AdminUsersPage() {
         </label>
       </div>
 
-      {query.isPending ? <p className="text-sm text-slate-600">Loading users…</p> : null}
+      {query.isPending ? <LoadingState label="Loading users…" /> : null}
 
       {query.isError ? (
-        <div role="alert" className="space-y-2 text-sm text-red-600">
-          <p>
-            {query.error instanceof ApiError
-              ? query.error.message
-              : 'Could not load users. Try again.'}
-          </p>
-          <button
-            type="button"
-            className="rounded-md border border-slate-300 px-3 py-1 text-slate-700"
-            onClick={() => void query.refetch()}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorState
+          error={query.error}
+          fallback="Could not load users. Try again."
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
 
       {query.isSuccess && users.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
-          No users match these filters.
-        </p>
+        <EmptyState message="No users match these filters." />
       ) : null}
 
       {users.length > 0 ? (

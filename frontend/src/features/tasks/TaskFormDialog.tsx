@@ -45,7 +45,7 @@ export function TaskFormDialog({
   });
 
   return (
-    <Modal title={task ? 'Edit task' : 'New task'} titleId="task-dialog-title">
+    <Modal title={task ? 'Edit task' : 'New task'} titleId="task-dialog-title" onClose={onClose}>
       <form
         className="mt-4 space-y-4"
         noValidate

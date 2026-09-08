@@ -31,6 +31,12 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded-md focus:bg-slate-900 focus:px-3 focus:py-2 focus:text-sm focus:text-white"
+      >
+        Skip to content
+      </a>
       <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
         <button
           type="button"
@@ -58,6 +64,7 @@ export function AppLayout() {
       <div className="md:flex">
         <nav
           id="primary-navigation"
+          aria-label="Primary"
           className={`${navOpen ? 'block' : 'hidden'} border-b border-slate-200 bg-white p-3 md:block md:w-56 md:shrink-0 md:border-r md:border-b-0`}
         >
           <ul className="space-y-1">
@@ -80,7 +87,7 @@ export function AppLayout() {
           </ul>
         </nav>
 
-        <main className="min-w-0 flex-1 p-6">
+        <main id="main-content" className="min-w-0 flex-1 p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

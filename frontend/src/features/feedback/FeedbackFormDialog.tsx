@@ -41,7 +41,11 @@ export function FeedbackFormDialog({
   });
 
   return (
-    <Modal title={feedback ? 'Edit feedback' : 'New feedback'} titleId="feedback-dialog-title">
+    <Modal
+      title={feedback ? 'Edit feedback' : 'New feedback'}
+      titleId="feedback-dialog-title"
+      onClose={onClose}
+    >
       <form
         className="mt-4 space-y-4"
         noValidate
