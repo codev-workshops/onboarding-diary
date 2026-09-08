@@ -39,6 +39,7 @@ public class ReportPdfTests
                 TaskCategory.Training,
                 TaskEntryStatus.Done,
                 TaskPriority.High,
+                null,
                 Stamp,
                 Stamp
             ))

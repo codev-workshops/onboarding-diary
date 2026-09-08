@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Api.Domain;
+using OnboardingDiary.Api.Features.Checklists;
 using OnboardingDiary.Api.Features.Tasks;
 using OnboardingDiary.Api.Infrastructure;
 
 namespace OnboardingDiary.Api.Features.Dashboard;
 
-public class DashboardService(AppDbContext db)
+public class DashboardService(AppDbContext db, ChecklistService checklists)
 {
     public const int RecentTaskCount = 5;
 
@@ -55,7 +56,8 @@ public class DashboardService(AppDbContext db)
             await feedback.CountAsync(cancellationToken),
             await notes.CountAsync(cancellationToken),
             recentTasks,
-            await RecentActivityAsync(userId, cancellationToken)
+            await RecentActivityAsync(userId, cancellationToken),
+            await checklists.ListProgressAsync(userId, cancellationToken)
         );
     }
 

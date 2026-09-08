@@ -30,6 +30,7 @@ public record TaskResponse(
     TaskCategory Category,
     TaskEntryStatus Status,
     TaskPriority Priority,
+    int? ChecklistAssignmentId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt
 )
@@ -44,6 +45,7 @@ public record TaskResponse(
             task.Category,
             task.Status,
             task.Priority,
+            task.ChecklistAssignmentId,
             task.CreatedAt,
             task.UpdatedAt
         );

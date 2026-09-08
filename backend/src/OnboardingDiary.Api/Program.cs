@@ -12,6 +12,7 @@ using OnboardingDiary.Api.Domain;
 using OnboardingDiary.Api.Endpoints;
 using OnboardingDiary.Api.Features.Admin;
 using OnboardingDiary.Api.Features.Auth;
+using OnboardingDiary.Api.Features.Checklists;
 using OnboardingDiary.Api.Features.Dashboard;
 using OnboardingDiary.Api.Features.Diary;
 using OnboardingDiary.Api.Features.Feedback;
@@ -67,6 +68,7 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<ChecklistService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddValidatorsFromAssemblyContaining<SignupRequestValidator>();
 
@@ -179,6 +181,7 @@ app.MapDashboardEndpoints();
 app.MapTeamEndpoints();
 app.MapAdminEndpoints();
 app.MapReportEndpoints();
+app.MapChecklistEndpoints();
 
 app.Run();
 

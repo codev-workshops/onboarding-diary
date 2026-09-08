@@ -1,4 +1,5 @@
 using OnboardingDiary.Api.Domain;
+using OnboardingDiary.Api.Features.Checklists;
 using OnboardingDiary.Api.Features.Tasks;
 
 namespace OnboardingDiary.Api.Features.Dashboard;
@@ -27,5 +28,6 @@ public record DashboardResponse(
     int FeedbackCount,
     int NoteCount,
     IReadOnlyList<TaskResponse> RecentTasks,
-    IReadOnlyList<ActivityItem> RecentActivity
+    IReadOnlyList<ActivityItem> RecentActivity,
+    IReadOnlyList<ChecklistProgressResponse> Checklists
 );
