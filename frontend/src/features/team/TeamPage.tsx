@@ -80,8 +80,14 @@ export function TeamPage() {
               </Link>
               <p className="text-sm text-slate-600">{recruit.email}</p>
               <p className="mt-1 text-sm text-slate-600">
-                {recruit.departmentName ?? 'No department'} · {recruit.completionPercentage}%
-                complete · {recruit.openIssueCount} open issues
+                {recruit.departmentName ?? 'No department'} · {recruit.taskCount} tasks ·{' '}
+                {recruit.completionPercentage}% complete · {recruit.openIssueCount} open issues
+              </p>
+              <p className="text-sm text-slate-600">
+                {recruit.lastActivityAt === null
+                  ? 'No activity'
+                  : `Last activity ${recruit.lastActivityAt.slice(0, 10)}`}{' '}
+                · {recruit.isActive ? 'Active' : 'Inactive'}
               </p>
             </li>
           ))}

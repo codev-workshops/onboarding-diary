@@ -70,7 +70,7 @@ function mockApi({ memberStatus = 200 }: { memberStatus?: number } = {}) {
               userId: 9,
               entryDate: '2026-01-09',
               title: 'Set up laptop',
-              description: null,
+              description: 'Installed the toolchain and joined the VPN.',
               category: 'Setup',
               priority: 'Medium',
               status: 'Completed',
@@ -115,6 +115,7 @@ test('shows the recruit summary and their tasks without write controls', async (
     screen.getByText('Read-only view. Only the recruit can change their diary entries.')
   ).toBeInTheDocument();
   expect(await screen.findByText('Set up laptop')).toBeInTheDocument();
+  expect(screen.getByText('Installed the toolchain and joined the VPN.')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /new|edit|delete/i })).not.toBeInTheDocument();
 });
 

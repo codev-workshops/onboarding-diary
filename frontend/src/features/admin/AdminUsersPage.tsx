@@ -163,6 +163,12 @@ export function AdminUsersPage() {
               <p className="text-sm text-slate-600">
                 {user.email} · {user.role} · {user.isActive ? 'Active' : 'Inactive'}
               </p>
+              <p className="text-sm text-slate-600">
+                {user.departmentName ?? 'No department'} ·{' '}
+                {user.role === 'Recruit'
+                  ? `Manager: ${user.managerName ?? 'unassigned'}`
+                  : 'No manager'}
+              </p>
               <button
                 type="button"
                 className="mt-2 rounded-md border border-slate-300 px-2 py-1 text-sm"

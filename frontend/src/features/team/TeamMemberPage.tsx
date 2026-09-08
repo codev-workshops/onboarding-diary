@@ -141,6 +141,18 @@ function EntryList({
   );
 }
 
+function Entry({ title, meta, body }: { title: string; meta: string; body?: string | null }) {
+  return (
+    <li className="space-y-1 p-3 text-sm">
+      <div className="flex flex-wrap justify-between gap-2">
+        <span className="font-medium">{title}</span>
+        <span className="text-slate-600">{meta}</span>
+      </div>
+      {body ? <p className="whitespace-pre-line text-slate-700">{body}</p> : null}
+    </li>
+  );
+}
+
 function TaskList({ userId }: { userId: number }) {
   const query = useQuery({
     queryKey: ['tasks', 'team', userId],
@@ -155,12 +167,12 @@ function TaskList({ userId }: { userId: number }) {
       emptyLabel="No tasks logged."
     >
       {items.map((task) => (
-        <li key={task.id} className="flex flex-wrap justify-between gap-2 p-3 text-sm">
-          <span className="font-medium">{task.title}</span>
-          <span className="text-slate-600">
-            {task.entryDate} · {task.category} · {statusLabels[task.status]}
-          </span>
-        </li>
+        <Entry
+          key={task.id}
+          title={task.title}
+          meta={`${task.entryDate} · ${task.category} · ${statusLabels[task.status]}`}
+          body={task.description}
+        />
       ))}
     </EntryList>
   );
@@ -180,12 +192,16 @@ function IssueList({ userId }: { userId: number }) {
       emptyLabel="No issues logged."
     >
       {items.map((issue) => (
-        <li key={issue.id} className="flex flex-wrap justify-between gap-2 p-3 text-sm">
-          <span className="font-medium">{issue.title}</span>
-          <span className="text-slate-600">
-            {issue.entryDate} · {issue.severity} · {issueStatusLabels[issue.status]}
-          </span>
-        </li>
+        <Entry
+          key={issue.id}
+          title={issue.title}
+          meta={`${issue.entryDate} · ${issue.severity} · ${issueStatusLabels[issue.status]}`}
+          body={
+            issue.resolutionNotes === null
+              ? issue.description
+              : `${issue.description ?? ''}\nResolution: ${issue.resolutionNotes}`.trim()
+          }
+        />
       ))}
     </EntryList>
   );
@@ -205,12 +221,12 @@ function FeedbackList({ userId }: { userId: number }) {
       emptyLabel="No feedback logged."
     >
       {items.map((feedback) => (
-        <li key={feedback.id} className="flex flex-wrap justify-between gap-2 p-3 text-sm">
-          <span className="font-medium">{feedback.title}</span>
-          <span className="text-slate-600">
-            {feedback.entryDate} · {feedback.type}
-          </span>
-        </li>
+        <Entry
+          key={feedback.id}
+          title={feedback.title}
+          meta={`${feedback.entryDate} · ${feedback.type}`}
+          body={feedback.message}
+        />
       ))}
     </EntryList>
   );
@@ -230,13 +246,12 @@ function NoteList({ userId }: { userId: number }) {
       emptyLabel="No notes logged."
     >
       {items.map((note) => (
-        <li key={note.id} className="flex flex-wrap justify-between gap-2 p-3 text-sm">
-          <span className="font-medium">{note.title}</span>
-          <span className="text-slate-600">
-            {note.entryDate}
-            {note.tags.length > 0 ? ` · ${note.tags.join(', ')}` : ''}
-          </span>
-        </li>
+        <Entry
+          key={note.id}
+          title={note.title}
+          meta={`${note.entryDate}${note.tags.length > 0 ? ` · ${note.tags.join(', ')}` : ''}`}
+          body={note.content}
+        />
       ))}
     </EntryList>
   );
