@@ -1,8 +1,19 @@
 # Onboarding Diary Application — Elaborated Requirements
 
-Version 0.2 — expands the original brief with user stories, domain model, API contract, UI
-flows, validation rules, non-functional requirements, and proposed extensions. Open questions
-from v0.1 are now decided and folded in (see §11).
+Version 0.3 — expands the original brief with user stories, domain model, API contract, UI
+flows, validation rules, non-functional requirements, and proposed extensions, and is aligned
+with every decision locked since v0.2 and with what is implemented in the repository.
+
+**How to read this document.** Every requirement carries one of three provenance markers, and
+§11 lists them in full:
+
+| Marker | Meaning |
+|---|---|
+| **[SRC]** | Comes from the original customer brief. |
+| **[DEC]** | An approved assumption or decision taken during elaboration (see §11.2 and the [ADRs](adr/README.md)). |
+| **[OUT]** | Explicitly out of scope for the MVP (§11.3). |
+
+Unmarked prose is elaboration of a marked requirement.
 
 ---
 
@@ -25,7 +36,7 @@ users and org-wide data.
 |---|---|---|
 | **Recruit** | New hire in their onboarding period | Own entries only (full CRUD) |
 | **Manager** | Owns one or more recruits | Strictly read-only on entries of assigned recruits; reports for those recruits |
-| **Admin** | HR / platform owner | Full read on all data; manages users, departments, manager assignments |
+| **Admin** | HR / platform owner | Full read on all data; manages users, manager assignments and department assignment |
 
 Role is a single value per user (no multi-role in v1). Admin may act on any recruit's data but
 does not author diary entries.
@@ -40,7 +51,7 @@ does not author diary entries.
 | Generate report for self | Yes | n/a | Yes |
 | Generate report for a recruit | No | Assigned only | Any |
 | Create/deactivate users, assign managers | No | No | Yes |
-| Manage departments | No | No | Yes |
+| Assign departments to users | No | No | Yes |
 
 ---
 
@@ -50,23 +61,33 @@ does not author diary entries.
 - **A1** As a visitor, I can sign up with email + password so I can start my diary.
   - AC: email must be unique and valid; password ≥ 10 chars with at least one letter and one
     digit; on success I am logged in and land on the dashboard.
-  - AC: self sign-up creates a `RECRUIT`; manager/admin accounts are created by an admin.
-- **A2** As a user, I can log in and stay signed in across page refreshes.
-  - AC: JWT access token (15 min) + refresh token (7 days, httpOnly cookie); invalid credentials
-    return a generic "invalid email or password" (no user enumeration).
+  - AC: self sign-up creates a `Recruit`; manager/admin accounts are created by an admin.
+- **A2** As a user, I can log in and stay signed in across page refreshes. **[SRC]**
+  - AC: login returns a JWT access token (60 minutes) in the response body; the SPA sends it
+    back as `Authorization: Bearer <token>` **[DEC — ADR-006]**.
+  - AC: no authentication cookie, no `/auth/refresh`, no refresh-token storage or rotation
+    **[OUT]**.
+  - AC: the SPA holds the token in auth state and mirrors it into `sessionStorage` so a page
+    refresh keeps the session; `localStorage` is never used **[DEC — ADR-006]**.
+  - AC: an expired or invalid token yields 401 and the user signs in again.
+  - AC: invalid credentials return a generic "invalid email or password" (no user enumeration).
 - **A3** As a user, I can view and edit my profile (name, department, start date; role is
-  read-only unless admin).
-  - AC: department is selected from the managed `Department` list, not typed free-text.
-- **A4** As a user, I can log out, invalidating my refresh token.
-- **A5** As an admin, I can reset a user's password to a temporary value from the admin screen.
-  - AC: no email is sent — the temporary password is shown once to the admin.
-  - Out of scope: self-service password reset, email verification, any mailer.
+  read-only unless admin). **[SRC]**
+  - AC: department is selected from the managed `Department` list, not typed free-text
+    **[DEC]**.
+- **A4** As a user, I can log out. **[SRC]**
+  - AC: logout is client-side — the SPA discards the access token; there is no server-side
+    session or token revocation **[DEC — ADR-006]**.
+- **A5** As a user, I can change my own password by supplying the current one. **[SRC]**
+  - Out of scope: admin-issued temporary passwords, admin password reset, self-service password
+    reset, email verification, any mailer **[OUT]**.
 
 ### Epic B — Task Log
 - **B1** As a recruit, I can create a task entry with date, title, description, category,
   status, priority.
 - **B2** As a recruit, I can edit or delete my own task entries.
-  - AC: delete is a soft delete (`deleted_at`), excluded from all lists and reports.
+  - AC: delete removes the row (hard delete); there is no global soft-delete mechanism. Any
+    feature that needs different behaviour states it explicitly **[DEC]**.
 - **B3** As a recruit, I can filter/sort my tasks by date range, category, status, priority and
   free-text search on title/description.
 - **B4** As a recruit, I can mark a task `DONE` in one click from the list view.
@@ -84,10 +105,7 @@ does not author diary entries.
 ### Epic D — Feedback Notes
 - **D1** As a recruit, I can submit feedback with date, subject, type (Positive / Suggestion /
   Concern), details.
-- **D2** As a recruit, I can mark a feedback item anonymous; anonymous items appear to
-  managers/admins without recruit identity (still attributed in the DB for abuse handling, but
-  never returned in manager-facing payloads).
-- **D3** As a manager/admin, I can browse feedback for my scope filtered by type and date.
+- **D2** As a manager/admin, I can browse feedback for my scope filtered by type and date.
 
 ### Epic E — Additional Notes
 - **E1** As a recruit, I can capture free-form notes with date, title, content, tags.
@@ -112,7 +130,9 @@ does not author diary entries.
     `section` column (decision: single CSV with `section` column for simplicity).
   - AC: PDF includes header (recruit name, department, date range, generated timestamp),
     summary counts, and per-section tables.
-- **G4** Reports respect soft deletes and role scoping.
+- **G4** Reports respect role scoping.
+  - AC: reports are generated synchronously on request; there are no persisted report jobs,
+    queues or report history **[DEC]**.
 
 ---
 
@@ -127,25 +147,31 @@ User            id, email(unique), password_hash, full_name, role,
                 created_at, updated_at
 
 TaskEntry       id, user_id(FK), entry_date, title, description, category,
-                status, priority, deleted_at, created_at, updated_at
+                status, priority, created_at, updated_at
 
 IssueEntry      id, user_id(FK), entry_date, title, description, severity,
-                status, resolution_notes, resolved_at, deleted_at,
+                status, resolution_notes, resolved_at,
                 created_at, updated_at
 
 FeedbackEntry   id, user_id(FK), entry_date, subject, type, details,
-                is_anonymous, deleted_at, created_at, updated_at
+                created_at, updated_at
 
-NoteEntry       id, user_id(FK), entry_date, title, content, tags,
-                deleted_at, created_at, updated_at
+NoteEntry       id, user_id(FK), entry_date, title, content,
+                created_at, updated_at
 
 NoteTag         id, note_id(FK NoteEntry), tag        -- SQLite has no array type
-
-RefreshToken    id, user_id, token_hash, expires_at, revoked_at
 ```
 
+`Department` is managed reference data — `Department(id, name, is_active)` — and `User`
+references it through `department_id`. Department is never a free-text profile field **[DEC]**.
+Tables arrive with the milestone that implements their slice (§10); only `User` and
+`Department` exist today.
+
 ### Enumerations
-- `Role`: `RECRUIT | MANAGER | ADMIN`
+
+The API serialises enums as their readable names, e.g. `"role": "Recruit"` **[DEC]**.
+
+- `Role`: `Recruit | Manager | Admin`
 - `TaskCategory`: `TRAINING | SETUP | MEETING | DOCUMENTATION | CODING | SHADOWING | OTHER`
 - `TaskStatus`: `TODO | IN_PROGRESS | BLOCKED | DONE`
 - `Priority`: `LOW | MEDIUM | HIGH`
@@ -187,8 +213,8 @@ letter and a digit, checked against a small common-password denylist; `start_dat
 recruits; `department_id` must reference an active department; a manager cannot be their own
 manager and manager chains may not form cycles.
 
-**Departments** — `name` required, 2–60 chars, unique (case-insensitive); a department in use by
-any user cannot be deleted, only deactivated.
+**Departments** — seeded reference data: `name` required, 2–60 chars, unique
+(case-insensitive); only active departments may be assigned to a user.
 
 **Reports** — `from` ≤ `to`; range ≤ 366 days; `format ∈ {pdf, csv}`;
 `sections ⊆ {tasks, issues, feedback, notes}` (default: all).
@@ -197,7 +223,8 @@ any user cannot be deleted, only deactivated.
 
 ## 6. API Specification
 
-Base path `/api/v1`. JSON, `Authorization: Bearer <access_token>` unless noted.
+Base path `/api/v1`. JSON, `Authorization: Bearer <access_token>` unless noted; enum-valued
+fields are readable strings (`"Recruit"`, `"Manager"`, `"Admin"`).
 Errors use RFC 7807 problem+json (ASP.NET Core `ProblemDetails`):
 `{type, title, status, detail, errors{}}`.
 
@@ -205,12 +232,12 @@ Errors use RFC 7807 problem+json (ASP.NET Core `ProblemDetails`):
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/auth/signup` | public — `{email, password, full_name, department_id, start_date}` |
-| POST | `/auth/login` | public — returns access token + sets refresh cookie |
-| POST | `/auth/refresh` | rotates refresh token |
-| POST | `/auth/logout` | revokes refresh token |
+| POST | `/auth/login` | public — returns `{access_token, expires_at, user}` in the response body |
 | POST | `/auth/change-password` | authenticated — `{current_password, new_password}` |
 | GET | `/me` | current profile |
 | PATCH | `/me` | update `full_name`, `department_id` (and `start_date` for recruits) |
+
+There is no logout endpoint: logout discards the token in the client **[DEC — ADR-006]**.
 
 ### Entries (identical shape for `tasks`, `issues`, `feedback`, `notes`)
 | Method | Path | Notes |
@@ -219,7 +246,7 @@ Errors use RFC 7807 problem+json (ASP.NET Core `ProblemDetails`):
 | POST | `/tasks` | recruit only |
 | GET | `/tasks/{id}` | owner, assigned manager (read-only), or admin |
 | PATCH | `/tasks/{id}` | owner only |
-| DELETE | `/tasks/{id}` | owner only, soft delete |
+| DELETE | `/tasks/{id}` | owner only, hard delete |
 
 `/issues` filters: `from`, `to`, `status`, `severity`, `q`, `user_id`.
 `/feedback` filters: `from`, `to`, `type`, `user_id`.
@@ -242,12 +269,8 @@ List responses: `{items: [...], page, page_size, total}`.
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/admin/users` | filters: `role`, `department_id`, `is_active`, `q` |
-| POST | `/admin/users` | create user with role, temp password |
+| POST | `/admin/users` | create user with role and department |
 | PATCH | `/admin/users/{id}` | role, `department_id`, `manager_id`, `is_active` |
-| POST | `/admin/users/{id}/reset-password` | returns a one-time temporary password (no email) |
-| GET | `/admin/departments` | list departments |
-| POST | `/admin/departments` | create |
-| PATCH | `/admin/departments/{id}` | rename / activate / deactivate |
 | GET | `/admin/stats` | org-wide counts |
 
 `GET /departments` is available to any authenticated user (and unauthenticated for the signup
@@ -272,8 +295,7 @@ mobile (≤ 640 px).
    opens detail drawer with edit/delete.
 3. **Issue list.** Same pattern; severity shown as a coloured chip; resolving an issue opens a
    dialog that requires resolution notes.
-4. **Feedback.** Simple list plus a composer with type selector and an "submit anonymously"
-   checkbox.
+4. **Feedback.** Simple list plus a composer with a type selector.
 5. **Notes.** Card grid, tag chips act as one-click filters, full-text search box.
 6. **Dashboard.** Stat cards (tasks total/done/%, open issues by severity, feedback count),
    a 30-day activity chart, and a "recent activity" feed merging all four entry types.
@@ -282,7 +304,8 @@ mobile (≤ 640 px).
 8. **Team (manager).** Roster table: recruit, department, completion %, open issues, last
    activity; click through to that recruit's read-only diary.
 9. **Admin.** User table with create/edit drawer (role, department, manager assignment,
-   activate/deactivate, reset password) and a Departments tab (create / rename / deactivate).
+   activate/deactivate). Departments are seeded reference data; a Department CRUD UI is out of
+   scope **[OUT]**.
 
 **States** — every list has explicit loading (skeleton), empty (illustration + primary action),
 and error (retry) states. Destructive actions require confirmation. Toasts confirm mutations.
@@ -318,16 +341,17 @@ requiring outbound email.
   and FluentValidation-style request validation; PDF via QuestPDF, CSV via CsvHelper.
 - **Frontend**: React + TypeScript + Vite + React Router (data router with route-level loaders
   and guards), Tailwind for styling.
-- **Database**: **SQLite** (single file, `app.db`) via EF Core; all schema changes through EF
-  Core migrations; seeded departments and demo users (recruit / manager / admin) for local runs.
+- **Database**: **SQLite** (single file, `backend/data/onboardingdiary.db`) via EF Core; all
+  schema changes through EF Core migrations; departments are seeded, users are not.
   Note the SQLite constraints already reflected above: no array columns (tags are a child
   table), case-insensitive uniqueness handled by storing lower-cased emails, and dates stored as
   ISO-8601 text.
-- **Security**: ASP.NET Core Identity password hashing (PBKDF2) or BCrypt, JWT access +
-  rotating refresh tokens (refresh in an httpOnly cookie), rate limiting on auth endpoints via
+- **Security**: ASP.NET Core Identity password hashing (`PasswordHasher<User>`, PBKDF2),
+  bearer-only JWT access tokens with no refresh tokens and no authentication cookie (and
+  therefore no credentialed CORS and no CSRF middleware), rate limiting on auth endpoints via
   the built-in rate limiter (5 attempts / 15 min / IP), server-side authorisation policies on
-  every endpoint (`RecruitOnly`, `OwnsEntry`, `ManagesRecruit`, `AdminOnly`), EF Core
-  parameterised queries only, CORS restricted to the app origin, security headers.
+  every endpoint (`RecruitOnly`, `ManagerOrAdmin`, `AdminOnly`, plus per-entry ownership and
+  assignment checks), EF Core parameterised queries only, CORS restricted to the app origin.
   No email-based flows exist, so no mail transport or reset-token storage is required.
 - **Performance**: list endpoints paginated (default 20, max 100); p95 < 300 ms for list
   queries on 10k entries; report generation < 5 s for a 12-month range.
@@ -347,27 +371,58 @@ requiring outbound email.
 |---|---|
 | M0 | Repo scaffold (`/backend` .NET solution, `/frontend` Vite app), CI, SQLite + EF Core migrations, health check, seed data |
 | M1 | Auth + profile + departments + role guards |
-| M2 | Task log (API + UI + filters) |
+| M2 | Task log (API + UI + filters) + basic dashboard |
 | M3 | Issue log, feedback, notes |
-| M4 | Dashboard (recruit) |
+| M4 | Manager team view + admin user management |
 | M5 | Reports: preview, CSV, PDF |
-| M6 | Manager team view + admin user management |
+| M6 | Responsive UI polish + end-to-end verification |
 | M7 | Extensions: checklist templates, global search + charts |
 
-Each milestone is a separate PR with tests.
+Work happens directly on `main`; each milestone lands with its tests. See
+[implementation-plan.md](implementation-plan.md) for the detailed breakdown.
 
 ---
 
-## 11. Decisions (previously open questions)
+## 11. Provenance
 
-1. **Stack** — Backend: .NET 10, ASP.NET Core Minimal APIs, EF Core, JWT auth.
-   Frontend: React + TypeScript + Vite + React Router. Database: SQLite for this exercise.
-2. **Managers are read-only** on assigned recruits' entries — no editing and no commenting in
-   the MVP.
-3. **No outbound email** — no self-service password reset, no email verification, no weekly
-   digest, no mailer. Admin-issued temporary passwords cover account recovery.
+### 11.1 Original source requirements **[SRC]**
+
+From the customer brief: recruits log daily tasks, record issues, provide feedback and capture
+notes; managers view recruits' entries and generate downloadable reports; authenticated,
+role-based access; a dashboard summarising progress; a responsive web UI; persistent storage.
+
+### 11.2 Approved assumptions and decisions **[DEC]**
+
+1. **Stack** — Backend: .NET 10, ASP.NET Core Minimal APIs, EF Core. Frontend: React +
+   TypeScript + Vite + React Router + Tailwind. Database: SQLite
+   ([ADR-002](adr/ADR-002-frontend-and-backend-stack.md),
+   [ADR-003](adr/ADR-003-database-choice.md)).
+2. **Authentication** — JWT access token in the login response body, sent as
+   `Authorization: Bearer`, 60-minute lifetime, client-side logout, token in memory mirrored to
+   `sessionStorage` ([ADR-006](adr/ADR-006-bearer-token-transport.md), superseding
+   [ADR-004](adr/ADR-004-authentication-strategy.md)).
+3. **Managers are read-only** on assigned recruits' entries — no editing and no commenting.
 4. **Department is managed reference data** — `Department(id, name, is_active)` referenced by
-   `User.department_id`; admins maintain the list.
-5. **No SSO** — email + password only.
-6. **No fixed onboarding end date** — dashboard progress is task completion percentage only;
-   time-boxed onboarding periods are out of scope.
+   `User.department_id`; seeded, and admins assign it to users.
+5. **Deletes are hard deletes** — no global soft-delete architecture; per-feature behaviour is
+   stated with the feature.
+6. **Reports are synchronous** — generated on request as CSV or PDF, with no persisted report
+   jobs or history.
+7. **Enums are serialised as readable strings** in API payloads (`"Recruit"`, `"Manager"`,
+   `"Admin"`).
+8. **Progress is task completion percentage** — no fixed onboarding end date and no time-boxed
+   onboarding period.
+9. **No SSO** — email + password only.
+10. **Work happens on `main`**, with schema arriving per milestone.
+
+### 11.3 Out of scope **[OUT]**
+
+- Refresh tokens, refresh-token storage, rotation, reuse detection, token-family revocation.
+- Authentication cookies, credentialed CORS, CSRF middleware.
+- Admin-issued temporary passwords, admin password reset, self-service password reset, email
+  verification, weekly digests, any mailer or outbound email.
+- SSO.
+- Anonymous feedback.
+- Global soft delete.
+- Department CRUD UI.
+- Manager comments or edits on recruit entries.

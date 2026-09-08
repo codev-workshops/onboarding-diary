@@ -340,15 +340,10 @@ repositories (`createRepository: Resource not accessible by integration` for my 
 
 1. Create the empty private repo `codev-workshops/onboarding-diary` — I cannot create
    repositories with my token.
-2. `docs/requirements.md` (v0.2) still describes anonymous feedback (D2), admin temporary
-   passwords (A5), soft deletes (B2), `Authorization: Bearer` and `app.db`. All five are
-   contradicted by this plan, `architecture.md` and ADR-003/004 — say the word and I will align
-   that document.
-3. The initial-admin seed needs its environment variable names and a local default agreed at M1
-   (proposal: `ADMIN_EMAIL` / `ADMIN_PASSWORD`, startup fails fast if unset outside development).
-4. Charts rendering approach for M7 (see above) — hand-rolled SVG unless a charting library is
+2. Charts rendering approach for M7 (see above) — hand-rolled SVG unless a charting library is
    approved.
 
-Settled: assertions use built-in xUnit `Assert.*`; styling is Tailwind CSS; authentication is the
+Settled: `docs/requirements.md` is aligned at v0.3 with the locked decisions; the initial-admin
+seed reads `ADMIN_EMAIL` / `ADMIN_PASSWORD`; assertions use built-in xUnit `Assert.*`; styling is Tailwind CSS; authentication is the
 ADR-006 bearer-token model; the approved dependency list is §2.1 of [`../AGENTS.md`](../AGENTS.md), and
 anything outside it — or any new architectural pattern — needs approval first.

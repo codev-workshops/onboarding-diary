@@ -238,17 +238,15 @@ live in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
 - The task appears to require breaking a rule in §1.
 - Requirements and an ADR contradict each other (the ADRs and the implementation plan are the
   more recent source of truth — flag the mismatch rather than guessing).
-- A decision you need is not recorded anywhere: only repository structure, stack and database
-  have ADRs; the rest is in `docs/architecture.md` and `docs/implementation-plan.md`.
+- A decision you need is not recorded anywhere: the ADRs cover repository structure, stack,
+  database, authentication, the frontend dependency set and bearer-token transport; the rest is
+  in `docs/architecture.md` and `docs/implementation-plan.md`.
 - A change would alter the API contract that existing frontend code depends on.
 - A new third-party dependency is needed.
 - CI fails for a reason unrelated to your change, or fails three times in a row.
 
 ## 9. Known open items
 
-- `docs/requirements.md` is still at v0.2 and describes anonymous feedback, admin temporary
-  passwords, and soft deletes. All three were removed by the locked decisions; the implementation
-  plan wins. Alignment of that document is pending owner approval.
-- The .NET assertion library and the frontend styling approach are not decided yet (see the
-  follow-ups in the implementation plan).
+- Charts for M7 need either hand-rolled SVG or an approved charting library (see the follow-ups
+  in the implementation plan).
 - The repository has no remote yet; it will live at `codev-workshops/onboarding-diary`.
