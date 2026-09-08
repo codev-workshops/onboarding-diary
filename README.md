@@ -71,6 +71,26 @@ Structure and the conventions behind it: [ADR-001](docs/adr/ADR-001-repository-s
 
 ## Running locally
 
+Both servers at once, with the demo accounts seeded:
+
+```bash
+./scripts/run-dev.sh
+```
+
+### Demo accounts
+
+The script seeds these Development-only accounts on first run; override `ADMIN_EMAIL` /
+`ADMIN_PASSWORD`, or set `E2E_SEED=false`, to opt out. Never use them outside local development.
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@example.com` | `AdminPassword!1` |
+| Manager | `e2e-manager@example.com` | `E2ePassword!1` |
+| Recruit (assigned to that manager) | `e2e-assigned@example.com` | `E2ePassword!1` |
+| Recruit (unassigned) | `e2e-unassigned@example.com` | `E2ePassword!1` |
+
+### Servers individually
+
 Backend — serves the API on <http://localhost:5276>:
 
 ```bash
