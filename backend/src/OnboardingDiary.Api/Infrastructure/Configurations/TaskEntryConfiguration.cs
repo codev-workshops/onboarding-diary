@@ -20,7 +20,14 @@ public class TaskEntryConfiguration : IEntityTypeConfiguration<TaskEntry>
             .HasForeignKey(t => t.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder
+            .HasOne(t => t.ChecklistAssignment)
+            .WithMany(a => a.Tasks)
+            .HasForeignKey(t => t.ChecklistAssignmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(t => new { t.UserId, t.EntryDate });
+        builder.HasIndex(t => t.ChecklistAssignmentId);
         builder.HasIndex(t => new { t.UserId, t.Status });
     }
 }
