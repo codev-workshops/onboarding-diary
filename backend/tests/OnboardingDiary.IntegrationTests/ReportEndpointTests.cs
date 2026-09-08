@@ -185,6 +185,22 @@ public class ReportEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Preview_accepts_a_366_day_range_and_rejects_a_longer_one()
+    {
+        var (recruit, _) = await RecruitAsync("report-boundary@example.com");
+
+        var boundary = await recruit.GetAsync(
+            $"/api/v1/reports/preview?from={Today.AddDays(-365):yyyy-MM-dd}&to={Today:yyyy-MM-dd}"
+        );
+        Assert.Equal(HttpStatusCode.OK, boundary.StatusCode);
+
+        var beyond = await recruit.GetAsync(
+            $"/api/v1/reports/preview?from={Today.AddDays(-366):yyyy-MM-dd}&to={Today:yyyy-MM-dd}"
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, beyond.StatusCode);
+    }
+
+    [Fact]
     public async Task Report_scope_matches_the_diary_scope_for_every_role()
     {
         var (recruit, recruitId) = await RecruitAsync("report-scope@example.com");
