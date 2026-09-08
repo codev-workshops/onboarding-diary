@@ -1,53 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using OnboardingDiary.Api.Domain;
+using OnboardingDiary.Api.Features.Diary;
 using OnboardingDiary.Api.Infrastructure;
 
 namespace OnboardingDiary.Api.Features.Tasks;
 
-public record Caller(int UserId, UserRole Role);
-
-public enum TaskAccess
+public class TaskService(AppDbContext db, EntryScopeService scope, TimeProvider timeProvider)
 {
-    Allowed,
-    Denied,
-}
-
-public class TaskService(AppDbContext db, TimeProvider timeProvider)
-{
-    /// <summary>
-    /// Resolves whose tasks the caller is asking for. Recruits only ever see their own; managers
-    /// see assigned recruits; admins see anyone.
-    /// </summary>
-    public async Task<(TaskAccess Access, int UserId)> ResolveScopeAsync(
-        Caller caller,
-        int? requestedUserId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var userId = requestedUserId ?? caller.UserId;
-
-        if (caller.Role == UserRole.Admin)
-        {
-            return (TaskAccess.Allowed, userId);
-        }
-
-        if (userId == caller.UserId)
-        {
-            return caller.Role == UserRole.Recruit
-                ? (TaskAccess.Allowed, userId)
-                : (TaskAccess.Denied, userId);
-        }
-
-        var assigned =
-            caller.Role == UserRole.Manager
-            && await db.Users.AnyAsync(
-                u => u.Id == userId && u.ManagerId == caller.UserId,
-                cancellationToken
-            );
-
-        return (assigned ? TaskAccess.Allowed : TaskAccess.Denied, userId);
-    }
-
     public async Task<PagedResponse<TaskResponse>> ListAsync(
         int userId,
         TaskListQuery query,
@@ -122,8 +81,8 @@ public class TaskService(AppDbContext db, TimeProvider timeProvider)
             return null;
         }
 
-        var (access, _) = await ResolveScopeAsync(caller, task.UserId, cancellationToken);
-        return access == TaskAccess.Allowed ? TaskResponse.From(task) : null;
+        var (access, _) = await scope.ResolveAsync(caller, task.UserId, cancellationToken);
+        return access == EntryAccess.Allowed ? TaskResponse.From(task) : null;
     }
 
     public async Task<TaskResponse> CreateAsync(

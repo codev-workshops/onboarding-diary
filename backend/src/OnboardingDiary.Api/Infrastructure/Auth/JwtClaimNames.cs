@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using OnboardingDiary.Api.Domain;
-using OnboardingDiary.Api.Features.Tasks;
+using OnboardingDiary.Api.Features.Diary;
 
 namespace OnboardingDiary.Api.Infrastructure.Auth;
 

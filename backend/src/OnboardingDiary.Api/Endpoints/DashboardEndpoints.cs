@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using OnboardingDiary.Api.Features.Dashboard;
-using OnboardingDiary.Api.Features.Tasks;
+using OnboardingDiary.Api.Features.Diary;
 using OnboardingDiary.Api.Infrastructure.Auth;
 
 namespace OnboardingDiary.Api.Endpoints;
@@ -14,7 +14,7 @@ public static class DashboardEndpoints
                 "/api/v1/dashboard",
                 async (
                     ClaimsPrincipal principal,
-                    TaskService tasks,
+                    EntryScopeService scope,
                     DashboardService dashboard,
                     CancellationToken ct,
                     int? userId = null
@@ -25,8 +25,8 @@ public static class DashboardEndpoints
                         return Results.Unauthorized();
                     }
 
-                    var (access, scopedUserId) = await tasks.ResolveScopeAsync(caller, userId, ct);
-                    if (access == TaskAccess.Denied)
+                    var (access, scopedUserId) = await scope.ResolveAsync(caller, userId, ct);
+                    if (access == EntryAccess.Denied)
                     {
                         return Results.NotFound();
                     }

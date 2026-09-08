@@ -1,36 +1,32 @@
 using System.Security.Claims;
 using OnboardingDiary.Api.Common;
-using OnboardingDiary.Api.Domain;
 using OnboardingDiary.Api.Features.Diary;
-using OnboardingDiary.Api.Features.Tasks;
+using OnboardingDiary.Api.Features.Notes;
 using OnboardingDiary.Api.Infrastructure.Auth;
 
 namespace OnboardingDiary.Api.Endpoints;
 
-public static class TaskEndpoints
+public static class NoteEndpoints
 {
-    public static void MapTaskEndpoints(this IEndpointRouteBuilder routes)
+    public static void MapNoteEndpoints(this IEndpointRouteBuilder routes)
     {
-        var tasks = routes.MapGroup("/api/v1/tasks").RequireAuthorization().WithTags("Tasks");
+        var notes = routes.MapGroup("/api/v1/notes").RequireAuthorization().WithTags("Notes");
 
-        tasks
+        notes
             .MapGet(
                 "",
                 async (
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    NoteService service,
                     EntryScopeService scope,
                     CancellationToken ct,
                     DateOnly? from = null,
                     DateOnly? to = null,
-                    TaskCategory? category = null,
-                    TaskEntryStatus? status = null,
-                    TaskPriority? priority = null,
+                    string? tag = null,
                     string? q = null,
                     int? userId = null,
                     int page = 1,
-                    int pageSize = 20,
-                    string sort = "-entry_date"
+                    int pageSize = 20
                 ) =>
                 {
                     if (principal.Caller() is not { } caller)
@@ -44,31 +40,20 @@ public static class TaskEndpoints
                         return Results.NotFound();
                     }
 
-                    var query = new TaskListQuery(
-                        from,
-                        to,
-                        category,
-                        status,
-                        priority,
-                        q,
-                        userId,
-                        page,
-                        pageSize,
-                        sort
-                    );
+                    var query = new NoteListQuery(from, to, tag, q, userId, page, pageSize);
 
                     return Results.Ok(await service.ListAsync(scopedUserId, query, ct));
                 }
             )
-            .WithName("ListTasks");
+            .WithName("ListNotes");
 
-        tasks
+        notes
             .MapGet(
                 "/{id:int}",
                 async (
                     int id,
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    NoteService service,
                     CancellationToken ct
                 ) =>
                 {
@@ -77,19 +62,19 @@ public static class TaskEndpoints
                         return Results.Unauthorized();
                     }
 
-                    var task = await service.GetAsync(caller, id, ct);
-                    return task is null ? Results.NotFound() : Results.Ok(task);
+                    var note = await service.GetAsync(caller, id, ct);
+                    return note is null ? Results.NotFound() : Results.Ok(note);
                 }
             )
-            .WithName("GetTask");
+            .WithName("GetNote");
 
-        tasks
+        notes
             .MapPost(
                 "",
                 async (
-                    CreateTaskRequest request,
+                    CreateNoteRequest request,
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    NoteService service,
                     CancellationToken ct
                 ) =>
                 {
@@ -98,22 +83,22 @@ public static class TaskEndpoints
                         return Results.Unauthorized();
                     }
 
-                    var task = await service.CreateAsync(userId, request, ct);
-                    return Results.Created($"/api/v1/tasks/{task.Id}", task);
+                    var note = await service.CreateAsync(userId, request, ct);
+                    return Results.Created($"/api/v1/notes/{note.Id}", note);
                 }
             )
             .RequireAuthorization(AuthorizationPolicies.RecruitOnly)
-            .WithValidation<CreateTaskRequest>()
-            .WithName("CreateTask");
+            .WithValidation<CreateNoteRequest>()
+            .WithName("CreateNote");
 
-        tasks
+        notes
             .MapPatch(
                 "/{id:int}",
                 async (
                     int id,
-                    UpdateTaskRequest request,
+                    UpdateNoteRequest request,
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    NoteService service,
                     CancellationToken ct
                 ) =>
                 {
@@ -122,21 +107,21 @@ public static class TaskEndpoints
                         return Results.Unauthorized();
                     }
 
-                    var task = await service.UpdateAsync(userId, id, request, ct);
-                    return task is null ? Results.NotFound() : Results.Ok(task);
+                    var note = await service.UpdateAsync(userId, id, request, ct);
+                    return note is null ? Results.NotFound() : Results.Ok(note);
                 }
             )
             .RequireAuthorization(AuthorizationPolicies.RecruitOnly)
-            .WithValidation<UpdateTaskRequest>()
-            .WithName("UpdateTask");
+            .WithValidation<UpdateNoteRequest>()
+            .WithName("UpdateNote");
 
-        tasks
+        notes
             .MapDelete(
                 "/{id:int}",
                 async (
                     int id,
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    NoteService service,
                     CancellationToken ct
                 ) =>
                 {
@@ -151,6 +136,6 @@ public static class TaskEndpoints
                 }
             )
             .RequireAuthorization(AuthorizationPolicies.RecruitOnly)
-            .WithName("DeleteTask");
+            .WithName("DeleteNote");
     }
 }

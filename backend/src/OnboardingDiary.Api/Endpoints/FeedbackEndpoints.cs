@@ -2,35 +2,35 @@ using System.Security.Claims;
 using OnboardingDiary.Api.Common;
 using OnboardingDiary.Api.Domain;
 using OnboardingDiary.Api.Features.Diary;
-using OnboardingDiary.Api.Features.Tasks;
+using OnboardingDiary.Api.Features.Feedback;
 using OnboardingDiary.Api.Infrastructure.Auth;
 
 namespace OnboardingDiary.Api.Endpoints;
 
-public static class TaskEndpoints
+public static class FeedbackEndpoints
 {
-    public static void MapTaskEndpoints(this IEndpointRouteBuilder routes)
+    public static void MapFeedbackEndpoints(this IEndpointRouteBuilder routes)
     {
-        var tasks = routes.MapGroup("/api/v1/tasks").RequireAuthorization().WithTags("Tasks");
+        var feedback = routes
+            .MapGroup("/api/v1/feedback")
+            .RequireAuthorization()
+            .WithTags("Feedback");
 
-        tasks
+        feedback
             .MapGet(
                 "",
                 async (
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    FeedbackService service,
                     EntryScopeService scope,
                     CancellationToken ct,
                     DateOnly? from = null,
                     DateOnly? to = null,
-                    TaskCategory? category = null,
-                    TaskEntryStatus? status = null,
-                    TaskPriority? priority = null,
+                    FeedbackType? type = null,
                     string? q = null,
                     int? userId = null,
                     int page = 1,
-                    int pageSize = 20,
-                    string sort = "-entry_date"
+                    int pageSize = 20
                 ) =>
                 {
                     if (principal.Caller() is not { } caller)
@@ -44,31 +44,20 @@ public static class TaskEndpoints
                         return Results.NotFound();
                     }
 
-                    var query = new TaskListQuery(
-                        from,
-                        to,
-                        category,
-                        status,
-                        priority,
-                        q,
-                        userId,
-                        page,
-                        pageSize,
-                        sort
-                    );
+                    var query = new FeedbackListQuery(from, to, type, q, userId, page, pageSize);
 
                     return Results.Ok(await service.ListAsync(scopedUserId, query, ct));
                 }
             )
-            .WithName("ListTasks");
+            .WithName("ListFeedback");
 
-        tasks
+        feedback
             .MapGet(
                 "/{id:int}",
                 async (
                     int id,
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    FeedbackService service,
                     CancellationToken ct
                 ) =>
                 {
@@ -77,19 +66,19 @@ public static class TaskEndpoints
                         return Results.Unauthorized();
                     }
 
-                    var task = await service.GetAsync(caller, id, ct);
-                    return task is null ? Results.NotFound() : Results.Ok(task);
+                    var entry = await service.GetAsync(caller, id, ct);
+                    return entry is null ? Results.NotFound() : Results.Ok(entry);
                 }
             )
-            .WithName("GetTask");
+            .WithName("GetFeedback");
 
-        tasks
+        feedback
             .MapPost(
                 "",
                 async (
-                    CreateTaskRequest request,
+                    CreateFeedbackRequest request,
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    FeedbackService service,
                     CancellationToken ct
                 ) =>
                 {
@@ -98,22 +87,22 @@ public static class TaskEndpoints
                         return Results.Unauthorized();
                     }
 
-                    var task = await service.CreateAsync(userId, request, ct);
-                    return Results.Created($"/api/v1/tasks/{task.Id}", task);
+                    var entry = await service.CreateAsync(userId, request, ct);
+                    return Results.Created($"/api/v1/feedback/{entry.Id}", entry);
                 }
             )
             .RequireAuthorization(AuthorizationPolicies.RecruitOnly)
-            .WithValidation<CreateTaskRequest>()
-            .WithName("CreateTask");
+            .WithValidation<CreateFeedbackRequest>()
+            .WithName("CreateFeedback");
 
-        tasks
+        feedback
             .MapPatch(
                 "/{id:int}",
                 async (
                     int id,
-                    UpdateTaskRequest request,
+                    UpdateFeedbackRequest request,
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    FeedbackService service,
                     CancellationToken ct
                 ) =>
                 {
@@ -122,21 +111,21 @@ public static class TaskEndpoints
                         return Results.Unauthorized();
                     }
 
-                    var task = await service.UpdateAsync(userId, id, request, ct);
-                    return task is null ? Results.NotFound() : Results.Ok(task);
+                    var entry = await service.UpdateAsync(userId, id, request, ct);
+                    return entry is null ? Results.NotFound() : Results.Ok(entry);
                 }
             )
             .RequireAuthorization(AuthorizationPolicies.RecruitOnly)
-            .WithValidation<UpdateTaskRequest>()
-            .WithName("UpdateTask");
+            .WithValidation<UpdateFeedbackRequest>()
+            .WithName("UpdateFeedback");
 
-        tasks
+        feedback
             .MapDelete(
                 "/{id:int}",
                 async (
                     int id,
                     ClaimsPrincipal principal,
-                    TaskService service,
+                    FeedbackService service,
                     CancellationToken ct
                 ) =>
                 {
@@ -151,6 +140,6 @@ public static class TaskEndpoints
                 }
             )
             .RequireAuthorization(AuthorizationPolicies.RecruitOnly)
-            .WithName("DeleteTask");
+            .WithName("DeleteFeedback");
     }
 }

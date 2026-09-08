@@ -11,6 +11,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<TaskEntry> Tasks => Set<TaskEntry>();
 
+    public DbSet<IssueEntry> Issues => Set<IssueEntry>();
+
+    public DbSet<FeedbackEntry> Feedback => Set<FeedbackEntry>();
+
+    public DbSet<NoteEntry> Notes => Set<NoteEntry>();
+
+    public DbSet<NoteTag> NoteTags => Set<NoteTag>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
