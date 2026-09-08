@@ -39,6 +39,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   checklistAssignmentId: number | null;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

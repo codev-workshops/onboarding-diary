@@ -65,6 +65,7 @@ builder.Services.AddScoped<IssueService>();
 builder.Services.AddScoped<FeedbackService>();
 builder.Services.AddScoped<NoteService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<TrendsService>();
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<ReportService>();

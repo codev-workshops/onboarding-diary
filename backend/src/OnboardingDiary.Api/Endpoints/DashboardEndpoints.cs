@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FluentValidation;
 using OnboardingDiary.Api.Features.Dashboard;
 using OnboardingDiary.Api.Features.Diary;
 using OnboardingDiary.Api.Infrastructure.Auth;
@@ -37,5 +38,52 @@ public static class DashboardEndpoints
             .RequireAuthorization()
             .WithTags("Dashboard")
             .WithName("GetDashboard");
+
+        routes
+            .MapGet(
+                "/api/v1/dashboard/trends",
+                async (
+                    ClaimsPrincipal principal,
+                    EntryScopeService scope,
+                    TrendsService trends,
+                    IValidator<TrendsQuery> validator,
+                    CancellationToken ct,
+                    int? userId = null,
+                    DateOnly? from = null,
+                    DateOnly? to = null
+                ) =>
+                {
+                    if (principal.Caller() is not { } caller)
+                    {
+                        return Results.Unauthorized();
+                    }
+
+                    var query = new TrendsQuery(from, to, userId);
+                    var validation = await validator.ValidateAsync(query, ct);
+                    if (!validation.IsValid)
+                    {
+                        return Results.ValidationProblem(
+                            validation
+                                .Errors.GroupBy(failure => failure.PropertyName)
+                                .ToDictionary(
+                                    group => group.Key,
+                                    group => group.Select(failure => failure.ErrorMessage).ToArray()
+                                )
+                        );
+                    }
+
+                    var (access, scopedUserId) = await scope.ResolveAsync(caller, userId, ct);
+                    if (access == EntryAccess.Denied)
+                    {
+                        return Results.NotFound();
+                    }
+
+                    return Results.Ok(await trends.GetAsync(scopedUserId, query, ct));
+                }
+            )
+            .RequireAuthorization()
+            .ProducesValidationProblem()
+            .WithTags("Dashboard")
+            .WithName("GetDashboardTrends");
     }
 }

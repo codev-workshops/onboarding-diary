@@ -101,6 +101,7 @@ public class TaskService(AppDbContext db, EntryScopeService scope, TimeProvider 
             Category = request.Category,
             Status = request.Status,
             Priority = request.Priority,
+            CompletedAt = request.Status == TaskEntryStatus.Done ? now : null,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -132,9 +133,16 @@ public class TaskService(AppDbContext db, EntryScopeService scope, TimeProvider 
         task.Title = request.Title.Trim();
         task.Description = request.Description?.Trim();
         task.Category = request.Category;
-        task.Status = request.Status;
         task.Priority = request.Priority;
-        task.UpdatedAt = timeProvider.GetUtcNow();
+
+        var now = timeProvider.GetUtcNow();
+        if (request.Status != task.Status)
+        {
+            task.CompletedAt = request.Status == TaskEntryStatus.Done ? now : null;
+        }
+
+        task.Status = request.Status;
+        task.UpdatedAt = now;
 
         await db.SaveChangesAsync(cancellationToken);
 

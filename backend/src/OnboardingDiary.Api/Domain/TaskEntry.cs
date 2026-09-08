@@ -28,6 +28,9 @@ public class TaskEntry
     /// <summary>Provenance only — the template item may later be edited or removed.</summary>
     public int? ChecklistItemId { get; set; }
 
+    /// <summary>Set while the status is Done, cleared when the task is reopened.</summary>
+    public DateTimeOffset? CompletedAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

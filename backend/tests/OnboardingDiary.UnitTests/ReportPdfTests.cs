@@ -41,6 +41,7 @@ public class ReportPdfTests
                 TaskPriority.High,
                 null,
                 Stamp,
+                Stamp,
                 Stamp
             ))
             .ToList();

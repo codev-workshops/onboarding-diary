@@ -100,6 +100,7 @@ public static class E2eSeeder
                 Description = "Read the team handbook and set up the development environment.",
                 Category = TaskCategory.Training,
                 Status = TaskEntryStatus.Done,
+                CompletedAt = now,
                 CreatedAt = now,
                 UpdatedAt = now,
             }
