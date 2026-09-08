@@ -114,6 +114,40 @@ test('creates a task', async () => {
   });
 });
 
+test('shows the per-field message when the API rejects the entry date', async () => {
+  const user = userEvent.setup();
+  vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+    const url = String(input);
+    if (url.endsWith('/me')) {
+      return Promise.resolve(json(profile));
+    }
+    if ((init?.method ?? 'GET') === 'GET') {
+      return Promise.resolve(json({ items: [], page: 1, pageSize: 10, total: 0 }));
+    }
+    return Promise.resolve(
+      json(
+        {
+          title: 'One or more validation errors occurred.',
+          status: 400,
+          errors: { EntryDate: ['The entry date cannot be in the future.'] },
+        },
+        400
+      )
+    );
+  });
+
+  renderWithProviders(<TasksPage />);
+  await user.click(await screen.findByRole('button', { name: 'New task' }));
+
+  const dialog = screen.getByRole('dialog');
+  await user.type(within(dialog).getByLabelText('Title'), 'Tomorrow work');
+  await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'The entry date cannot be in the future.'
+  );
+});
+
 test('changes a task status from the list', async () => {
   const user = userEvent.setup();
   const fetchMock = mockApi();

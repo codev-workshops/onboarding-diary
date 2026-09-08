@@ -214,6 +214,15 @@ the next begins.
   error states.
 - **Tests**: validation rules, ownership enforcement, filter/paging correctness, dashboard
   aggregate correctness, UI form tests.
+- **Status — delivered** (`dce4eaa` backend, `b760d7f` frontend). Built without the detail drawer:
+  the edit dialog carries the full entry. Manager and admin still see placeholders on Tasks and
+  Dashboard; the API already scopes by assignment, the UI needs the M4 team roster.
+- **Verification**: 23 backend tests, 25 frontend tests, lint/format/build green, plus a recorded
+  recruit browser smoke test — login, create, edit, category/status/date filters, inline status
+  change, dashboard counts and completion percentage, delete, validation errors, unauthenticated
+  redirect. The one defect it found (a server field error rendering as the generic
+  "One or more validation errors occurred.") is fixed: the task dialog now shows per-field
+  messages.
 
 ### M3 — Issues + Feedback + Notes
 - Schema: `IssueEntry`, `FeedbackEntry`, `NoteEntry`, `NoteTag` (+ migration).

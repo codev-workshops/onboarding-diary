@@ -19,6 +19,16 @@ type TaskForm = z.infer<typeof taskSchema>;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+/** Prefers the per-field validation messages so the user learns which input the API rejected. */
+function serverMessages(error: unknown): string[] {
+  if (!(error instanceof ApiError)) {
+    return ['Something went wrong. Try again.'];
+  }
+
+  const fieldMessages = Object.values(error.fieldErrors);
+  return fieldMessages.length > 0 ? fieldMessages : [error.message];
+}
+
 export function TaskFormDialog({
   task,
   pending,
@@ -133,9 +143,11 @@ export function TaskFormDialog({
           </div>
 
           {error ? (
-            <p role="alert" className="text-sm text-red-600">
-              {error instanceof ApiError ? error.message : 'Something went wrong. Try again.'}
-            </p>
+            <div role="alert" className="space-y-1 text-sm text-red-600">
+              {serverMessages(error).map((message) => (
+                <p key={message}>{message}</p>
+              ))}
+            </div>
           ) : null}
 
           <div className="flex justify-end gap-2">
