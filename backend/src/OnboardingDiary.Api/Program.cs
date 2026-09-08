@@ -18,11 +18,15 @@ using OnboardingDiary.Api.Features.Feedback;
 using OnboardingDiary.Api.Features.Issues;
 using OnboardingDiary.Api.Features.Notes;
 using OnboardingDiary.Api.Features.Profile;
+using OnboardingDiary.Api.Features.Reports;
 using OnboardingDiary.Api.Features.Tasks;
 using OnboardingDiary.Api.Features.Team;
 using OnboardingDiary.Api.Infrastructure;
 using OnboardingDiary.Api.Infrastructure.Auth;
 using OnboardingDiary.Api.Infrastructure.Seed;
+using QuestPDF.Infrastructure;
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +66,7 @@ builder.Services.AddScoped<NoteService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<AdminService>();
+builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddValidatorsFromAssemblyContaining<SignupRequestValidator>();
 
@@ -164,6 +169,7 @@ app.MapNoteEndpoints();
 app.MapDashboardEndpoints();
 app.MapTeamEndpoints();
 app.MapAdminEndpoints();
+app.MapReportEndpoints();
 
 app.Run();
 
