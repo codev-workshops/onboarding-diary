@@ -183,7 +183,7 @@ test('asks for confirmation before deleting', async () => {
   );
 });
 
-test('tells a manager that only recruits keep a task log', async () => {
+test('points a manager at the team view instead of a task log', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation((input) =>
     Promise.resolve(
       String(input).endsWith('/me') ? json({ ...profile, role: 'Manager' }) : json({})
@@ -192,5 +192,8 @@ test('tells a manager that only recruits keep a task log', async () => {
 
   renderWithProviders(<TasksPage />);
 
-  expect(await screen.findByText(/Only recruits keep a task log/)).toBeInTheDocument();
+  expect(await screen.findByRole('link', { name: 'Open the team view' })).toHaveAttribute(
+    'href',
+    '/team'
+  );
 });

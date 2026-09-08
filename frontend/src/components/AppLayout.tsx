@@ -1,13 +1,23 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import type { UserRole } from '../api/auth';
 import { useAuth } from '../auth/auth-context';
 
-const navItems = [
+interface NavItem {
+  to: string;
+  label: string;
+  end?: boolean;
+  roles?: UserRole[];
+}
+
+const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', end: true },
-  { to: '/tasks', label: 'Tasks' },
-  { to: '/issues', label: 'Issues' },
-  { to: '/feedback', label: 'Feedback' },
-  { to: '/notes', label: 'Notes' },
+  { to: '/tasks', label: 'Tasks', roles: ['Recruit'] },
+  { to: '/issues', label: 'Issues', roles: ['Recruit'] },
+  { to: '/feedback', label: 'Feedback', roles: ['Recruit'] },
+  { to: '/notes', label: 'Notes', roles: ['Recruit'] },
+  { to: '/team', label: 'Team', roles: ['Manager', 'Admin'] },
+  { to: '/admin/users', label: 'Users', roles: ['Admin'] },
   { to: '/reports', label: 'Reports' },
   { to: '/profile', label: 'Profile' },
 ];
@@ -15,6 +25,9 @@ const navItems = [
 export function AppLayout() {
   const [navOpen, setNavOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const visibleNavItems = navItems.filter(
+    (item) => item.roles === undefined || (user !== null && item.roles.includes(user.role))
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -48,7 +61,7 @@ export function AppLayout() {
           className={`${navOpen ? 'block' : 'hidden'} border-b border-slate-200 bg-white p-3 md:block md:w-56 md:shrink-0 md:border-r md:border-b-0`}
         >
           <ul className="space-y-1">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <li key={item.to}>
                 <NavLink
                   to={item.to}

@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using OnboardingDiary.Api.Common;
 using OnboardingDiary.Api.Domain;
 using OnboardingDiary.Api.Endpoints;
+using OnboardingDiary.Api.Features.Admin;
 using OnboardingDiary.Api.Features.Auth;
 using OnboardingDiary.Api.Features.Dashboard;
 using OnboardingDiary.Api.Features.Diary;
@@ -18,6 +19,7 @@ using OnboardingDiary.Api.Features.Issues;
 using OnboardingDiary.Api.Features.Notes;
 using OnboardingDiary.Api.Features.Profile;
 using OnboardingDiary.Api.Features.Tasks;
+using OnboardingDiary.Api.Features.Team;
 using OnboardingDiary.Api.Infrastructure;
 using OnboardingDiary.Api.Infrastructure.Auth;
 using OnboardingDiary.Api.Infrastructure.Seed;
@@ -58,6 +60,8 @@ builder.Services.AddScoped<IssueService>();
 builder.Services.AddScoped<FeedbackService>();
 builder.Services.AddScoped<NoteService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<TeamService>();
+builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddValidatorsFromAssemblyContaining<SignupRequestValidator>();
 
@@ -158,6 +162,8 @@ app.MapIssueEndpoints();
 app.MapFeedbackEndpoints();
 app.MapNoteEndpoints();
 app.MapDashboardEndpoints();
+app.MapTeamEndpoints();
+app.MapAdminEndpoints();
 
 app.Run();
 

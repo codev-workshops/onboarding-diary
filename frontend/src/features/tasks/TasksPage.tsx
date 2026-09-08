@@ -14,6 +14,7 @@ import {
 } from '../../api/tasks';
 import { useAuth } from '../../auth/auth-context';
 import { buttonClass, inputClass } from '../../components/FormField';
+import { RecruitOnlyNotice } from '../../components/Modal';
 import { TaskFormDialog } from './TaskFormDialog';
 
 const pageSize = 10;
@@ -86,15 +87,7 @@ export function TasksPage() {
   };
 
   if (!isRecruit) {
-    return (
-      <section className="space-y-2">
-        <h1 className="text-xl font-semibold">Task log</h1>
-        <p className="text-sm text-slate-600">
-          Only recruits keep a task log. Read-only access to your recruits&apos; entries arrives
-          with the team view.
-        </p>
-      </section>
-    );
+    return <RecruitOnlyNotice title="Task log" />;
   }
 
   const tasks = query.data?.items ?? [];

@@ -6,7 +6,7 @@ assertions, and the
 approved dependency sets — Tailwind, TanStack Query over native `fetch`, ESLint + Prettier, no
 Axios, and a scoped Playwright suite from M6 (ADR-005). Companion to
 [requirements.md](requirements.md),
-[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0–M3 are implemented; M4 is
+[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0–M4 are implemented; M5 is
 next.
 
 Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** backend,
@@ -253,6 +253,15 @@ the next begins.
   table with create/edit drawer including a department selector.
 - **Tests**: manager write attempts 403, unassigned recruit 404, manager-cycle rejection,
   inactive-user login rejection, admin scope.
+- **Status — delivered.** The roster is its own endpoint, `GET /api/v1/team/recruits`
+  (+ `/{userId}` for one recruit), rather than a `GET /dashboard` mode, so the recruit dashboard
+  contract stayed unchanged; managers see only their assignments, admins see every recruit and
+  can filter by `managerId`. Deactivating or demoting a manager releases their recruits, and an
+  admin cannot change their own role or active state. Navigation is role-aware: recruits keep the
+  four diary screens, managers and admins get Team, admins also get Users; the old placeholders
+  now link through to `/team`.
+- **Verification**: 61 backend tests (23 unit, 38 integration), 53 frontend tests,
+  lint/format/build green.
 
 ### M5 — Reports
 - `GET /reports/preview` (JSON) and `GET /reports/download` (`format=pdf|csv`), with

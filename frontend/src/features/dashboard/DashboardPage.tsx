@@ -19,8 +19,20 @@ export function DashboardPage() {
       <section className="space-y-2">
         <h1 className="text-xl font-semibold">Dashboard</h1>
         <p className="text-sm text-slate-600">
-          Signed in as {user?.role}. Roster and organisation views arrive with the manager and admin
-          milestone.
+          Signed in as {user?.role}. Diary summaries belong to recruits —{' '}
+          <Link className="underline" to="/team">
+            open the team view
+          </Link>{' '}
+          to read your recruits&apos; progress
+          {user?.role === 'Admin' ? (
+            <>
+              , or{' '}
+              <Link className="underline" to="/admin/users">
+                manage users
+              </Link>
+            </>
+          ) : null}
+          .
         </p>
       </section>
     );

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { ApiError } from '../api/client';
 
 export function Modal({
@@ -98,8 +99,11 @@ export function RecruitOnlyNotice({ title }: { title: string }) {
     <section className="space-y-2">
       <h1 className="text-xl font-semibold">{title}</h1>
       <p className="text-sm text-slate-600">
-        Only recruits keep a diary. Read-only access to your recruits&apos; entries arrives with the
-        team view.
+        Only recruits keep a diary.{' '}
+        <Link className="underline" to="/team">
+          Open the team view
+        </Link>{' '}
+        to read your recruits&apos; entries.
       </p>
     </section>
   );

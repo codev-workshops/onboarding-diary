@@ -66,6 +66,7 @@ export interface IssueFilters {
   severity?: IssueSeverity | '';
   status?: IssueStatus | '';
   q?: string;
+  userId?: number;
   page?: number;
   pageSize?: number;
 }
@@ -104,6 +105,7 @@ export interface FeedbackFilters {
   to?: string;
   type?: FeedbackType | '';
   q?: string;
+  userId?: number;
   page?: number;
   pageSize?: number;
 }
@@ -143,6 +145,7 @@ export interface NoteFilters {
   to?: string;
   tag?: string;
   q?: string;
+  userId?: number;
   page?: number;
   pageSize?: number;
 }
