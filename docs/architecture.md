@@ -206,7 +206,11 @@ including focused tests for the `fetch` wrapper; and from M6 a deliberately smal
 suite (ADR-005) covering only business-critical journeys — recruit register/login → task →
 dashboard → issue → report, manager read-only view of an assigned recruit, admin role and
 assignment management, and two negative checks (recruit blocked from an admin route, manager
-blocked from an unassigned recruit). It runs against a throwaway SQLite file with fixture users.
+blocked from an unassigned recruit). It runs against a throwaway SQLite file (`backend/data/e2e.db`)
+whose fixture users come from `E2eSeeder` — Development-only and opt-in through `E2E_SEED=true`,
+seeding just the accounts, assignments and diary entries a journey cannot create for itself, while
+the recruit journey registers through the real signup UI. Playwright starts both servers itself and
+runs serially on one worker because they share that database.
 
 Delivery: commits go straight to `main`, one milestone at a time, no feature branches
 or PRs unless requested. CI on every push runs backend build and test, and frontend lint and

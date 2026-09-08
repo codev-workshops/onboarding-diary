@@ -96,7 +96,15 @@ cd backend  && dotnet build && dotnet test
 cd frontend && npm run lint && npm run build
 ```
 
-CI runs the same commands on every push to `main`.
+End-to-end journeys (Playwright) run separately and manage their own servers — they start the API
+against a throwaway `backend/data/e2e.db` with `E2E_SEED=true` and serve the production build, so
+nothing needs to be running first:
+
+```bash
+cd frontend && npm run test:e2e
+```
+
+CI runs the same commands on every push to `main`, with the Playwright suite as its own job.
 
 ## Contributing
 

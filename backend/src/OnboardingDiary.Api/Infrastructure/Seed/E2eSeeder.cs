@@ -87,6 +87,38 @@ public static class E2eSeeder
         await db.SaveChangesAsync(cancellationToken);
 
         assigned.ManagerId = manager.Id;
+
+        // A manager can only read a diary, so the entries their journey inspects must be seeded.
+        var today = DateOnly.FromDateTime(now.UtcDateTime);
+
+        db.Tasks.Add(
+            new TaskEntry
+            {
+                UserId = assigned.Id,
+                EntryDate = today,
+                Title = "Seeded onboarding task",
+                Description = "Read the team handbook and set up the development environment.",
+                Category = TaskCategory.Training,
+                Status = TaskEntryStatus.Done,
+                CreatedAt = now,
+                UpdatedAt = now,
+            }
+        );
+
+        db.Issues.Add(
+            new IssueEntry
+            {
+                UserId = assigned.Id,
+                EntryDate = today,
+                Title = "Seeded onboarding issue",
+                Description = "Access to the shared drive is still pending.",
+                Severity = IssueSeverity.Medium,
+                Status = IssueStatus.Open,
+                CreatedAt = now,
+                UpdatedAt = now,
+            }
+        );
+
         await db.SaveChangesAsync(cancellationToken);
     }
 }

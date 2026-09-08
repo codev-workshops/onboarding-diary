@@ -304,6 +304,25 @@ the next begins.
 - Add the E2E job to CI (`npx playwright install --with-deps`, start API + preview build).
 - Manual verification with a recording for anything outside that table.
 
+- **Status — delivered.** Shared `LoadingState` / `EmptyState` / `ErrorState` components now back
+  every list screen, modals trap and restore focus and close on Escape, inputs are labelled with
+  errors wired through `aria-describedby` / `aria-invalid`, and status and severity read as text
+  as well as colour. The two M5 gaps became backend tests rather than browser assertions: an
+  integration test pins the range boundary (exactly 366 days accepted, 367 rejected) and
+  `ReportPdfTests` proves long content spans multiple pages and is never clipped by application
+  logic.
+- **E2E setup.** `frontend/playwright.config.ts` owns the whole harness: it deletes and recreates
+  the throwaway `backend/data/e2e.db`, starts the API with `ASPNETCORE_ENVIRONMENT=Development`
+  and `E2E_SEED=true`, and serves the production build on port 4173. `E2eSeeder` refuses to run
+  outside Development or without that flag, and seeds only what a journey cannot create for
+  itself — admin, manager, assigned and unassigned recruits, the manager assignment, and two
+  diary entries for the assigned recruit so the manager has something read-only to read. The
+  recruit journey registers through the real signup UI. Tests run serially on one worker because
+  they share that database. Run with `npm run test:e2e`; a separate `e2e` CI job runs it on every
+  push to `main` and uploads the HTML report on failure.
+- **Verification**: 84 backend tests (39 unit, 45 integration), 61 frontend tests, 5 Playwright
+  tests covering the four journeys, lint/format/build green.
+
 ### M7 — Two extensions
 
 Confirmed:
