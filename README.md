@@ -3,8 +3,10 @@
 Web application for new recruits to document their onboarding journey — tasks, issues, feedback
 and notes — with read-only oversight for managers and user management for admins.
 
-**Current state: M0 scaffold only.** The solution, the frontend app, CI and the documentation set
-exist; no feature code yet. Feature work starts at M1 (authentication and profile).
+**Current state: M0 partially complete.** The solution, the frontend app, CI and the
+documentation set exist; the data layer, health endpoint, test infrastructure and application
+shell do not — see the audit in
+[docs/implementation-plan.md §0](docs/implementation-plan.md#0-current-state-audit-as-of-the-m0-scaffold-commits).
 
 ## Documentation
 
@@ -13,21 +15,23 @@ exist; no feature code yet. Feature work starts at M1 (authentication and profil
 | [docs/requirements.md](docs/requirements.md) | User stories with acceptance criteria, domain model, API specification, validation rules, UI flows |
 | [docs/architecture.md](docs/architecture.md) | Consolidated system view: components, request pipeline, data model, cross-cutting concerns, non-goals |
 | [docs/implementation-plan.md](docs/implementation-plan.md) | Milestones M0–M7, cross-cutting design, testing strategy, risks |
-| [docs/adr/](docs/adr/README.md) | Architecture decision records — one file per decision, index in the folder README |
+| [docs/adr/](docs/adr/README.md) | Architecture decision records: repository structure, stack, database |
 | [AGENTS.md](AGENTS.md) | Working instructions for AI agents and contributors: rules, commands, code placement, definition of done |
 
-Start with the architecture document for the system view; read the ADRs for why a given choice
-was made.
+Start with the architecture document for the system view; read the ADRs for why the structure,
+stack and database were chosen. Decisions without an ADR (auth scope, trunk-based development,
+hard deletes, department reference data, incremental schema, no outbound email, API and
+authorization conventions, testing) are specified in the architecture document and the plan.
 
 ## Stack
 
 | Layer | Technology | Decision |
 |---|---|---|
-| Backend | .NET 10, ASP.NET Core Minimal APIs, EF Core | [ADR-003](docs/adr/ADR-003-backend-dotnet-minimal-apis.md) |
-| Frontend | React, TypeScript, Vite, React Router | [ADR-004](docs/adr/ADR-004-frontend-react-vite-router.md) |
-| Database | SQLite (`app.db`) via EF Core migrations | [ADR-005](docs/adr/ADR-005-sqlite-with-ef-core.md) |
-| Auth | JWT bearer access tokens, no refresh tokens | [ADR-006](docs/adr/ADR-006-jwt-access-token-only-auth.md) |
-| Tests | xUnit (unit + integration), Vitest + React Testing Library, Playwright from M6 | [ADR-014](docs/adr/ADR-014-testing-strategy.md) |
+| Backend | .NET 10, ASP.NET Core Minimal APIs, EF Core | [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md) |
+| Frontend | React, TypeScript, Vite, React Router, React Query + Axios | [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md) |
+| Database | SQLite (`onboardingdiary.db`) via EF Core migrations | [ADR-003](docs/adr/ADR-003-database-choice.md) |
+| Auth | JWT bearer access tokens, no refresh tokens | [architecture §3](docs/architecture.md) |
+| Tests | xUnit (unit + integration), Vitest + React Testing Library, Playwright from M6 | [architecture §6](docs/architecture.md) |
 
 Roles: **Recruit** authors entries, **Manager** reads assigned recruits' entries and generates
 their reports, **Admin** manages users and reads everything.
@@ -56,7 +60,7 @@ frontend/
 global.json                        # pins the .NET SDK
 ```
 
-Structure and the conventions behind it: [ADR-002](docs/adr/ADR-002-repository-structure.md).
+Structure and the conventions behind it: [ADR-001](docs/adr/ADR-001-repository-structure.md).
 
 ## Prerequisites
 
@@ -94,7 +98,6 @@ CI runs the same commands on every push to `main`.
 ## Contributing
 
 Work lands directly on `main` in small conventional commits, one milestone at a time — no
-feature branches or pull requests unless requested
-([ADR-007](docs/adr/ADR-007-trunk-based-development-on-main.md)). CI is the only automated gate,
-so keep it green. A decision that changes the architecture gets a new ADR rather than an edit to
-an accepted one.
+feature branches or pull requests unless requested. CI is the only automated gate, so keep it
+green. A decision that changes the architecture gets a new ADR rather than an edit to an accepted
+one. Contributor rules and the definition of done: [AGENTS.md](AGENTS.md).

@@ -43,7 +43,7 @@ What exists on `main` today, checked against this plan:
 | Lint | ESLint + Prettier (as originally written) | **oxlint** (`.oxlintrc.json`, `npm run lint`) from the Vite template | done — plan corrected below |
 | CI | build + test both sides | `ci.yml` runs backend restore/build/test and frontend `npm ci`/lint/build; no frontend test step yet | **partial** |
 | Tooling pins | `global.json`, Node version in CI | SDK 10.0.400 pinned, Node 24 in CI | done |
-| Docs | not in the original plan | `docs/requirements.md`, `docs/implementation-plan.md`, `docs/architecture.md`, `docs/adr/ADR-001…014`, root `AGENTS.md` | done, added since |
+| Docs | not in the original plan | `docs/requirements.md`, `docs/implementation-plan.md`, `docs/architecture.md`, three ADRs (structure, stack, database), root `AGENTS.md` | done, added since |
 | Remote | `codev-workshops/onboarding-diary` | local repo only, no remote configured | **blocked on you** |
 
 So **M0 is roughly half complete**: scaffold, tooling, CI and documentation are in place; the
@@ -84,7 +84,7 @@ onboarding-diary/
    ├─ index.html  vite.config.ts  tsconfig*.json  .oxlintrc.json
    └─ src/
       ├─ main.tsx  router.tsx        # React Router data router + role guards
-      ├─ api/                        # typed fetch client, DTO types, query hooks
+      ├─ api/                        # Axios client, DTO types, React Query hooks
       ├─ auth/                       # AuthProvider (in-memory token), RequireRole
       ├─ features/{tasks,issues,feedback,notes,dashboard,reports,team,admin}/
       ├─ components/                 # DataTable, FilterBar, Modal, DateRangePicker, StatCard…
@@ -126,7 +126,7 @@ non-assigned recruit → 404 (no existence leak).
 **SQLite specifics** — emails stored lower-cased with a unique index (no portable
 case-insensitive index); `DateOnly` entry dates and UTC `DateTimeOffset` audit columns via value
 converters storing ISO-8601 text; enums persisted as strings; note tags in a `note_tags` child
-table (no array type). `Data Source=app.db`, WAL enabled.
+table (no array type). `Data Source=onboardingdiary.db` (ADR-003), WAL enabled.
 
 **Migrations** — one EF Core migration per milestone that changes the schema, so the schema grows
 with the feature slices rather than up front.
@@ -135,10 +135,10 @@ with the feature slices rather than up front.
 unhandled exceptions to 500 with a correlation id; structured logging with request id;
 `/healthz`.
 
-**Frontend data flow** — typed `fetch` client that attaches the bearer token and redirects to
-login on 401; TanStack Query for server state and cache invalidation; React Router data router
-with role guards from the auth context; React Hook Form + Zod schemas mirroring server
-validation.
+**Frontend data flow** — a single configured **Axios** instance whose interceptors attach the
+bearer token and redirect to login on 401; **React Query** for server state and cache
+invalidation; React Router data router with role guards from the auth context; React Hook Form +
+Zod schemas mirroring server validation. (Axios + React Query are fixed by ADR-002.)
 
 ---
 
@@ -297,8 +297,8 @@ repositories (`createRepository: Resource not accessible by integration` for my 
 2. Confirm the two M7 extensions (checklist templates, global search + charts).
 3. Note: `docs/requirements.md` (v0.2) still describes anonymous feedback (D2), admin temporary
    passwords (A5), and soft deletes (B2). Those are now removed from the plan and contradicted by
-   ADR-008/ADR-011 — say the word and I will align that document so the two agree.
-4. Choose the .NET assertion library. The plan and ADR-014 originally said FluentAssertions,
+   this plan and `architecture.md` — say the word and I will align that document so the two agree.
+4. Choose the .NET assertion library. Earlier drafts said FluentAssertions,
    whose v8 licence is commercial for non-open-source use; the alternatives are plain xUnit
    asserts or Shouldly (both free). Default if you do not care: Shouldly.
 5. Confirm the frontend styling approach for the M0 shell. Earlier drafts assumed Tailwind, but
