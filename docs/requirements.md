@@ -320,8 +320,17 @@ inputs, colour contrast ≥ 4.5:1, severity/status conveyed by text as well as c
 Recommended for Step 3 ("add at least two features"):
 
 1. **Onboarding checklist templates** — admin defines a per-department checklist (e.g. "Day 1:
-   accounts, laptop, buddy intro"); recruits get it auto-seeded as tasks on their start date and
-   the dashboard shows checklist completion separately from ad-hoc tasks. *(highest value)*
+   accounts, laptop, buddy intro"); a recruit applies one to themselves, which generates ordinary
+   tasks dated from their start date, and the dashboard shows checklist completion separately from
+   ad-hoc tasks. *(highest value — approved; the data model and rules are in the implementation
+   plan, M7 Extension 1)*
+
+   Approved boundaries: application is recruit-initiated (no manager or admin assignment in this
+   extension); generated tasks are a snapshot, so later template edits never change them; a
+   `ChecklistAssignment` row with a unique `(user_id, template_id)` index means the same template
+   can never be applied twice, even if every generated task is deleted; progress counts the
+   assignment's generated tasks, not the current template definition; and task CRUD is unchanged,
+   so a deleted checklist task is never silently re-created.
 2. **Global search + charts** — one search box across all four entry types, plus dashboard trend
    charts (entries per day, task status over time, issues opened vs resolved). *(directly named
    in the brief)*

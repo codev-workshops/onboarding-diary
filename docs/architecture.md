@@ -129,7 +129,20 @@ Department 1───* User 1───* TaskEntry
                   │  └──* NoteEntry 1───* NoteTag
                   │
                   └── manager_id ──> User      (self-reference, cycles rejected)
+
+Department 0──1 ChecklistTemplate 1───* ChecklistItem            (M7 extension 1)
+                       │
+User 1───* ChecklistAssignment *───1 ┘   unique (user_id, template_id)
+                       │
+                       └───* TaskEntry   (generated; checklist_assignment_id,
+                                          checklist_item_id — both nullable)
 ```
+
+Checklists generate ordinary tasks rather than carrying completion state of their own:
+`TaskEntry.Status` stays the single source of truth, progress is `completed / generated` tasks of
+an assignment, and the unique index — not a service check — is what makes a second application of
+the same template impossible. Template edits reach future applications only; an applied template
+is retired with `is_active = false` because its assignment must survive.
 
 Deletes are **hard deletes**: no `deleted_at`, no global query filters, confirmation required in
 the UI, and only the owning recruit may delete.

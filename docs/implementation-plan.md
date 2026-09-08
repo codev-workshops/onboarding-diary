@@ -328,12 +328,47 @@ the next begins.
 Confirmed:
 
 1. **Onboarding checklist templates** — admin-defined per-department checklists a recruit can
-   apply, seeding tasks; dashboard shows checklist completion separately. Adds
-   `ChecklistTemplate` and `ChecklistItem` tables (+ migration) in this milestone, admin endpoints
-   to manage templates and a recruit endpoint to apply one.
+   apply, seeding tasks; dashboard shows checklist completion separately. Approved model below.
 2. **Global search + charts** — one search endpoint across all four entry types with grouped,
    scope-respecting results, plus dashboard charts (entries per day, task status over time,
    issues opened vs resolved). No new tables.
+
+#### Extension 1 — approved data model and rules
+
+Three tables (`AddChecklists` migration) plus two nullable columns on `task_entries`:
+
+| Table | Columns |
+|---|---|
+| `checklist_templates` | `id`, `name` (unique), `description?`, `department_id?` → `departments` (null = every department), `is_active`, `created_at`, `updated_at` |
+| `checklist_items` | `id`, `template_id` (cascade), `position` (0-based, contiguous), `title`, `description?`, `category` (`TaskCategory`), `due_offset_days?` (day 0 = the recruit's start date) |
+| `checklist_assignments` | `id`, `user_id` → `users`, `template_id` → `checklist_templates`, `applied_at`, **unique `(user_id, template_id)`** |
+| `task_entries` (existing) | `+ checklist_assignment_id?`, `+ checklist_item_id?` |
+
+```text
+ChecklistTemplate ──< ChecklistItem
+        │
+        └──< ChecklistAssignment ──< TaskEntry (generated)
+```
+
+- **Recruit-initiated only.** Admin defines templates; a recruit applies one to themselves and
+  completes the generated tasks through the existing Task workflow. Managers read templates and
+  read assigned recruits' progress. No manager/admin assignment in this extension.
+- **Snapshot.** Applying copies title, description, category and the resolved date into ordinary
+  `TaskEntry` rows. Later template edits never mutate tasks that already exist; template edits
+  affect future applications only.
+- **Re-application is impossible**, enforced by the unique index rather than a service check — so
+  deleting every generated task does not make the template eligible again. A recruit may apply
+  several *different* applicable templates.
+- **Progress is `completed generated tasks / generated tasks` for the assignment**, never derived
+  from the current template item list. With every generated task deleted the denominator is zero
+  and the API reports `0` rather than a misleading 100%.
+- **Task CRUD is unchanged.** Deleting a generated task neither removes the assignment nor
+  re-creates the task; progress simply reflects the tasks that remain.
+- **Retirement over deletion.** `DELETE /checklist-templates/{id}` returns 409 once an assignment
+  exists, because the assignment must survive; `is_active = false` is the retirement path.
+- **Dashboard.** `GET /api/v1/dashboard` gains an additive `checklists` block, kept separate from
+  the existing overall task completion percentage.
+- No new package and no fifth Playwright journey.
 
 Open for approval when M7 starts: charts need a rendering approach — either hand-rolled SVG (no
 new dependency) or a charting library, which is outside the approved list.
