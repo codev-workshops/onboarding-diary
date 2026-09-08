@@ -370,6 +370,18 @@ ChecklistTemplate ──< ChecklistItem
   the existing overall task completion percentage.
 - No new package and no fifth Playwright journey.
 
+- **Status — Extension 1 delivered.** `AddChecklists` created the three tables and the two
+  nullable `task_entries` columns. `ChecklistEndpoints` exposes template list/get for
+  manager+admin, create/update/delete for admin, `available` and `apply` for recruits, and
+  `progress` / `{assignmentId}` scoped through `EntryScopeService`. Applying a template writes
+  ordinary tasks linked to the assignment, so completion flows through the existing task
+  endpoints; progress divides completed by generated tasks, reporting 0% when a recruit has
+  deleted them all. The UI adds `/checklist-templates` (manager read-only, admin CRUD),
+  `/checklists` for recruits, a dashboard checklist block, and a read-only Checklists tab on
+  `/team/:userId`.
+- **Verification (Extension 1)**: 109 backend tests (51 unit, 58 integration), 68 frontend tests,
+  lint/format/build green. Playwright unchanged at four journeys.
+
 Open for approval when M7 starts: charts need a rendering approach — either hand-rolled SVG (no
 new dependency) or a charting library, which is outside the approved list.
 

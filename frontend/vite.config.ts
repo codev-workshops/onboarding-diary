@@ -15,6 +15,8 @@ export default defineConfig({
   // `vite preview` serves the built app for the Playwright suite and needs the same proxy.
   preview: { proxy: apiProxy },
   test: {
+    // Playwright owns `e2e/`; Vitest would otherwise try to run those specs.
+    include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,

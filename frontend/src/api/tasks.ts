@@ -1,3 +1,4 @@
+import type { ChecklistProgress } from './checklists';
 import { apiRequest } from './client';
 
 export type TaskCategory =
@@ -37,6 +38,7 @@ export interface Task {
   category: TaskCategory;
   status: TaskStatus;
   priority: TaskPriority;
+  checklistAssignmentId: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -114,6 +116,7 @@ export interface DashboardSummary {
   noteCount: number;
   recentTasks: Task[];
   recentActivity: ActivityItem[];
+  checklists: ChecklistProgress[];
 }
 
 export const getDashboard = (userId?: number) =>

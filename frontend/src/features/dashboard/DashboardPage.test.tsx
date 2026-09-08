@@ -29,6 +29,7 @@ const summary = {
       category: 'Setup',
       status: 'InProgress',
       priority: 'Medium',
+      checklistAssignmentId: null,
       createdAt: '2026-01-06T09:00:00Z',
       updatedAt: '2026-01-06T09:00:00Z',
     },
@@ -41,6 +42,17 @@ const summary = {
       title: 'VPN access missing',
       detail: 'High · Open',
       updatedAt: '2026-01-07T09:00:00Z',
+    },
+  ],
+  checklists: [
+    {
+      assignmentId: 11,
+      templateId: 2,
+      templateName: 'Engineering week one',
+      appliedAt: '2026-01-05T09:00:00Z',
+      generatedTasks: 4,
+      completedTasks: 1,
+      completionPercentage: 25,
     },
   ],
 };
@@ -76,6 +88,11 @@ test('shows the task completion summary and recent activity', async () => {
   expect(screen.getByText('High: 1')).toBeInTheDocument();
   expect(screen.queryByText('Low: 0')).not.toBeInTheDocument();
   expect(screen.getByText('VPN access missing')).toBeInTheDocument();
+  expect(screen.getByText('Engineering week one')).toBeInTheDocument();
+  expect(screen.getByText('1 of 4 tasks done · 25%')).toBeInTheDocument();
+  expect(
+    screen.getByRole('progressbar', { name: 'Engineering week one completion' })
+  ).toHaveAttribute('aria-valuenow', '25');
 });
 
 test('prompts an empty recruit to log a first task', async () => {
@@ -92,6 +109,7 @@ test('prompts an empty recruit to log a first task', async () => {
               noteCount: 0,
               recentTasks: [],
               recentActivity: [],
+              checklists: [],
             }
       )
     )
@@ -100,4 +118,7 @@ test('prompts an empty recruit to log a first task', async () => {
   renderWithProviders(<DashboardPage />);
 
   expect(await screen.findByRole('link', { name: 'Log your first task' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'browse the ones available to you' })
+  ).toBeInTheDocument();
 });

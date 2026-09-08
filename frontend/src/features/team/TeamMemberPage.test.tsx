@@ -58,6 +58,21 @@ function mockApi({ memberStatus = 200 }: { memberStatus?: number } = {}) {
         ? Promise.resolve(json(member))
         : Promise.resolve(json({ title: 'Not Found', status: memberStatus }, memberStatus));
     }
+    if (url.includes('/checklists/progress')) {
+      return Promise.resolve(
+        json([
+          {
+            assignmentId: 7,
+            templateId: 3,
+            templateName: 'Engineering week one',
+            appliedAt: '2026-01-05T09:00:00Z',
+            generatedTasks: 4,
+            completedTasks: 2,
+            completionPercentage: 50,
+          },
+        ])
+      );
+    }
     if (url.includes('/dashboard')) {
       return Promise.resolve(json(dashboard));
     }
@@ -128,6 +143,21 @@ test('scopes each diary tab to the recruit', async () => {
 
   const urls = fetchMock.mock.calls.map(([input]) => String(input));
   expect(urls.some((url) => url.includes('/issues') && url.includes('userId=9'))).toBe(true);
+});
+
+test('shows read-only checklist progress for the recruit', async () => {
+  const user = userEvent.setup();
+  const fetchMock = mockApi();
+
+  renderPage();
+  await user.click(await screen.findByRole('tab', { name: 'Checklists' }));
+
+  expect(await screen.findByText('Engineering week one')).toBeInTheDocument();
+  expect(screen.getByText('2 of 4 tasks done · 50%')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /apply/i })).not.toBeInTheDocument();
+
+  const urls = fetchMock.mock.calls.map(([input]) => String(input));
+  expect(urls.some((url) => url.includes('/checklists/progress?userId=9'))).toBe(true);
 });
 
 test('explains a recruit who is not assigned to the caller', async () => {

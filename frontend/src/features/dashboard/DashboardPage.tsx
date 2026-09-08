@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getDashboard, statusLabels } from '../../api/tasks';
 import { useAuth } from '../../auth/auth-context';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ListState';
+import { ChecklistProgressList } from '../checklists/ChecklistProgressList';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -52,7 +53,8 @@ export function DashboardPage() {
     );
   }
 
-  const { tasks, issues, feedbackCount, noteCount, recentTasks, recentActivity } = query.data;
+  const { tasks, issues, feedbackCount, noteCount, recentTasks, recentActivity, checklists } =
+    query.data;
   const openBySeverity = Object.entries(issues.openBySeverity).filter(([, count]) => count > 0);
 
   return (
@@ -68,6 +70,23 @@ export function DashboardPage() {
         <StatCard label="Issues logged" value={issues.total} />
         <StatCard label="Feedback" value={feedbackCount} />
         <StatCard label="Notes" value={noteCount} />
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold">Checklists</h2>
+        {checklists.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-600">
+            No checklist applied yet —{' '}
+            <Link className="underline" to="/checklists">
+              browse the ones available to you
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="mt-3">
+            <ChecklistProgressList progress={checklists} />
+          </div>
+        )}
       </div>
 
       <div>

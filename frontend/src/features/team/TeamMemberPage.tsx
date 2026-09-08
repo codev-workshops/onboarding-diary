@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { listChecklistProgress } from '../../api/checklists';
 import { ApiError } from '../../api/client';
 import { issueStatusLabels, listFeedback, listIssues, listNotes } from '../../api/diary';
 import { getDashboard, listTasks, statusLabels } from '../../api/tasks';
 import { getTeamRecruit } from '../../api/team';
 import { EmptyState, LoadingState } from '../../components/ListState';
+import { ChecklistProgressList } from '../checklists/ChecklistProgressList';
 
 const pageSize = 10;
 
-const tabs = ['Tasks', 'Issues', 'Feedback', 'Notes'] as const;
+const tabs = ['Tasks', 'Issues', 'Feedback', 'Notes', 'Checklists'] as const;
 
 type Tab = (typeof tabs)[number];
 
@@ -102,6 +104,7 @@ export function TeamMemberPage() {
         {tab === 'Issues' ? <IssueList userId={userId} /> : null}
         {tab === 'Feedback' ? <FeedbackList userId={userId} /> : null}
         {tab === 'Notes' ? <NoteList userId={userId} /> : null}
+        {tab === 'Checklists' ? <ChecklistList userId={userId} /> : null}
       </div>
     </section>
   );
@@ -151,6 +154,25 @@ function Entry({ title, meta, body }: { title: string; meta: string; body?: stri
       </div>
       {body ? <p className="whitespace-pre-line text-slate-700">{body}</p> : null}
     </li>
+  );
+}
+
+function ChecklistList({ userId }: { userId: number }) {
+  const query = useQuery({
+    queryKey: ['checklists', 'progress', userId],
+    queryFn: () => listChecklistProgress(userId),
+  });
+
+  if (query.isPending) {
+    return <LoadingState label="Loading…" />;
+  }
+
+  const progress = query.data ?? [];
+
+  return progress.length === 0 ? (
+    <EmptyState message="No checklist applied." />
+  ) : (
+    <ChecklistProgressList progress={progress} />
   );
 }
 
