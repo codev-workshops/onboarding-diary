@@ -31,11 +31,12 @@ seems to require breaking one, stop and ask.
   is genuinely required, stop and explain why it is needed, what problem it solves, the
   alternatives considered and the impact of adding it; wait for approval before installing or
   referencing it. The approved list is §2.1; anything outside it needs approval.
-- **Authentication is a JWT in an HttpOnly `access_token` cookie**
-  ([ADR-004](docs/adr/ADR-004-authentication-strategy.md)): `Secure` in production,
-  `SameSite=Lax`, 24 h. Never put the token in `localStorage`, `sessionStorage` or JavaScript
-  state, and never add refresh tokens, token storage, rotation, reuse detection or revocation
-  lists. Logout clears the cookie server-side.
+- **Authentication is a JWT sent as `Authorization: Bearer <token>`**
+  ([ADR-006](docs/adr/ADR-006-bearer-token-transport.md), superseding ADR-004): login returns the
+  token in the response body, expiry is 60 minutes, logout discards it on the client. Never add
+  authentication cookies, CORS `AllowCredentials`, CSRF middleware, refresh tokens, rotation,
+  reuse detection or revocation lists. Never put the token in `localStorage` — auth state, and
+  `sessionStorage` only where a refresh must survive.
 - **No outbound email**, no mailer abstraction, no password-reset flow.
 - **Deletes are hard deletes.** Never introduce `deleted_at` columns or global query filters.
 - **Departments are seeded reference data.** No Department CRUD UI.
@@ -85,7 +86,7 @@ Already referenced: `Microsoft.NET.Sdk.Web`, the xUnit test template packages, `
 | UI | `react`, `react-dom` | present |
 | Language | `typescript` | present |
 | Build | `vite`, `@vitejs/plugin-react` | present |
-| Routing | `react-router-dom` | M1 |
+| Routing | `react-router-dom` | M0 |
 | Styling | `tailwindcss` (+ its Vite plugin) | M0 |
 | Server state | `@tanstack/react-query` | M1 |
 | Forms | `react-hook-form`, `zod` | M1 |
@@ -96,7 +97,7 @@ Already referenced: `Microsoft.NET.Sdk.Web`, the xUnit test template packages, `
 Consequences of that list being exhaustive:
 
 - **No HTTP client library.** Axios is *not* approved, so the single client in `src/api/` wraps
-  the native `fetch` (with `credentials: 'include'` for the auth cookie). This supersedes the
+  the native `fetch` (attaching the `Authorization` header). This supersedes the
   Axios mention in [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md); TanStack Query
   still owns server state.
 - **Playwright is scoped to business-critical journeys only** (§6) — do not grow it into a
@@ -176,10 +177,9 @@ live in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
 - Status codes: 201 + `Location` on create, 204 on delete, 403 when authenticated but not
   permitted, **404 for resources outside the caller's scope** (do not leak existence), 409 on
   conflict.
-- Auth wiring: `JwtBearer` reads the token from the `access_token` cookie when no
-  `Authorization` header is present; CORS is configured with credentials for an explicit origin,
-  never `*`; passwords use `PasswordHasher<User>` (Identity shared framework, no Identity UI or
-  tables).
+- Auth wiring: `AddJwtBearer` validates the `Authorization: Bearer` token; CORS names an explicit
+  origin, never `*`, and does not allow credentials; passwords use `PasswordHasher<User>`
+  (Identity shared framework, no Identity UI or tables).
 - **Authorization is mandatory on every endpoint**: a claim policy (`AdminOnly`,
   `RecruitOnly`, `ManagerOrAdmin`) plus `EntryAccessHandler` for the relationship check whenever
   entry data is involved. Managers and admins never write entry data. Frontend guards are never
@@ -192,15 +192,15 @@ live in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
 ## 6. Frontend conventions
 
 - Data fetching is **TanStack Query over one `fetch` wrapper**
-  ([ADR-005](docs/adr/ADR-005-frontend-dependency-set.md)). The wrapper lives in `src/api/`, sets
-  `credentials: 'include'`, serialises JSON, and throws a typed error carrying the
+  ([ADR-005](docs/adr/ADR-005-frontend-dependency-set.md)). The wrapper lives in `src/api/`,
+  attaches `Authorization: Bearer <token>`, serialises JSON, and throws a typed error carrying the
   `ProblemDetails` body; components never call `fetch` directly and no HTTP client library is
-  added. Keep the wrapper minimal — base URL, JSON, credentials, `ProblemDetails`, auth/error
+  added. Keep the wrapper minimal — base URL, JSON, auth header, `ProblemDetails`, error
   handling, nothing more (no retries, no interceptor chains, no caching; caching is TanStack
   Query's job) — and cover it with focused unit tests.
-- **The SPA never handles the token** — the browser sends the cookie. Auth context holds the
-  profile from `GET /me`; a 401 from the wrapper clears auth state and redirects to login
-  preserving the attempted route.
+- **Auth context owns the token** (in memory, mirrored to `sessionStorage`) plus the profile from
+  `GET /me`; a 401 from the wrapper clears both and redirects to login preserving the attempted
+  route.
 - Server state goes through the TanStack Query cache with explicit invalidation after mutations;
   no global client store.
 - Forms use schema validation mirroring the server rules — the server stays authoritative.

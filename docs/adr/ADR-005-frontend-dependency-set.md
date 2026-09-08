@@ -23,13 +23,13 @@ require, such as `@vitejs/plugin-react`, the Tailwind Vite plugin, `jsdom` and
 
 Consequently:
 
-- **HTTP uses the native `fetch` API**, wrapped in one client module under `src/api/` with
-  `credentials: 'include'` so the `access_token` cookie ([ADR-004](ADR-004-authentication-strategy.md))
-  is sent. TanStack Query still owns server state, caching and invalidation. This supersedes
+- **HTTP uses the native `fetch` API**, wrapped in one client module under `src/api/` that
+  attaches `Authorization: Bearer <token>` ([ADR-006](ADR-006-bearer-token-transport.md)).
+  TanStack Query still owns server state, caching and invalidation. This supersedes
   ADR-002's "React Query with an Axios HTTP client".
 
   The wrapper stays deliberately small and covers only: the base API URL, JSON
-  serialisation/deserialisation, `credentials: 'include'`, `ProblemDetails` error handling, and
+  serialisation/deserialisation, the `Authorization` header, `ProblemDetails` error handling, and
   the 401 → clear-auth-state → redirect-to-login behaviour. It has focused unit tests and must
   not grow into a general HTTP framework (no retry policies, no interceptor chains, no caching —
   caching belongs to TanStack Query).
@@ -49,15 +49,15 @@ Consequently:
 
 | Alternative | Why Not Chosen |
 |-------------|----------------|
-| Keep Axios | Not on the approved list; `fetch` covers JSON requests, credentials and aborts, and one wrapper module gives the same interceptor-style behaviour. |
+| Keep Axios | Not on the approved list; `fetch` covers JSON requests, headers and aborts, and one wrapper module gives the same interceptor-style behaviour. |
 | Keep oxlint alongside ESLint | Two linters with overlapping rules produce conflicting diagnostics for no benefit. |
 | A broad Playwright suite mirroring every screen | Slow and brittle; unit and integration tests already cover validation, permissions and filters. |
 
 ## Consequences
 
 - The `fetch` wrapper must re-implement what Axios gave for free: base URL, JSON serialisation,
-  non-2xx → thrown error carrying the `ProblemDetails` body, and the 401 → redirect-to-login
-  behaviour. It is a small module, but it is ours to maintain and test.
+  the auth header, non-2xx → thrown error carrying the `ProblemDetails` body, and the 401 →
+  redirect-to-login behaviour. It is a small module, but it is ours to maintain and test.
 - Progress events and request/response interceptor chains are not available; nothing in the
   approved requirements needs them.
 - The end-to-end suite needs a running API and a seeded database, so it runs against a

@@ -31,7 +31,7 @@ document and the plan.
 | Backend | .NET 10, ASP.NET Core Minimal APIs, EF Core | [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md) |
 | Frontend | React, TypeScript, Vite, React Router, Tailwind CSS, TanStack Query over native `fetch` | [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md), [ADR-005](docs/adr/ADR-005-frontend-dependency-set.md) |
 | Database | SQLite (`onboardingdiary.db`) via EF Core migrations | [ADR-003](docs/adr/ADR-003-database-choice.md) |
-| Auth | JWT in an HttpOnly `access_token` cookie, no refresh tokens | [ADR-004](docs/adr/ADR-004-authentication-strategy.md) |
+| Auth | JWT sent as `Authorization: Bearer`, 60-minute expiry, no refresh tokens | [ADR-006](docs/adr/ADR-006-bearer-token-transport.md) |
 | Tests | xUnit (unit + integration, built-in `Assert.*`), Vitest + React Testing Library, a small Playwright suite for business-critical journeys from M6 | [architecture §5](docs/architecture.md) |
 | Lint / format | ESLint + Prettier | [ADR-005](docs/adr/ADR-005-frontend-dependency-set.md) |
 
@@ -86,8 +86,8 @@ npm install
 npm run dev
 ```
 
-From M1 the Vite dev server proxies `/api` to the backend, so the browser sees a single origin —
-required by the cookie-based authentication.
+The Vite dev server proxies `/api` to the backend, so the browser sees a single origin in
+development. With bearer-token authentication this is a convenience, not a requirement.
 
 ## Checks
 

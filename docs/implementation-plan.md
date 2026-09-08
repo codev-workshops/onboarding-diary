@@ -1,22 +1,23 @@
 # Onboarding Diary — Implementation Plan
 
-Version 0.5 — reconciled with what is actually in the repository (§0) and with every decision
-locked since v0.3: cookie-based authentication (ADR-004), built-in xUnit assertions, and the
+Version 0.6 — reconciled with what is actually in the repository (§0) and with every decision
+locked since v0.3: bearer-token authentication (ADR-006, superseding ADR-004), built-in xUnit
+assertions, and the
 approved dependency sets — Tailwind, TanStack Query over native `fetch`, ESLint + Prettier, no
 Axios, and a scoped Playwright suite from M6 (ADR-005). Companion to
 [requirements.md](requirements.md),
-[architecture.md](architecture.md) and the [ADRs](adr/README.md). No feature code implemented
-yet.
+[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0 is implemented; M1 is next.
 
 Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** backend,
-**React + TypeScript + Vite + React Router + Tailwind** frontend, **JWT in an HttpOnly cookie**
-(ADR-004).
+**React + TypeScript + Vite + React Router + Tailwind** frontend, **JWT sent as
+`Authorization: Bearer`** (ADR-006).
 
 ### Locked constraints applied in this revision
 1. **Work directly on `main`** — no `devin/*` branches, no milestone PRs unless later requested.
 2. **Access tokens only** — no refresh tokens, no refresh-token storage, no rotation, no reuse
-   detection, no token-family revocation. Per ADR-004 the token travels in an HttpOnly cookie and
-   logout clears that cookie server-side (superseding the earlier client-side-token decision).
+   detection, no token-family revocation. Per ADR-006 the token is returned in the login response
+   body, sent back as `Authorization: Bearer`, and discarded client-side on logout — no
+   authentication cookies, no credentialed CORS, no CSRF middleware.
 3. **M0 schema is thin** — only `User` and `Department`. Each entry table arrives with the
    milestone that implements its slice.
 4. **Removed**: anonymous feedback, password reset / admin temporary passwords, and anything
@@ -56,7 +57,7 @@ What exists on `main` today, checked against this plan:
 | Lint | ESLint + Prettier | `eslint.config.js` + `.prettierrc.json`; oxlint removed | done |
 | CI | build + test both sides | backend restore/build/test; frontend `npm ci`, lint, `format:check`, test, build | done |
 | Tooling pins | `global.json`, Node version in CI | SDK 10.0.400 pinned, Node 24 in CI | done |
-| Docs | not in the original plan | `docs/requirements.md`, `docs/implementation-plan.md`, `docs/architecture.md`, five ADRs (structure, stack, database, authentication, frontend dependency set), root `AGENTS.md` | done, added since |
+| Docs | not in the original plan | `docs/requirements.md`, `docs/implementation-plan.md`, `docs/architecture.md`, six ADRs (structure, stack, database, authentication, frontend dependency set, bearer token transport), root `AGENTS.md` | done, added since |
 | Remote | `codev-workshops/onboarding-diary` | local repo only, no remote configured | **blocked on you** |
 
 So **M0 is complete**: scaffold, data layer, health endpoint, test infrastructure, tooling, the
@@ -117,14 +118,14 @@ pushed to `main` per milestone.
 handlers returning `TypedResults`. A validation endpoint filter converts failures into
 `ValidationProblem` (RFC 7807 `ProblemDetails`).
 
-**Authentication** (ADR-004) — email + password login issues a **JWT in an HttpOnly cookie**
-`access_token`: `Secure` in production, `SameSite=Lax`, 24 h expiry, claims for user id, email
-and role. `JwtBearer` reads the token from the cookie when no `Authorization` header is present;
-the SPA never handles the token. **Logout clears the cookie server-side**; there is no token
-store and no revocation list. Passwords hashed with `PasswordHasher<User>` from the Identity
-shared framework (no Identity UI or tables). The initial admin is seeded from environment
-variables at startup. Login is rate-limited (5 attempts / 15 min / IP). Expired cookie → 401 →
-client redirects to login. CORS must allow credentials for the Vite dev origin.
+**Authentication** (ADR-006) — email + password login returns a **JWT in the response body**,
+which the SPA sends back as `Authorization: Bearer <token>`: 60-minute expiry, claims for user
+id, email and role, validated by `AddJwtBearer`. **Logout is client-side** (the SPA discards the
+token); there is no token store and no revocation list. Passwords hashed with
+`PasswordHasher<User>` from the Identity shared framework (no Identity UI or tables). The initial
+admin is seeded from environment variables at startup. Login is rate-limited (5 attempts / 15 min
+/ IP). Expired token → 401 → client redirects to login. CORS names the explicit Vite dev origin
+and does **not** allow credentials.
 
 **Authorization** — claim-based policies `AdminOnly`, `RecruitOnly`, `ManagerOrAdmin`, plus a
 resource handler `EntryAccessHandler` resolving *owner* (read+write), *assigned manager*
@@ -149,13 +150,13 @@ with the feature slices rather than up front.
 unhandled exceptions to 500 with a correlation id; structured logging with request id;
 `/healthz`.
 
-**Frontend data flow** — a single **`fetch` wrapper** in `src/api/` with `credentials: 'include'`
-(the browser sends the auth cookie; nothing to attach), JSON serialisation, and a typed error
+**Frontend data flow** — a single **`fetch` wrapper** in `src/api/` that attaches
+`Authorization: Bearer <token>` from the auth context, JSON serialisation, and a typed error
 carrying the `ProblemDetails` body; 401 clears auth state and redirects to login. **TanStack
 Query** owns server state and cache invalidation; React Router data router with role guards from
 the auth context; React Hook Form + Zod schemas mirroring server validation. No HTTP client
 library — see [ADR-005](adr/ADR-005-frontend-dependency-set.md). The wrapper stays minimal (base
-URL, JSON, credentials, `ProblemDetails`, auth/error handling — no retries, interceptors or
+URL, JSON, the auth header, `ProblemDetails`, error handling — no retries, interceptors or
 caching) and ships with focused unit tests.
 
 **Styling** — Tailwind CSS utility classes composed into small reusable React components in
@@ -191,16 +192,14 @@ the next begins.
 ### M1 — Authentication + Profile
 - Endpoints: `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`,
   `POST /auth/change-password`, `GET /me`, `PATCH /me`, `GET /departments` (list for pickers).
-- Password hashing, JWT issuing/validation from the cookie, cookie options per environment,
-  seeded admin from environment variables, auth rate limiting, CORS with credentials, policies
-  and `EntryAccessHandler` (consumed from M2).
+- Password hashing, JWT issuing and `AddJwtBearer` validation, seeded admin from environment
+  variables, auth rate limiting, policies and `EntryAccessHandler` (consumed from M2).
 - Frontend: login and signup pages (department dropdown from `GET /departments`), auth context
-  populated from `GET /me`, the `credentials: 'include'` fetch wrapper, protected routes, profile
-  page,
-  logout (calls the server, clears cached state, redirects).
-- **Tests**: signup validation, duplicate email 409, login failure messaging, rate limit,
-  cookie issued with `HttpOnly`/`SameSite`, missing/expired cookie → 401, logout clears the
-  cookie, role-guard matrix.
+  holding the token (memory + `sessionStorage`) and the `GET /me` profile, the `fetch` wrapper
+  attaching the `Authorization` header, protected routes, profile page, client-side logout.
+- **Tests**: signup validation, duplicate email 409, login failure messaging, rate limit, login
+  returns a token, missing/expired/invalid token → 401, wrapper attaches the header and clears
+  state on 401, role-guard matrix.
 
 ### M2 — Task Log + basic Dashboard
 - Schema: `TaskEntry` (+ migration).
@@ -304,8 +303,8 @@ target ≥ 80% on service/permission layers, reported in CI (not a hard gate ini
 
 | Risk | Mitigation |
 |---|---|
-| No refresh tokens → sessions expire mid-work | 24 h cookie lifetime; clean 401 → login redirect preserving the attempted route |
-| Cookie credential → CSRF exposure | `SameSite=Lax`, JSON-only API (custom `Content-Type` defeats simple-request forgery), CORS restricted to an explicit origin with credentials |
+| No refresh tokens → sessions expire mid-work | 60-minute token lifetime; clean 401 → login redirect preserving the attempted route |
+| Token reachable from JavaScript → XSS exposure | short expiry, `sessionStorage` never `localStorage`, no `dangerouslySetInnerHTML`; no cookies means no CSRF surface |
 | SQLite lacks case-insensitive unique index and array columns | lower-cased email column + `note_tags` child table |
 | Hard deletes are irreversible | explicit confirmation dialogs; deletes restricted to the owning recruit |
 | Incremental migrations diverging from seed data | seed is idempotent and re-run on startup in development only |
@@ -349,5 +348,5 @@ repositories (`createRepository: Resource not accessible by integration` for my 
    approved.
 
 Settled: assertions use built-in xUnit `Assert.*`; styling is Tailwind CSS; authentication is the
-ADR-004 cookie model; the approved dependency list is §2.1 of [`../AGENTS.md`](../AGENTS.md), and
+ADR-006 bearer-token model; the approved dependency list is §2.1 of [`../AGENTS.md`](../AGENTS.md), and
 anything outside it — or any new architectural pattern — needs approval first.

@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-006](ADR-006-bearer-token-transport.md), which replaces the cookie transport
+with `Authorization: Bearer`. The JWT decision itself and `PasswordHasher<User>` still stand.
+Only this status line was changed; the record below is left as accepted at the time.
 
 ## Context
 
