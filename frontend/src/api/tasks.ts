@@ -122,3 +122,23 @@ export interface DashboardSummary {
 
 export const getDashboard = (userId?: number) =>
   apiRequest<DashboardSummary>(`/dashboard${userId === undefined ? '' : `?userId=${userId}`}`);
+
+export interface TrendDay {
+  date: string;
+  tasksLogged: number;
+  tasksCompleted: number;
+  issuesOpened: number;
+  issuesResolved: number;
+  feedbackCount: number;
+  noteCount: number;
+}
+
+export interface Trends {
+  userId: number;
+  from: string;
+  to: string;
+  days: TrendDay[];
+}
+
+export const getTrends = (userId?: number) =>
+  apiRequest<Trends>(`/dashboard/trends${queryString({ userId })}`);
