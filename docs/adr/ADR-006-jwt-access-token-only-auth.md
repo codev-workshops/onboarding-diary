@@ -1,4 +1,4 @@
-# 5. JWT access-token-only authentication
+# ADR-006. JWT access-token-only authentication
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

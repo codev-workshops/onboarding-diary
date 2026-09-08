@@ -1,4 +1,4 @@
-# ADR-001. Repository structure
+# ADR-002. Repository structure
 
 - **Status**: Accepted
 - **Date**: 2026-09-08
@@ -8,9 +8,9 @@
 
 Onboarding Diary is a greenfield project with a .NET backend, a React frontend, a set of
 planning documents, and CI that has to build and test both sides. Work happens directly on
-`main` (see ADR 0006), so the layout has to make it obvious where a change belongs without a
+`main` (see ADR-007), so the layout has to make it obvious where a change belongs without a
 review gate to catch misplacement. The structure also has to accommodate schema and features
-arriving incrementally per milestone (see ADR 0009) rather than being laid out up front.
+arriving incrementally per milestone (see ADR-010) rather than being laid out up front.
 
 ## Decision
 

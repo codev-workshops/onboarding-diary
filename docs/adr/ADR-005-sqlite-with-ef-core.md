@@ -1,4 +1,4 @@
-# 4. SQLite via EF Core as the datastore
+# ADR-005. SQLite via EF Core as the datastore
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

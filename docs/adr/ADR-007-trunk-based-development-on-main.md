@@ -1,4 +1,4 @@
-# 6. Work directly on `main`
+# ADR-007. Work directly on `main`
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

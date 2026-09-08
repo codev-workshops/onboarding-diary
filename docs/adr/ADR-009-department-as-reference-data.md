@@ -1,4 +1,4 @@
-# 8. Department as managed reference data
+# ADR-009. Department as managed reference data
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

@@ -1,4 +1,4 @@
-# 1. Record architecture decisions
+# ADR-001. Record architecture decisions
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

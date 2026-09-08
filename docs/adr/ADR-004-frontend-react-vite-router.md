@@ -1,4 +1,4 @@
-# 3. Frontend on React + TypeScript + Vite + React Router
+# ADR-004. Frontend on React + TypeScript + Vite + React Router
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

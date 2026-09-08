@@ -1,4 +1,4 @@
-# 7. Hard deletes instead of a global soft-delete architecture
+# ADR-008. Hard deletes instead of a global soft-delete architecture
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

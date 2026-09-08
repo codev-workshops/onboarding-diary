@@ -20,6 +20,8 @@ This repository currently contains the **M0 scaffold only** — no feature code 
 - `docs/requirements.md` — elaborated requirements (user stories, domain model, API spec,
   validation rules, UI flows)
 - `docs/implementation-plan.md` — milestones M0–M7, cross-cutting design, testing strategy
+- `docs/architecture.md` — consolidated system view (components, pipeline, data model,
+  cross-cutting concerns, non-goals)
 - `docs/adr/` — architecture decision records (index in `docs/adr/README.md`)
 
 ## Layout

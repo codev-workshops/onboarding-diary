@@ -1,4 +1,4 @@
-# 2. Backend on .NET 10 with ASP.NET Core Minimal APIs
+# ADR-003. Backend on .NET 10 with ASP.NET Core Minimal APIs
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

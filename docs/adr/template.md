@@ -1,6 +1,6 @@
-# NNNN. <Title>
+# ADR-NNN. <Title>
 
-- **Status**: Proposed | Accepted | Superseded by ADR-XXXX
+- **Status**: Proposed | Accepted | Superseded by ADR-NNN
 - **Date**: YYYY-MM-DD
 - **Deciders**: <who>
 

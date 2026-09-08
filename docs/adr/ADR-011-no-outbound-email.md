@@ -1,4 +1,4 @@
-# 10. No outbound email in the MVP
+# ADR-011. No outbound email in the MVP
 
 - **Status**: Accepted
 - **Date**: 2026-09-08

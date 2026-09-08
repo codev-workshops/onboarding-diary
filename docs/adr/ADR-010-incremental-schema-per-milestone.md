@@ -1,4 +1,4 @@
-# 9. Introduce schema incrementally per milestone
+# ADR-010. Introduce schema incrementally per milestone
 
 - **Status**: Accepted
 - **Date**: 2026-09-08
