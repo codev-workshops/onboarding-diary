@@ -15,9 +15,16 @@ This repository currently contains the **M0 scaffold only** — no feature code 
 | Frontend | React, TypeScript, Vite, React Router |
 | Tests | xUnit (unit + integration), Vitest / React Testing Library |
 
+## Documentation
+
+- `docs/requirements.md` — elaborated requirements (user stories, domain model, API spec,
+  validation rules, UI flows)
+- `docs/implementation-plan.md` — milestones M0–M7, cross-cutting design, testing strategy
+
 ## Layout
 
 ```
+docs/
 backend/
   OnboardingDiary.slnx
   src/OnboardingDiary.Api/     # Endpoints, Features, Domain, Infrastructure, Common
