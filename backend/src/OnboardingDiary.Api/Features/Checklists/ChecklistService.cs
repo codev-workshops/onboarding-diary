@@ -362,6 +362,19 @@ public class ChecklistService(AppDbContext db, TimeProvider timeProvider)
         }
         catch (DbUpdateException)
         {
+            // Only the unique (user_id, template_id) index makes a save conflict expected here.
+            db.ChangeTracker.Clear();
+            var raced = await db.ChecklistAssignments.AsNoTracking()
+                .AnyAsync(
+                    a => a.UserId == userId && a.TemplateId == templateId,
+                    cancellationToken
+                );
+
+            if (!raced)
+            {
+                throw;
+            }
+
             return (ChecklistApplyOutcome.AlreadyApplied, null);
         }
 
