@@ -1,12 +1,14 @@
 # Onboarding Diary — Implementation Plan
 
-Version 0.3 — revised per the locked corrections and reconciled with what is actually in the
-repository (§0). Companion to [requirements.md](requirements.md),
+Version 0.4 — reconciled with what is actually in the repository (§0) and with every decision
+locked since v0.3: cookie-based authentication (ADR-004), built-in xUnit assertions, Tailwind
+CSS, and the approved dependency list. Companion to [requirements.md](requirements.md),
 [architecture.md](architecture.md) and the [ADRs](adr/README.md). No feature code implemented
 yet.
 
 Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** backend,
-**React + TypeScript + Vite + React Router** frontend, **JWT in an HttpOnly cookie** (ADR-004).
+**React + TypeScript + Vite + React Router + Tailwind** frontend, **JWT in an HttpOnly cookie**
+(ADR-004).
 
 ### Locked constraints applied in this revision
 1. **Work directly on `main`** — no `devin/*` branches, no milestone PRs unless later requested.
@@ -23,6 +25,12 @@ Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** ba
    requirement says otherwise.
 7. New milestone order (§3).
 8. Stack retained as listed above.
+9. **No new architectural patterns or abstractions without approval** — no CQRS, MediatR-style
+   dispatch, repository/unit-of-work wrappers over `DbContext`, or factories. Handlers talk to
+   `AppDbContext` directly.
+10. **No dependency outside the approved list** (§2.1 of [`../AGENTS.md`](../AGENTS.md)) without
+    approval. Assertions are built-in xUnit `Assert.*`; styling is Tailwind CSS with no other UI
+    framework and no extra Tailwind plugins.
 
 ---
 
@@ -37,9 +45,9 @@ What exists on `main` today, checked against this plan:
 | Backend project | API project with feature folders | present, folders held by `.gitkeep` | done |
 | `Program.cs` | host with DI, EF Core, auth, CORS, `/healthz` | default template `MapGet("/", …)` only | **remaining** |
 | EF Core + SQLite | `AppDbContext`, `User`, `Department`, initial migration, seed | no packages, no entities, no migration | **remaining** |
-| Test projects | xUnit unit + integration, `WebApplicationFactory` fixture | both projects exist with template `UnitTest1.cs`; no fixture, no assertion library | **partial** |
+| Test projects | xUnit unit + integration, `WebApplicationFactory` fixture | both projects exist with template `UnitTest1.cs`; no fixture | **partial** |
 | Frontend app | Vite React/TS app | present (React 19, Vite 8, TypeScript 6) | done |
-| Frontend shell | layout, nav, router skeleton, styling, placeholder pages | default Vite template (`App.tsx`, demo assets); no React Router, no styling library | **remaining** |
+| Frontend shell | layout, nav, router skeleton, Tailwind, placeholder pages | default Vite template (`App.tsx`, demo assets); no React Router, no Tailwind | **remaining** |
 | Frontend tests | Vitest + RTL with a smoke test | not installed; no `test` script | **remaining** |
 | Lint | ESLint + Prettier (as originally written) | **oxlint** (`.oxlintrc.json`, `npm run lint`) from the Vite template | done — plan corrected below |
 | CI | build + test both sides | `ci.yml` runs backend restore/build/test and frontend `npm ci`/lint/build; no frontend test step yet | **partial** |
@@ -86,7 +94,7 @@ onboarding-diary/
    └─ src/
       ├─ main.tsx  router.tsx        # React Router data router + role guards
       ├─ api/                        # Axios client, DTO types, React Query hooks
-      ├─ auth/                       # AuthProvider (in-memory token), RequireRole
+      ├─ auth/                       # AuthProvider (profile from GET /me), RequireRole
       ├─ features/{tasks,issues,feedback,notes,dashboard,reports,team,admin}/
       ├─ components/                 # DataTable, FilterBar, Modal, DateRangePicker, StatCard…
       └─ test/                       # Vitest + React Testing Library setup
@@ -139,8 +147,13 @@ unhandled exceptions to 500 with a correlation id; structured logging with reque
 
 **Frontend data flow** — a single configured **Axios** instance with `withCredentials: true` (the
 browser sends the auth cookie; nothing to attach) whose response interceptor redirects to login
-on 401; **React Query** for server state and cache invalidation; React Router data router with role guards from the auth context; React Hook Form +
-Zod schemas mirroring server validation. (Axios + React Query are fixed by ADR-002.)
+on 401; **React Query** for server state and cache invalidation; React Router data router with
+role guards from the auth context; React Hook Form + Zod schemas mirroring server validation.
+(Axios + React Query are fixed by ADR-002.)
+
+**Styling** — Tailwind CSS utility classes composed into small reusable React components in
+`src/components/`; no other UI framework and no extra Tailwind plugins. Responsive from the
+start: mobile-first utilities, with the dedicated responsive/accessibility pass in M6.
 
 ---
 
@@ -155,13 +168,13 @@ the next begins.
 - EF Core + SQLite wiring; `AppDbContext` containing **only `User` and `Department`**; initial
   migration; seed of initial departments and demo users (1 admin, 1 manager, 2 recruits).
 - `/healthz`; Swagger/OpenAPI in development; CORS + Vite dev proxy for `/api`.
-- Test infrastructure: xUnit with an assertion library (see §7.4), `WebApplicationFactory`
-  fixture with a temp-file SQLite database; Vitest + RTL setup with one smoke test each,
-  replacing the template `UnitTest1.cs` files.
+- Test infrastructure: xUnit with built-in `Assert.*`, a `WebApplicationFactory` fixture with a
+  temp-file SQLite database; Vitest + RTL setup with one smoke test each, replacing the template
+  `UnitTest1.cs` files.
 - `ci.yml`: backend restore/build/test and frontend `npm ci` / `npm run lint` / `npm run build`
   are already wired; add `npm run test` in the same commit that introduces Vitest.
-- Frontend application shell: remove the Vite demo page and assets, then add layout,
-  sidebar/topbar navigation, React Router skeleton, the styling baseline, placeholder pages.
+- Frontend application shell: remove the Vite demo page and assets, then add Tailwind, layout,
+  sidebar/topbar navigation, React Router skeleton, placeholder pages.
 - **Done when** both apps run locally, `/healthz` responds, CI green on `main`.
 - **Remaining** per §0: everything in this milestone except the scaffold, tooling pins, lint and
   the existing CI jobs.
@@ -238,13 +251,19 @@ the next begins.
 - Manual UI verification of the golden paths, with a recording.
 
 ### M7 — Two extensions
-Proposed (to confirm before starting):
+
+Confirmed:
+
 1. **Onboarding checklist templates** — admin-defined per-department checklists a recruit can
    apply, seeding tasks; dashboard shows checklist completion separately. Adds
-   `ChecklistTemplate` and `ChecklistItem` tables in this milestone.
-2. **Global search + charts** — one search across all four entry types with grouped results,
-   plus dashboard charts (entries per day, task status over time, issues opened vs resolved).
-   No new tables.
+   `ChecklistTemplate` and `ChecklistItem` tables (+ migration) in this milestone, admin endpoints
+   to manage templates and a recruit endpoint to apply one.
+2. **Global search + charts** — one search endpoint across all four entry types with grouped,
+   scope-respecting results, plus dashboard charts (entries per day, task status over time,
+   issues opened vs resolved). No new tables.
+
+Open for approval when M7 starts: charts need a rendering approach — either hand-rolled SVG (no
+new dependency) or a charting library, which is outside the approved list.
 
 ---
 
@@ -252,7 +271,7 @@ Proposed (to confirm before starting):
 
 | Layer | Tooling | Scope |
 |---|---|---|
-| Unit | xUnit (+ assertion library, §7.4) | validators, status transitions, permission handler, report builders |
+| Unit | xUnit, built-in `Assert.*` | validators, status transitions, permission handler, report builders |
 | Integration | `WebApplicationFactory` + temp-file SQLite per test class | every endpoint: happy path, validation failure, each role |
 | Frontend unit | Vitest + React Testing Library | forms, guards, filter state, API client 401 handling |
 | E2E (M6) | Playwright | full golden-path journeys per role |
@@ -298,13 +317,16 @@ repositories (`createRepository: Resource not accessible by integration` for my 
 
 ## 7. Follow-ups for You
 
-1. Create the empty private repo `codev-workshops/onboarding-diary`.
-2. Confirm the two M7 extensions (checklist templates, global search + charts).
-3. Note: `docs/requirements.md` (v0.2) still describes anonymous feedback (D2), admin temporary
-   passwords (A5), and soft deletes (B2). Those are now removed from the plan and contradicted by
-   this plan and `architecture.md` — say the word and I will align that document so the two agree.
+1. Create the empty private repo `codev-workshops/onboarding-diary` — I cannot create
+   repositories with my token.
+2. `docs/requirements.md` (v0.2) still describes anonymous feedback (D2), admin temporary
+   passwords (A5), soft deletes (B2), `Authorization: Bearer` and `app.db`. All five are
+   contradicted by this plan, `architecture.md` and ADR-003/004 — say the word and I will align
+   that document.
+3. The initial-admin seed needs its environment variable names and a local default agreed at M1
+   (proposal: `ADMIN_EMAIL` / `ADMIN_PASSWORD`, startup fails fast if unset outside development).
+4. Charts rendering approach for M7 (see above).
 
-Settled since: assertions use built-in xUnit `Assert.*` (no Shouldly, no FluentAssertions) and
-styling is Tailwind CSS. The approved dependency list is §2.1 of [`../AGENTS.md`](../AGENTS.md);
-anything outside it needs approval before it is installed or referenced, as do new architectural
-patterns or abstractions.
+Settled: assertions use built-in xUnit `Assert.*`; styling is Tailwind CSS; authentication is the
+ADR-004 cookie model; the approved dependency list is §2.1 of [`../AGENTS.md`](../AGENTS.md), and
+anything outside it — or any new architectural pattern — needs approval first.
