@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { ApiError, apiRequest, setAccessToken, setUnauthorizedHandler } from './client';
+import {
+  ApiError,
+  apiDownload,
+  apiRequest,
+  setAccessToken,
+  setUnauthorizedHandler,
+} from './client';
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -95,5 +101,38 @@ describe('apiRequest', () => {
     await apiRequest('/me').catch(() => undefined);
 
     expect(handler).toHaveBeenCalledOnce();
+  });
+
+  test('downloads a file using the server filename, falling back when absent', async () => {
+    setAccessToken('token-123');
+    fetchMock.mockResolvedValue(
+      new Response('Section,Date\n', {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="rae-2026-01-01-2026-01-31.csv"',
+        },
+      })
+    );
+
+    const named = await apiDownload('/reports/download?format=Csv', 'report.csv');
+
+    expect(named.fileName).toBe('rae-2026-01-01-2026-01-31.csv');
+    expect(await named.blob.text()).toBe('Section,Date\n');
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer token-123');
+
+    fetchMock.mockResolvedValue(new Response('x', { status: 200 }));
+    expect((await apiDownload('/reports/download', 'report.csv')).fileName).toBe('report.csv');
+  });
+
+  test('throws ApiError when a download fails', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ title: 'Validation failed' }, 400));
+
+    const error = (await apiDownload('/reports/download', 'report.csv').catch(
+      (e: unknown) => e
+    )) as ApiError;
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(400);
   });
 });

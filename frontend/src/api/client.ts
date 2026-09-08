@@ -80,6 +80,40 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T;
 }
 
+export interface DownloadedFile {
+  blob: Blob;
+  fileName: string;
+}
+
+/**
+ * Fetches a binary response (report downloads) through the same auth and ProblemDetails handling
+ * as {@link apiRequest}, returning the blob plus the server's filename.
+ */
+export async function apiDownload(path: string, fallbackName: string): Promise<DownloadedFile> {
+  const headers: Record<string, string> = {};
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  const response = await fetch(`${BASE_URL}${path}`, { headers });
+
+  if (response.status === 401) {
+    onUnauthorized?.();
+  }
+
+  if (!response.ok) {
+    throw new ApiError(response.status, await readProblem(response));
+  }
+
+  return { blob: await response.blob(), fileName: fileNameOf(response) ?? fallbackName };
+}
+
+function fileNameOf(response: Response): string | null {
+  const disposition = response.headers.get('content-disposition');
+  const match = disposition?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  return match === null || match === undefined ? null : decodeURIComponent(match[1]);
+}
+
 async function readProblem(response: Response): Promise<ProblemDetails> {
   try {
     return (await response.json()) as ProblemDetails;

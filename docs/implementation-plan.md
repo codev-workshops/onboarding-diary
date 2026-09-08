@@ -6,7 +6,7 @@ assertions, and the
 approved dependency sets — Tailwind, TanStack Query over native `fetch`, ESLint + Prettier, no
 Axios, and a scoped Playwright suite from M6 (ADR-005). Companion to
 [requirements.md](requirements.md),
-[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0–M4 are implemented; M5 is
+[architecture.md](architecture.md) and the [ADRs](adr/README.md). M0–M5 are implemented; M6 is
 next.
 
 Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** backend,
@@ -90,7 +90,7 @@ onboarding-diary/
 │  │  ├─ Infrastructure/
 │  │  │  ├─ AppDbContext.cs, Configurations/, Migrations/, Seed/
 │  │  │  ├─ Auth/ (JwtTokenService, PasswordHasher)
-│  │  │  └─ Reporting/ (added in M5)
+│  │  │  └─ (report rendering lives in Features/Reports/ with the rest of that slice)
 │  │  └─ Common/                     # ProblemDetails helpers, paging, auth policies/handlers
 │  └─ tests/
 │     ├─ OnboardingDiary.UnitTests/
@@ -273,6 +273,17 @@ the next begins.
   live preview, download buttons.
 - **Tests**: range validation (`from ≤ to`, ≤ 366 days), scope enforcement, CSV golden file,
   PDF content-type/filename and non-empty output.
+- **Status — delivered.** One `ReportService` aggregate backs the JSON preview and both
+  downloads, so a file can never disagree with what was previewed; scope reuses
+  `EntryScopeService` rather than a second authorization path, and the reporting code sits in
+  `Features/Reports/` with the other slices instead of `Infrastructure/Reporting/`. Both the CSV
+  and the PDF carry full entry bodies — the PDF renders each entry as a compact metadata line
+  with its body beneath, wrapping across pages, and only the on-screen preview clamps long text.
+  Downloads go through a small `apiDownload` addition to the `fetch` wrapper so the bearer token
+  and `ProblemDetails` handling are shared. Reports stay synchronous with no job, history or
+  stored files.
+- **Verification**: 76 backend tests (32 unit, 44 integration), 59 frontend tests,
+  lint/format/build green.
 
 ### M6 — Responsive UI + end-to-end verification
 - Responsive pass across all screens down to 360 px: sidebar → bottom nav, tables → cards,
