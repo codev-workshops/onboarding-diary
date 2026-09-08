@@ -8,6 +8,7 @@ Template: `template.md`. Numbering is sequential (`NNNN-title.md`).
 
 | ADR | Title | Status |
 |---|---|---|
+| [ADR-001](ADR-001-repository-structure.md) | Repository structure | Accepted |
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [0002](0002-backend-dotnet-minimal-apis.md) | Backend on .NET 10 with ASP.NET Core Minimal APIs | Accepted |
 | [0003](0003-frontend-react-vite-router.md) | Frontend on React + TypeScript + Vite + React Router | Accepted |
