@@ -72,7 +72,7 @@ Already referenced: `Microsoft.NET.Sdk.Web`, the xUnit test template packages, `
 | ORM + provider | `Microsoft.EntityFrameworkCore.Sqlite`, `.Design` (+ `dotnet-ef` tool) | M0 |
 | Authentication | `Microsoft.AspNetCore.Authentication.JwtBearer` | M1 |
 | Integration tests | `Microsoft.AspNetCore.Mvc.Testing` | M0 |
-| Assertions | assertion library — **which one is still open** (Shouldly proposed; FluentAssertions v8 is commercially licensed) | M0 |
+| Assertions | none — built-in xUnit `Assert.*` only; Shouldly and FluentAssertions are **not** to be added | — |
 | Validation | `FluentValidation.AspNetCore` | M1 |
 | Reports | `QuestPDF` (PDF), `CsvHelper` (CSV) | M5 |
 | Routing | `react-router-dom` | M1 |
@@ -80,7 +80,11 @@ Already referenced: `Microsoft.NET.Sdk.Web`, the xUnit test template packages, `
 | Forms | `react-hook-form`, `zod` | M1 |
 | Frontend tests | `vitest`, `@testing-library/react`, `@testing-library/user-event`, `jsdom` | M0 |
 | E2E | `@playwright/test` | M6 |
-| Styling | **still open** — no styling library chosen | M0 |
+| Styling | `tailwindcss` (+ its Vite plugin) | M0 |
+
+Styling rules: Tailwind utility classes with small reusable React components; keep layouts
+responsive and consistent. No other UI framework (Material UI, Bootstrap, Chakra, Ant Design,
+…) and no additional Tailwind plugins without approval.
 
 ## 3. Commands
 

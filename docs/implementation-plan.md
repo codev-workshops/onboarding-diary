@@ -303,8 +303,8 @@ repositories (`createRepository: Resource not accessible by integration` for my 
 3. Note: `docs/requirements.md` (v0.2) still describes anonymous feedback (D2), admin temporary
    passwords (A5), and soft deletes (B2). Those are now removed from the plan and contradicted by
    this plan and `architecture.md` — say the word and I will align that document so the two agree.
-4. Choose the .NET assertion library. Earlier drafts said FluentAssertions,
-   whose v8 licence is commercial for non-open-source use; the alternatives are plain xUnit
-   asserts or Shouldly (both free). Default if you do not care: Shouldly.
-5. Confirm the frontend styling approach for the M0 shell. Earlier drafts assumed Tailwind, but
-   nothing is installed and no ADR records it.
+
+Settled since: assertions use built-in xUnit `Assert.*` (no Shouldly, no FluentAssertions) and
+styling is Tailwind CSS. The approved dependency list is §2.1 of [`../AGENTS.md`](../AGENTS.md);
+anything outside it needs approval before it is installed or referenced, as do new architectural
+patterns or abstractions.
