@@ -1,11 +1,11 @@
 # Onboarding Diary — Architecture
 
 Consolidated system view, and the authoritative record for every design decision that does not
-have an ADR. Four decisions are recorded separately in [`adr/`](adr/README.md) — repository
-structure (ADR-001), stack (ADR-002), database (ADR-003) and authentication (ADR-004);
-everything else below is settled here. Scope and behaviour come from
-[`requirements.md`](requirements.md); the build order and the current state audit are in
-[`implementation-plan.md`](implementation-plan.md).
+have an ADR. Five decisions are recorded separately in [`adr/`](adr/README.md) — repository
+structure (ADR-001), stack (ADR-002), database (ADR-003), authentication (ADR-004) and the
+frontend dependency set (ADR-005); everything else below is settled here. Scope and behaviour
+come from [`requirements.md`](requirements.md); the build order and the current state audit are
+in [`implementation-plan.md`](implementation-plan.md).
 
 Status: M0 partially complete — scaffold, tooling, CI and docs exist; data layer, health
 endpoint, test infrastructure and application shell do not.
@@ -23,7 +23,7 @@ JSON, with a SQLite file as the only persistent store.
 │                          │   Cookie: access_token     │  ASP.NET Core Minimal APIs  │
 │  React + TS + Vite       │  <───────────────────────  │  .NET 10                    │
 │  React Router (guards)   │      JSON / ProblemDetails │                             │
-│  React Query + Axios     │      PDF / CSV streams     │  endpoint filters:          │
+│  TanStack Query + fetch  │      PDF / CSV streams     │  endpoint filters:          │
 │                          │                            │   validation → ProblemDetails│
 └──────────────────────────┘                            │  policies + EntryAccess      │
                                                         │  handler (authorization)     │
@@ -157,12 +157,16 @@ React + TypeScript on Vite, routed by React Router's data router
 ([ADR-002](adr/ADR-002-frontend-and-backend-stack.md)). `src/features/*` mirrors the backend
 feature names so a slice is traceable end to end; anything shared moves to `src/components/`.
 
-- **HTTP** goes through a single configured **Axios** instance in `src/api/` with
-  `withCredentials: true`; components never call `fetch` directly. The SPA never reads, stores or
+- **HTTP** goes through a single `fetch` wrapper in `src/api/`
+  ([ADR-005](adr/ADR-005-frontend-dependency-set.md)) that sets `credentials: 'include'`,
+  serialises JSON and throws a typed error carrying the `ProblemDetails` body; components never
+  call `fetch` directly, and no HTTP client library is used. The SPA never reads, stores or
   attaches the token — the browser sends the `access_token` cookie automatically.
 - **Auth context** holds only the profile returned by `GET /me`, which is also how a session is
-  restored after reload; an Axios response interceptor clears that state on 401 and redirects to
-  login preserving the attempted route. Logout calls the server, which expires the cookie.
+  restored after reload; a 401 from the wrapper clears that state and redirects to login
+  preserving the attempted route. Logout calls the server, which expires the cookie.
+- **Styling** is Tailwind CSS utilities composed into small reusable components; no other UI
+  framework and no extra Tailwind plugins.
 - **Route guards** (`RequireRole`) keep users out of screens their role cannot use.
 - **Server state** lives in the **React Query** cache keyed per resource and filter set,
   invalidated after mutations; no global client store.
@@ -197,7 +201,8 @@ Testing: xUnit unit tests for validators, issue state transitions and the permis
 handler; integration tests per endpoint on `WebApplicationFactory` against a real temp-file
 SQLite database, table-driven across `{recruit-own, recruit-other, assigned-manager,
 unassigned-manager, admin, anonymous}`; Vitest and React Testing Library on the frontend;
-Playwright golden paths from M6.
+manual golden-path verification in M6 — there is no browser automation framework, since
+Playwright is outside the approved dependency set (ADR-005).
 
 Delivery: commits go straight to `main`, one milestone at a time, no feature branches
 or PRs unless requested. CI on every push runs backend build and test, and frontend lint and

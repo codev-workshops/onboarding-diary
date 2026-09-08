@@ -65,7 +65,9 @@ These are approved; add them to the project when the milestone that needs them a
 **not** on this list requires approval before it is installed or referenced.
 
 Already referenced: `Microsoft.NET.Sdk.Web`, the xUnit test template packages, `react`,
-`react-dom`, `vite`, `@vitejs/plugin-react`, `typescript`, `oxlint`.
+`react-dom`, `vite`, `@vitejs/plugin-react`, `typescript`.
+
+**Backend**
 
 | Purpose | Package | Arrives |
 |---|---|---|
@@ -75,16 +77,39 @@ Already referenced: `Microsoft.NET.Sdk.Web`, the xUnit test template packages, `
 | Assertions | none — built-in xUnit `Assert.*` only; Shouldly and FluentAssertions are **not** to be added | — |
 | Validation | `FluentValidation.AspNetCore` | M1 |
 | Reports | `QuestPDF` (PDF), `CsvHelper` (CSV) | M5 |
+
+**Frontend** — this list is exhaustive; no other npm package may be installed without approval.
+
+| Purpose | Package | Arrives |
+|---|---|---|
+| UI | `react`, `react-dom` | present |
+| Language | `typescript` | present |
+| Build | `vite`, `@vitejs/plugin-react` | present |
 | Routing | `react-router-dom` | M1 |
-| Server state / HTTP | `@tanstack/react-query`, `axios` (ADR-002) | M1 |
-| Forms | `react-hook-form`, `zod` | M1 |
-| Frontend tests | `vitest`, `@testing-library/react`, `@testing-library/user-event`, `jsdom` | M0 |
-| E2E | `@playwright/test` | M6 |
 | Styling | `tailwindcss` (+ its Vite plugin) | M0 |
+| Server state | `@tanstack/react-query` | M1 |
+| Forms | `react-hook-form`, `zod` | M1 |
+| Tests | `vitest`, `@testing-library/react`, `@testing-library/user-event`, `jsdom` | M0 |
+| Lint / format | `eslint` (+ the TypeScript/React configs it needs), `prettier` | M0 |
+
+Consequences of that list being exhaustive:
+
+- **No HTTP client library.** Axios is *not* approved, so the single client in `src/api/` wraps
+  the native `fetch` (with `credentials: 'include'` for the auth cookie). This supersedes the
+  Axios mention in [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md); TanStack Query
+  still owns server state.
+- **No Playwright.** M6 end-to-end verification is manual against the golden paths, backed by
+  Vitest + React Testing Library.
+- **ESLint + Prettier replace oxlint** — `npm run lint` and the CI lint step use ESLint;
+  `npm run format` / `--check` uses Prettier.
 
 Styling rules: Tailwind utility classes with small reusable React components; keep layouts
 responsive and consistent. No other UI framework (Material UI, Bootstrap, Chakra, Ant Design,
 …) and no additional Tailwind plugins without approval.
+
+If a capability cannot be built reasonably from these packages or browser/platform APIs, stop
+and explain the need, the proposed package, the alternatives and the impact — then wait for
+approval.
 
 ## 3. Commands
 
@@ -98,7 +123,8 @@ dotnet run --project src/OnboardingDiary.Api          # http://localhost:5276
 # frontend
 cd frontend
 npm ci
-npm run lint          # oxlint
+npm run lint          # eslint
+npm run format        # prettier --write  (`--check` in CI)
 npm run build         # tsc -b && vite build
 npm run dev           # http://localhost:5173
 
@@ -129,8 +155,8 @@ Adding a vertical slice means touching, for one feature:
 | `tests/OnboardingDiary.IntegrationTests/` | endpoint tests per role |
 
 Frontend mirrors the backend feature names in `frontend/src/features/<feature>/`. Anything used
-by two or more features moves to `frontend/src/components/`. API types and the Axios client live
-in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
+by two or more features moves to `frontend/src/components/`. API types and the `fetch` client
+live in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
 
 ---
 
@@ -162,14 +188,16 @@ in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
 
 ## 6. Frontend conventions
 
-- Data fetching is **React Query over an Axios client**
-  ([ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md)). One configured Axios instance in
-  `src/api/` with `withCredentials: true`; no bare `fetch` calls in components.
+- Data fetching is **TanStack Query over one `fetch` wrapper**
+  ([ADR-005](docs/adr/ADR-005-frontend-dependency-set.md)). The wrapper lives in `src/api/`, sets
+  `credentials: 'include'`, serialises JSON, and throws a typed error carrying the
+  `ProblemDetails` body; components never call `fetch` directly and no HTTP client library is
+  added.
 - **The SPA never handles the token** — the browser sends the cookie. Auth context holds the
-  profile from `GET /me`; the Axios response interceptor clears it on 401 and redirects to login
+  profile from `GET /me`; a 401 from the wrapper clears auth state and redirects to login
   preserving the attempted route.
-- Server state goes through the React Query cache with explicit invalidation after mutations; no
-  global client store.
+- Server state goes through the TanStack Query cache with explicit invalidation after mutations;
+  no global client store.
 - Forms use schema validation mirroring the server rules — the server stays authoritative.
 - Every list screen needs loading, empty and error states, plus the shared filter bar; tables on
   desktop, cards on mobile.

@@ -10,9 +10,10 @@ For the consolidated system view these decisions produce, see [`../architecture.
 | ADR | Title | Status |
 |---|---|---|
 | [ADR-001](ADR-001-repository-structure.md) | Repository structure | Accepted |
-| [ADR-002](ADR-002-frontend-and-backend-stack.md) | Frontend and backend stack | Accepted |
+| [ADR-002](ADR-002-frontend-and-backend-stack.md) | Frontend and backend stack | Accepted (Axios consequence superseded by ADR-005) |
 | [ADR-003](ADR-003-database-choice.md) | Database choice | Accepted |
 | [ADR-004](ADR-004-authentication-strategy.md) | Authentication strategy | Accepted |
+| [ADR-005](ADR-005-frontend-dependency-set.md) | Frontend dependency set | Accepted |
 
 Decisions that are **not** recorded as ADRs are still binding and live in the working documents:
 trunk-based development on `main`, hard deletes, Department as reference data, incremental schema
