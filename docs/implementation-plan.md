@@ -3,7 +3,8 @@
 Version 0.5 — reconciled with what is actually in the repository (§0) and with every decision
 locked since v0.3: cookie-based authentication (ADR-004), built-in xUnit assertions, and the
 approved dependency sets — Tailwind, TanStack Query over native `fetch`, ESLint + Prettier, no
-Axios and no Playwright (ADR-005). Companion to [requirements.md](requirements.md),
+Axios, and a scoped Playwright suite from M6 (ADR-005). Companion to
+[requirements.md](requirements.md),
 [architecture.md](architecture.md) and the [ADRs](adr/README.md). No feature code implemented
 yet.
 
@@ -33,7 +34,7 @@ Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** ba
     frontend set fixed by [ADR-005](adr/ADR-005-frontend-dependency-set.md)) without approval.
     Assertions are built-in xUnit `Assert.*`; styling is Tailwind CSS with no other UI framework
     and no extra Tailwind plugins; HTTP is native `fetch`, not Axios; linting is ESLint +
-    Prettier, not oxlint; there is no browser end-to-end framework.
+    Prettier, not oxlint; Playwright is limited to the business-critical journeys listed in M6.
 
 ---
 
@@ -153,7 +154,9 @@ unhandled exceptions to 500 with a correlation id; structured logging with reque
 carrying the `ProblemDetails` body; 401 clears auth state and redirects to login. **TanStack
 Query** owns server state and cache invalidation; React Router data router with role guards from
 the auth context; React Hook Form + Zod schemas mirroring server validation. No HTTP client
-library — see [ADR-005](adr/ADR-005-frontend-dependency-set.md).
+library — see [ADR-005](adr/ADR-005-frontend-dependency-set.md). The wrapper stays minimal (base
+URL, JSON, credentials, `ProblemDetails`, auth/error handling — no retries, interceptors or
+caching) and ships with focused unit tests.
 
 **Styling** — Tailwind CSS utility classes composed into small reusable React components in
 `src/components/`; no other UI framework and no extra Tailwind plugins. Responsive from the
@@ -252,12 +255,18 @@ the next begins.
 - Accessibility pass: keyboard navigation, focus traps, labelled inputs, contrast ≥ 4.5:1,
   status/severity conveyed by text as well as colour.
 - Consistency pass on loading / empty / error states and toasts.
-- Manual end-to-end verification of the golden paths, with a recording (no browser automation
-  framework — Playwright is outside the approved dependency set): signup → log task → log and
-  resolve issue → add feedback and note → view dashboard → generate PDF and CSV reports; manager
-  read-only journey; admin user management journey.
-- Widen Vitest + React Testing Library coverage of the flows that manual testing cannot repeat
-  cheaply.
+- Introduce `@playwright/test` and a **small** suite — business-critical journeys only, run
+  against the API with a throwaway SQLite file and seeded fixture users:
+
+  | Role | Journey |
+  |---|---|
+  | Recruit | register/login → create task → dashboard reflects it → create and update an issue → generate a report |
+  | Manager | login → open an assigned recruit → confirm read-only (no write controls, writes rejected) |
+  | Admin | login → manage a user's role and assignment |
+  | Security | recruit blocked from an admin route; manager blocked from an unassigned recruit |
+
+- Add the E2E job to CI (`npx playwright install --with-deps`, start API + preview build).
+- Manual verification with a recording for anything outside that table.
 
 ### M7 — Two extensions
 
@@ -283,7 +292,7 @@ new dependency) or a charting library, which is outside the approved list.
 | Unit | xUnit, built-in `Assert.*` | validators, status transitions, permission handler, report builders |
 | Integration | `WebApplicationFactory` + temp-file SQLite per test class | every endpoint: happy path, validation failure, each role |
 | Frontend unit | Vitest + React Testing Library | forms, guards, filter state, API client 401 handling |
-| E2E (M6) | manual, recorded | full golden-path journeys per role — no automation framework (ADR-005) |
+| E2E (M6) | Playwright | the business-critical journeys above only — kept small by design (ADR-005) |
 
 Permission tests are table-driven across `{recruit-own, recruit-other, assigned-manager,
 unassigned-manager, admin, anonymous}` for every endpoint — the highest-risk area. Coverage
@@ -303,7 +312,7 @@ target ≥ 80% on service/permission layers, reported in CI (not a hard gate ini
 | PDF library licensing/size | QuestPDF Community licence fits this scope; fallback is an HTML print stylesheet |
 | .NET 10 tooling drift on CI | pin the SDK in `global.json` and in the CI setup step |
 | Scope creep | features limited to the approved requirements; extensions only in M7 |
-| No automated end-to-end coverage | golden paths verified manually and recorded each milestone from M6; broader Vitest + RTL coverage compensates |
+| E2E suite becomes slow and brittle | scope frozen to the journeys in M6; everything else stays in unit/integration tests |
 | Hand-rolled `fetch` wrapper instead of a client library | keep it small and unit-tested (base URL, JSON, `ProblemDetails` errors, 401 handling) |
 | .NET SDK missing from the VM snapshot (installed ad hoc into `~/.dotnet`) | add the SDK install to the environment blueprint so future sessions and CI match |
 

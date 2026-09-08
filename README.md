@@ -32,7 +32,7 @@ document and the plan.
 | Frontend | React, TypeScript, Vite, React Router, Tailwind CSS, TanStack Query over native `fetch` | [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md), [ADR-005](docs/adr/ADR-005-frontend-dependency-set.md) |
 | Database | SQLite (`onboardingdiary.db`) via EF Core migrations | [ADR-003](docs/adr/ADR-003-database-choice.md) |
 | Auth | JWT in an HttpOnly `access_token` cookie, no refresh tokens | [ADR-004](docs/adr/ADR-004-authentication-strategy.md) |
-| Tests | xUnit (unit + integration, built-in `Assert.*`), Vitest + React Testing Library, manual golden-path verification from M6 | [architecture §5](docs/architecture.md) |
+| Tests | xUnit (unit + integration, built-in `Assert.*`), Vitest + React Testing Library, a small Playwright suite for business-critical journeys from M6 | [architecture §5](docs/architecture.md) |
 | Lint / format | ESLint + Prettier | [ADR-005](docs/adr/ADR-005-frontend-dependency-set.md) |
 
 Roles: **Recruit** authors entries, **Manager** reads assigned recruits' entries and generates

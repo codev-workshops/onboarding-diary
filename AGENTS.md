@@ -91,6 +91,7 @@ Already referenced: `Microsoft.NET.Sdk.Web`, the xUnit test template packages, `
 | Forms | `react-hook-form`, `zod` | M1 |
 | Tests | `vitest`, `@testing-library/react`, `@testing-library/user-event`, `jsdom` | M0 |
 | Lint / format | `eslint` (+ the TypeScript/React configs it needs), `prettier` | M0 |
+| E2E | `@playwright/test` | M6 |
 
 Consequences of that list being exhaustive:
 
@@ -98,8 +99,8 @@ Consequences of that list being exhaustive:
   the native `fetch` (with `credentials: 'include'` for the auth cookie). This supersedes the
   Axios mention in [ADR-002](docs/adr/ADR-002-frontend-and-backend-stack.md); TanStack Query
   still owns server state.
-- **No Playwright.** M6 end-to-end verification is manual against the golden paths, backed by
-  Vitest + React Testing Library.
+- **Playwright is scoped to business-critical journeys only** (§6) — do not grow it into a
+  screen-by-screen suite.
 - **ESLint + Prettier replace oxlint** — `npm run lint` and the CI lint step use ESLint;
   `npm run format` / `--check` uses Prettier.
 
@@ -127,6 +128,8 @@ npm run lint          # eslint
 npm run format        # prettier --write  (`--check` in CI)
 npm run build         # tsc -b && vite build
 npm run dev           # http://localhost:5173
+npm run test          # vitest (from M0)
+npm run test:e2e      # playwright (from M6; needs the API running)
 
 # migrations (from backend/)
 dotnet ef migrations add <Name> --project src/OnboardingDiary.Api
@@ -192,7 +195,9 @@ live in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
   ([ADR-005](docs/adr/ADR-005-frontend-dependency-set.md)). The wrapper lives in `src/api/`, sets
   `credentials: 'include'`, serialises JSON, and throws a typed error carrying the
   `ProblemDetails` body; components never call `fetch` directly and no HTTP client library is
-  added.
+  added. Keep the wrapper minimal — base URL, JSON, credentials, `ProblemDetails`, auth/error
+  handling, nothing more (no retries, no interceptor chains, no caching; caching is TanStack
+  Query's job) — and cover it with focused unit tests.
 - **The SPA never handles the token** — the browser sends the cookie. Auth context holds the
   profile from `GET /me`; a 401 from the wrapper clears auth state and redirects to login
   preserving the attempted route.
@@ -203,6 +208,14 @@ live in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
   desktop, cards on mobile.
 - Accessibility is part of "done": keyboard-navigable forms and modals, labelled inputs,
   contrast ≥ 4.5:1, status and severity conveyed by text as well as colour.
+- **Playwright (from M6) covers only these journeys** — adding more needs approval:
+
+  | Role | Journey |
+  |---|---|
+  | Recruit | register/login → create task → dashboard reflects it → create and update an issue → generate a report |
+  | Manager | login → open an assigned recruit → confirm read-only |
+  | Admin | login → manage a user's role and assignment |
+  | Security | recruit blocked from an admin route; manager blocked from an unassigned recruit |
 
 ---
 
