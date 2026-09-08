@@ -30,6 +30,16 @@ function clamp(body: string | null): string | null {
   return `${body.slice(0, previewLimit).trimEnd()}…`;
 }
 
+/** A validation problem carries its explanation in `errors`, so the generic title is useless. */
+function describe(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError)) {
+    return fallback;
+  }
+
+  const fieldErrors = Object.values(error.fieldErrors);
+  return fieldErrors.length > 0 ? fieldErrors.join(' ') : error.message;
+}
+
 function isoDaysAgo(days: number): string {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() - days);
@@ -45,7 +55,9 @@ export function ReportsPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [sections, setSections] = useState<ReportSection[]>(reportSections);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<{ filters: string; message: string } | null>(
+    null
+  );
   const [pendingFormat, setPendingFormat] = useState<ReportFormat | null>(null);
 
   const roster = useQuery({
@@ -80,6 +92,9 @@ export function ReportsPage() {
 
   const data = report.data;
 
+  // A download failure belongs to the filters that produced it; changing them retires the message.
+  const staleDownload = downloadError !== null && downloadError.filters !== JSON.stringify(filters);
+
   async function download(format: ReportFormat) {
     setDownloadError(null);
     setPendingFormat(format);
@@ -95,9 +110,10 @@ export function ReportsPage() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setDownloadError(
-        error instanceof ApiError ? error.message : 'Could not generate the report. Try again.'
-      );
+      setDownloadError({
+        filters: JSON.stringify(filters),
+        message: describe(error, 'Could not generate the report. Try again.'),
+      });
     } finally {
       setPendingFormat(null);
     }
@@ -220,9 +236,9 @@ export function ReportsPage() {
         ) : null}
       </div>
 
-      {downloadError !== null ? (
+      {downloadError !== null && !staleDownload ? (
         <p role="alert" className="text-sm text-red-600">
-          {downloadError}
+          {downloadError.message}
         </p>
       ) : null}
 
@@ -238,11 +254,7 @@ export function ReportsPage() {
 
       {report.isError ? (
         <div role="alert" className="space-y-2 text-sm text-red-600">
-          <p>
-            {report.error instanceof ApiError
-              ? report.error.message
-              : 'Could not build the report. Try again.'}
-          </p>
+          <p>{describe(report.error, 'Could not build the report. Try again.')}</p>
           <button
             type="button"
             className="rounded-md border border-slate-300 px-3 py-1 text-slate-700"

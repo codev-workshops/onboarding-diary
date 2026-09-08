@@ -157,6 +157,54 @@ test('a manager must choose a recruit before a report is built', async () => {
   ).toContain('userId=9');
 });
 
+test('shows why a range was rejected and retires the message once filters change', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+    const url = String(input);
+
+    if (url.endsWith('/me')) {
+      return Promise.resolve(json(recruitProfile));
+    }
+    if (url.includes('from=2026-02-02')) {
+      return Promise.resolve(
+        json(
+          {
+            title: 'One or more validation errors occurred.',
+            status: 400,
+            errors: { To: ['The end of the range cannot be before the start.'] },
+          },
+          400
+        )
+      );
+    }
+    if (url.includes('/reports/preview')) {
+      return Promise.resolve(json(report));
+    }
+    return Promise.resolve(json({}));
+  });
+
+  renderWithProviders(<ReportsPage />);
+
+  await screen.findByText('Read the handbook');
+  await userEvent.selectOptions(screen.getByLabelText('Range'), 'custom');
+  await userEvent.type(screen.getByLabelText('From'), '2026-02-02');
+  await userEvent.type(screen.getByLabelText('To'), '2026-02-01');
+
+  expect(
+    await screen.findByText('The end of the range cannot be before the start.')
+  ).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
+  await screen.findAllByText('The end of the range cannot be before the start.');
+
+  await userEvent.selectOptions(screen.getByLabelText('Range'), 'all');
+
+  await waitFor(() =>
+    expect(
+      screen.queryByText('The end of the range cannot be before the start.')
+    ).not.toBeInTheDocument()
+  );
+});
+
 test('downloads the CSV with the filename the server sent', async () => {
   const fetchMock = mockApi();
   const createObjectURL = vi.fn(() => 'blob:report');
