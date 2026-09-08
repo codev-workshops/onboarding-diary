@@ -25,15 +25,17 @@ onboarding-diary/
 ├─ .gitignore                        # bin/, obj/, node_modules/, dist/, *.db, .env
 ├─ global.json                       # pins the .NET SDK (10.0.400, rollForward latestFeature)
 ├─ README.md                         # stack, layout, prerequisites, run and test instructions
+├─ AGENTS.md                         # working instructions for AI agents and contributors
 │
 ├─ docs/
 │  ├─ requirements.md                # elaborated requirements: user stories, domain model,
 │  │                                 # API spec, validation rules, UI flows
-│  ├─ implementation-plan.md         # milestones M0–M7, cross-cutting design, test strategy
+│  ├─ implementation-plan.md         # milestones M0–M7, current state, cross-cutting design
+│  ├─ architecture.md                # consolidated system view
 │  └─ adr/
 │     ├─ README.md                   # ADR index
 │     ├─ template.md                 # record template
-│     └─ NNNN-*.md                   # one file per decision
+│     └─ ADR-NNN-*.md                # one file per decision
 │
 ├─ backend/
 │  ├─ OnboardingDiary.slnx           # solution (SDK 10 XML solution format)
@@ -54,7 +56,7 @@ onboarding-diary/
 │     └─ OnboardingDiary.IntegrationTests/  # WebApplicationFactory + temp-file SQLite
 │
 └─ frontend/
-   ├─ index.html  vite.config.ts  tsconfig*.json
+   ├─ index.html  vite.config.ts  tsconfig*.json  .oxlintrc.json
    └─ src/
       ├─ main.tsx  router.tsx        # React Router data router and role guards
       ├─ api/                        # typed fetch client, DTO types, query hooks

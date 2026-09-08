@@ -1,7 +1,9 @@
 # Onboarding Diary — Implementation Plan
 
-Version 0.2 — revised per the locked corrections. Companion to
-`onboarding-diary-requirements.md`. Nothing implemented yet.
+Version 0.3 — revised per the locked corrections and reconciled with what is actually in the
+repository (§0). Companion to [requirements.md](requirements.md),
+[architecture.md](architecture.md) and the [ADRs](adr/README.md). No feature code implemented
+yet.
 
 Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** backend,
 **React + TypeScript + Vite + React Router** frontend, **JWT bearer access tokens**.
@@ -23,6 +25,37 @@ Stack (unchanged): **.NET 10 / ASP.NET Core Minimal APIs / EF Core / SQLite** ba
 
 ---
 
+## 0. Current State (audit as of the M0 scaffold commits)
+
+What exists on `main` today, checked against this plan:
+
+| Area | Planned for M0 | Actual | Status |
+|---|---|---|---|
+| Monorepo scaffold | `backend/` + `frontend/` + root tooling | present | done |
+| Solution file | `OnboardingDiary.sln` | `OnboardingDiary.slnx` (SDK 10 XML format) | done — plan corrected below |
+| Backend project | API project with feature folders | present, folders held by `.gitkeep` | done |
+| `Program.cs` | host with DI, EF Core, auth, CORS, `/healthz` | default template `MapGet("/", …)` only | **remaining** |
+| EF Core + SQLite | `AppDbContext`, `User`, `Department`, initial migration, seed | no packages, no entities, no migration | **remaining** |
+| Test projects | xUnit unit + integration, `WebApplicationFactory` fixture | both projects exist with template `UnitTest1.cs`; no fixture, no assertion library | **partial** |
+| Frontend app | Vite React/TS app | present (React 19, Vite 8, TypeScript 6) | done |
+| Frontend shell | layout, nav, router skeleton, styling, placeholder pages | default Vite template (`App.tsx`, demo assets); no React Router, no styling library | **remaining** |
+| Frontend tests | Vitest + RTL with a smoke test | not installed; no `test` script | **remaining** |
+| Lint | ESLint + Prettier (as originally written) | **oxlint** (`.oxlintrc.json`, `npm run lint`) from the Vite template | done — plan corrected below |
+| CI | build + test both sides | `ci.yml` runs backend restore/build/test and frontend `npm ci`/lint/build; no frontend test step yet | **partial** |
+| Tooling pins | `global.json`, Node version in CI | SDK 10.0.400 pinned, Node 24 in CI | done |
+| Docs | not in the original plan | `docs/requirements.md`, `docs/implementation-plan.md`, `docs/architecture.md`, `docs/adr/ADR-001…014`, root `AGENTS.md` | done, added since |
+| Remote | `codev-workshops/onboarding-diary` | local repo only, no remote configured | **blocked on you** |
+
+So **M0 is roughly half complete**: scaffold, tooling, CI and documentation are in place; the
+data layer, health endpoint, test infrastructure and application shell are not. M0 is finished
+when the items marked *remaining* above are done and its "done when" criterion holds.
+
+The environment itself is not reproducible yet: the .NET 10 SDK is absent from the VM snapshot
+and was installed ad hoc into `~/.dotnet`. That belongs in the environment blueprint before the
+next session.
+
+---
+
 ## 1. Repository Layout
 
 Single repo, work committed straight to `main`.
@@ -30,9 +63,10 @@ Single repo, work committed straight to `main`.
 ```
 onboarding-diary/
 ├─ .github/workflows/ci.yml          # build + test both sides on every push to main
-├─ .editorconfig  .gitignore  global.json  README.md
+├─ .editorconfig  .gitignore  global.json  README.md  AGENTS.md
+├─ docs/                             # requirements, this plan, architecture.md, adr/
 ├─ backend/
-│  ├─ OnboardingDiary.sln
+│  ├─ OnboardingDiary.slnx           # SDK 10 XML solution format — not .sln
 │  ├─ src/OnboardingDiary.Api/
 │  │  ├─ Program.cs                  # host, DI, JWT auth, CORS, rate limiter, endpoint mapping
 │  │  ├─ Endpoints/                  # one static class per feature, added per milestone
@@ -47,7 +81,7 @@ onboarding-diary/
 │     ├─ OnboardingDiary.UnitTests/
 │     └─ OnboardingDiary.IntegrationTests/   # WebApplicationFactory + temp-file SQLite
 └─ frontend/
-   ├─ index.html  vite.config.ts  tsconfig.json  tailwind.config.ts
+   ├─ index.html  vite.config.ts  tsconfig*.json  .oxlintrc.json
    └─ src/
       ├─ main.tsx  router.tsx        # React Router data router + role guards
       ├─ api/                        # typed fetch client, DTO types, query hooks
@@ -57,8 +91,9 @@ onboarding-diary/
       └─ test/                       # Vitest + React Testing Library setup
 ```
 
-Conventions: nullable reference types on, warnings-as-errors in CI, `dotnet format` +
-ESLint/Prettier, Conventional Commits, small commits pushed to `main` per milestone.
+Conventions: nullable reference types on, warnings-as-errors in CI, `dotnet format` and
+**oxlint** (the linter the Vite template ships; no ESLint or Prettier layer), Conventional
+Commits, small commits pushed to `main` per milestone.
 
 ---
 
@@ -118,13 +153,16 @@ the next begins.
 - EF Core + SQLite wiring; `AppDbContext` containing **only `User` and `Department`**; initial
   migration; seed of initial departments and demo users (1 admin, 1 manager, 2 recruits).
 - `/healthz`; Swagger/OpenAPI in development; CORS + Vite dev proxy for `/api`.
-- Test infrastructure: xUnit + FluentAssertions, `WebApplicationFactory` fixture with a
-  temp-file SQLite database; Vitest + RTL setup with one smoke test each.
-- `ci.yml`: `dotnet build`, `dotnet test`, `npm ci`, `npm run lint`, `npm run build`,
-  `npm run test`.
-- Frontend application shell: layout, sidebar/topbar navigation, routing skeleton, Tailwind
-  theme, placeholder pages.
+- Test infrastructure: xUnit with an assertion library (see §7.4), `WebApplicationFactory`
+  fixture with a temp-file SQLite database; Vitest + RTL setup with one smoke test each,
+  replacing the template `UnitTest1.cs` files.
+- `ci.yml`: backend restore/build/test and frontend `npm ci` / `npm run lint` / `npm run build`
+  are already wired; add `npm run test` in the same commit that introduces Vitest.
+- Frontend application shell: remove the Vite demo page and assets, then add layout,
+  sidebar/topbar navigation, React Router skeleton, the styling baseline, placeholder pages.
 - **Done when** both apps run locally, `/healthz` responds, CI green on `main`.
+- **Remaining** per §0: everything in this milestone except the scaffold, tooling pins, lint and
+  the existing CI jobs.
 
 ### M1 — Authentication + Profile
 - Endpoints: `POST /auth/signup`, `POST /auth/login`, `POST /auth/change-password`,
@@ -209,7 +247,7 @@ Proposed (to confirm before starting):
 
 | Layer | Tooling | Scope |
 |---|---|---|
-| Unit | xUnit + FluentAssertions | validators, status transitions, permission handler, report builders |
+| Unit | xUnit (+ assertion library, §7.4) | validators, status transitions, permission handler, report builders |
 | Integration | `WebApplicationFactory` + temp-file SQLite per test class | every endpoint: happy path, validation failure, each role |
 | Frontend unit | Vitest + React Testing Library | forms, guards, filter state, API client 401 handling |
 | E2E (M6) | Playwright | full golden-path journeys per role |
@@ -232,6 +270,7 @@ target ≥ 80% on service/permission layers, reported in CI (not a hard gate ini
 | PDF library licensing/size | QuestPDF Community licence fits this scope; fallback is an HTML print stylesheet |
 | .NET 10 tooling drift on CI | pin the SDK in `global.json` and in the CI setup step |
 | Scope creep | features limited to the approved requirements; extensions only in M7 |
+| .NET SDK missing from the VM snapshot (installed ad hoc into `~/.dotnet`) | add the SDK install to the environment blueprint so future sessions and CI match |
 
 ---
 
@@ -256,6 +295,11 @@ repositories (`createRepository: Resource not accessible by integration` for my 
 
 1. Create the empty private repo `codev-workshops/onboarding-diary`.
 2. Confirm the two M7 extensions (checklist templates, global search + charts).
-3. Note: the requirements doc (v0.2) still describes anonymous feedback (D2), admin temporary
-   passwords (A5), and soft deletes (B2). Those are now removed from the plan — say the word and
-   I will update `onboarding-diary-requirements.md` to match so the two documents agree.
+3. Note: `docs/requirements.md` (v0.2) still describes anonymous feedback (D2), admin temporary
+   passwords (A5), and soft deletes (B2). Those are now removed from the plan and contradicted by
+   ADR-008/ADR-011 — say the word and I will align that document so the two agree.
+4. Choose the .NET assertion library. The plan and ADR-014 originally said FluentAssertions,
+   whose v8 licence is commercial for non-open-source use; the alternatives are plain xUnit
+   asserts or Shouldly (both free). Default if you do not care: Shouldly.
+5. Confirm the frontend styling approach for the M0 shell. Earlier drafts assumed Tailwind, but
+   nothing is installed and no ADR records it.
