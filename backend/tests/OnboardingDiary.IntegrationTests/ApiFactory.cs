@@ -22,6 +22,8 @@ public class ApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("Jwt:Key", "integration-test-signing-key-integration-test-signing-key");
+        builder.UseSetting("RateLimiting:LoginPermitLimit", "1000");
 
         builder.ConfigureServices(services =>
         {
