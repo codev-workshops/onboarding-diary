@@ -247,6 +247,6 @@ live in `frontend/src/api/`; auth context and guards in `frontend/src/auth/`.
 
 ## 9. Known open items
 
-- Charts for M7 need either hand-rolled SVG or an approved charting library (see the follow-ups
-  in the implementation plan).
+- Charts are hand-written SVG in `frontend/src/components/charts/`; no charting library is
+  approved. Global search remains an unimplemented candidate extension.
 - The repository has no remote yet; it will live at `codev-workshops/onboarding-diary`.

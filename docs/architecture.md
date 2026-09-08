@@ -92,6 +92,8 @@ Endpoint groups, by the milestone that introduces them:
 | `/issues`, `/feedback`, `/notes`, `/dashboard` (full) | M3 |
 | `/admin/users`, `/admin/stats`, manager-scoped reads | M4 |
 | `/reports/preview`, `/reports/download` | M5 |
+| `/checklist-templates`, `/checklists` | M7 extension 1 |
+| `/dashboard/trends` | M7 extension 2 |
 
 ### 2.4 Authentication and authorization
 
@@ -143,6 +145,20 @@ Checklists generate ordinary tasks rather than carrying completion state of thei
 an assignment, and the unique index — not a service check — is what makes a second application of
 the same template impossible. Template edits reach future applications only; an applied template
 is retired with `is_active = false` because its assignment must survive.
+
+M7 extension 2 adds no table — only a nullable `completed_at` on `task_entries`, stamped when a
+task moves into `Done`, cleared when it leaves, and left untouched while it is edited in place.
+
+`GET /api/v1/dashboard/trends` serves the charts from that column and the existing entry tables.
+Its buckets deliberately mix two date bases: `tasksLogged`, `issuesOpened`, `feedbackCount` and
+`noteCount` use the recruit-chosen diary `entry_date`, while `tasksCompleted` and
+`issuesResolved` are lifecycle events and use the **UTC date** of `completed_at` / `resolved_at`.
+The application has no timezone model, so a task completed late in the day in a positive-offset
+timezone is counted on the following UTC day; that limitation is accepted rather than solved with
+a per-user timezone. Existing rows completed before the column existed keep `null` and are never
+back-filled from `updated_at`, so the completion series starts empty. Buckets are built in memory
+over four small range-filtered projections — SQLite cannot translate the `DateTimeOffset`
+comparisons — bounded by the 366-day maximum range, with no caching or aggregation layer.
 
 Deletes are **hard deletes**: no `deleted_at`, no global query filters, confirmation required in
 the UI, and only the owning recruit may delete.

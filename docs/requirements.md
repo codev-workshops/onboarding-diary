@@ -331,12 +331,20 @@ Recommended for Step 3 ("add at least two features"):
    can never be applied twice, even if every generated task is deleted; progress counts the
    assignment's generated tasks, not the current template definition; and task CRUD is unchanged,
    so a deleted checklist task is never silently re-created.
-2. **Global search + charts** — one search box across all four entry types, plus dashboard trend
-   charts (entries per day, task status over time, issues opened vs resolved). *(directly named
-   in the brief)*
-3. **Export** — full personal data export as JSON.
-4. **In-app nudges** — "you haven't logged an entry in 3 days" banner (in-app only, no email).
-5. **Attachments** — screenshots/files on issues (needs file storage; defer unless time).
+2. **Analytics charts / enhanced manager visibility** — a `GET /api/v1/dashboard/trends` endpoint
+   plus three hand-written SVG charts (entries per day, issues opened vs resolved, task
+   completion status) on the recruit dashboard and read-only on the team recruit detail view.
+   *(approved; the scope and date-basis rules are in the implementation plan, M7 Extension 2)*
+
+   Approved boundaries: no new tables (only a nullable `completed_at` on `task_entries`), no
+   charting library, no organisation-wide analytics, and no change to manager permissions.
+   Diary counts bucket by the recruit-chosen `entry_date`; completion and resolution bucket by
+   the UTC date of their lifecycle timestamp, because the application has no timezone model.
+3. **Global search** — one search box across all four entry types. *(candidate extension,
+   deliberately **out of scope** for this exercise; nothing is implemented)*
+4. **Export** — full personal data export as JSON.
+5. **In-app nudges** — "you haven't logged an entry in 3 days" banner (in-app only, no email).
+6. **Attachments** — screenshots/files on issues (needs file storage; defer unless time).
 
 Excluded by decision: manager comments/acknowledgement, weekly digest email, and anything
 requiring outbound email.
@@ -385,7 +393,7 @@ requiring outbound email.
 | M4 | Manager team view + admin user management |
 | M5 | Reports: preview, CSV, PDF |
 | M6 | Responsive UI polish + end-to-end verification |
-| M7 | Extensions: checklist templates, global search + charts |
+| M7 | Extensions: checklist templates, analytics charts (global search out of scope) |
 
 Work happens directly on `main`; each milestone lands with its tests. See
 [implementation-plan.md](implementation-plan.md) for the detailed breakdown.

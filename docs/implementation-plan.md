@@ -329,9 +329,12 @@ Confirmed:
 
 1. **Onboarding checklist templates** — admin-defined per-department checklists a recruit can
    apply, seeding tasks; dashboard shows checklist completion separately. Approved model below.
-2. **Global search + charts** — one search endpoint across all four entry types with grouped,
-   scope-respecting results, plus dashboard charts (entries per day, task status over time,
-   issues opened vs resolved). No new tables.
+2. **Analytics charts / enhanced manager visibility** — one trends endpoint plus three small
+   dashboard charts (entries per day, issues opened vs resolved, task completion status), shown
+   on the recruit dashboard and read-only on the team recruit detail view. No new tables.
+
+Global search was considered for Extension 2 and is **out of scope for this exercise**: it is a
+separate candidate extension and no search endpoint or UI is implemented.
 
 #### Extension 1 — approved data model and rules
 
@@ -382,8 +385,43 @@ ChecklistTemplate ──< ChecklistItem
 - **Verification (Extension 1)**: 109 backend tests (51 unit, 58 integration), 68 frontend tests,
   lint/format/build green. Playwright unchanged at four journeys.
 
-Open for approval when M7 starts: charts need a rendering approach — either hand-rolled SVG (no
-new dependency) or a charting library, which is outside the approved list.
+#### Extension 2 — approved scope and rules
+
+No new tables, no new packages, no fifth Playwright journey, no new abstractions — the trends
+endpoint reuses `EntryScopeService`, the existing dashboard route group and the existing DTO,
+loading and error conventions.
+
+- **Schema.** One nullable `completed_at` column on `task_entries` (`AddTaskCompletedAt`). A
+  non-Done → Done transition stamps `UtcNow`; leaving Done clears it; re-completing stamps a
+  fresh value; editing an already-Done task never moves it. Existing Done rows keep `null` —
+  historical completion dates are not manufactured from `updated_at`. `completedAt` is exposed
+  additively on `TaskResponse`.
+- **`GET /api/v1/dashboard/trends?userId=&from=&to=`** returns
+  `{ userId, from, to, days: [{ date, tasksLogged, tasksCompleted, issuesOpened, issuesResolved,
+  feedbackCount, noteCount }] }`, zero-filled across the whole requested range. Default range is
+  the last 30 days; `TrendsQueryValidator` carries `from ≤ to` and ≤ 366 days, duplicating the
+  report rules on purpose rather than extracting a shared abstraction for two consumers.
+- **Mixed date basis, intentional.** `tasksLogged`, `issuesOpened`, `feedbackCount` and
+  `noteCount` are bucketed by the recruit-chosen diary `entry_date` — hence `tasksLogged` rather
+  than `tasksCreated`. `tasksCompleted` and `issuesResolved` are lifecycle events bucketed by the
+  **UTC date** of `completed_at` / `resolved_at`; the application has no timezone model, so a task
+  completed late in a positive-offset timezone falls into the following UTC day.
+- **Checklist-generated tasks are ordinary tasks** and count in both task series.
+- **Charts** are hand-written SVG in `src/components/charts/` — no charting dependency. Each has
+  an accessible name, labels values as text rather than by colour alone, carries a visually
+  hidden table of the same numbers, and renders an empty state when everything is zero. Task
+  completion status is Done vs Open drawn from the dashboard's existing `total`/`done`/`open`;
+  no per-status map was added.
+- **Scope.** Recruit dashboard plus the read-only `/team/:userId` view manager and admin already
+  share, so admin needs no organisation-wide analytics feature. Manager permissions unchanged.
+
+- **Status — Extension 2 delivered.** `TrendsService` reads four small range-filtered
+  projections and buckets them in memory (SQLite cannot translate the `DateTimeOffset`
+  comparisons), with the 366-day cap keeping the reads bounded. `ActivitySection` fetches the
+  trends once and renders `EntriesPerDayChart`, `IssueTrendChart` and `TaskCompletionChart` on
+  both the dashboard and the team detail page.
+- **Verification (Extension 2)**: 121 backend tests (51 unit, 70 integration), 77 frontend tests,
+  lint/format/build green. Playwright unchanged at four journeys.
 
 ---
 
