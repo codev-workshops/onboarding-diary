@@ -11,7 +11,9 @@ using OnboardingDiary.Api.Common;
 using OnboardingDiary.Api.Domain;
 using OnboardingDiary.Api.Endpoints;
 using OnboardingDiary.Api.Features.Auth;
+using OnboardingDiary.Api.Features.Dashboard;
 using OnboardingDiary.Api.Features.Profile;
+using OnboardingDiary.Api.Features.Tasks;
 using OnboardingDiary.Api.Infrastructure;
 using OnboardingDiary.Api.Infrastructure.Auth;
 using OnboardingDiary.Api.Infrastructure.Seed;
@@ -46,6 +48,8 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ProfileService>();
+builder.Services.AddScoped<TaskService>();
+builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddValidatorsFromAssemblyContaining<SignupRequestValidator>();
 
@@ -141,6 +145,8 @@ app.UseAuthorization();
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapProfileEndpoints();
+app.MapTaskEndpoints();
+app.MapDashboardEndpoints();
 
 app.Run();
 
