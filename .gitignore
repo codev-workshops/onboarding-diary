@@ -1,0 +1,25 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+artifacts/
+TestResults/
+
+## SQLite
+*.db
+*.db-shm
+*.db-wal
+
+## Node
+node_modules/
+dist/
+.vite/
+coverage/
+
+## Env & editors
+.env
+.env.local
+.vscode/
+.idea/
+.DS_Store
