@@ -125,6 +125,18 @@ class DiaryFlowIT extends IntegrationTest {
     }
 
     @Test
+    void deleteConfirmationUsesAListenerRatherThanAnInlineHandler() throws Exception {
+        for (String path : new String[] {"/tasks", "/issues", "/feedback", "/notes"}) {
+            String html = mockMvc.perform(get(path).with(as(recruit)))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(html).contains("data-confirm=").contains("/js/app.js");
+            assertThat(html).doesNotContain("onsubmit=").doesNotContain("onclick=");
+        }
+    }
+
+    @Test
     void dashboardShipsChartDataInAnAttributeSoTheStrictCspAllowsIt() throws Exception {
         String html = mockMvc.perform(get("/dashboard").with(as(recruit)))
                 .andExpect(status().isOk())

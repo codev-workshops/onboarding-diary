@@ -69,7 +69,7 @@
                 <td class="text-end text-nowrap">
                     <a class="btn btn-sm btn-outline-primary" th:href="@{'/tasks/edit/' + ${task.id}}">Edit</a>
                     <form class="d-inline" method="post" th:action="@{'/tasks/delete/' + ${task.id}}"
-                          onsubmit="return confirm('Delete this task?');">
+                          data-confirm="Delete this task?">
                         <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
                     </form>
                 </td>

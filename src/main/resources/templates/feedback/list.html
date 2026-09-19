@@ -56,7 +56,7 @@
                 <td class="text-end text-nowrap">
                     <a class="btn btn-sm btn-outline-primary" th:href="@{'/feedback/edit/' + ${item.id}}">Edit</a>
                     <form class="d-inline" method="post" th:action="@{'/feedback/delete/' + ${item.id}}"
-                          onsubmit="return confirm('Delete this feedback entry?');">
+                          data-confirm="Delete this feedback entry?">
                         <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
                     </form>
                 </td>

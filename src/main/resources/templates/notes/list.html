@@ -45,7 +45,7 @@
                     </p>
                     <a class="btn btn-sm btn-outline-primary" th:href="@{'/notes/edit/' + ${note.id}}">Edit</a>
                     <form class="d-inline" method="post" th:action="@{'/notes/delete/' + ${note.id}}"
-                          onsubmit="return confirm('Delete this note?');">
+                          data-confirm="Delete this note?">
                         <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
                     </form>
                 </div>
