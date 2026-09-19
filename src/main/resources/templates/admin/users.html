@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Users')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <div th:replace="~{fragments/layout :: alerts}"></div>
+    <h1 class="h3 mb-3">User management</h1>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h6">Create user</h2>
+            <form th:action="@{/admin/users}" th:object="${adminUserForm}" method="post" novalidate>
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label" for="name">Name</label>
+                        <input class="form-control" id="name" th:field="*{name}" required minlength="2"
+                               maxlength="100">
+                        <div class="text-danger small" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label" for="email">Email</label>
+                        <input class="form-control" id="email" type="email" th:field="*{email}" required>
+                        <div class="text-danger small" th:if="${#fields.hasErrors('email')}"
+                             th:errors="*{email}"></div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label" for="password">Temporary password</label>
+                        <input class="form-control" id="password" type="password" th:field="*{password}" required
+                               minlength="8">
+                        <div class="text-danger small" th:if="${#fields.hasErrors('password')}"
+                             th:errors="*{password}"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="role">Role</label>
+                        <select class="form-select" id="role" th:field="*{role}">
+                            <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"></option>
+                        </select>
+                        <div class="text-danger small" th:if="${#fields.hasErrors('role')}" th:errors="*{role}"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="department">Department</label>
+                        <input class="form-control" id="department" th:field="*{department}" maxlength="100">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="startDate">Start date</label>
+                        <input class="form-control" id="startDate" type="date" th:field="*{startDate}">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="managerId">Manager</label>
+                        <select class="form-select" id="managerId" th:field="*{managerId}">
+                            <option value="">None</option>
+                            <option th:each="m : ${managers}" th:value="${m.id}" th:text="${m.name}"></option>
+                        </select>
+                        <div class="text-danger small" th:if="${#fields.hasErrors('managerId')}"
+                             th:errors="*{managerId}"></div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary" type="submit">Create user</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
+                <th scope="col">Manager</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="user : ${users}">
+                <td th:text="${user.name}">name</td>
+                <td th:text="${user.email}">email</td>
+                <td th:text="${user.role}">role</td>
+                <td>
+                    <form class="d-flex gap-1" method="post"
+                          th:action="@{'/admin/users/' + ${user.id} + '/manager'}"
+                          th:if="${user.role.name() == 'RECRUIT'}">
+                        <select class="form-select form-select-sm" name="managerId">
+                            <option value="">None</option>
+                            <option th:each="m : ${managers}" th:value="${m.id}" th:text="${m.name}"
+                                    th:selected="${user.manager != null and user.manager.id == m.id}"></option>
+                        </select>
+                        <button class="btn btn-sm btn-outline-primary" type="submit">Set</button>
+                    </form>
+                    <span th:unless="${user.role.name() == 'RECRUIT'}" class="text-muted">-</span>
+                </td>
+                <td>
+                    <span class="badge" th:classappend="${user.active} ? 'bg-success' : 'bg-secondary'"
+                          th:text="${user.active} ? 'Active' : 'Disabled'">status</span>
+                </td>
+                <td>
+                    <form method="post" th:action="@{'/admin/users/' + ${user.id} + '/active'}">
+                        <input type="hidden" name="active" th:value="${!user.active}">
+                        <button class="btn btn-sm"
+                                th:classappend="${user.active} ? 'btn-outline-danger' : 'btn-outline-success'"
+                                th:text="${user.active} ? 'Deactivate' : 'Activate'" type="submit">toggle</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

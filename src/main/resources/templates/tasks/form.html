@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Task')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <h1 class="h3 mb-3" th:text="${taskId != null} ? 'Edit task' : 'New task'">Task</h1>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form th:object="${taskForm}" method="post"
+                  th:action="${taskId != null} ? @{'/tasks/edit/' + ${taskId}} : @{/tasks}" novalidate>
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label" for="date">Date</label>
+                        <input class="form-control" id="date" type="date" th:field="*{date}" required>
+                        <div class="text-danger small" th:if="${#fields.hasErrors('date')}" th:errors="*{date}"></div>
+                    </div>
+                    <div class="col-12 col-md-8">
+                        <label class="form-label" for="title">Title</label>
+                        <input class="form-control" id="title" th:field="*{title}" required minlength="3"
+                               maxlength="150">
+                        <div class="text-danger small" th:if="${#fields.hasErrors('title')}"
+                             th:errors="*{title}"></div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label" for="category">Category</label>
+                        <input class="form-control" id="category" th:field="*{category}" required maxlength="100"
+                               list="categoryOptions">
+                        <datalist id="categoryOptions">
+                            <option value="Setup"></option>
+                            <option value="Training"></option>
+                            <option value="Delivery"></option>
+                            <option value="Meeting"></option>
+                        </datalist>
+                        <div class="text-danger small" th:if="${#fields.hasErrors('category')}"
+                             th:errors="*{category}"></div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label" for="status">Status</label>
+                        <select class="form-select" id="status" th:field="*{status}">
+                            <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"></option>
+                        </select>
+                        <div class="text-danger small" th:if="${#fields.hasErrors('status')}"
+                             th:errors="*{status}"></div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label" for="priority">Priority</label>
+                        <select class="form-select" id="priority" th:field="*{priority}">
+                            <option th:each="p : ${priorities}" th:value="${p}" th:text="${p}"></option>
+                        </select>
+                        <div class="text-danger small" th:if="${#fields.hasErrors('priority')}"
+                             th:errors="*{priority}"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="description">Description</label>
+                        <textarea class="form-control" id="description" rows="5" th:field="*{description}"
+                                  maxlength="4000"></textarea>
+                        <div class="text-danger small" th:if="${#fields.hasErrors('description')}"
+                             th:errors="*{description}"></div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary" type="submit">Save</button>
+                    <a class="btn btn-link" th:href="@{/tasks}">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Recruit diary')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h3 mb-0" th:text="${recruit.name}">Recruit</h1>
+            <div class="text-muted" th:text="${recruit.email}">email</div>
+        </div>
+        <a class="btn btn-outline-primary" th:href="@{/reports}">Generate report</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card stat-card shadow-sm"><div class="card-body">
+                <div class="text-muted small">Total tasks</div>
+                <div class="display-6" th:text="${dashboard.totalTasks}">0</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stat-card shadow-sm"><div class="card-body">
+                <div class="text-muted small">Completion</div>
+                <div class="display-6" th:text="|${dashboard.completionPercentage}%|">0%</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stat-card shadow-sm"><div class="card-body">
+                <div class="text-muted small">Open issues</div>
+                <div class="display-6" th:text="${dashboard.openIssues}">0</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stat-card shadow-sm"><div class="card-body">
+                <div class="text-muted small">Overdue tasks</div>
+                <div class="display-6" th:text="${dashboard.overdueTasks}">0</div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <h2 class="h6">Tasks</h2>
+            <p class="text-muted mb-0" th:if="${#lists.isEmpty(tasks)}">No tasks logged.</p>
+            <ul class="list-group list-group-flush" th:unless="${#lists.isEmpty(tasks)}">
+                <li class="list-group-item" th:each="task : ${tasks}">
+                    <span class="text-muted small me-2" th:text="${task.date}"></span>
+                    <strong th:text="${task.title}"></strong>
+                    <span class="badge bg-secondary ms-2" th:text="${task.status}"></span>
+                    <div class="snippet" th:text="${task.description}"></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <h2 class="h6">Issues</h2>
+            <p class="text-muted mb-0" th:if="${#lists.isEmpty(issues)}">No issues logged.</p>
+            <ul class="list-group list-group-flush" th:unless="${#lists.isEmpty(issues)}">
+                <li class="list-group-item" th:each="issue : ${issues}">
+                    <span class="text-muted small me-2" th:text="${issue.date}"></span>
+                    <strong th:text="${issue.title}"></strong>
+                    <span class="badge bg-warning text-dark ms-2" th:text="${issue.severity}"></span>
+                    <span class="badge bg-secondary" th:text="${issue.status}"></span>
+                    <div class="snippet" th:text="${issue.description}"></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <h2 class="h6">Feedback</h2>
+            <p class="text-muted mb-0" th:if="${#lists.isEmpty(feedbackEntries)}">No feedback logged.</p>
+            <ul class="list-group list-group-flush" th:unless="${#lists.isEmpty(feedbackEntries)}">
+                <li class="list-group-item" th:each="item : ${feedbackEntries}">
+                    <span class="text-muted small me-2" th:text="${item.date}"></span>
+                    <strong th:text="${item.subject}"></strong>
+                    <span class="badge bg-info text-dark ms-2" th:text="${item.type}"></span>
+                    <div class="snippet" th:text="${item.details}"></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h6">Notes</h2>
+            <p class="text-muted mb-0" th:if="${#lists.isEmpty(notes)}">No notes logged.</p>
+            <ul class="list-group list-group-flush" th:unless="${#lists.isEmpty(notes)}">
+                <li class="list-group-item" th:each="note : ${notes}">
+                    <span class="text-muted small me-2" th:text="${note.date}"></span>
+                    <strong th:text="${note.title}"></strong>
+                    <div class="snippet" th:text="${note.content}"></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

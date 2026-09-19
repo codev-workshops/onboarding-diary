@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Feedback')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <div th:replace="~{fragments/layout :: alerts}"></div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Feedback</h1>
+        <a class="btn btn-primary" th:href="@{/feedback/new}">Give feedback</a>
+    </div>
+
+    <form class="card card-body shadow-sm mb-3" method="get" th:action="@{/feedback}">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label" for="from">From</label>
+                <input class="form-control" id="from" type="date" name="from" th:value="${filter.from}">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label" for="to">To</label>
+                <input class="form-control" id="to" type="date" name="to" th:value="${filter.to}">
+            </div>
+            <div class="col-8 col-md-4">
+                <label class="form-label" for="type">Type</label>
+                <select class="form-select" id="type" name="type">
+                    <option value="">All</option>
+                    <option th:each="t : ${types}" th:value="${t}" th:text="${t}"
+                            th:selected="${t == filter.type}"></option>
+                </select>
+            </div>
+            <div class="col-4 col-md-2 d-grid">
+                <button class="btn btn-outline-primary" type="submit">Filter</button>
+            </div>
+        </div>
+    </form>
+
+    <p class="text-muted" th:if="${#lists.isEmpty(feedbackEntries)}">No feedback matches the current filters.</p>
+    <div class="table-responsive shadow-sm" th:unless="${#lists.isEmpty(feedbackEntries)}">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+            <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Subject</th>
+                <th scope="col">Type</th>
+                <th scope="col" class="text-end">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item : ${feedbackEntries}">
+                <td th:text="${item.date}">date</td>
+                <td>
+                    <span th:text="${item.subject}">subject</span>
+                    <div class="snippet" th:text="${item.details}"></div>
+                </td>
+                <td><span class="badge bg-info text-dark" th:text="${item.type}">type</span></td>
+                <td class="text-end text-nowrap">
+                    <a class="btn btn-sm btn-outline-primary" th:href="@{'/feedback/edit/' + ${item.id}}">Edit</a>
+                    <form class="d-inline" method="post" th:action="@{'/feedback/delete/' + ${item.id}}"
+                          data-confirm="Delete this feedback entry?">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

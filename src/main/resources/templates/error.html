@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Error')}"></head>
+<body>
+<main class="container">
+    <div class="card auth-card shadow-sm">
+        <div class="card-body">
+            <h1 class="h4" th:text="${status} ?: 'Error'">Error</h1>
+            <p th:text="${error} ?: 'Unexpected error'">Unexpected error</p>
+            <a class="btn btn-primary" th:href="@{/dashboard}">Back to dashboard</a>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>
