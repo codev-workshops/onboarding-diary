@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import com.codev.onboardingdiary.service.ReportData;
 import com.codev.onboardingdiary.service.ReportService;
@@ -90,6 +92,17 @@ class ReportIT extends IntegrationTest {
         assertThatThrownBy(() -> reportService.build(principal(recruit), recruit.getId(),
                 null, LocalDate.now(), ReportType.TASKS))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void invalidRangeRedisplaysTheReportFormWithAnExplanation() throws Exception {
+        mockMvc.perform(get("/reports/download/csv").with(as(recruit))
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().minusDays(5).toString())
+                        .param("type", "COMBINED"))
+                .andExpect(status().isBadRequest())
+                .andExpect(view().name("reports"))
+                .andExpect(model().attribute("errorMessage", "Start date must be before end date"));
     }
 
     @Test

@@ -1,5 +1,6 @@
 (function () {
-    const data = window.dashboardCharts || {};
+    const holder = document.getElementById('chartData');
+    const data = holder && holder.dataset.charts ? JSON.parse(holder.dataset.charts) : {};
     const palette = ['#0d6efd', '#6f42c1', '#198754', '#dc3545', '#fd7e14', '#20c997'];
 
     function render(canvasId, dataset, type) {
@@ -30,6 +31,10 @@
             }
         });
     }
+
+    document.querySelectorAll('.progress-bar[data-progress]').forEach((bar) => {
+        bar.style.width = bar.dataset.progress + '%';
+    });
 
     render('taskStatusChart', data.tasksByStatus, 'doughnut');
     render('issueSeverityChart', data.issuesBySeverity, 'bar');

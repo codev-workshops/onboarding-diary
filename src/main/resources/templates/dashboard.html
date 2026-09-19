@@ -39,7 +39,7 @@
                     <div class="display-6" id="statCompletion"
                          th:text="|${dashboard.completionPercentage}%|">0%</div>
                     <div class="progress mt-2" role="progressbar" aria-label="Task completion">
-                        <div class="progress-bar" th:style="|width: ${dashboard.completionPercentage}%|"></div>
+                        <div class="progress-bar" th:attr="data-progress=${dashboard.completionPercentage}"></div>
                     </div>
                 </div>
             </div>
@@ -103,14 +103,9 @@
         </div>
     </div>
 </main>
+<div id="chartData" hidden th:attr="data-charts=${chartData}"></div>
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script th:src="@{/webjars/chart.js/dist/chart.umd.js}"></script>
-<script th:inline="javascript">
-    window.dashboardCharts = {
-        tasksByStatus: /*[[${dashboard.tasksByStatus}]]*/ {},
-        issuesBySeverity: /*[[${dashboard.issuesBySeverity}]]*/ {}
-    };
-</script>
 <script th:src="@{/js/dashboard.js}"></script>
 </body>
 </html>

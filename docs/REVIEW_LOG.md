@@ -34,6 +34,9 @@ records the disposition.
 | Q2 | Client-side `required`/`maxlength` attributes could be bypassed. | Every constraint is enforced server-side with Jakarta Validation and asserted by `FormValidationTest` and `DiaryFlowIT.invalidTaskIsRejectedServerSideAndNotPersisted`. |
 | Q3 | Report date ranges could be inverted or empty. | `ReportService` rejects null and inverted ranges with a clear message; covered by `ReportIT.invalidRangeIsRejected`. |
 | Q4 | Integration tests initially missed by Surefire because of the `*IT` suffix. | Fixed: Surefire configured to include `**/*IT.java`, so `mvn verify` runs the whole suite. |
+| Q5 | Browser testing found the strict CSP (`script-src 'self'; style-src 'self'`) silently blocked the inline chart bootstrap script and the inline progress-bar width, so both dashboard charts and the completion bar rendered blank. | Fixed without weakening the CSP: chart datasets are serialized by `ChartJson` into a `data-charts` attribute and the completion bar carries `data-progress`; `dashboard.js` reads both. Covered by `DiaryFlowIT.dashboardShipsChartDataInAnAttributeSoTheStrictCspAllowsIt`. |
+| Q6 | Browser testing found an inverted report range (From > To) returned a generic 500 page instead of feedback. | Fixed: `ReportController` handles `IllegalArgumentException` by redisplaying the report form with the reason and HTTP 400; covered by `ReportIT.invalidRangeRedisplaysTheReportFormWithAnExplanation`. |
+
 
 ## UX review
 

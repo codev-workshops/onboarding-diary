@@ -125,6 +125,17 @@ class DiaryFlowIT extends IntegrationTest {
     }
 
     @Test
+    void dashboardShipsChartDataInAnAttributeSoTheStrictCspAllowsIt() throws Exception {
+        String html = mockMvc.perform(get("/dashboard").with(as(recruit)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html).contains("id=\"chartData\"").contains("tasksByStatus").contains("issuesBySeverity");
+        assertThat(html).doesNotContain("window.dashboardCharts");
+        assertThat(html).contains("data-progress=\"33\"");
+    }
+
+    @Test
     void dashboardShowsCompletionAndOpenIssueCounts() throws Exception {
         mockMvc.perform(get("/dashboard").with(as(recruit)))
                 .andExpect(status().isOk())

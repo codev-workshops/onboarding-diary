@@ -14,6 +14,7 @@ import com.codev.onboardingdiary.web.dto.NoteFilter;
 import com.codev.onboardingdiary.web.dto.RecruitSummaryDto;
 import com.codev.onboardingdiary.web.dto.TaskFilter;
 import java.util.List;
+import java.util.Map;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -31,19 +32,22 @@ public class ManagerController {
     private final FeedbackService feedbackService;
     private final NoteService noteService;
     private final AuthorizationService authorizationService;
+    private final ChartJson chartJson;
 
     public ManagerController(DashboardService dashboardService,
                              TaskService taskService,
                              IssueService issueService,
                              FeedbackService feedbackService,
                              NoteService noteService,
-                             AuthorizationService authorizationService) {
+                             AuthorizationService authorizationService,
+                             ChartJson chartJson) {
         this.dashboardService = dashboardService;
         this.taskService = taskService;
         this.issueService = issueService;
         this.feedbackService = feedbackService;
         this.noteService = noteService;
         this.authorizationService = authorizationService;
+        this.chartJson = chartJson;
     }
 
     @GetMapping("/recruits")
@@ -51,9 +55,10 @@ public class ManagerController {
         List<RecruitSummaryDto> recruits = dashboardService.recruitSummaries(principal);
         List<Long> ids = recruits.stream().map(RecruitSummaryDto::id).toList();
         model.addAttribute("recruits", recruits);
-        model.addAttribute("teamTasksByStatus", dashboardService.teamTasksByStatus(ids));
-        model.addAttribute("teamIssuesBySeverity", dashboardService.teamIssuesBySeverity(ids));
         model.addAttribute("teamOpenIssues", dashboardService.teamOpenIssues(ids));
+        model.addAttribute("chartData", chartJson.write(Map.of(
+                "teamTasksByStatus", dashboardService.teamTasksByStatus(ids),
+                "teamIssuesBySeverity", dashboardService.teamIssuesBySeverity(ids))));
         return "manager/recruits";
     }
 

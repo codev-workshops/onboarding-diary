@@ -5,15 +5,18 @@ import com.codev.onboardingdiary.service.ReportData;
 import com.codev.onboardingdiary.service.ReportService;
 import com.codev.onboardingdiary.service.ReportType;
 import com.codev.onboardingdiary.service.UserService;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -35,6 +38,17 @@ public class ReportController {
         model.addAttribute("defaultFrom", LocalDate.now().minusMonths(1));
         model.addAttribute("defaultTo", LocalDate.now());
         return "reports";
+    }
+
+    /** An unusable date range is user error, so the form is redisplayed with the reason. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public String invalidRange(IllegalArgumentException ex,
+                               @AuthenticationPrincipal AppUserDetails principal,
+                               Model model,
+                               HttpServletResponse response) {
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+        model.addAttribute("errorMessage", ex.getMessage());
+        return reports(principal, model);
     }
 
     @GetMapping("/reports/download/csv")
