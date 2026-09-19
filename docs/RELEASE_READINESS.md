@@ -4,7 +4,7 @@
 
 | Check | Result |
 | --- | --- |
-| `mvn -B verify` (Java 21) | BUILD SUCCESS — 50 tests, 0 failures, 0 errors |
+| `mvn -B verify` (Java 21) | BUILD SUCCESS — 53 tests, 0 failures, 0 errors |
 | Flyway migration on an empty PostgreSQL 17 database | `V1 init schema` applied successfully; Hibernate `ddl-auto=validate` passed |
 | Application boot (`java -jar target/onboarding-diary-1.0.0.jar`) | Started in ~4.4 s, `/actuator/health` and `/login` respond 200 |
 | Core journeys (live HTTP smoke run) | login → dashboard → tasks/issues/feedback/notes CRUD → search → reports all succeeded |
@@ -15,6 +15,7 @@
 | Validation | enforced server-side on every form and API payload; field-level errors returned |
 | Secrets | none committed; `.env` ignored, `.env.example` documents every variable |
 | Stubs / TODOs | none in application code |
+| Browser verification (all roles, Chrome) | passed: signup/login/logout, disabled then reactivated accounts, profile and password changes, CRUD plus filters in all four categories, delete confirmation cancel/confirm, field-level validation including oversized text, dashboard charts and completion bar, cross-category search isolation, CSV/PDF for every report type, role boundaries and URL tampering, admin user management, narrow-viewport layout |
 
 ## Known limitations and follow-ups
 
@@ -25,6 +26,7 @@
 - No rate limiting or account lockout on the login endpoint.
 - Reports are generated synchronously; very large date ranges will hold a request thread.
 - No pagination on diary list pages yet (filters are provided instead).
+- After a rejected report date range the form redisplays with its selections reset.
 
 ## Deployment notes
 
