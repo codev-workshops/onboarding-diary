@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:17
+    container_name: onboarding-diary-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-onboarding_diary}
+      POSTGRES_USER: ${POSTGRES_USER:-diary}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-diary}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - onboarding-diary-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-diary} -d ${POSTGRES_DB:-onboarding_diary}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  onboarding-diary-data:

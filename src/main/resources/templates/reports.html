@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Reports')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <div th:replace="~{fragments/layout :: alerts}"></div>
+    <h1 class="h3 mb-3">Reports</h1>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form id="reportForm" method="get" th:action="@{/reports/download/csv}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label" for="userId">Diary owner</label>
+                        <select class="form-select" id="userId" name="userId">
+                            <option th:each="user : ${reportableUsers}" th:value="${user.id}"
+                                    th:text="|${user.name} (${user.role})|"></option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="from">From</label>
+                        <input class="form-control" id="from" type="date" name="from" th:value="${defaultFrom}"
+                               required>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="to">To</label>
+                        <input class="form-control" id="to" type="date" name="to" th:value="${defaultTo}" required>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label" for="type">Report type</label>
+                        <select class="form-select" id="type" name="type">
+                            <option th:each="rt : ${reportTypes}" th:value="${rt}" th:text="${rt}"></option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary" type="submit"
+                            th:formaction="@{/reports/download/csv}">Download CSV</button>
+                    <button class="btn btn-outline-primary" type="submit"
+                            th:formaction="@{/reports/download/pdf}">Download PDF</button>
+                </div>
+            </form>
+            <p class="text-muted small mt-3 mb-0">Managers can report on their assigned recruits; admins can report on
+                any user. Every download is scope-checked on the server.</p>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

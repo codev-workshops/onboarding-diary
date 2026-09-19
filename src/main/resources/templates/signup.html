@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Create account')}"></head>
+<body>
+<main class="container">
+    <div class="card auth-card shadow-sm">
+        <div class="card-body">
+            <h1 class="h4 mb-3">Create recruit account</h1>
+            <form th:action="@{/signup}" th:object="${signupForm}" method="post" novalidate>
+                <div class="mb-3">
+                    <label class="form-label" for="name">Full name</label>
+                    <input class="form-control" id="name" th:field="*{name}" required minlength="2" maxlength="100">
+                    <div class="text-danger small" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="signupEmail">Email</label>
+                    <input class="form-control" id="signupEmail" type="email" th:field="*{email}" required>
+                    <div class="text-danger small" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="signupPassword">Password</label>
+                    <input class="form-control" id="signupPassword" type="password" th:field="*{password}" required
+                           minlength="8">
+                    <div class="text-danger small" th:if="${#fields.hasErrors('password')}"
+                         th:errors="*{password}"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="department">Department</label>
+                    <input class="form-control" id="department" th:field="*{department}" maxlength="100">
+                    <div class="text-danger small" th:if="${#fields.hasErrors('department')}"
+                         th:errors="*{department}"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="startDate">Start date</label>
+                    <input class="form-control" id="startDate" type="date" th:field="*{startDate}">
+                </div>
+                <button class="btn btn-primary w-100" type="submit">Create account</button>
+            </form>
+            <p class="mt-3 mb-0">Already registered? <a th:href="@{/login}">Sign in</a></p>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

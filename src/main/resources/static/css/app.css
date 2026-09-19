@@ -1,0 +1,32 @@
+body {
+    background-color: #f6f7fb;
+}
+
+main.container {
+    padding-top: 1.5rem;
+    padding-bottom: 3rem;
+}
+
+.stat-card .display-6 {
+    font-weight: 600;
+}
+
+.table-responsive {
+    background: #fff;
+    border-radius: .5rem;
+}
+
+.auth-card {
+    max-width: 460px;
+    margin: 4rem auto;
+}
+
+.chart-box {
+    position: relative;
+    height: 260px;
+}
+
+.snippet {
+    color: #555;
+    font-size: .9rem;
+}

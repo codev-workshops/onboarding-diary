@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Search')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <h1 class="h3 mb-3">Search my diary</h1>
+    <form class="card card-body shadow-sm mb-3" method="get" th:action="@{/search}">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-10">
+                <label class="form-label" for="q">Search tasks, issues, feedback and notes</label>
+                <input class="form-control" id="q" name="q" th:value="${q}" maxlength="150" autofocus>
+            </div>
+            <div class="col-12 col-md-2 d-grid">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </div>
+    </form>
+
+    <p class="text-muted" th:if="${q == null or #strings.isEmpty(q)}">Enter a keyword to search across all
+        categories.</p>
+    <p class="text-muted" th:if="${q != null and !#strings.isEmpty(q) and #lists.isEmpty(results)}">
+        No entries matched <strong th:text="${q}"></strong>.
+    </p>
+    <div class="list-group shadow-sm" th:unless="${#lists.isEmpty(results)}">
+        <a class="list-group-item list-group-item-action" th:each="result : ${results}"
+           th:href="@{${result.link}}">
+            <div class="d-flex justify-content-between">
+                <span>
+                    <span class="badge bg-secondary me-2" th:text="${result.category}">CATEGORY</span>
+                    <strong th:text="${result.title}">title</strong>
+                </span>
+                <span class="text-muted small" th:text="${result.date}">date</span>
+            </div>
+            <div class="snippet" th:text="${result.snippet}">snippet</div>
+        </a>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

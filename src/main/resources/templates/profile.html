@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Profile')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <div th:replace="~{fragments/layout :: alerts}"></div>
+    <h1 class="h3 mb-3">My profile</h1>
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h6">Details</h2>
+                    <dl class="row mb-3">
+                        <dt class="col-4">Email</dt>
+                        <dd class="col-8" th:text="${profile.email}">email</dd>
+                        <dt class="col-4">Role</dt>
+                        <dd class="col-8" th:text="${profile.role}">role</dd>
+                        <dt class="col-4">Manager</dt>
+                        <dd class="col-8" th:text="${profile.manager != null} ? ${profile.manager.name} : 'Not assigned'">-</dd>
+                    </dl>
+                    <form th:action="@{/profile}" th:object="${profileForm}" method="post" novalidate>
+                        <div class="mb-3">
+                            <label class="form-label" for="name">Full name</label>
+                            <input class="form-control" id="name" th:field="*{name}" required minlength="2"
+                                   maxlength="100">
+                            <div class="text-danger small" th:if="${#fields.hasErrors('name')}"
+                                 th:errors="*{name}"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="department">Department</label>
+                            <input class="form-control" id="department" th:field="*{department}" maxlength="100">
+                            <div class="text-danger small" th:if="${#fields.hasErrors('department')}"
+                                 th:errors="*{department}"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="startDate">Start date</label>
+                            <input class="form-control" id="startDate" type="date" th:field="*{startDate}">
+                        </div>
+                        <button class="btn btn-primary" type="submit">Save profile</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h6">Change password</h2>
+                    <form th:action="@{/profile/password}" th:object="${passwordChangeForm}" method="post" novalidate>
+                        <div class="mb-3">
+                            <label class="form-label" for="currentPassword">Current password</label>
+                            <input class="form-control" id="currentPassword" type="password"
+                                   th:field="*{currentPassword}" required>
+                            <div class="text-danger small" th:if="${#fields.hasErrors('currentPassword')}"
+                                 th:errors="*{currentPassword}"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="newPassword">New password</label>
+                            <input class="form-control" id="newPassword" type="password" th:field="*{newPassword}"
+                                   required minlength="8">
+                            <div class="text-danger small" th:if="${#fields.hasErrors('newPassword')}"
+                                 th:errors="*{newPassword}"></div>
+                        </div>
+                        <button class="btn btn-primary" type="submit">Change password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

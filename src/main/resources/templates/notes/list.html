@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Notes')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <div th:replace="~{fragments/layout :: alerts}"></div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Notes</h1>
+        <a class="btn btn-primary" th:href="@{/notes/new}">New note</a>
+    </div>
+
+    <form class="card card-body shadow-sm mb-3" method="get" th:action="@{/notes}">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label" for="from">From</label>
+                <input class="form-control" id="from" type="date" name="from" th:value="${filter.from}">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label" for="to">To</label>
+                <input class="form-control" id="to" type="date" name="to" th:value="${filter.to}">
+            </div>
+            <div class="col-8 col-md-4">
+                <label class="form-label" for="q">Contains</label>
+                <input class="form-control" id="q" name="q" th:value="${filter.q}" maxlength="150">
+            </div>
+            <div class="col-4 col-md-2 d-grid">
+                <button class="btn btn-outline-primary" type="submit">Filter</button>
+            </div>
+        </div>
+    </form>
+
+    <p class="text-muted" th:if="${#lists.isEmpty(notes)}">No notes match the current filters.</p>
+    <div class="row g-3" th:unless="${#lists.isEmpty(notes)}">
+        <div class="col-12 col-md-6" th:each="note : ${notes}">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <h2 class="h6 mb-1" th:text="${note.title}">title</h2>
+                        <span class="text-muted small" th:text="${note.date}">date</span>
+                    </div>
+                    <p class="snippet" th:text="${note.content}">content</p>
+                    <p class="mb-2">
+                        <span class="badge bg-light text-dark" th:if="${note.tags}" th:text="${note.tags}">tags</span>
+                    </p>
+                    <a class="btn btn-sm btn-outline-primary" th:href="@{'/notes/edit/' + ${note.id}}">Edit</a>
+                    <form class="d-inline" method="post" th:action="@{'/notes/delete/' + ${note.id}}"
+                          onsubmit="return confirm('Delete this note?');">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

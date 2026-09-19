@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Recruits')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container">
+    <div th:replace="~{fragments/layout :: alerts}"></div>
+    <h1 class="h3 mb-3">Recruits</h1>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h6">Team tasks by status</h2>
+                    <div class="chart-box"><canvas id="teamTaskStatusChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h6">Team issues by severity</h2>
+                    <div class="chart-box"><canvas id="teamIssueSeverityChart"></canvas></div>
+                    <p class="mb-0 mt-2">Open issues: <strong th:text="${teamOpenIssues}">0</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p class="text-muted" th:if="${#lists.isEmpty(recruits)}">No recruits are assigned to you yet.</p>
+    <div class="table-responsive shadow-sm" th:unless="${#lists.isEmpty(recruits)}">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Department</th>
+                <th scope="col">Tasks</th>
+                <th scope="col">Completion</th>
+                <th scope="col">Open issues</th>
+                <th scope="col">Last activity</th>
+                <th scope="col" class="text-end">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="recruit : ${recruits}">
+                <td>
+                    <span th:text="${recruit.name}">name</span>
+                    <div class="snippet" th:text="${recruit.email}"></div>
+                </td>
+                <td th:text="${recruit.department}">department</td>
+                <td th:text="|${recruit.completedTasks}/${recruit.totalTasks}|">0/0</td>
+                <td th:text="|${recruit.completionPercentage}%|">0%</td>
+                <td th:text="${recruit.openIssues}">0</td>
+                <td th:text="${recruit.lastActivity}">-</td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary"
+                       th:href="@{'/manager/recruits/' + ${recruit.id}}">View diary</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script th:src="@{/webjars/chart.js/dist/chart.umd.js}"></script>
+<script th:inline="javascript">
+    window.dashboardCharts = {
+        teamTasksByStatus: /*[[${teamTasksByStatus}]]*/ {},
+        teamIssuesBySeverity: /*[[${teamIssuesBySeverity}]]*/ {}
+    };
+</script>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>
