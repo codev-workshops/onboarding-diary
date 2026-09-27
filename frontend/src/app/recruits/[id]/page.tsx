@@ -5,7 +5,7 @@ import { observer } from "mobx-react-lite";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { RequireRole } from "@/components/auth/RequireRole";
-import { recruitTabsFor } from "@/lib/registry";
+import { useVisibleRecruitTabs } from "@/lib/registry";
 import type { UserSummary } from "@/lib/apiClient";
 import { useStores } from "@/stores/StoreProvider";
 import formStyles from "@/components/ui/forms.module.css";
@@ -58,13 +58,13 @@ const RecruitHeader = observer(function RecruitHeader({ recruitId }: { recruitId
 });
 
 const RecruitPageContent = observer(function RecruitPageContent() {
-  const { auth } = useStores();
+  const stores = useStores();
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
 
-  const tabs = recruitTabsFor(auth.role);
+  const tabs = useVisibleRecruitTabs(stores, stores.auth.role, params.id);
   const requested = search.get("tab");
   const active = tabs.find((t) => t.id === requested) ?? tabs[0];
 

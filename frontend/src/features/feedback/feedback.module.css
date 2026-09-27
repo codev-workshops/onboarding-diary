@@ -1,0 +1,25 @@
+.notice {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #b26a00;
+  border-radius: 8px;
+  background: rgba(178, 106, 0, 0.08);
+  color: #8a5300;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.notice::before {
+  content: "\1F512";
+  flex: 0 0 auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .notice {
+    color: #f2b866;
+    border-color: #a86f1c;
+  }
+}

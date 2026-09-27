@@ -96,6 +96,10 @@ Rules:
   keys (e.g. `?tab=`) are preserved — so several tabs can share one URL.
 - Registries ignore duplicate `href` / `id`, sort by `order` and filter by
   `roles`; pick an `order` in your slice's hundreds (S3 = 100, S4 = 200, ...).
+- A `RecruitTab` may set optional `visibility: { probe, isVisible }` (S5) when
+  the API may refuse that recruit's data; `/recruits/{id}` probes once per
+  recruit via `useVisibleRecruitTabs` and hides the tab unless `isVisible`
+  is `true`. Tabs without it are always shown.
 - Nav items for recruit-owned entries are recruit-only; managers/admins reach
   the same data read-only through the recruit tab.
 
