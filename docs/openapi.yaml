@@ -61,8 +61,12 @@ paths:
     post:
       tags: [Auth]
       operationId: signup
-      summary: Sign up with email and password (creates a NEW_RECRUIT)
-      x-requirements: [REQ-FUNC-001, REQ-FUNC-002, REQ-FUNC-003, REQ-FUNC-004]
+      summary: Complete an Admin-provisioned (INVITED) account by setting a password
+      description: >-
+        Does not create a user. The email must match an existing user with status
+        INVITED (created by an Admin via POST /users). Sets the password, moves the
+        user to ACTIVE and issues a token.
+      x-requirements: [REQ-FUNC-001, REQ-FUNC-001a, REQ-FUNC-002, REQ-FUNC-003, REQ-FUNC-004]
       security: []
       requestBody:
         required: true
@@ -70,20 +74,31 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/SignupRequest' }
       responses:
-        '201':
-          description: Account created; token issued.
+        '200':
+          description: Account activated; token issued.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
         '400': { $ref: '#/components/responses/ValidationFailed' }
-        '409':
-          description: Email already registered (after normalization).
+        '403':
+          description: No INVITED account exists for this email.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
               example:
-                code: EMAIL_ALREADY_EXISTS
-                message: An account with this email already exists
+                code: NOT_INVITED
+                message: No invitation found for this email. Ask your administrator to create your account.
+                details: []
+                timestamp: '2026-09-27T06:00:00Z'
+                path: /api/v1/auth/signup
+        '409':
+          description: The account is already ACTIVE or DEACTIVATED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                code: ACCOUNT_ALREADY_ACTIVATED
+                message: This account is already set up. Log in instead.
                 details: []
                 timestamp: '2026-09-27T06:00:00Z'
                 path: /api/v1/auth/signup
@@ -253,8 +268,8 @@ paths:
     post:
       tags: [Users]
       operationId: createUser
-      summary: Create a user of any role (admin)
-      x-requirements: [REQ-FUNC-012, REQ-FUNC-002, REQ-FUNC-003, REQ-FUNC-004]
+      summary: Provision a user of any role without a password (admin); status INVITED
+      x-requirements: [REQ-FUNC-012, REQ-FUNC-012a, REQ-FUNC-002, REQ-FUNC-003]
       requestBody:
         required: true
         content:
@@ -262,7 +277,7 @@ paths:
             schema: { $ref: '#/components/schemas/CreateUserRequest' }
       responses:
         '201':
-          description: User created.
+          description: User created with status INVITED; they complete setup via POST /auth/signup.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/UserDetail' }
@@ -295,8 +310,8 @@ paths:
     patch:
       tags: [Users]
       operationId: updateUser
-      summary: Update user profile fields and role (admin)
-      x-requirements: [REQ-FUNC-014]
+      summary: Update user profile fields, role and (while INVITED) email (admin)
+      x-requirements: [REQ-FUNC-014, REQ-FUNC-012a]
       requestBody:
         required: true
         content:
@@ -313,7 +328,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422':
-          description: Role change blocked by an ACTIVE assignment (`ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`).
+          description: Role change blocked by an ACTIVE assignment (`ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`), or email change on a non-INVITED user (`EMAIL_LOCKED`).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -1108,6 +1123,9 @@ components:
             - NOT_ASSIGNED
             - NOT_FOUND
             - EMAIL_ALREADY_EXISTS
+            - NOT_INVITED
+            - ACCOUNT_ALREADY_ACTIVATED
+            - EMAIL_LOCKED
             - ASSIGNMENT_UNCHANGED
             - CONFLICT
             - INVALID_STATE_TRANSITION
@@ -1144,7 +1162,8 @@ components:
       enum: [NEW_RECRUIT, MANAGER, ADMIN]
     UserStatus:
       type: string
-      enum: [ACTIVE, DEACTIVATED]
+      enum: [INVITED, ACTIVE, DEACTIVATED]
+      description: INVITED = created by an Admin, no password yet, cannot log in.
     AssignmentStatus:
       type: string
       enum: [ACTIVE, REASSIGNED]
@@ -1196,7 +1215,8 @@ components:
     # ---------------- auth
     SignupRequest:
       type: object
-      required: [email, password, fullName]
+      description: Completes an INVITED account. Profile fields are optional overrides of what the Admin entered.
+      required: [email, password]
       properties:
         email: { $ref: '#/components/schemas/Email' }
         password: { $ref: '#/components/schemas/Password' }
@@ -1239,8 +1259,15 @@ components:
       allOf:
         - $ref: '#/components/schemas/UserSummary'
         - type: object
-          required: [createdAt]
+          required: [createdAt, updatedAt, invitedAt]
           properties:
+            invitedAt: { type: string, format: date-time }
+            activatedAt: { type: [string, 'null'], format: date-time, description: Null while INVITED. }
+            createdBy:
+              description: Admin who provisioned the account; null for the bootstrap admin.
+              oneOf:
+                - $ref: '#/components/schemas/UserSummary'
+                - type: 'null'
             createdAt: { type: string, format: date-time }
             updatedAt: { type: string, format: date-time }
     UserDetail:
@@ -1263,18 +1290,25 @@ components:
         department: { type: [string, 'null'], maxLength: 100 }
         startDate: { type: [string, 'null'], format: date }
     CreateUserRequest:
-      allOf:
-        - $ref: '#/components/schemas/SignupRequest'
-        - type: object
-          required: [role]
-          properties:
-            role: { $ref: '#/components/schemas/Role' }
+      type: object
+      description: Creates an INVITED user without a password; the user sets it via POST /auth/signup.
+      required: [email, fullName, role]
+      additionalProperties: false
+      properties:
+        email: { $ref: '#/components/schemas/Email' }
+        fullName: { type: string, minLength: 1, maxLength: 100 }
+        role: { $ref: '#/components/schemas/Role' }
+        department: { type: string, maxLength: 100 }
+        startDate: { type: string, format: date }
     AdminUserUpdateRequest:
       allOf:
         - $ref: '#/components/schemas/ProfileUpdateRequest'
         - type: object
           properties:
             role: { $ref: '#/components/schemas/Role' }
+            email:
+              allOf: [{ $ref: '#/components/schemas/Email' }]
+              description: Only accepted while the user is INVITED (422 EMAIL_LOCKED otherwise).
 
     # ---------------- assignments
     Assignment:
