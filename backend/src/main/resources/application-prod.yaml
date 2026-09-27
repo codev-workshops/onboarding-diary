@@ -1,0 +1,16 @@
+logging:
+  level:
+    com.onboardingdiary: INFO
+    org.springframework.web: WARN
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+management:
+  endpoint:
+    health:
+      show-components: never
+      show-details: never

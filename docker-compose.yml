@@ -1,0 +1,47 @@
+# Local development: Postgres 16 + backend (dev profile). The frontend is NOT
+# containerized - run `npm run dev` in frontend/ against
+# NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 (REQ-FUNC-098).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: onboarding_diary
+      POSTGRES_USER: onboarding
+      POSTGRES_PASSWORD: onboarding
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onboarding -d onboarding_diary"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/onboarding_diary
+      DB_USERNAME: onboarding
+      DB_PASSWORD: onboarding
+      # Dev-only values; consumed from S1 onwards. Never reuse outside local dev.
+      APP_JWT_SECRET: dev-only-jwt-secret-change-me-0123456789abcdef
+      APP_BOOTSTRAP_ADMIN_EMAIL: admin@example.com
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ChangeMe123!
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  postgres-data:

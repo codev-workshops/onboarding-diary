@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [dev-prabath, main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-test:
+    name: Backend tests (Testcontainers Postgres)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '24'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test
+        run: ./gradlew --no-daemon test
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: backend/build/reports/tests/test
+          if-no-files-found: ignore
+
+  backend-image:
+    name: Backend Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: false
+          load: true
+          tags: onboarding-diary-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Image refuses to start without an active profile
+        run: |
+          set +e
+          out=$(docker run --rm onboarding-diary-backend:ci 2>&1)
+          code=$?
+          set -e
+          echo "$out" | tail -n 20
+          test "$code" -ne 0
+          echo "$out" | grep -q "No active Spring profile"
+
+  frontend:
+    name: Frontend lint & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
