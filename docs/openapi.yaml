@@ -15,6 +15,8 @@ info:
       invalid, expired, or belongs to a deactivated user. Clients clear their `AuthStore`
       and redirect to the login page on 401 (REQ-FUNC-006).
     * Every persisted resource exposes `createdAt` / `updatedAt` in UTC (REQ-FUNC-093).
+    * The API is served from a Docker image selected by Spring profile (`dev`/`qa`/`prod`);
+      CORS is permissive in `dev`/`qa` and allow-listed in `prod` (REQ-FUNC-095..098).
     * All errors share the `ErrorResponse` envelope. All list operations are paginated
       (`page`, `size`, `sort`) and return a `Page*` envelope.
     * Manager / Admin oversight uses the same entry endpoints with the `recruitId`

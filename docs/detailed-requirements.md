@@ -403,6 +403,22 @@ IDs are stable and referenced from `openapi.yaml` (via `x-requirements`) and
 | REQ-FUNC-092 | `GET /health` (Spring Boot Actuator) is public and reports DB connectivity. |
 | REQ-FUNC-093 | All persisted entities carry `createdAt`/`updatedAt` (UTC) maintained by the backend. |
 | REQ-FUNC-094 | The UI is responsive (usable at ≥ 360 px width). |
+| REQ-FUNC-095 | The backend is packaged as a Docker image (multi-stage Gradle build → JRE runtime image) and runs unchanged in every environment; environment differences are expressed only through Spring profiles and environment variables. |
+| REQ-FUNC-096 | Spring profiles `dev`, `qa`, `prod` exist (`application.yaml` common + `application-{profile}.yaml`), selected via `SPRING_PROFILES_ACTIVE`. `dev` and `qa` are identical for now. Startup fails fast if no profile is active. |
+| REQ-FUNC-097 | CORS is configured through a profile-scoped `CorsConfigurationSource` bean (no `@CrossOrigin`): `dev`/`qa` allow all origins, methods and headers with `allowCredentials=false` (bearer token is a header, no cookies); `prod` allows only the origins listed in `APP_CORS_ALLOWED_ORIGINS` (comma-separated, no wildcard). |
+| REQ-FUNC-098 | Local development runs Postgres + backend (`dev` profile) via `docker-compose.yml`; the frontend runs with `next dev` on the host against `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`. A production frontend image is out of scope (§9). |
+
+### 2.11 Environments & profiles
+
+| Concern | `dev` / `qa` | `prod` |
+|---------|--------------|--------|
+| CORS | allow all origins/methods/headers, `allowCredentials=false` | allow-list from `APP_CORS_ALLOWED_ORIGINS` |
+| Logging | `DEBUG` for `com.onboardingdiary`, SQL logging on | `INFO`, no SQL logging |
+| Bootstrap Admin | from `APP_BOOTSTRAP_ADMIN_EMAIL/PASSWORD` | same (required; startup fails if missing and no `ADMIN` exists) |
+| JWT secret | `APP_JWT_SECRET` (compose supplies a dev-only value) | `APP_JWT_SECRET` required, ≥ 32 bytes |
+| Datasource | `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` from compose | same, from the deployment platform |
+| Actuator | `health`, `info`, `metrics` exposed | `health` only |
+| Flyway | migrate on boot | migrate on boot |
 
 ---
 
@@ -1068,6 +1084,8 @@ Create user form: Full name*, Email*, Password*, Role* [▾], Department, Start 
 ---
 
 ## 9. Additional / Out-of-Scope Enhancements
+
+- **Production frontend Docker image** (Next.js `output: 'standalone'`) and a `prod` compose/Kubernetes manifest; for now the frontend runs in `next dev` mode only (REQ-FUNC-098).
 
 The following are **not** part of the core requirements above. They are
 candidates for the "Extend" phase in `docs/requirements.md`.
