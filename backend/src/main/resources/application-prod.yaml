@@ -1,0 +1,9 @@
+logging:
+  level:
+    com.onboardingdiary: INFO
+    org.springframework.web: WARN
+
+management:
+  endpoint:
+    health:
+      show-components: never

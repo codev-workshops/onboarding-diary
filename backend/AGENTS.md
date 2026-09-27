@@ -100,6 +100,19 @@ fun events(@PathVariable id: Long): Flow<DiaryEvent> = eventService.stream(id)
 - Store only salted, hashed passwords using BCrypt or Argon2 (Spring Security
   `PasswordEncoder`). Never log or return password material.
 
+## Configuration & profiles
+
+- Profiles: `dev`, `qa` (identical to dev), `prod`. `SPRING_PROFILES_ACTIVE`
+  is mandatory — `ProfileGuard` aborts startup when no profile is active.
+- Environment-driven settings: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`,
+  `APP_CORS_ALLOWED_ORIGINS` (required in `prod`, comma-separated, no `*`).
+- CORS is a profile-scoped `CorsConfigurationSource` bean in `CorsConfig`;
+  dev/qa are permissive without credentials, prod is an explicit allow-list.
+- Schema changes go through Flyway migrations in
+  `src/main/resources/db/migration` (`V<n>__<name>.sql`). Every table carries
+  `created_at` / `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`.
+- `GET /health` is the Actuator health endpoint (public, outside `/api/v1`).
+
 ## Testing
 
 - JUnit 5 for unit and integration tests.
