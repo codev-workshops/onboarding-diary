@@ -26,6 +26,9 @@ const NoteDetail = observer(function NoteDetail({ note, backHref, tagHref }: { n
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const [formGeneration, setFormGeneration] = useState(0);
+  // Version the edit form was seeded from; sent as If-Match so a draft based on an
+  // older revision gets a 409 even if the store refreshed the note in the meantime.
+  const [editBaseVersion, setEditBaseVersion] = useState(note.version);
 
   const isOwner = auth.role === "NEW_RECRUIT" && auth.user?.id === note.recruitId;
   const canDelete = isOwner || auth.role === "ADMIN";
@@ -63,10 +66,11 @@ const NoteDetail = observer(function NoteDetail({ note, backHref, tagHref }: { n
           }}
           onSubmit={async (values) => {
             try {
-              await notes.update(note.id, toUpdateRequest(values), noteEtag(note));
+              await notes.update(note.id, toUpdateRequest(values), noteEtag({ version: editBaseVersion }));
             } catch (e) {
               if (e instanceof ApiError && e.code === "CONFLICT") {
                 await notes.loadOne(note.id);
+                setEditBaseVersion(notes.current?.version ?? note.version);
                 setFormGeneration((g) => g + 1);
                 setConflictMessage(`${noteErrorMessage(e)} The latest version has been loaded — re-apply your changes and save again.`);
                 return;
@@ -96,7 +100,15 @@ const NoteDetail = observer(function NoteDetail({ note, backHref, tagHref }: { n
         {(isOwner || canDelete) && (
           <div className={formStyles.actions}>
             {isOwner && (
-              <button type="button" className={formStyles.button} onClick={() => setEditing(true)} data-testid="note-edit">
+              <button
+                type="button"
+                className={formStyles.button}
+                onClick={() => {
+                  setEditBaseVersion(note.version);
+                  setEditing(true);
+                }}
+                data-testid="note-edit"
+              >
                 Edit
               </button>
             )}
