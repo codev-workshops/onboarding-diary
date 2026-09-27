@@ -23,7 +23,7 @@ class FlywayMigrationIT : AbstractIntegrationTest() {
         assertDoesNotThrow { flyway.validate() }
 
         val applied = flyway.info().applied()
-        assertEquals(listOf("1", "2"), applied.map { it.version.version })
+        assertEquals(listOf("1", "2", "3"), applied.map { it.version.version })
         assertTrue(flyway.info().pending().isEmpty())
     }
 
