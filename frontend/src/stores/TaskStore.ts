@@ -57,4 +57,12 @@ export class TaskStore extends EntryStore<Task, TaskCreateRequest, TaskUpdateReq
       status: filters.status || undefined,
     };
   }
+
+  protected override matchesFilters(task: Task, filters: TaskFilters): boolean {
+    return (
+      super.matchesFilters(task, filters) &&
+      (!filters.category || task.category === filters.category) &&
+      (!filters.status || task.status === filters.status)
+    );
+  }
 }

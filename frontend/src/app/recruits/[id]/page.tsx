@@ -22,14 +22,14 @@ const RecruitHeader = observer(function RecruitHeader({ recruitId }: { recruitId
 
   useEffect(() => {
     if (isAdmin) void admin.loadUser(recruitId);
-    else if (!assignments.myRecruits) void assignments.loadMyRecruits(0, "fullName,asc");
+    else void assignments.findMyRecruit(recruitId).catch(() => undefined);
   }, [isAdmin, admin, assignments, recruitId]);
 
   const summary: UserSummary | null = isAdmin
     ? admin.detail?.id === recruitId
       ? admin.detail
       : null
-    : (assignments.myRecruits?.items.find((r) => r.recruit.id === recruitId)?.recruit ?? null);
+    : (assignments.myRecruitById[recruitId] ?? null);
 
   return (
     <div className={tableStyles.headerRow}>

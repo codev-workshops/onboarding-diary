@@ -14,6 +14,15 @@ interface UseUrlFiltersOptions<F extends { [K in keyof F]: string }> {
   defaultSort: string;
   /** Rejects unknown values (e.g. enum keys); return `undefined` to fall back to the default. */
   sanitize?: (key: keyof F, raw: string) => string | undefined;
+  /** Accepted `sort` values (the backend whitelist); anything else falls back to `defaultSort`. */
+  sortOptions?: readonly string[];
+}
+
+/** `true` for a real ISO calendar date (`2026-02-30` and `2026-13-01` are rejected). */
+export function isIsoDate(raw: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+  const d = new Date(`${raw}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === raw;
 }
 
 /**
@@ -29,14 +38,15 @@ export function useUrlFilters<F extends { [K in keyof F]: string }>({
   defaults,
   defaultSort,
   sanitize,
+  sortOptions,
 }: UseUrlFiltersOptions<F>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const state = useMemo<UrlListState<F>>(
-    () => parseUrlState(searchParams, defaults, defaultSort, sanitize),
-    [searchParams, defaults, defaultSort, sanitize],
+    () => parseUrlState(searchParams, defaults, defaultSort, sanitize, sortOptions),
+    [searchParams, defaults, defaultSort, sanitize, sortOptions],
   );
 
   const set = useCallback(
@@ -79,6 +89,7 @@ export function parseUrlState<F extends { [K in keyof F]: string }>(
   defaults: F,
   defaultSort: string,
   sanitize?: (key: keyof F, raw: string) => string | undefined,
+  sortOptions?: readonly string[],
 ): UrlListState<F> {
   const filters = { ...defaults };
   for (const key of Object.keys(defaults) as (keyof F)[]) {
@@ -90,7 +101,8 @@ export function parseUrlState<F extends { [K in keyof F]: string }>(
   const rawPage = Number.parseInt(params.get("page") ?? "", 10);
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage - 1 : 0;
   const rawSort = params.get("sort");
-  const sort = rawSort && /^[A-Za-z]+,(asc|desc)$/.test(rawSort) ? rawSort : defaultSort;
+  const sortAllowed = (s: string) => (sortOptions ? sortOptions.includes(s) : /^[A-Za-z]+,(asc|desc)$/.test(s));
+  const sort = rawSort && sortAllowed(rawSort) ? rawSort : defaultSort;
   return { filters, page, sort };
 }
 

@@ -1,7 +1,14 @@
 package com.onboardingdiary
 
+import com.onboardingdiary.task.TaskCategory
+import com.onboardingdiary.task.TaskPriority
+import com.onboardingdiary.task.TaskRepository
+import com.onboardingdiary.task.TaskStatus
 import com.onboardingdiary.user.Role
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec
 import java.time.LocalDate
@@ -10,6 +17,8 @@ import java.util.UUID
 
 @ActiveProfiles("dev")
 class TaskIT : AbstractAuthenticatedIntegrationTest() {
+
+    @Autowired lateinit var taskRepository: TaskRepository
 
     private val today: LocalDate = LocalDate.now(ZoneOffset.UTC)
 
@@ -206,6 +215,28 @@ class TaskIT : AbstractAuthenticatedIntegrationTest() {
         put("/api/v1/tasks/$id", body(status = "DONE", priority = "MEDIUM"), token).expectError(422, "INVALID_STATE_TRANSITION")
         put("/api/v1/tasks/$id", body(status = "BLOCKED", priority = "HIGH"), token)
             .expectStatus().isOk.expectBody().jsonPath("$.priority").isEqualTo("HIGH")
+    }
+
+    @Test
+    fun `update is a compare-and-set on the status read, so a concurrent edit cannot bypass the state machine`() {
+        val token = login(active(Role.NEW_RECRUIT).email)
+        val id = create(token)
+        // Another request moves the task to DONE after this one read it as TODO.
+        put("/api/v1/tasks/$id", body(status = "DONE", priority = "MEDIUM"), token).expectStatus().isOk
+
+        val applied = taskRepository.update(
+            id = id,
+            entryDate = today,
+            title = "stale",
+            description = null,
+            category = TaskCategory.TRAINING,
+            status = TaskStatus.BLOCKED,
+            priority = TaskPriority.MEDIUM,
+            expectedStatus = TaskStatus.TODO,
+        )
+
+        assertFalse(applied)
+        assertEquals(TaskStatus.DONE, taskRepository.findById(id)!!.status)
     }
 
     // ---- ownership & roles -------------------------------------------------

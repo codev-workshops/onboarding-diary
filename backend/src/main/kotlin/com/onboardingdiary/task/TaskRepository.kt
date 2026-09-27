@@ -73,16 +73,17 @@ class TaskRepository(private val jdbc: JdbcTemplate) {
         category: TaskCategory,
         status: TaskStatus,
         priority: TaskPriority,
-    ): TaskEntry? {
+        expectedStatus: TaskStatus,
+    ): Boolean {
         val rows = jdbc.update(
             """
             UPDATE task_entries
                SET entry_date = ?, title = ?, description = ?, category = ?, status = ?, priority = ?, updated_at = now()
-             WHERE id = ?
+             WHERE id = ? AND status = ?
             """.trimIndent(),
-            entryDate, title, description, category.name, status.name, priority.name, id,
+            entryDate, title, description, category.name, status.name, priority.name, id, expectedStatus.name,
         )
-        return if (rows == 1) findById(id) else null
+        return rows == 1
     }
 
     fun delete(id: UUID): Boolean = jdbc.update("DELETE FROM task_entries WHERE id = ?", id) == 1

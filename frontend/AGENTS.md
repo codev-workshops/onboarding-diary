@@ -75,7 +75,9 @@ Rules:
 - `EntryStore<T>` (`src/stores/EntryStore.ts`) owns list/filters/page/sort/
   `recruitId`, `current`, optimistic create/update/remove and `clear()`.
   Subclasses only implement `filterQuery(filters)` (slice enums → query) and
-  optionally `errorMessage(e)`. Do not add slice fields to `EntryStore`.
+  optionally `errorMessage(e)` and `matchesFilters(entry, filters)` (so an
+  optimistic create is only inserted when it belongs in the loaded list; the
+  base checks the date range). Do not add slice fields to `EntryStore`.
 - `RootStore.register(store)` enrols the store in the per-user reset; anything
   registered is cleared on login/logout. Stores must expose `clear()`.
 - Generic UI lives in `src/components/entries/` (`FilterBar`, `EntryList`,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiClient, ApiError, type Page, type Task } from "@/lib/apiClient";
 import { DEFAULT_TASK_FILTERS, DEFAULT_TASK_SORT, TaskStore, taskErrorMessage } from "@/stores/TaskStore";
-import { parseUrlState, serializeUrlState } from "@/hooks/useUrlFilters";
+import { isIsoDate, parseUrlState, serializeUrlState } from "@/hooks/useUrlFilters";
 
 const RECRUIT_ID = "aaaaaaaa-0000-0000-0000-000000000001";
 
@@ -119,6 +119,31 @@ describe("TaskStore", () => {
       expect(store.current).toEqual(created);
     });
 
+    it("create does not insert an entry that falls outside the active filters", async () => {
+      store.setFilters({ status: "DONE" });
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, page([task("d1", { status: "DONE" })], 1)));
+      await store.load();
+      fetchMock.mockResolvedValueOnce(jsonResponse(201, task("t3")));
+
+      await store.create({ entryDate: "2026-09-21", title: "Todo", category: "TRAINING" });
+
+      expect(store.list).toBeNull();
+      expect(store.current?.id).toBe("t3");
+    });
+
+    it("create keeps the first page within its size", async () => {
+      store.size = 2;
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, page([task("t1"), task("t2")], 5, 2)));
+      await store.load();
+      fetchMock.mockResolvedValueOnce(jsonResponse(201, task("t3")));
+
+      await store.create({ entryDate: "2026-09-21", title: "Fresh", category: "TRAINING" });
+
+      expect(store.list?.items.map((t) => t.id)).toEqual(["t3", "t1"]);
+      expect(store.list?.totalItems).toBe(6);
+      expect(store.list?.totalPages).toBe(3);
+    });
+
     it("update replaces the entry in place and in `current`", async () => {
       store.current = task("t2");
       const updated = task("t2", { status: "DONE", title: "Done!" });
@@ -156,6 +181,28 @@ describe("TaskStore", () => {
       expect(store.mutating).toBe(false);
     });
 
+    it("a delete that fails after clear() does not restore the previous user's list", async () => {
+      let reject: (e: unknown) => void = () => undefined;
+      fetchMock.mockReturnValueOnce(new Promise((_, r) => (reject = r)));
+      const pending = store.remove("t1");
+      store.clear();
+      reject(new Error("network"));
+      await expect(pending).rejects.toThrow("network");
+      expect(store.list).toBeNull();
+      expect(store.mutating).toBe(false);
+    });
+
+    it("a create that resolves after clear() does not repopulate the store", async () => {
+      let resolve: (r: Response) => void = () => undefined;
+      fetchMock.mockReturnValueOnce(new Promise((r) => (resolve = r)));
+      const pending = store.create({ entryDate: "2026-09-21", title: "Late", category: "TRAINING" });
+      store.clear();
+      resolve(jsonResponse(201, task("late")));
+      await pending;
+      expect(store.list).toBeNull();
+      expect(store.current).toBeNull();
+    });
+
     it("clear() wipes server-derived state for the next user", () => {
       store.setRecruitId(RECRUIT_ID);
       store.setFilters({ status: "DONE" });
@@ -168,8 +215,42 @@ describe("TaskStore", () => {
   });
 });
 
+describe("out-of-range pages", () => {
+  it("load re-requests the last page when the URL page is past the end", async () => {
+    const fetchMock = vi.fn();
+    const api = new ApiClient("http://api.test", fetchMock as unknown as typeof fetch);
+    api.setAuthHandlers({ getToken: () => "jwt", onUnauthorized: () => undefined });
+    const store = new TaskStore(api);
+    store.setPage(998);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: [], page: 998, size: 20, totalItems: 25, totalPages: 2 }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: [task("t21")], page: 1, size: 20, totalItems: 25, totalPages: 2 }));
+
+    await store.load();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(new URL(String(fetchMock.mock.calls[1][0])).searchParams.get("page")).toBe("1");
+    expect(store.page).toBe(1);
+    expect(store.list?.items.map((t) => t.id)).toEqual(["t21"]);
+    expect(store.listLoading).toBe(false);
+  });
+});
+
 describe("useUrlFilters helpers", () => {
   const sanitize = (key: string, value: string) => (key === "status" && value === "BOGUS" ? "" : value);
+
+  it("falls back to the default sort for values outside the whitelist", () => {
+    const allowed = ["entryDate,desc", "title,asc"];
+    expect(parseUrlState(new URLSearchParams("sort=unknown%2Casc"), DEFAULT_TASK_FILTERS, DEFAULT_TASK_SORT, undefined, allowed).sort).toBe(DEFAULT_TASK_SORT);
+    expect(parseUrlState(new URLSearchParams("sort=title%2Casc"), DEFAULT_TASK_FILTERS, DEFAULT_TASK_SORT, undefined, allowed).sort).toBe("title,asc");
+  });
+
+  it("isIsoDate rejects impossible calendar dates", () => {
+    expect(isIsoDate("2026-09-27")).toBe(true);
+    expect(isIsoDate("2024-02-29")).toBe(true);
+    expect(isIsoDate("2026-13-01")).toBe(false);
+    expect(isIsoDate("2026-02-30")).toBe(false);
+    expect(isIsoDate("2026-9-1")).toBe(false);
+  });
 
   it("parses filters, 1-based page and sort from the URL", () => {
     const params = new URLSearchParams("category=SETUP&status=BOGUS&page=3&sort=title%2Casc&tab=tasks");

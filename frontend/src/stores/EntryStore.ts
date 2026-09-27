@@ -14,7 +14,9 @@ export interface EntryFilters {
  *   the API query (empty strings are dropped) and pages/screens sync it to the URL.
  * - `recruitId` is set by the manager/admin read-only view; recruits leave it null.
  * - `create` / `update` / `remove` are optimistic: the list page is patched
- *   immediately and the server response (or the next `load`) reconciles it.
+ *   immediately and the server response (or the next `load`) reconciles it. A
+ *   created entry is only inserted when it matches the active filters on the
+ *   first page; `clear()` (logout) invalidates in-flight loads and mutations.
  * - Filter keys are the URL query keys, so `useUrlFilters` can round-trip them.
  *
  * Subclasses pass their `EntryApi`, default filters and default sort; MobX
@@ -38,6 +40,7 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
 
   private listSeq = 0;
   private currentSeq = 0;
+  private session = 0;
 
   protected constructor(
     protected readonly api: EntryApi<T, C, U, Q>,
@@ -83,6 +86,16 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
   /** User-facing copy for load errors; slices override to translate their error codes. */
   protected errorMessage(e: unknown): string {
     return e instanceof Error ? e.message : String(e);
+  }
+
+  /**
+   * Whether an entry belongs in the currently loaded list. The date range is
+   * checked here; slices extend it with their enum filters.
+   */
+  protected matchesFilters(entry: T, filters: F): boolean {
+    const from = filters.from.trim();
+    const to = filters.to.trim();
+    return (!from || entry.entryDate >= from) && (!to || entry.entryDate <= to);
   }
 
   // ---- list state ---------------------------------------------------------------
@@ -138,10 +151,12 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
     try {
       const res = await this.api.list(this.query);
       if (seq !== this.listSeq) return;
-      runInAction(() => {
-        this.list = res;
-        if (res.totalPages > 0 && res.page >= res.totalPages) this.page = res.totalPages - 1;
-      });
+      if (res.totalPages > 0 && res.page >= res.totalPages) {
+        runInAction(() => (this.page = res.totalPages - 1));
+        await this.load();
+        return;
+      }
+      runInAction(() => (this.list = res));
     } catch (e) {
       if (seq !== this.listSeq) return;
       runInAction(() => (this.listError = this.errorMessage(e)));
@@ -181,49 +196,64 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
 
   // ---- mutations (optimistic) ----------------------------------------------------------
 
-  /** Creates and prepends to the loaded list (new entries sort first by default). Errors propagate. */
+  /**
+   * Creates the entry. When the loaded list is on its first page and the entry
+   * matches the active filters it is prepended (default sort is newest first)
+   * and the page is trimmed to `size`; otherwise the list is dropped so the next
+   * screen reloads it. Errors propagate.
+   */
   async create(body: C): Promise<T> {
+    const session = this.session;
     this.mutating = true;
     try {
       const created = await this.api.create(body);
-      this.applyToList((items) => [created, ...items.filter((t) => t.id !== created.id)], +1);
+      if (session !== this.session) return created;
+      if (this.page === 0 && this.matchesFilters(created, this.filters)) {
+        this.applyToList((items) => [created, ...items.filter((t) => t.id !== created.id)].slice(0, this.size), +1);
+      } else {
+        runInAction(() => (this.list = null));
+      }
       runInAction(() => (this.current = created));
       return created;
     } finally {
-      runInAction(() => (this.mutating = false));
+      if (session === this.session) runInAction(() => (this.mutating = false));
     }
   }
 
   /** Replaces the entry in the list and in `current` with the server response. Errors propagate. */
   async update(id: string, body: U): Promise<T> {
+    const session = this.session;
     this.mutating = true;
     try {
       const updated = await this.api.update(id, body);
+      if (session !== this.session) return updated;
       this.applyToList((items) => items.map((t) => (t.id === id ? updated : t)), 0);
       runInAction(() => {
         if (this.current?.id === id) this.current = updated;
       });
       return updated;
     } finally {
-      runInAction(() => (this.mutating = false));
+      if (session === this.session) runInAction(() => (this.mutating = false));
     }
   }
 
   /** Optimistically drops the entry from the list; restores it if the server rejects the delete. */
   async remove(id: string): Promise<void> {
+    const session = this.session;
     const snapshot = this.list;
     this.mutating = true;
     this.applyToList((items) => items.filter((t) => t.id !== id), -1);
     try {
       await this.api.remove(id);
+      if (session !== this.session) return;
       runInAction(() => {
         if (this.current?.id === id) this.current = null;
       });
     } catch (e) {
-      runInAction(() => (this.list = snapshot));
+      if (session === this.session) runInAction(() => (this.list = snapshot));
       throw e;
     } finally {
-      runInAction(() => (this.mutating = false));
+      if (session === this.session) runInAction(() => (this.mutating = false));
     }
   }
 
@@ -238,6 +268,7 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
   clear() {
     this.listSeq++;
     this.currentSeq++;
+    this.session++;
     this.list = null;
     this.filters = { ...this.defaultFilters };
     this.page = 0;

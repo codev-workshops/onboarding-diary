@@ -1,5 +1,6 @@
 package com.onboardingdiary.api.task
 
+import com.onboardingdiary.api.error.InvalidStateTransitionException
 import com.onboardingdiary.api.error.NotFoundException
 import com.onboardingdiary.api.paging.Page
 import com.onboardingdiary.api.paging.PageRequest
@@ -28,6 +29,9 @@ class TaskService(
     private val tasks: TaskRepository,
     private val scope: RecruitScopeResolver,
 ) {
+    private companion object {
+        const val MAX_UPDATE_ATTEMPTS = 3
+    }
 
     suspend fun list(principal: AuthenticatedUser, recruitId: UUID?, filter: TaskFilter, page: PageRequest): Page<TaskResponse> {
         val target = scope.resolveTargetRecruit(principal, recruitId)
@@ -55,20 +59,24 @@ class TaskService(
 
     suspend fun update(principal: AuthenticatedUser, id: UUID, req: UpdateTaskRequest): TaskResponse {
         principal.requireRole(Role.NEW_RECRUIT)
-        val existing = findVisible(principal, id)
-        TaskStateMachine.INSTANCE.requireTransition(existing.status, req.status!!)
-        val updated = withContext(Dispatchers.IO) {
-            tasks.update(
-                id = id,
-                entryDate = req.entryDate!!,
-                title = req.title!!.trim(),
-                description = req.description?.takeIf { it.isNotBlank() },
-                category = req.category!!,
-                status = req.status,
-                priority = req.priority!!,
-            )
-        } ?: throw NotFoundException()
-        return TaskResponse.from(updated)
+        repeat(MAX_UPDATE_ATTEMPTS) {
+            val existing = findVisible(principal, id)
+            TaskStateMachine.INSTANCE.requireTransition(existing.status, req.status!!)
+            val applied = withContext(Dispatchers.IO) {
+                tasks.update(
+                    id = id,
+                    entryDate = req.entryDate!!,
+                    title = req.title!!.trim(),
+                    description = req.description?.takeIf { it.isNotBlank() },
+                    category = req.category!!,
+                    status = req.status,
+                    priority = req.priority!!,
+                    expectedStatus = existing.status,
+                )
+            }
+            if (applied) return TaskResponse.from(findVisible(principal, id))
+        }
+        throw InvalidStateTransitionException(findVisible(principal, id).status.name, req.status!!.name)
     }
 
     suspend fun delete(principal: AuthenticatedUser, id: UUID) {

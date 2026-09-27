@@ -50,6 +50,9 @@ export const DEFAULT_QUESTION_FILTERS: QuestionFilters = { from: "", to: "", sta
 export class QuestionStore extends EntryStore<Question, QuestionCreateRequest, QuestionUpdateRequest, QuestionFilters, ListQuestionsQuery> {
   constructor(api: ApiClient) { super(api.questions, DEFAULT_QUESTION_FILTERS, "entryDate,desc"); }
   protected filterQuery(f: QuestionFilters) { return { status: f.status || undefined }; }
+  protected override matchesFilters(q: Question, f: QuestionFilters) {
+    return super.matchesFilters(q, f) && (!f.status || q.status === f.status);
+  }
 }
 ```
 
@@ -59,7 +62,10 @@ sequence-guarded async and optimistic list patching. Do not re-implement.
 
 ## 3. Screens and registry entry
 
-- List page: `FilterBar` (field defs) + `EntryList` + `useUrlFilters({ defaults, defaultSort, sanitize })`.
+- List page: `FilterBar` (field defs) + `EntryList` + `useUrlFilters({ defaults, defaultSort, sanitize, sortOptions })`.
+  `sanitize` uses `isIsoDate` for date keys and the slice's enum guards;
+  `sortOptions` is the list of sort values the backend whitelists. Mirror the
+  store's clamped page back to the URL as `TaskListView` does.
   Build a `<Res>ListView` that takes `{ recruitId?, readOnly?, hrefFor }` so the
   same component serves `/<res>` (recruit) and the `/recruits/{id}` tab
   (manager/admin, read-only). See `src/features/tasks/TaskListView.tsx`.

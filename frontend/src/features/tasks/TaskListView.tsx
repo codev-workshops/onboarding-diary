@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect } from "react";
 import { EntryList } from "@/components/entries/EntryList";
 import { FilterBar } from "@/components/entries/FilterBar";
-import { useUrlFilters } from "@/hooks/useUrlFilters";
+import { isIsoDate, useUrlFilters } from "@/hooks/useUrlFilters";
 import { useStores } from "@/stores/StoreProvider";
 import { DEFAULT_TASK_FILTERS, DEFAULT_TASK_SORT, isTaskCategory, isTaskStatus, type TaskFilters } from "@/stores/TaskStore";
 import { CATEGORY_OPTIONS, STATUS_OPTIONS, TaskCard } from "@/features/tasks/labels";
@@ -26,6 +26,7 @@ const SORT_OPTIONS = [
   { value: "status,asc", label: "Status" },
   { value: "title,asc", label: "Title A→Z" },
 ];
+const SORT_VALUES = SORT_OPTIONS.map((o) => o.value);
 
 function sanitizeTaskFilter(key: keyof TaskFilters, raw: string): string | undefined {
   switch (key) {
@@ -34,7 +35,7 @@ function sanitizeTaskFilter(key: keyof TaskFilters, raw: string): string | undef
     case "status":
       return isTaskStatus(raw) ? raw : undefined;
     default:
-      return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : undefined;
+      return isIsoDate(raw) ? raw : undefined;
   }
 }
 
@@ -56,6 +57,7 @@ export const TaskListView = observer(function TaskListView({ recruitId = null, h
     defaults: DEFAULT_TASK_FILTERS,
     defaultSort: DEFAULT_TASK_SORT,
     sanitize: sanitizeTaskFilter,
+    sortOptions: SORT_VALUES,
   });
 
   useEffect(() => {
@@ -65,6 +67,12 @@ export const TaskListView = observer(function TaskListView({ recruitId = null, h
     tasks.setPage(state.page);
     void tasks.load();
   }, [tasks, recruitId, state]);
+
+  // The store clamps an out-of-range page to the last one; mirror that in the URL.
+  const loadedPage = tasks.list?.page;
+  useEffect(() => {
+    if (!tasks.listLoading && loadedPage !== undefined && loadedPage !== state.page) set({ page: loadedPage });
+  }, [tasks.listLoading, loadedPage, state.page, set]);
 
   const onPageChange = useCallback((page: number) => set({ page }), [set]);
   const linkFor = hrefFor ?? ((id: string) => `/tasks/${id}`);
