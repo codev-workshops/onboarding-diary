@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { observer } from "mobx-react-lite";
-import { useEffect, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { RequireRole } from "@/components/auth/RequireRole";
 import { FormField } from "@/components/ui/FormField";
 import { Pagination } from "@/components/ui/Pagination";
@@ -12,13 +13,41 @@ import styles from "@/components/ui/table.module.css";
 import type { Role, UserStatus } from "@/lib/apiClient";
 import { useStores } from "@/stores/StoreProvider";
 
+function isRole(v: string | null): v is Role {
+  return v !== null && (ROLES as readonly string[]).includes(v);
+}
+
+function isStatus(v: string | null): v is UserStatus {
+  return v !== null && (USER_STATUSES as readonly string[]).includes(v);
+}
+
 const UsersList = observer(function UsersList() {
   const { admin } = useStores();
+  const params = useSearchParams();
   const [q, setQ] = useState(admin.filters.q);
 
+  // Deep links such as `/admin/users?role=NEW_RECRUIT` seed the filters.
+  const [applied, setApplied] = useState(false);
   useEffect(() => {
+    if (applied) return;
+    const role = params.get("role");
+    const status = params.get("status");
+    const search = params.get("q");
+    if (isRole(role) || isStatus(status) || search) {
+      admin.setFilters({
+        ...(isRole(role) ? { role } : {}),
+        ...(isStatus(status) ? { status } : {}),
+        ...(search ? { q: search } : {}),
+      });
+      if (search) setQ(search);
+    }
+    setApplied(true);
+  }, [admin, params, applied]);
+
+  useEffect(() => {
+    if (!applied) return;
     void admin.loadUsers();
-  }, [admin, admin.filters, admin.page, admin.sort]);
+  }, [admin, applied, admin.filters, admin.page, admin.sort]);
 
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -177,7 +206,9 @@ const UsersList = observer(function UsersList() {
 export default function AdminUsersPage() {
   return (
     <RequireRole roles={["ADMIN"]}>
-      <UsersList />
+      <Suspense fallback={null}>
+        <UsersList />
+      </Suspense>
     </RequireRole>
   );
 }

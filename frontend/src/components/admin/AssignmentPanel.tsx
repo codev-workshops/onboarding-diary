@@ -2,6 +2,7 @@
 
 import { observer } from "mobx-react-lite";
 import { useEffect, useState, type FormEvent } from "react";
+import { Pagination } from "@/components/ui/Pagination";
 import { StatusBadge, formatDateTime } from "@/components/ui/labels";
 import formStyles from "@/components/ui/forms.module.css";
 import styles from "@/components/ui/table.module.css";
@@ -156,6 +157,11 @@ export const AssignmentPanel = observer(function AssignmentPanel({ user, store, 
           ))}
         </ol>
       )}
+      <Pagination
+        page={store.history}
+        onPageChange={(p) => void store.loadHistory(user.id, p)}
+        disabled={store.historyLoading}
+      />
     </section>
   );
 });

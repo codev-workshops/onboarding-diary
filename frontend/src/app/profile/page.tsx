@@ -33,7 +33,7 @@ const ManagerLine = observer(function ManagerLine() {
           : assignments.myManagerError
             ? assignments.myManagerError
             : a
-              ? `${a.manager.fullName} (${a.manager.email}) — since ${formatDate(a.assignedAt)}`
+              ? `${a.manager.fullName} (${a.manager.email})${a.manager.department ? `, ${a.manager.department}` : ""} — since ${formatDate(a.assignedAt)}`
               : "Not assigned yet"}
       </dd>
     </>

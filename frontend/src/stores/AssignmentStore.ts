@@ -63,9 +63,15 @@ export class AssignmentStore {
   historyLoading = false;
   historyError: string | null = null;
 
-  /** Active managers offered in the reassign select. */
+  /** Active managers offered in the reassign select (every page of the user list). */
   managers: UserSummary[] = [];
   managersLoading = false;
+
+  /** Admin "All recruits" view: ACTIVE assignments only, independent of the log filters. */
+  activeAssignments: Page<Assignment> | null = null;
+  activeAssignmentsPage = 0;
+  activeAssignmentsLoading = false;
+  activeAssignmentsError: string | null = null;
 
   assignSubmitting = false;
   assignError: string | null = null;
@@ -81,9 +87,16 @@ export class AssignmentStore {
 
   private listSeq = 0;
   private historySeq = 0;
+  private activeSeq = 0;
+  private myRecruitsSeq = 0;
 
   constructor(private readonly api: ApiClient) {
-    makeAutoObservable<AssignmentStore, "listSeq" | "historySeq">(this, { listSeq: false, historySeq: false });
+    makeAutoObservable<AssignmentStore, "listSeq" | "historySeq" | "activeSeq" | "myRecruitsSeq">(this, {
+      listSeq: false,
+      historySeq: false,
+      activeSeq: false,
+      myRecruitsSeq: false,
+    });
   }
 
   // ---- admin list -------------------------------------------------------------
@@ -132,6 +145,34 @@ export class AssignmentStore {
     }
   }
 
+  setActiveAssignmentsPage(page: number) {
+    this.activeAssignmentsPage = Math.max(0, page);
+  }
+
+  async loadActiveAssignments() {
+    const seq = ++this.activeSeq;
+    this.activeAssignmentsLoading = true;
+    this.activeAssignmentsError = null;
+    try {
+      const res = await this.api.listAssignments({
+        status: "ACTIVE",
+        page: this.activeAssignmentsPage,
+        size: this.size,
+        sort: this.sort,
+      });
+      if (seq !== this.activeSeq) return;
+      runInAction(() => {
+        this.activeAssignments = res;
+        if (res.totalPages > 0 && res.page >= res.totalPages) this.activeAssignmentsPage = res.totalPages - 1;
+      });
+    } catch (e) {
+      if (seq !== this.activeSeq) return;
+      runInAction(() => (this.activeAssignmentsError = e instanceof Error ? e.message : String(e)));
+    } finally {
+      if (seq === this.activeSeq) runInAction(() => (this.activeAssignmentsLoading = false));
+    }
+  }
+
   // ---- recruit panel ------------------------------------------------------------
 
   /** Current ACTIVE assignment of the recruit whose history is loaded, derived from the history page. */
@@ -152,6 +193,10 @@ export class AssignmentStore {
     try {
       const res = await this.api.listAssignmentHistory(recruitId, { page, size: this.size });
       if (seq !== this.historySeq) return;
+      if (res.totalPages > 0 && page >= res.totalPages) {
+        await this.loadHistory(recruitId, res.totalPages - 1);
+        return;
+      }
       runInAction(() => (this.history = res));
     } catch (e) {
       if (seq !== this.historySeq) return;
@@ -164,8 +209,13 @@ export class AssignmentStore {
   async loadManagers() {
     this.managersLoading = true;
     try {
-      const res = await this.api.listUsers({ role: "MANAGER", status: "ACTIVE", size: 100, sort: "fullName,asc" });
-      runInAction(() => (this.managers = res.items));
+      const all: UserSummary[] = [];
+      for (let page = 0; ; page++) {
+        const res = await this.api.listUsers({ role: "MANAGER", status: "ACTIVE", page, size: 100, sort: "fullName,asc" });
+        all.push(...res.items);
+        if (page + 1 >= res.totalPages || res.items.length === 0) break;
+      }
+      runInAction(() => (this.managers = all));
     } catch {
       runInAction(() => (this.managers = []));
     } finally {
@@ -202,16 +252,31 @@ export class AssignmentStore {
 
   // ---- me --------------------------------------------------------------------------
 
-  async loadMyRecruits(page = 0, sort = "fullName,asc") {
+  /**
+   * Loads one page of `GET /me/recruits`. A page index beyond the last page
+   * (assignments shrank since it was selected) is clamped to the last page;
+   * the page actually shown is returned so the caller can sync its state.
+   */
+  async loadMyRecruits(page = 0, sort = "fullName,asc"): Promise<number> {
+    const seq = ++this.myRecruitsSeq;
     this.myRecruitsLoading = true;
     this.myRecruitsError = null;
     try {
-      const res = await this.api.listMyRecruits({ page, size: this.size, sort });
+      let res = await this.api.listMyRecruits({ page, size: this.size, sort });
+      if (res.totalPages > 0 && page >= res.totalPages) {
+        page = res.totalPages - 1;
+        res = await this.api.listMyRecruits({ page, size: this.size, sort });
+      }
+      if (seq !== this.myRecruitsSeq) return page;
       runInAction(() => (this.myRecruits = res));
+      return res.page;
     } catch (e) {
-      runInAction(() => (this.myRecruitsError = e instanceof Error ? e.message : String(e)));
+      if (seq === this.myRecruitsSeq) {
+        runInAction(() => (this.myRecruitsError = e instanceof Error ? e.message : String(e)));
+      }
+      return page;
     } finally {
-      runInAction(() => (this.myRecruitsLoading = false));
+      if (seq === this.myRecruitsSeq) runInAction(() => (this.myRecruitsLoading = false));
     }
   }
 
@@ -233,6 +298,8 @@ export class AssignmentStore {
 
   clear() {
     this.assignments = null;
+    this.activeAssignments = null;
+    this.activeAssignmentsPage = 0;
     this.history = null;
     this.historyRecruitId = null;
     this.managers = [];

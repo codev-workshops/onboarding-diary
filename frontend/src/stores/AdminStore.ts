@@ -39,9 +39,10 @@ export class AdminStore {
   detailError: string | null = null;
 
   private listSeq = 0;
+  private detailSeq = 0;
 
   constructor(private readonly api: ApiClient) {
-    makeAutoObservable<AdminStore, "listSeq">(this, { listSeq: false });
+    makeAutoObservable<AdminStore, "listSeq" | "detailSeq">(this, { listSeq: false, detailSeq: false });
   }
 
   setFilters(patch: Partial<UserFilters>) {
@@ -106,18 +107,21 @@ export class AdminStore {
   }
 
   async loadUser(userId: string) {
+    const seq = ++this.detailSeq;
     if (this.detail?.id !== userId) this.detail = null;
     this.detailLoading = true;
     this.detailError = null;
     try {
       const res = await this.api.getUser(userId);
+      if (seq !== this.detailSeq) return;
       runInAction(() => (this.detail = res));
     } catch (e) {
+      if (seq !== this.detailSeq) return;
       runInAction(() => {
         this.detailError = e instanceof Error ? e.message : String(e);
       });
     } finally {
-      runInAction(() => (this.detailLoading = false));
+      if (seq === this.detailSeq) runInAction(() => (this.detailLoading = false));
     }
   }
 

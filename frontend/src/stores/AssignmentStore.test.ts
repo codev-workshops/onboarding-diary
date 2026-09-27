@@ -163,7 +163,9 @@ describe("AssignmentStore", () => {
 
   it("loadMyRecruits() and loadMyManager() hit the /me endpoints", async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse(200, page([{ recruit, assignedAt: "2026-01-01T00:00:00Z", openIssueCount: 0 }])))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { items: [{ recruit, assignedAt: "2026-01-01T00:00:00Z", openIssueCount: 0 }], page: 1, size: 20, totalItems: 21, totalPages: 2 }),
+      )
       .mockResolvedValueOnce(jsonResponse(200, { assignment: assignment("a1", managerA, "ACTIVE", "2026-01-01T00:00:00Z") }));
 
     await store.loadMyRecruits(1, "assignedAt,desc");
@@ -200,6 +202,50 @@ describe("AssignmentStore", () => {
     expect(url.searchParams.get("sort")).toBe("assignedAt,asc");
     expect(url.searchParams.has("recruitId")).toBe(false);
     expect(store.assignments?.totalItems).toBe(0);
+  });
+
+  it("loadManagers() walks every page of active managers", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, { items: [managerA], page: 0, size: 100, totalItems: 2, totalPages: 2 }))
+      .mockResolvedValueOnce(jsonResponse(200, { items: [managerB], page: 1, size: 100, totalItems: 2, totalPages: 2 }));
+    await store.loadManagers();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(new URL(requestUrl(1)).searchParams.get("page")).toBe("1");
+    expect(store.managers.map((m) => m.id)).toEqual([managerA.id, managerB.id]);
+  });
+
+  it("loadActiveAssignments() ignores the log filters and clamps a stale page", async () => {
+    store.setFilters({ status: "REASSIGNED", recruitId: recruit.id });
+    store.setActiveAssignmentsPage(5);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: [], page: 5, size: 20, totalItems: 1, totalPages: 1 }));
+    await store.loadActiveAssignments();
+    const url = new URL(requestUrl(0));
+    expect(url.searchParams.get("status")).toBe("ACTIVE");
+    expect(url.searchParams.has("recruitId")).toBe(false);
+    expect(store.activeAssignmentsPage).toBe(0);
+    expect(store.filters.status).toBe("REASSIGNED");
+  });
+
+  it("loadMyRecruits() re-fetches the last page when the requested page no longer exists", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, { items: [], page: 2, size: 20, totalItems: 21, totalPages: 2 }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { items: [{ recruit, assignedAt: "2026-01-01T00:00:00Z", openIssueCount: 0 }], page: 1, size: 20, totalItems: 21, totalPages: 2 }),
+      );
+    const shown = await store.loadMyRecruits(2);
+    expect(shown).toBe(1);
+    expect(new URL(requestUrl(1)).searchParams.get("page")).toBe("1");
+    expect(store.myRecruits?.items).toHaveLength(1);
+  });
+
+  it("loadHistory() supports paging beyond the first page", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { items: [assignment("old", managerA, "REASSIGNED", "2025-01-01T00:00:00Z")], page: 1, size: 20, totalItems: 21, totalPages: 2 }),
+    );
+    await store.loadHistory(recruit.id, 1);
+    expect(new URL(requestUrl(0)).searchParams.get("page")).toBe("1");
+    expect(store.history?.page).toBe(1);
+    expect(store.currentAssignment).toBeNull();
   });
 
   it("clear() drops all server-derived state", async () => {

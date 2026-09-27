@@ -27,7 +27,7 @@ data class Sort(val field: String, val direction: SortDirection)
  * interpolated into SQL safely.
  */
 data class PageRequest(val page: Int, val size: Int, val sort: Sort, private val whitelist: SortWhitelist) {
-    val offset: Int get() = page * size
+    val offset: Long get() = page.toLong() * size
 
     /** `ORDER BY <column> <dir>` fragment; `column` comes from the whitelist, never from the client. */
     val orderBy: String

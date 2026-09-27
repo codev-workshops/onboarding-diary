@@ -17,7 +17,9 @@ const MyRecruits = observer(function MyRecruits() {
   const [sort, setSort] = useState("fullName,asc");
 
   useEffect(() => {
-    void assignments.loadMyRecruits(page, sort);
+    void assignments.loadMyRecruits(page, sort).then((shown) => {
+      if (shown !== page) setPage(shown);
+    });
   }, [assignments, page, sort]);
 
   const data = assignments.myRecruits;
@@ -79,15 +81,10 @@ const AllRecruits = observer(function AllRecruits() {
   const { assignments } = useStores();
 
   useEffect(() => {
-    assignments.setFilters({ status: "ACTIVE", recruitId: "", managerId: "" });
-  }, [assignments]);
+    void assignments.loadActiveAssignments();
+  }, [assignments, assignments.activeAssignmentsPage]);
 
-  useEffect(() => {
-    if (assignments.filters.status !== "ACTIVE") return;
-    void assignments.loadAssignments();
-  }, [assignments, assignments.filters, assignments.page]);
-
-  const data = assignments.assignments;
+  const data = assignments.activeAssignments;
 
   return (
     <section className={`${formStyles.card} ${formStyles.wide}`} aria-labelledby="recruits-title" style={{ maxWidth: 1000 }}>
@@ -108,13 +105,13 @@ const AllRecruits = observer(function AllRecruits() {
           Assignment log
         </Link>
       </div>
-      {assignments.listError && (
+      {assignments.activeAssignmentsError && (
         <div className={formStyles.formError} role="alert">
-          {assignments.listError}
+          {assignments.activeAssignmentsError}
         </div>
       )}
       <div className={styles.tableWrap}>
-        <table className={styles.table} data-testid="all-recruits-table" aria-busy={assignments.listLoading}>
+        <table className={styles.table} data-testid="all-recruits-table" aria-busy={assignments.activeAssignmentsLoading}>
           <thead>
             <tr>
               <th>Recruit</th>
@@ -153,7 +150,11 @@ const AllRecruits = observer(function AllRecruits() {
           </tbody>
         </table>
       </div>
-      <Pagination page={data} onPageChange={(p) => assignments.setPage(p)} disabled={assignments.listLoading} />
+      <Pagination
+        page={data}
+        onPageChange={(p) => assignments.setActiveAssignmentsPage(p)}
+        disabled={assignments.activeAssignmentsLoading}
+      />
     </section>
   );
 });
