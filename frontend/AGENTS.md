@@ -24,7 +24,7 @@ See `.agents/skills/frontend-mobx-conventions/SKILL.md` for snippets.
 
 ### Authentication
 
-- Login is username / password against the backend auth endpoint. The frontend
+- Login is email / password against the backend auth endpoint. The frontend
   sends the plain credentials over HTTPS; hashing is done exclusively by the
   backend.
 - The session/token returned by the backend is held in `AuthStore` and attached
