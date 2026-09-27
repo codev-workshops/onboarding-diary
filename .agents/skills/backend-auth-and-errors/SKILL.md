@@ -42,6 +42,12 @@ Use `@ValidEmail`, `@ValidPassword`, `@ValidStartDate` from
 `com.onboardingdiary.validation`; normalize emails with
 `EmailNormalizer.normalize()` before lookups.
 
+Request bodies are strict (`spring.jackson.deserialization.fail-on-unknown-properties=true`):
+a property the DTO does not declare yields `400 VALIDATION_FAILED` with a
+`NOT_ALLOWED` detail for that field (`GlobalErrorHandler`). So a DTO's fields
+*are* the write-allowlist — e.g. `ProfileUpdateRequest` only declares `fullName`,
+which keeps Admin-owned `department`/`startDate` out of `PATCH /me`.
+
 ## Errors
 
 - Throw `ApiException` subclasses from services; add a subclass in

@@ -5,18 +5,17 @@ import com.onboardingdiary.user.User
 import com.onboardingdiary.user.UserStatus
 import com.onboardingdiary.validation.ValidEmail
 import com.onboardingdiary.validation.ValidPassword
-import com.onboardingdiary.validation.ValidStartDate
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.time.LocalDate
-import java.util.Optional
 import java.util.UUID
 
 private const val NON_BLANK = ".*[^\\s\\p{Z}].*"
 
+/** `department` / `startDate` are Admin-owned; request bodies are strict, so sending them is a 400. */
 data class SignupRequest(
     @field:NotBlank @field:ValidEmail @field:Size(max = 254)
     val email: String?,
@@ -24,10 +23,6 @@ data class SignupRequest(
     val password: String?,
     @field:Size(min = 1, max = 100) @field:Pattern(regexp = NON_BLANK)
     val fullName: String? = null,
-    @field:Size(max = 100)
-    val department: String? = null,
-    @field:ValidStartDate
-    val startDate: LocalDate? = null,
 ) {
     override fun toString(): String = "SignupRequest(email=$email)"
 }
@@ -50,16 +45,10 @@ data class ChangePasswordRequest(
     override fun toString(): String = "ChangePasswordRequest(****)"
 }
 
-/**
- * PATCH semantics: an absent property is left unchanged; an explicit `null`
- * clears a nullable field. `Optional` distinguishes the two after JSON binding
- * (absent -> null, `null` -> `Optional.empty()`).
- */
+/** Only `fullName` is self-editable; any other property (department, startDate, email, role) is a 400. */
 data class ProfileUpdateRequest(
     @field:Size(min = 1, max = 100) @field:Pattern(regexp = NON_BLANK)
     val fullName: String? = null,
-    val department: Optional<@Size(max = 100) String>? = null,
-    val startDate: Optional<@ValidStartDate LocalDate>? = null,
 )
 
 data class AuthResponse(val token: String, val expiresAt: Instant, val user: UserProfile)

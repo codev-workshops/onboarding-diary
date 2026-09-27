@@ -40,13 +40,8 @@ class AuthService(
         val activated = withContext(Dispatchers.IO) {
             val user = users.findByEmail(email) ?: throw NotInvitedException()
             if (user.status != UserStatus.INVITED) throw AccountAlreadyActivatedException()
-            users.activate(
-                id = user.id,
-                passwordHash = hash,
-                fullName = request.fullName?.trim(),
-                department = request.department?.trim()?.takeIf { it.isNotEmpty() },
-                startDate = request.startDate,
-            ) ?: throw AccountAlreadyActivatedException()
+            users.activate(id = user.id, passwordHash = hash, fullName = request.fullName?.trim())
+                ?: throw AccountAlreadyActivatedException()
         }
         log.info("User {} completed signup", activated.id)
         return authResponse(activated)
@@ -78,18 +73,7 @@ class AuthService(
 
     suspend fun updateProfile(userId: UUID, request: ProfileUpdateRequest): UserProfile = withContext(Dispatchers.IO) {
         val user = users.findById(userId) ?: throw UnauthenticatedException()
-        val updated = users.updateProfile(
-            id = user.id,
-            fullName = request.fullName?.trim() ?: user.fullName,
-            department = when (val d = request.department) {
-                null -> user.department
-                else -> d.map { it.trim() }.filter { it.isNotEmpty() }.orElse(null)
-            },
-            startDate = when (val s = request.startDate) {
-                null -> user.startDate
-                else -> s.orElse(null)
-            },
-        )
+        val updated = users.updateFullName(user.id, request.fullName?.trim() ?: user.fullName)
         toProfile(updated)
     }
 
