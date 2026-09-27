@@ -1311,14 +1311,17 @@ components:
         department: { type: string, maxLength: 100 }
         startDate: { type: string, format: date }
     AdminUserUpdateRequest:
-      allOf:
-        - $ref: '#/components/schemas/ProfileUpdateRequest'
-        - type: object
-          properties:
-            role: { $ref: '#/components/schemas/Role' }
-            email:
-              allOf: [{ $ref: '#/components/schemas/Email' }]
-              description: Only accepted while the user is INVITED (422 EMAIL_LOCKED otherwise).
+      type: object
+      description: Admin-side update (REQ-FUNC-012a/014); absent properties are left unchanged, explicit null clears department/startDate.
+      additionalProperties: false
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 100 }
+        department: { type: [string, 'null'], maxLength: 100 }
+        startDate: { type: [string, 'null'], format: date }
+        role: { $ref: '#/components/schemas/Role' }
+        email:
+          allOf: [{ $ref: '#/components/schemas/Email' }]
+          description: Only accepted while the user is INVITED (422 EMAIL_LOCKED otherwise).
 
     # ---------------- assignments
     Assignment:
