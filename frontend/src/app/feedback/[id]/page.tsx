@@ -42,6 +42,7 @@ const FeedbackDetail = observer(function FeedbackDetail({ note, backHref }: { no
     return (
       <>
         <h1 className={formStyles.title}>Edit feedback</h1>
+        <FeedbackVisibilityNotice audience="recruit" />
         <EntryForm
           idPrefix="feedback"
           fields={feedbackFields()}
