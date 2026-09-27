@@ -52,12 +52,6 @@ const EditProfileForm = observer(function EditProfileForm({ user }: { user: User
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    setFullName(user.fullName);
-    setDepartment(user.department ?? "");
-    setStartDate(user.startDate ?? "");
-  }, [user]);
-
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -237,7 +231,7 @@ const ProfileContent = observer(function ProfileContent() {
   return (
     <div className={styles.stack}>
       <ProfileDetails user={auth.user} />
-      <EditProfileForm user={auth.user} />
+      <EditProfileForm key={auth.user.updatedAt} user={auth.user} />
       <ChangePasswordForm />
     </div>
   );

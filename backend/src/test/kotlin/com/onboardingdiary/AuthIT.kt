@@ -9,10 +9,12 @@ import com.onboardingdiary.user.UserStatus
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.test.context.ActiveProfiles
@@ -270,6 +272,57 @@ class AuthIT : AbstractIntegrationTest() {
             .jsonPath("$.fullName").isEqualTo("New Name")
             .jsonPath("$.department").isEqualTo("Sales")
             .jsonPath("$.startDate").isEqualTo("2026-11-02")
+    }
+
+    @Test
+    fun `patch me with only fullName leaves department and startDate untouched`() {
+        val token = login(active().email)
+        client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+            .bodyValue(mapOf("department" to "Sales", "startDate" to "2026-11-02")).exchange().expectStatus().isOk
+        client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+            .bodyValue(mapOf("fullName" to "Only Name"))
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.fullName").isEqualTo("Only Name")
+            .jsonPath("$.department").isEqualTo("Sales")
+            .jsonPath("$.startDate").isEqualTo("2026-11-02")
+    }
+
+    @Test
+    fun `patch me with explicit nulls clears department and startDate`() {
+        val token = login(active().email)
+        client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+            .bodyValue(mapOf("department" to "Sales", "startDate" to "2026-11-02")).exchange().expectStatus().isOk
+        client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"department": null, "startDate": null}""")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.department").isEqualTo(null)
+            .jsonPath("$.startDate").isEqualTo(null)
+    }
+
+    @Test
+    fun `patch me rejects blank fullName and too-long department`() {
+        val token = login(active().email)
+        client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+            .bodyValue(mapOf("fullName" to "   ", "department" to "d".repeat(101)))
+            .exchange()
+            .expectError(400, "VALIDATION_FAILED", "/api/v1/me")
+            .jsonPath("$.details[?(@.field == 'fullName')].code").isEqualTo("INVALID_FORMAT")
+            .jsonPath("$.details[?(@.field == 'department')].code").isEqualTo("TOO_LONG")
+    }
+
+    @Test
+    fun `activate is a no-op once the account is no longer INVITED`() {
+        val user = active()
+        val result = users.activate(user.id, "\$2a\$12\$otherhash", "Hijacker", null, null)
+        assertNull(result)
+        val reloaded = users.findById(user.id)!!
+        assertEquals(user.passwordHash, reloaded.passwordHash)
+        assertEquals(user.fullName, reloaded.fullName)
     }
 
     @Test

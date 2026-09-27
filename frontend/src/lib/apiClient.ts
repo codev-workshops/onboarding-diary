@@ -235,8 +235,8 @@ export class ApiClient {
     }
 
     const error = await this.toApiError(res, path);
-    if (res.status === 401 && auth) {
-      this.authHandlers?.onUnauthorized();
+    if (res.status === 401 && auth && this.authHandlers?.getToken() === token) {
+      this.authHandlers.onUnauthorized();
     }
     throw error;
   }

@@ -55,8 +55,8 @@ class UserRepository(private val jdbc: JdbcTemplate) {
         fullName: String?,
         department: String?,
         startDate: LocalDate?,
-    ): User {
-        jdbc.update(
+    ): User? {
+        val rows = jdbc.update(
             """
             UPDATE users
                SET password_hash = ?,
@@ -66,11 +66,11 @@ class UserRepository(private val jdbc: JdbcTemplate) {
                    department = COALESCE(?, department),
                    start_date = COALESCE(?, start_date),
                    updated_at = now()
-             WHERE id = ?
+             WHERE id = ? AND status = 'INVITED'
             """.trimIndent(),
             passwordHash, fullName, department, startDate, id,
         )
-        return findById(id)!!
+        return if (rows == 1) findById(id) else null
     }
 
     fun updateProfile(id: UUID, fullName: String, department: String?, startDate: LocalDate?): User {

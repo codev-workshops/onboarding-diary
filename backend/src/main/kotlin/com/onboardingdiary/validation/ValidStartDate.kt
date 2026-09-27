@@ -8,7 +8,7 @@ import java.time.LocalDate
 import kotlin.reflect.KClass
 
 /** Start date may be in the past or at most one year in the future (US-03). */
-@Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.PROPERTY_GETTER)
+@Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.TYPE)
 @Retention(AnnotationRetention.RUNTIME)
 @Constraint(validatedBy = [StartDateValidator::class])
 annotation class ValidStartDate(

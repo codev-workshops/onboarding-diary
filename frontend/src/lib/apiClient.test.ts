@@ -107,6 +107,38 @@ describe("ApiClient", () => {
     expect(redirect).toHaveBeenCalledTimes(1);
   });
 
+  it("a 401 for a request sent with a previous token does not clear a newer session", async () => {
+    const redirect = vi.fn();
+    const store = new AuthStore(api, { storage: null, redirectToLogin: redirect });
+    const session = (token: string) => ({
+      token,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      user: {
+        id: "u1",
+        email: "a@b.co",
+        fullName: "A",
+        role: "NEW_RECRUIT" as const,
+        status: "ACTIVE" as const,
+        department: null,
+        startDate: null,
+        invitedAt: "x",
+        activatedAt: null,
+        createdBy: null,
+        createdAt: "x",
+        updatedAt: "x",
+      },
+    });
+    store.setSession(session("old"));
+    fetchMock.mockImplementationOnce(async () => {
+      store.setSession(session("new"));
+      return jsonResponse(401, envelope({}));
+    });
+
+    await expect(api.getMyProfile()).rejects.toMatchObject({ status: 401 });
+    expect(store.token).toBe("new");
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
   it("a 401 from the public login endpoint does not trigger the unauthorized handler", async () => {
     const redirect = vi.fn();
     const store = new AuthStore(api, { storage: null, redirectToLogin: redirect });

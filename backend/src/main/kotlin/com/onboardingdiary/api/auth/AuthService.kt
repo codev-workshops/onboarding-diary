@@ -43,10 +43,10 @@ class AuthService(
             users.activate(
                 id = user.id,
                 passwordHash = hash,
-                fullName = request.fullName?.trim()?.takeIf { it.isNotEmpty() },
+                fullName = request.fullName?.trim(),
                 department = request.department?.trim()?.takeIf { it.isNotEmpty() },
                 startDate = request.startDate,
-            )
+            ) ?: throw AccountAlreadyActivatedException()
         }
         log.info("User {} completed signup", activated.id)
         return authResponse(activated)
@@ -80,9 +80,15 @@ class AuthService(
         val user = users.findById(userId) ?: throw UnauthenticatedException()
         val updated = users.updateProfile(
             id = user.id,
-            fullName = request.fullName?.trim()?.takeIf { it.isNotEmpty() } ?: user.fullName,
-            department = request.department?.trim()?.takeIf { it.isNotEmpty() },
-            startDate = request.startDate,
+            fullName = request.fullName?.trim() ?: user.fullName,
+            department = when (val d = request.department) {
+                null -> user.department
+                else -> d.map { it.trim() }.filter { it.isNotEmpty() }.orElse(null)
+            },
+            startDate = when (val s = request.startDate) {
+                null -> user.startDate
+                else -> s.orElse(null)
+            },
         )
         toProfile(updated)
     }
