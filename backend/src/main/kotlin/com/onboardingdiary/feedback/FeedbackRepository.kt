@@ -55,18 +55,18 @@ class FeedbackRepository(private val jdbc: JdbcTemplate) {
         return findById(id)!!
     }
 
-    fun update(id: UUID, entryDate: LocalDate, subject: String, type: FeedbackType, details: String, expectedVersion: Long): Boolean {
-        val rows = jdbc.update(
+    /** CAS update; returns the row as written, or `null` when [expectedVersion] no longer matches. */
+    fun update(id: UUID, entryDate: LocalDate, subject: String, type: FeedbackType, details: String, expectedVersion: Long): FeedbackNote? =
+        jdbc.query(
             """
             UPDATE feedback_notes
                SET entry_date = ?, subject = ?, type = ?, details = ?,
                    version = version + 1, updated_at = now()
              WHERE id = ? AND version = ?
+            RETURNING id, recruit_id, entry_date, subject, type, details, version, created_at, updated_at
             """.trimIndent(),
-            entryDate, subject, type.name, details, id, expectedVersion,
-        )
-        return rows == 1
-    }
+            MAPPER, entryDate, subject, type.name, details, id, expectedVersion,
+        ).firstOrNull()
 
     fun delete(id: UUID): Boolean = jdbc.update("DELETE FROM feedback_notes WHERE id = ?", id) == 1
 

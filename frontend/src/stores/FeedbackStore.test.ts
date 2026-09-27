@@ -105,6 +105,16 @@ describe("FeedbackStore", () => {
     });
   });
 
+  it("drops a probe result that resolves after clear() (user switch)", async () => {
+    let resolve!: (r: Response) => void;
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => (resolve = r)));
+    const pending = store.probeVisibility(RECRUIT_ID);
+    store.clear();
+    resolve(jsonResponse(200, page([])));
+    expect(await pending).toBeNull();
+    expect(store.isVisible(RECRUIT_ID)).toBeNull();
+  });
+
   it("translates the error catalog", () => {
     expect(feedbackErrorMessage(new ApiError(404, "NOT_FOUND", "x", []))).toMatch(/does not exist or you cannot access/);
     expect(feedbackErrorMessage(new ApiError(403, "NOT_ASSIGNED", "x", []))).toMatch(/not assigned/);

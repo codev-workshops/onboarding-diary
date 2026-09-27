@@ -20,7 +20,9 @@ function RecruitFeedbackTab({ recruitId }: RecruitTabProps) {
 /**
  * S5 read-only Feedback tab on /recruits/{id}. Gated by D3: the tab is only
  * rendered once a `GET /feedback?recruitId=…&size=1` probe succeeds; a 403
- * NOT_ASSIGNED (manager not currently assigned) hides it entirely.
+ * NOT_ASSIGNED (manager not currently assigned) hides it entirely. The probe
+ * runs on every visit to the page so a reassignment is reflected immediately;
+ * the cached answer only bridges the round-trip.
  */
 export const FEEDBACK_RECRUIT_TAB: RecruitTab = {
   id: "feedback",
@@ -28,9 +30,7 @@ export const FEEDBACK_RECRUIT_TAB: RecruitTab = {
   order: 300,
   component: RecruitFeedbackTab,
   visibility: {
-    probe: (stores, recruitId) => {
-      if (stores.feedback.isVisible(recruitId) === null) void stores.feedback.probeVisibility(recruitId);
-    },
+    probe: (stores, recruitId) => void stores.feedback.probeVisibility(recruitId),
     isVisible: (stores, recruitId) => stores.feedback.isVisible(recruitId),
   },
 };

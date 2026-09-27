@@ -66,7 +66,7 @@ class FeedbackService(
         repeat(MAX_UPDATE_ATTEMPTS) {
             val existing = findVisible(principal, id)
             if (expectedVersion != null && expectedVersion != existing.version) throw ConflictException()
-            val applied = withContext(Dispatchers.IO) {
+            val written = withContext(Dispatchers.IO) {
                 feedback.update(
                     id = id,
                     entryDate = req.entryDate!!,
@@ -76,7 +76,7 @@ class FeedbackService(
                     expectedVersion = existing.version,
                 )
             }
-            if (applied) return FeedbackResponse.from(findVisible(principal, id))
+            if (written != null) return FeedbackResponse.from(written)
             if (expectedVersion != null) throw ConflictException()
         }
         throw ConflictException()

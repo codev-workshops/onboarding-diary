@@ -48,6 +48,8 @@ export function feedbackErrorMessage(e: unknown): string {
 export class FeedbackStore extends EntryStore<Feedback, FeedbackCreateRequest, FeedbackUpdateRequest, FeedbackFilters, ListFeedbackQuery> {
   /** recruitId → may the current user read that recruit's feedback (`undefined` = not probed yet). */
   visibility: Record<string, boolean> = {};
+  /** Bumped by `clear()` so a probe started under the previous user cannot repopulate the cache. */
+  private probeGeneration = 0;
 
   constructor(api: ApiClient) {
     super(api.feedback, DEFAULT_FEEDBACK_FILTERS, DEFAULT_FEEDBACK_SORT);
@@ -71,27 +73,33 @@ export class FeedbackStore extends EntryStore<Feedback, FeedbackCreateRequest, F
     return this.visibility[recruitId] ?? null;
   }
 
-  /** Asks the API (list probe) whether `recruitId`'s feedback is visible; a 403 hides it, other failures leave it unknown. */
+  /**
+   * Asks the API (list probe) whether `recruitId`'s feedback is visible; a 403
+   * hides it, other failures leave the cached answer untouched. Callers re-probe
+   * on every mount so the answer tracks the live assignment.
+   */
   async probeVisibility(recruitId: string): Promise<boolean | null> {
+    const generation = this.probeGeneration;
+    let result: boolean | null;
     try {
       await this.api.list({ recruitId, size: 1 });
-      runInAction(() => {
-        this.visibility[recruitId] = true;
-      });
-      return true;
+      result = true;
     } catch (e) {
-      if (e instanceof ApiError && (e.status === 403 || e.status === 404)) {
-        runInAction(() => {
-          this.visibility[recruitId] = false;
-        });
-        return false;
-      }
-      return null;
+      result = e instanceof ApiError && (e.status === 403 || e.status === 404) ? false : null;
     }
+    if (generation !== this.probeGeneration) return null;
+    if (result !== null) {
+      const visible = result;
+      runInAction(() => {
+        this.visibility[recruitId] = visible;
+      });
+    }
+    return result;
   }
 
   override clear() {
     super.clear();
+    this.probeGeneration += 1;
     this.visibility = {};
   }
 }
