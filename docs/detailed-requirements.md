@@ -620,10 +620,10 @@ handler per resource and one typed client method per resource.
 |------|---------------|
 | 400 | `VALIDATION_FAILED`, `MALFORMED_REQUEST`, `INVALID_CURRENT_PASSWORD` |
 | 401 | `UNAUTHENTICATED` (missing/invalid/expired token or deactivated user), `INVALID_CREDENTIALS` (login only) |
-| 403 | `FORBIDDEN` (role), `NOT_ASSIGNED` (manager not actively assigned to recruit) |
+| 403 | `FORBIDDEN` (role), `NOT_ASSIGNED` (manager not actively assigned to recruit), `NOT_INVITED` (signup for an email with no admin-provisioned account) |
 | 404 | `NOT_FOUND` (also used for resources owned by others, to avoid leaking existence) |
-| 409 | `EMAIL_ALREADY_EXISTS`, `ASSIGNMENT_UNCHANGED`, `CONFLICT` |
-| 422 | `INVALID_STATE_TRANSITION`, `RESOLUTION_NOTES_REQUIRED`, `INVALID_ASSIGNMENT_PARTY`, `ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`, `CANNOT_DEACTIVATE_SELF` |
+| 409 | `EMAIL_ALREADY_EXISTS`, `ACCOUNT_ALREADY_ACTIVATED`, `ASSIGNMENT_UNCHANGED`, `CONFLICT` |
+| 422 | `INVALID_STATE_TRANSITION`, `RESOLUTION_NOTES_REQUIRED`, `INVALID_ASSIGNMENT_PARTY`, `ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`, `CANNOT_DEACTIVATE_SELF`, `EMAIL_LOCKED` |
 | 500 | `INTERNAL_ERROR` (no stack traces leaked) |
 
 ### 5.3 Pagination & sorting (REQ-FUNC-091)
