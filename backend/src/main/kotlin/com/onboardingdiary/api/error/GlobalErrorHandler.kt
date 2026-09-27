@@ -16,6 +16,7 @@ import org.springframework.web.server.ServerWebInputException
 import org.springframework.web.server.WebExceptionHandler
 import org.springframework.web.bind.support.WebExchangeBindException
 import reactor.core.publisher.Mono
+import tools.jackson.databind.exc.InvalidFormatException
 import tools.jackson.databind.exc.UnrecognizedPropertyException
 
 /**
@@ -42,14 +43,21 @@ class GlobalErrorHandler(private val writer: ErrorResponseWriter) : WebException
                 exchange, ErrorCode.VALIDATION_FAILED, details = ex.constraintViolations.map { it.toDetail() },
             )
 
-            is ServerWebInputException -> when (val unknown = ex.findCause<UnrecognizedPropertyException>()) {
-                null -> writer.write(exchange, ErrorCode.MALFORMED_REQUEST)
-                else -> writer.write(
-                    exchange, ErrorCode.VALIDATION_FAILED,
-                    details = listOf(
-                        ErrorDetail(unknown.propertyName, DetailCode.NOT_ALLOWED, "is not an editable field"),
-                    ),
-                )
+            is ServerWebInputException -> {
+                val unknown = ex.findCause<UnrecognizedPropertyException>()
+                val badValue = ex.findCause<InvalidFormatException>()
+                when {
+                    unknown != null -> writer.write(
+                        exchange, ErrorCode.VALIDATION_FAILED,
+                        details = listOf(
+                            ErrorDetail(unknown.propertyName, DetailCode.NOT_ALLOWED, "is not an editable field"),
+                        ),
+                    )
+                    badValue != null -> writer.write(
+                        exchange, ErrorCode.VALIDATION_FAILED, details = listOf(badValue.toDetail()),
+                    )
+                    else -> writer.write(exchange, ErrorCode.MALFORMED_REQUEST)
+                }
             }
 
             is AuthenticationException -> writer.write(exchange, ErrorCode.UNAUTHENTICATED)
@@ -83,6 +91,17 @@ class GlobalErrorHandler(private val writer: ErrorResponseWriter) : WebException
         message = defaultMessage ?: "is invalid",
     )
 
+    /** A body field whose JSON value cannot be coerced (unknown enum constant, bad ISO date, ...). */
+    private fun InvalidFormatException.toDetail(): ErrorDetail {
+        val field = path.lastOrNull()?.propertyName ?: "body"
+        val target = targetType
+        return if (target != null && target.isEnum) {
+            ErrorDetail(field, DetailCode.INVALID_ENUM, "must be one of ${target.enumConstants.map { it.toString() }}")
+        } else {
+            ErrorDetail(field, DetailCode.INVALID_FORMAT, "is not a valid ${target?.simpleName ?: "value"}")
+        }
+    }
+
     private fun ConstraintViolation<*>.toDetail() = ErrorDetail(
         field = propertyPath.toString().substringAfterLast('.'),
         code = detailCodeFor(constraintDescriptor.annotation.annotationClass.simpleName),
@@ -93,7 +112,7 @@ class GlobalErrorHandler(private val writer: ErrorResponseWriter) : WebException
         fun detailCodeFor(constraint: String?): String = when (constraint) {
             "NotNull", "NotBlank", "NotEmpty" -> DetailCode.REQUIRED
             "Size", "Length" -> DetailCode.TOO_LONG
-            "Min", "Max", "Past", "PastOrPresent", "Future", "FutureOrPresent", "ValidStartDate" -> DetailCode.OUT_OF_RANGE
+            "Min", "Max", "Past", "PastOrPresent", "Future", "FutureOrPresent", "ValidStartDate", "ValidEntryDate" -> DetailCode.OUT_OF_RANGE
             "typeMismatch" -> DetailCode.INVALID_ENUM
             else -> DetailCode.INVALID_FORMAT
         }

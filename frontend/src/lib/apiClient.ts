@@ -1,3 +1,14 @@
+import type { ApiTransport, Page, PageQuery, RequestOptions } from "@/lib/api/core";
+import { toQuery } from "@/lib/api/core";
+import { TasksApi } from "@/lib/api/tasks";
+
+// Shared envelope/paging/entry types and every per-resource module are re-exported
+// so callers keep importing contract types from "@/lib/apiClient".
+export type { ApiTransport, EntryApi, EntryBase, EntryListQuery, Page, PageQuery, RequestOptions } from "@/lib/api/core";
+export { toQuery } from "@/lib/api/core";
+// ---- resource modules (S3+): one `export *` line per slice, appended below ----
+export * from "@/lib/api/tasks";
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
@@ -35,22 +46,6 @@ export interface UserProfile extends UserSummary {
 // ---- S2: users (admin) & assignments -----------------------------------------
 
 export type AssignmentStatus = "ACTIVE" | "REASSIGNED" | "ENDED";
-
-/** `{ items, page, size, totalItems, totalPages }` — frozen envelope for every list endpoint. */
-export interface Page<T> {
-  items: T[];
-  page: number;
-  size: number;
-  totalItems: number;
-  totalPages: number;
-}
-
-export interface PageQuery {
-  page?: number;
-  size?: number;
-  /** `field,asc|desc`; fields whitelisted per resource by the backend. */
-  sort?: string;
-}
 
 export interface Assignment {
   id: string;
@@ -229,8 +224,12 @@ type FetchLike = typeof fetch;
  * AuthStore registers itself via `setAuthHandlers` so the client can attach
  * `Authorization: Bearer <token>` and react to 401s.
  */
-export class ApiClient {
+export class ApiClient implements ApiTransport {
   private authHandlers: AuthHandlers | null = null;
+
+  // ---- entry resources (S3+): one line per slice, appended below --------------
+  /** S3 — `/tasks` (see src/lib/api/tasks.ts). */
+  readonly tasks = new TasksApi(this);
 
   constructor(
     private readonly baseUrl: string = API_BASE_URL,
@@ -349,11 +348,8 @@ export class ApiClient {
 
   // ---- core ------------------------------------------------------------------
 
-  private async request<T>(
-    method: string,
-    path: string,
-    opts: { body?: unknown; auth?: boolean } = {},
-  ): Promise<T> {
+  /** Authenticated JSON call used by every method here and by the resource modules. */
+  async request<T>(method: string, path: string, opts: RequestOptions = {}): Promise<T> {
     const { body, auth = true } = opts;
     const headers: Record<string, string> = { Accept: "application/json" };
     if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -396,17 +392,6 @@ export class ApiClient {
     const message = parsed?.message ?? `Request to ${path} failed with HTTP ${res.status}`;
     return new ApiError(res.status, code, message, parsed?.details ?? []);
   }
-}
-
-/** Serialises defined, non-empty query values; `?`-prefixed or empty string. */
-export function toQuery(query: object): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query) as [string, string | number | undefined][]) {
-    if (value === undefined || value === "") continue;
-    params.set(key, String(value));
-  }
-  const s = params.toString();
-  return s ? `?${s}` : "";
 }
 
 export const apiClient = new ApiClient();

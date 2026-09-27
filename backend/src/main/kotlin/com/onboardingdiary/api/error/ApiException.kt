@@ -16,6 +16,11 @@ class InvalidCredentialsException : ApiException(ErrorCode.INVALID_CREDENTIALS)
 class UnauthenticatedException(message: String = ErrorCode.UNAUTHENTICATED.defaultMessage) :
     ApiException(ErrorCode.UNAUTHENTICATED, message)
 class ForbiddenException : ApiException(ErrorCode.FORBIDDEN)
+class NotAssignedException : ApiException(ErrorCode.NOT_ASSIGNED)
+class InvalidStateTransitionException(from: String, to: String) : ApiException(
+    ErrorCode.INVALID_STATE_TRANSITION,
+    details = listOf(ErrorDetail("status", DetailCode.INVALID_TRANSITION, "cannot move from $from to $to")),
+)
 class NotFoundException : ApiException(ErrorCode.NOT_FOUND)
 class EmailAlreadyExistsException : ApiException(
     ErrorCode.EMAIL_ALREADY_EXISTS,

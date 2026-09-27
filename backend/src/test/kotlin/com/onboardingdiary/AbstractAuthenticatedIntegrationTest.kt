@@ -57,6 +57,11 @@ abstract class AbstractAuthenticatedIntegrationTest : AbstractIntegrationTest() 
     protected fun patch(path: String, body: Any, token: String?): ResponseSpec =
         client.patch().uri(path).bodyValue(body).bearer(token)
 
+    protected fun put(path: String, body: Any, token: String?): ResponseSpec =
+        client.put().uri(path).bodyValue(body).bearer(token)
+
+    protected fun delete(path: String, token: String?): ResponseSpec = client.delete().uri(path).bearer(token)
+
     protected fun ResponseSpec.expectError(status: Int, code: String): WebTestClient.BodyContentSpec =
         expectStatus().isEqualTo(status)
             .expectBody()
