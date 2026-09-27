@@ -966,7 +966,10 @@ components:
     Sort:
       name: sort
       in: query
-      description: '`field,asc|desc`; fields are whitelisted per resource (default `entryDate,desc`).'
+      description: >-
+        `field,asc|desc`; fields are whitelisted per resource. Defaults: entries
+        (tasks, issues, feedback, notes) `entryDate,desc`; users `fullName,asc`;
+        assignments `assignedAt,desc`; `/me/recruits` `fullName,asc`.
       schema: { type: string, pattern: '^[A-Za-z]+,(asc|desc)$' }
     UserId:
       name: userId
@@ -1276,7 +1279,7 @@ components:
     # ---------------- assignments
     Assignment:
       type: object
-      required: [id, recruit, manager, assignedBy, status, assignedAt]
+      required: [id, recruit, manager, assignedBy, status, assignedAt, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         recruit: { $ref: '#/components/schemas/UserSummary' }
@@ -1286,6 +1289,8 @@ components:
         assignedAt: { type: string, format: date-time }
         endedAt: { type: [string, 'null'], format: date-time }
         note: { type: [string, 'null'], maxLength: 500 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     CreateAssignmentRequest:
       type: object
       required: [recruitId, managerId]

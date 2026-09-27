@@ -634,8 +634,11 @@ only.
   the password.
 - **Token**: signed JWT (HS256 with a ≥256-bit secret from configuration, or
   RS256), TTL 60 minutes, claims: `sub` (user id), `email`, `role`, `iat`,
-  `exp`. Stateless: no server session. Token validity additionally requires
-  the user to be `ACTIVE` (checked per request via a cached lookup).
+  `exp`. Stateless: no server session. The `role` claim is informational
+  only: on every request the backend loads the user by `sub` and uses the
+  **stored** `role` and `status` for authorization (no cross-request caching),
+  so a role change or deactivation takes effect on the next request even for
+  unexpired tokens.
 - **Storage (frontend)**: token lives in `AuthStore` (memory, optionally
   mirrored to `sessionStorage` for reload survival). The single API client
   reads it from the store; components never touch the token. On `401` the
@@ -692,7 +695,7 @@ Tier 1 = field-level (`400 VALIDATION_FAILED`), Tier 2 = business rule
 
 | Tier | Rule |
 |------|------|
-| 1 | `email`: required, trimmed+lowercased, RFC-5322-style regex `^[A-Za-z0-9!#$%&'*+/=?^_\`{|}~.-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$`, no consecutive dots, ≤ 254 chars (REQ-FUNC-002/003). |
+| 1 | `email`: required, trimmed+lowercased, RFC-5322-style regex `^[A-Za-z0-9!#$%&'*+/=?^_\`{|}~.-]+@[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$` (domain labels may not start or end with `-`), no consecutive dots, local part not starting/ending with `.`, ≤ 254 chars (REQ-FUNC-002/003). |
 | 1 | `password`: required, 10–128 chars, ≥1 letter and ≥1 digit (REQ-FUNC-004). |
 | 1 | `fullName`: required, 1–100 chars, trimmed. `department`: optional ≤ 100. `startDate`: optional ISO date, not more than 1 year in the future, not before 1970-01-01. |
 | 2 | Email uniqueness after normalization → `409 EMAIL_ALREADY_EXISTS` (INV-01). |
