@@ -308,7 +308,7 @@ class AuthIT : AbstractIntegrationTest() {
     fun `patch me rejects blank fullName and too-long department`() {
         val token = login(active().email)
         client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .bodyValue(mapOf("fullName" to "   ", "department" to "d".repeat(101)))
+            .bodyValue(mapOf("fullName" to " \u2003 ", "department" to "d".repeat(101)))
             .exchange()
             .expectError(400, "VALIDATION_FAILED", "/api/v1/me")
             .jsonPath("$.details[?(@.field == 'fullName')].code").isEqualTo("INVALID_FORMAT")

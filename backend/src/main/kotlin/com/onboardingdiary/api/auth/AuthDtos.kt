@@ -15,7 +15,7 @@ import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
 
-private const val NON_BLANK = ".*\\S.*"
+private const val NON_BLANK = ".*[^\\s\\p{Z}].*"
 
 data class SignupRequest(
     @field:NotBlank @field:ValidEmail @field:Size(max = 254)
