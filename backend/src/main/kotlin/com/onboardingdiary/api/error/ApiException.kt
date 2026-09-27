@@ -21,6 +21,10 @@ class InvalidStateTransitionException(from: String, to: String) : ApiException(
     ErrorCode.INVALID_STATE_TRANSITION,
     details = listOf(ErrorDetail("status", DetailCode.INVALID_TRANSITION, "cannot move from $from to $to")),
 )
+class ResolutionNotesRequiredException : ApiException(
+    ErrorCode.RESOLUTION_NOTES_REQUIRED,
+    details = listOf(ErrorDetail("resolutionNotes", DetailCode.REQUIRED, "is required when status is RESOLVED or CLOSED")),
+)
 class NotFoundException : ApiException(ErrorCode.NOT_FOUND)
 class EmailAlreadyExistsException : ApiException(
     ErrorCode.EMAIL_ALREADY_EXISTS,
