@@ -47,15 +47,17 @@ questions.
 
 | # | Assumption |
 |---|------------|
-| A1 | Public self-signup always creates a **New Recruit**. Manager and Admin accounts are created by an Admin. The very first Admin is seeded by a DB migration / bootstrap configuration (env-provided email + password). |
-| A2 | Tokens are **stateless JWT bearer tokens** (signed, short-lived, e.g. 60 min). Logout is client-side discard of the token (`AuthStore.clear()`); server-side revocation / refresh tokens are enhancements (§9). |
-| A3 | Users are **deactivated**, never hard-deleted, so that authored entries and assignment history remain intact. A deactivated user cannot log in and their token is rejected. |
-| A4 | Recruit entries (tasks, issues, feedback, notes) are **hard-deleted** by their owner. Managers and Admins have read-only access to entries; only Admin may delete an entry for data-management purposes. |
-| A5 | Dates for entries are calendar dates (`date`, ISO-8601 `YYYY-MM-DD`) in the recruit's local sense; timestamps (`createdAt`, `updatedAt`) are UTC `date-time`. |
-| A6 | Enumerations for `category`, `status`, `priority`, `severity`, `type` are fixed server-side enums (listed in §1); a "custom category" feature is out of scope. |
-| A7 | All list endpoints are paginated with `page` (0-based) and `size` (default 20, max 100) and return a common `Page` envelope. |
-| A8 | Report generation is **synchronous** (request → file). Reports are limited to a date range of at most 366 days. Asynchronous/queued reports are an enhancement (§9). |
-| A9 | The API is versioned under `/api/v1`. |
+| A1 | **All accounts are pre-provisioned by an Admin.** An Admin creates every user (any role) with email + profile + role but **no password**; the user is stored with status `INVITED`. Public signup (`POST /auth/signup`) does not create accounts: it *activates* an existing `INVITED` account whose email matches, setting the password and moving it to `ACTIVE`. Signup for an unknown email is rejected (`403 NOT_INVITED`) with a clear message; signup for an already-`ACTIVE`/`DEACTIVATED` email is rejected (`409 ACCOUNT_ALREADY_ACTIVATED`). The very first Admin is seeded `ACTIVE` by a DB migration / bootstrap runner from env (`APP_BOOTSTRAP_ADMIN_EMAIL`, `APP_BOOTSTRAP_ADMIN_PASSWORD`). |
+| A2 | **Schema normal form.** Every table is in at least 3NF (hence 2NF): UUID primary keys, scalar columns and foreign keys only; no JSON/array columns, no repeating groups, no derived columns. `Profile` fields are plain columns on `users` (1:1, always present), not a separate table and not JSON. |
+| A3 | **Entry ownership.** Every diary entry row carries `recruit_id FK → users.id` — the owner **and** creator (only the recruit may create entries, so a separate `created_by` column would always equal `recruit_id` and is deliberately omitted). |
+| A4 | Tokens are **stateless JWT bearer tokens** (signed, short-lived, e.g. 60 min). Logout is client-side discard of the token (`AuthStore.clear()`); server-side revocation / refresh tokens are enhancements (§9). |
+| A5 | Users are **deactivated**, never hard-deleted, so that authored entries and assignment history remain intact. A deactivated user cannot log in and their token is rejected. |
+| A6 | Recruit entries (tasks, issues, feedback, notes) are **hard-deleted** by their owner. Managers and Admins have read-only access to entries; only Admin may delete an entry for data-management purposes. |
+| A7 | Dates for entries are calendar dates (`date`, ISO-8601 `YYYY-MM-DD`) in the recruit's local sense; timestamps (`createdAt`, `updatedAt`) are UTC `date-time`. |
+| A8 | Enumerations for `category`, `status`, `priority`, `severity`, `type` are fixed server-side enums (listed in §1); a "custom category" feature is out of scope. |
+| A9 | All list endpoints are paginated with `page` (0-based) and `size` (default 20, max 100) and return a common `Page` envelope. |
+| A10 | Report generation is **synchronous** (request → file). Reports are limited to a date range of at most 366 days. Asynchronous/queued reports are an enhancement (§9). |
+| A11 | The API is versioned under `/api/v1`. |
 
 ---
 
@@ -79,11 +81,11 @@ Identity & Access; they own no persistent entities.
 
 | Entity / VO | Kind | Attributes | Notes |
 |-------------|------|------------|-------|
-| `User` | Entity (aggregate root) | `id: UUID`, `email: Email`, `passwordHash`, `role: Role`, `status: UserStatus`, `profile: Profile`, `createdAt`, `updatedAt` | `email` is unique (normalized). `passwordHash` never leaves the backend. |
+| `User` | Entity (aggregate root) | `id: UUID`, `email: Email`, `passwordHash?`, `role: Role`, `status: UserStatus`, `profile: Profile`, `createdById?`, `invitedAt`, `activatedAt?`, `createdAt`, `updatedAt` | `email` is unique (normalized). `passwordHash` is `null` while `INVITED`, non-null once `ACTIVE`; never leaves the backend. `createdById` = the Admin who provisioned the account (null for the bootstrap admin). |
 | `Email` | Value object | normalized string (trimmed, lowercase), RFC-5322-style validated, max 254 chars | Equality on normalized value. |
-| `Profile` | Value object (embedded in `User`) | `fullName`, `department?`, `startDate?` | `role` is exposed in the profile view but owned by `User` and only Admin-editable. |
+| `Profile` | Value object (embedded in `User`, persisted as columns `full_name`, `department`, `start_date` on `users`) | `fullName`, `department?`, `startDate?` | 1:1 with the user and always present, so no separate table and no JSON column (A2). `role` is exposed in the profile view but owned by `User` and only Admin-editable. |
 | `Role` | Enum | `NEW_RECRUIT`, `MANAGER`, `ADMIN` | Exactly one role per user. |
-| `UserStatus` | Enum | `ACTIVE`, `DEACTIVATED` | |
+| `UserStatus` | Enum | `INVITED`, `ACTIVE`, `DEACTIVATED` | `INVITED` = created by Admin, no password yet, cannot log in. |
 | `Assignment` | Entity (aggregate root) | `id: UUID`, `recruitId`, `managerId`, `assignedById`, `status: AssignmentStatus`, `assignedAt`, `endedAt?`, `note?` | See lifecycle §1.4. |
 | `AssignmentStatus` | Enum | `ACTIVE`, `REASSIGNED` | |
 
@@ -160,7 +162,18 @@ flowchart LR
     closed -->|"reopen"| inprog
 ```
 
-**User.status**: `ACTIVE` → `DEACTIVATED` → `ACTIVE` (Admin only, both ways).
+**User.status**:
+
+```mermaid
+flowchart LR
+    created(["Admin creates account (no password)"]) --> invited["INVITED"]
+    invited -->|"user completes signup: sets password"| active["ACTIVE"]
+    active -->|"Admin deactivates"| deactivated["DEACTIVATED"]
+    deactivated -->|"Admin reactivates"| active
+    invited -->|"Admin deactivates (revoke invite)"| deactivated
+```
+
+Only `ACTIVE` users can log in. The bootstrap Admin is created directly as `ACTIVE`.
 
 Feedback notes and additional notes have no status lifecycle.
 
@@ -170,6 +183,8 @@ Feedback notes and additional notes have no status lifecycle.
 |----|-----------|
 | INV-01 | `User.email` is unique after normalization (trim + lowercase). |
 | INV-02 | A user has exactly one `Role`. |
+| INV-02a | `User.passwordHash` is null **iff** `status = INVITED`. Login requires `status = ACTIVE`. |
+| INV-02b | Signup may only target an `INVITED` user with a matching normalized email; it never creates a `users` row. |
 | INV-03 | Every diary entry belongs to exactly one recruit (`recruitId` not null, references a user with role `NEW_RECRUIT`). |
 | INV-04 | A recruit has **at most one** `ACTIVE` assignment at any time (partial unique index on `(recruit_id) WHERE status = 'ACTIVE'`). |
 | INV-05 | `Assignment.recruitId` must reference an `ACTIVE` user with role `NEW_RECRUIT`; `Assignment.managerId` an `ACTIVE` user with role `MANAGER`; `assignedById` a user with role `ADMIN`. `recruitId ≠ managerId`. |
@@ -194,6 +209,9 @@ erDiagram
         string full_name
         string department
         date start_date
+        uuid created_by_id FK
+        timestamp invited_at
+        timestamp activated_at
         timestamp created_at
         timestamp updated_at
     }
@@ -276,9 +294,10 @@ IDs are stable and referenced from `openapi.yaml` (via `x-requirements`) and
 
 | ID | Requirement |
 |----|-------------|
-| REQ-FUNC-001 | A visitor can sign up with `email`, `password`, `fullName` (optionally `department`, `startDate`). Signup creates an `ACTIVE` user with role `NEW_RECRUIT`. |
+| REQ-FUNC-001 | A visitor whose account has been pre-provisioned by an Admin (status `INVITED`) can complete signup with `email` + `password` (optionally overriding `fullName`, `department`, `startDate`). Signup sets the password hash, `status = ACTIVE`, `activatedAt = now` and returns a token. Signup never creates a new user; the role is whatever the Admin set. |
+| REQ-FUNC-001a | Signup with an email that does not match any user → `403 NOT_INVITED` ("No invitation found for this email. Ask your administrator to create your account."). Signup with an email whose user is `ACTIVE` or `DEACTIVATED` → `409 ACCOUNT_ALREADY_ACTIVATED` ("This account is already set up. Log in instead."). Both responses reveal only what the message says; timing is constant-ish (no enumeration beyond the invited/not-invited distinction, which is accepted per A1). |
 | REQ-FUNC-002 | Email is validated with RFC-5322-style syntax (local part, single `@`, domain with at least one dot, no spaces; max 254 chars). Invalid emails are rejected with `400 VALIDATION_FAILED`. |
-| REQ-FUNC-003 | Email is normalized (trim, lowercase) before validation, storage and lookup. Signup with an email that already exists (after normalization) is rejected with `409 EMAIL_ALREADY_EXISTS`. |
+| REQ-FUNC-003 | Email is normalized (trim, lowercase) before validation, storage and lookup. Admin user creation with an email that already exists (after normalization) is rejected with `409 EMAIL_ALREADY_EXISTS`. |
 | REQ-FUNC-004 | Passwords are 10–128 characters and must contain at least one letter and one digit. Passwords are hashed backend-only with BCrypt (cost ≥ 10) or Argon2id; plaintext is never persisted or logged. |
 | REQ-FUNC-005 | A user logs in with `email` + `password` and receives a bearer token plus their profile summary. Invalid credentials, unknown email and deactivated accounts all return the same `401 INVALID_CREDENTIALS`. |
 | REQ-FUNC-006 | Every non-public endpoint requires `Authorization: Bearer <token>`. Missing/invalid/expired tokens return `401 UNAUTHENTICATED`. The frontend API client attaches the token from `AuthStore` and, on 401, clears `AuthStore` and redirects to `/login`. |
@@ -292,7 +311,8 @@ IDs are stable and referenced from `openapi.yaml` (via `x-requirements`) and
 | ID | Requirement |
 |----|-------------|
 | REQ-FUNC-011 | Admin can list users, paginated, filtered by `role`, `status`, and free-text `q` (matches email or fullName, case-insensitive). |
-| REQ-FUNC-012 | Admin can create a user of any role with an initial password (same validation as signup). |
+| REQ-FUNC-012 | Admin can create a user of any role (`NEW_RECRUIT`, `MANAGER`, `ADMIN`) with `email`, `fullName`, `role` and optional `department`, `startDate`. **No password** is supplied; the user is created with `status = INVITED`, `createdById = admin`, `invitedAt = now`. The user completes setup via signup (REQ-FUNC-001). |
+| REQ-FUNC-012a | Admin can see `INVITED` users in the list (status filter) and on the detail page, including `invitedAt`, and can deactivate an invite (revoke) or edit profile/role/email while still `INVITED`. Email is editable only while `INVITED`. |
 | REQ-FUNC-013 | Admin can view any user's detail, including their current active assignment (if any). |
 | REQ-FUNC-014 | Admin can update a user's `fullName`, `department`, `startDate`, `role`. Role change is blocked by INV-11. |
 | REQ-FUNC-015 | Admin can deactivate and reactivate a user. A deactivated user cannot log in and existing tokens are rejected on the next request. An Admin cannot deactivate their own account. |
@@ -439,10 +459,15 @@ including failure/deviation paths.
 
 *As a visitor, I want to sign up with my email and a password so that I can start my onboarding diary.*
 
-- **Given** I am on `/signup` **When** I submit a valid email, password (≥10 chars, letter+digit) and full name **Then** an account with role `NEW_RECRUIT` is created, I am logged in (token stored in `AuthStore`) and redirected to `/dashboard`.
+*Precondition for every scenario: an Admin has created the account first (US-04); signup only completes it.*
+
+- **Given** an Admin created `jane.doe@example.com` as `NEW_RECRUIT` (status `INVITED`) **When** I submit that email and a valid password (≥10 chars, letter+digit) on `/signup` **Then** the account becomes `ACTIVE` with my password, I am logged in (token stored in `AuthStore`) and redirected to `/dashboard` (or the role's landing page).
+- **Given** no user exists for `nobody@example.com` **When** I sign up with it **Then** `403 NOT_INVITED` and the UI shows "No invitation found for this email. Ask your administrator to create your account."; nothing is created.
+- **Given** `jane.doe@example.com` is already `ACTIVE` **When** I sign up with it **Then** `409 ACCOUNT_ALREADY_ACTIVATED` and the UI shows "This account is already set up. Log in instead." with a link to `/login`.
+- **Given** `jane.doe@example.com` is `DEACTIVATED` **When** I sign up **Then** `409 ACCOUNT_ALREADY_ACTIVATED` (same message; the Admin must reactivate).
+- **Given** I am `INVITED` **When** I try to log in before completing signup **Then** `401 INVALID_CREDENTIALS`.
 - **Given** I enter `  Jane.Doe@Example.COM ` **When** I submit **Then** the account email is stored as `jane.doe@example.com` and the profile shows the normalized value.
 - **Given** I enter `jane@` or `jane doe@example.com` **When** I submit **Then** the API returns `400 VALIDATION_FAILED` with `details[{field:"email"}]` and the form shows an inline error on the email field; nothing is created.
-- **Given** an account `jane.doe@example.com` exists **When** I sign up as `Jane.Doe@example.com` **Then** the API returns `409 EMAIL_ALREADY_EXISTS` and the UI shows "An account with this email already exists. Log in instead." with a link to `/login`.
 - **Given** a password `short1` **When** I submit **Then** `400 VALIDATION_FAILED` on `password` and the UI shows the policy.
 - **Given** the backend is unreachable **When** I submit **Then** the UI shows a non-field error "Could not reach the server, try again" and keeps my input.
 
@@ -464,7 +489,8 @@ including failure/deviation paths.
 ### US-04 Admin manages users (REQ-FUNC-011..015)
 
 - **Given** I am Admin **When** I open `/admin/users` **Then** I see a paginated table filterable by role, status and search.
-- **When** I create a manager with a valid email **Then** the user appears with role `MANAGER`; duplicate email → `409 EMAIL_ALREADY_EXISTS` shown inline.
+- **When** I create a user (any role) with a valid email and no password **Then** the user appears with the chosen role and status `INVITED`; duplicate email → `409 EMAIL_ALREADY_EXISTS` shown inline. The detail page shows "Invited — awaiting signup" with `invitedAt`.
+- **Given** an `INVITED` user **When** they complete signup **Then** the list shows them as `ACTIVE`. **When** I deactivate an `INVITED` user **Then** their signup attempt returns `409 ACCOUNT_ALREADY_ACTIVATED`.
 - **When** I change a recruit's role to `MANAGER` while they have an active assignment **Then** `422 ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT` and the UI suggests reassigning first.
 - **When** I deactivate a user **Then** they can no longer log in; their next API call returns `401 UNAUTHENTICATED`. **When** I try to deactivate myself **Then** `422 CANNOT_DEACTIVATE_SELF`.
 - **Given** I am a Recruit or Manager **When** I call any `/users` admin endpoint or open `/admin/*` **Then** `403 FORBIDDEN` and the UI shows the "Not authorized" page (nav item is hidden anyway).
@@ -551,7 +577,7 @@ Base path `/api/v1`. "(public)" marks unauthenticated endpoints; all others requ
 
 | Method & path | Purpose | Roles |
 |---------------|---------|-------|
-| `POST /auth/signup` (public) | Create recruit account, returns token | public |
+| `POST /auth/signup` (public) | Complete an Admin-provisioned `INVITED` account (set password), returns token | public |
 | `POST /auth/login` (public) | Email + password → token | public |
 | `POST /auth/logout` | Client-side discard acknowledgement | any |
 | `GET /me` · `PATCH /me` | Own profile | any |
@@ -594,10 +620,10 @@ handler per resource and one typed client method per resource.
 |------|---------------|
 | 400 | `VALIDATION_FAILED`, `MALFORMED_REQUEST`, `INVALID_CURRENT_PASSWORD` |
 | 401 | `UNAUTHENTICATED` (missing/invalid/expired token or deactivated user), `INVALID_CREDENTIALS` (login only) |
-| 403 | `FORBIDDEN` (role), `NOT_ASSIGNED` (manager not actively assigned to recruit) |
+| 403 | `FORBIDDEN` (role), `NOT_ASSIGNED` (manager not actively assigned to recruit), `NOT_INVITED` (signup for an email with no admin-provisioned account) |
 | 404 | `NOT_FOUND` (also used for resources owned by others, to avoid leaking existence) |
-| 409 | `EMAIL_ALREADY_EXISTS`, `ASSIGNMENT_UNCHANGED`, `CONFLICT` |
-| 422 | `INVALID_STATE_TRANSITION`, `RESOLUTION_NOTES_REQUIRED`, `INVALID_ASSIGNMENT_PARTY`, `ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`, `CANNOT_DEACTIVATE_SELF` |
+| 409 | `EMAIL_ALREADY_EXISTS`, `ACCOUNT_ALREADY_ACTIVATED`, `ASSIGNMENT_UNCHANGED`, `CONFLICT` |
+| 422 | `INVALID_STATE_TRANSITION`, `RESOLUTION_NOTES_REQUIRED`, `INVALID_ASSIGNMENT_PARTY`, `ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`, `CANNOT_DEACTIVATE_SELF`, `EMAIL_LOCKED` |
 | 500 | `INTERNAL_ERROR` (no stack traces leaked) |
 
 ### 5.3 Pagination & sorting (REQ-FUNC-091)
@@ -698,7 +724,7 @@ Tier 1 = field-level (`400 VALIDATION_FAILED`), Tier 2 = business rule
 | 1 | `email`: required, trimmed+lowercased, RFC-5322-style regex `^[A-Za-z0-9!#$%&'*+/=?^_\`{|}~.-]+@[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$` (domain labels may not start or end with `-`), no consecutive dots, local part not starting/ending with `.`, ≤ 254 chars (REQ-FUNC-002/003). |
 | 1 | `password`: required, 10–128 chars, ≥1 letter and ≥1 digit (REQ-FUNC-004). |
 | 1 | `fullName`: required, 1–100 chars, trimmed. `department`: optional ≤ 100. `startDate`: optional ISO date, not more than 1 year in the future, not before 1970-01-01. |
-| 2 | Email uniqueness after normalization → `409 EMAIL_ALREADY_EXISTS` (INV-01). |
+| 2 | Signup target must exist and be `INVITED` → else `403 NOT_INVITED` / `409 ACCOUNT_ALREADY_ACTIVATED` (INV-02b). |
 | 2 | Change password: `currentPassword` must verify → else `400 INVALID_CURRENT_PASSWORD`; new ≠ current. |
 | 3 | Login of `DEACTIVATED` user → `401 INVALID_CREDENTIALS`. `/me` requires valid token. |
 
@@ -706,8 +732,8 @@ Tier 1 = field-level (`400 VALIDATION_FAILED`), Tier 2 = business rule
 
 | Tier | Rule |
 |------|------|
-| 1 | `role` ∈ `Role`; `status` ∈ `UserStatus`; `q` ≤ 100 chars; pagination bounds. Create-user body as signup + `role`. |
-| 2 | INV-11 role change blocked → `422 ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`; self-deactivation → `422 CANNOT_DEACTIVATE_SELF`; duplicate email → `409`. |
+| 1 | `role` ∈ `Role`; `status` ∈ `UserStatus`; `q` ≤ 100 chars; pagination bounds. Create-user body: `email`, `fullName`, `role`, optional `department`, `startDate`; **no password field** (rejected with `400` if present). |
+| 2 | INV-11 role change blocked → `422 ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`; self-deactivation → `422 CANNOT_DEACTIVATE_SELF`; duplicate email → `409 EMAIL_ALREADY_EXISTS` (INV-01); email edit on non-`INVITED` user → `422 EMAIL_LOCKED`. |
 | 3 | Role `ADMIN` required → else `403 FORBIDDEN`. |
 
 ### 7.3 Assignment (REQ-FUNC-016..022)
@@ -795,8 +821,8 @@ flowchart TD
     login["Login"] -->|"success: recruit"| dashboard["Dashboard"]
     login -->|"success: manager"| recruits["My Recruits"]
     login -->|"success: admin"| adminUsers["Admin Users"]
-    login -->|"no account"| signup["Signup"]
-    signup -->|"created"| dashboard
+    login -->|"first visit / invited"| signup["Signup (complete invited account)"]
+    signup -->|"activated"| dashboard
     dashboard --> tasks["Task Log"]
     dashboard --> issues["Issue Log"]
     dashboard --> feedback["Feedback"]
@@ -853,16 +879,17 @@ Manager nav:  [My Recruits] [Reports]            Admin nav: [Users] [Assignments
 
 ```
 +----------------------------------+
-|          Create account          |
-|  Full name  [___________________]|
+|      Complete your account       |
+|  Use the email your admin        |
+|  registered for you.             |
 |  Email      [___________________]|
-|   ! must be a valid email address|
+|   ! No invitation found for this |
+|     email. Ask your administrator|
 |  Password   [___________________]|
+|  Confirm    [___________________]|
 |   10+ chars, letter and digit    |
-|  Department [___________________]|
-|  Start date [YYYY-MM-DD]         |
 |            [ Sign up ]           |
-|  Already registered? Log in      |
+|  Already set up? Log in          |
 +----------------------------------+
 ```
 
