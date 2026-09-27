@@ -90,13 +90,17 @@ class IssueRepository(private val jdbc: JdbcTemplate) {
     fun delete(id: UUID): Boolean = jdbc.update("DELETE FROM issue_entries WHERE id = ?", id) == 1
 
     companion object {
+        /** Ranks severity so `severity,desc` yields CRITICAL first (plain text order would put MEDIUM before HIGH). */
+        private const val SEVERITY_RANK =
+            "CASE severity WHEN 'CRITICAL' THEN 4 WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 ELSE 1 END"
+
         val ISSUE_SORT = SortWhitelist(
             mapOf(
                 "entryDate" to "entry_date",
                 "createdAt" to "created_at",
                 "title" to "title",
                 "status" to "status",
-                "severity" to "severity",
+                "severity" to SEVERITY_RANK,
             ),
             Sort("entryDate", SortDirection.DESC),
         )

@@ -114,8 +114,26 @@ class IssueIT : AbstractAuthenticatedIntegrationTest() {
             .jsonPath("$.items[1].title").isEqualTo("i1")
         get("/api/v1/issues?size=2&page=2", token)
             .expectStatus().isOk.expectBody().jsonPath("$.items.length()").isEqualTo(1).jsonPath("$.items[0].title").isEqualTo("i4")
-        get("/api/v1/issues?sort=severity,asc&size=1", token).expectStatus().isOk
         get("/api/v1/issues?sort=nope,asc", token).expectError(400, "VALIDATION_FAILED")
+    }
+
+    @Test
+    fun `severity sort ranks CRITICAL over HIGH over MEDIUM over LOW rather than alphabetically`() {
+        val token = login(active(Role.NEW_RECRUIT).email)
+        for (sev in listOf("MEDIUM", "LOW", "CRITICAL", "HIGH")) createIssue(token, today, sev, "OPEN", title = sev)
+
+        get("/api/v1/issues?sort=severity,desc", token)
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.items[0].severity").isEqualTo("CRITICAL")
+            .jsonPath("$.items[1].severity").isEqualTo("HIGH")
+            .jsonPath("$.items[2].severity").isEqualTo("MEDIUM")
+            .jsonPath("$.items[3].severity").isEqualTo("LOW")
+        get("/api/v1/issues?sort=severity,asc", token)
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.items[0].severity").isEqualTo("LOW")
+            .jsonPath("$.items[3].severity").isEqualTo("CRITICAL")
     }
 
     // ---- filters ----------------------------------------------------------
