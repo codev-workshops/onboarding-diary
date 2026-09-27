@@ -1,0 +1,1549 @@
+openapi: 3.1.0
+info:
+  title: Onboarding Diary API
+  version: 1.0.0
+  summary: Contract-first REST API for the Onboarding Diary application.
+  description: |
+    Normative API contract for the Onboarding Diary backend (Kotlin, Spring Boot 4.x,
+    Spring WebFlux + coroutines, PostgreSQL).
+
+    * Requirements: `docs/detailed-requirements.md` (each operation lists the
+      `REQ-FUNC` ids it fulfils under `x-requirements`).
+    * Authentication: email + password login returning a JWT bearer token
+      (`bearerAuth`). Passwords are hashed exclusively in the backend (BCrypt / Argon2).
+    * Every non-public operation returns `401 UNAUTHENTICATED` when the token is missing,
+      invalid, expired, or belongs to a deactivated user. Clients clear their `AuthStore`
+      and redirect to the login page on 401 (REQ-FUNC-006).
+    * Every persisted resource exposes `createdAt` / `updatedAt` in UTC (REQ-FUNC-093).
+    * All errors share the `ErrorResponse` envelope. All list operations are paginated
+      (`page`, `size`, `sort`) and return a `Page*` envelope.
+    * Manager / Admin oversight uses the same entry endpoints with the `recruitId`
+      query parameter. Managers may only pass recruits with an ACTIVE `Assignment` to them.
+    * Feedback visibility (decision D3): the authoring recruit, Admin, and the manager
+      currently assigned to that recruit only.
+    * Transport is plain REST. No SSE / WebSocket endpoints are part of the core contract;
+      an optional SSE feed is described only in the requirements document (section 9).
+
+servers:
+  - url: /api/v1
+    description: Versioned API base path (health is served at /health outside this base).
+
+tags:
+  - name: Auth
+    description: Signup, login, logout (REQ-FUNC-001..007)
+  - name: Me
+    description: Own profile, password, current manager / recruits (REQ-FUNC-008..010, 020, 021)
+  - name: Users
+    description: Admin user management (REQ-FUNC-011..015)
+  - name: Assignments
+    description: Admin manager assignment (REQ-FUNC-016..019, 022)
+  - name: Tasks
+    description: Task log (REQ-FUNC-030..036)
+  - name: Issues
+    description: Issue log (REQ-FUNC-040..046)
+  - name: Feedback
+    description: Feedback notes with restricted visibility (REQ-FUNC-050..054)
+  - name: Notes
+    description: Additional notes (REQ-FUNC-060..063)
+  - name: Dashboard
+    description: Summary read model (REQ-FUNC-070..074)
+  - name: Reports
+    description: PDF / CSV report generation (REQ-FUNC-080..086)
+  - name: Health
+    description: Liveness / readiness (REQ-FUNC-092)
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ---------------------------------------------------------------- Auth
+  /auth/signup:
+    post:
+      tags: [Auth]
+      operationId: signup
+      summary: Sign up with email and password (creates a NEW_RECRUIT)
+      x-requirements: [REQ-FUNC-001, REQ-FUNC-002, REQ-FUNC-003, REQ-FUNC-004]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupRequest' }
+      responses:
+        '201':
+          description: Account created; token issued.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '409':
+          description: Email already registered (after normalization).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                code: EMAIL_ALREADY_EXISTS
+                message: An account with this email already exists
+                details: []
+                timestamp: '2026-09-27T06:00:00Z'
+                path: /api/v1/auth/signup
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Log in with email and password
+      x-requirements: [REQ-FUNC-005]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Authenticated; bearer token issued.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401':
+          description: Unknown email, wrong password, or deactivated account (indistinguishable).
+          headers:
+            WWW-Authenticate: { schema: { type: string, const: Bearer } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                code: INVALID_CREDENTIALS
+                message: Invalid email or password
+                details: []
+                timestamp: '2026-09-27T06:00:00Z'
+                path: /api/v1/auth/login
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Log out (stateless acknowledgement; client discards token)
+      x-requirements: [REQ-FUNC-007]
+      responses:
+        '204': { description: Logged out. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  # ---------------------------------------------------------------- Me
+  /me:
+    get:
+      tags: [Me]
+      operationId: getMyProfile
+      summary: Get own profile
+      x-requirements: [REQ-FUNC-008]
+      responses:
+        '200':
+          description: Own profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+    patch:
+      tags: [Me]
+      operationId: updateMyProfile
+      summary: Update own profile (fullName, department, startDate)
+      x-requirements: [REQ-FUNC-009]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileUpdateRequest' }
+      responses:
+        '200':
+          description: Updated profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /me/password:
+    post:
+      tags: [Me]
+      operationId: changeMyPassword
+      summary: Change own password
+      x-requirements: [REQ-FUNC-010, REQ-FUNC-004]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+      responses:
+        '204': { description: Password changed. }
+        '400':
+          description: Validation failed or current password incorrect (`INVALID_CURRENT_PASSWORD`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /me/manager:
+    get:
+      tags: [Me]
+      operationId: getMyManager
+      summary: Get the recruit's currently assigned manager
+      x-requirements: [REQ-FUNC-021]
+      responses:
+        '200':
+          description: Current manager; `assignment` is null when unassigned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MyManagerResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /me/recruits:
+    get:
+      tags: [Me]
+      operationId: listMyRecruits
+      summary: List recruits with an ACTIVE assignment to the calling manager
+      x-requirements: [REQ-FUNC-020]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Assigned recruits.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageAssignedRecruit' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ---------------------------------------------------------------- Users (admin)
+  /users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: List users (admin)
+      x-requirements: [REQ-FUNC-011, REQ-FUNC-091]
+      parameters:
+        - name: role
+          in: query
+          schema: { $ref: '#/components/schemas/Role' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/UserStatus' }
+        - name: q
+          in: query
+          description: Case-insensitive match on email or fullName.
+          schema: { type: string, maxLength: 100 }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Users page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageUserSummary' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: Create a user of any role (admin)
+      x-requirements: [REQ-FUNC-012, REQ-FUNC-002, REQ-FUNC-003, REQ-FUNC-004]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+      responses:
+        '201':
+          description: User created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDetail' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Email already exists.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /users/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: Get user detail including current assignment (admin)
+      x-requirements: [REQ-FUNC-013]
+      responses:
+        '200':
+          description: User detail.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDetail' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Users]
+      operationId: updateUser
+      summary: Update user profile fields and role (admin)
+      x-requirements: [REQ-FUNC-014]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminUserUpdateRequest' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDetail' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Role change blocked by an ACTIVE assignment (`ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /users/{userId}/deactivate:
+    post:
+      tags: [Users]
+      operationId: deactivateUser
+      summary: Deactivate a user (admin); blocks login and invalidates tokens on next request
+      x-requirements: [REQ-FUNC-015]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Deactivated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDetail' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Admin cannot deactivate own account (`CANNOT_DEACTIVATE_SELF`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /users/{userId}/reactivate:
+    post:
+      tags: [Users]
+      operationId: reactivateUser
+      summary: Reactivate a deactivated user (admin)
+      x-requirements: [REQ-FUNC-015]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Reactivated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDetail' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{userId}/assignments:
+    get:
+      tags: [Assignments]
+      operationId: listAssignmentHistory
+      summary: Assignment history for a recruit, newest first (admin)
+      x-requirements: [REQ-FUNC-019]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Assignment history.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageAssignment' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Assignments (admin)
+  /assignments:
+    get:
+      tags: [Assignments]
+      operationId: listAssignments
+      summary: List assignments (admin)
+      x-requirements: [REQ-FUNC-019, REQ-FUNC-091]
+      parameters:
+        - name: recruitId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: managerId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/AssignmentStatus' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Assignments page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageAssignment' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Assignments]
+      operationId: assignManager
+      summary: Assign (or reassign) a manager to a recruit (admin)
+      description: |
+        Creates an ACTIVE assignment. If the recruit already has an ACTIVE assignment to a
+        different manager it is atomically marked REASSIGNED (endedAt set) and the new
+        ACTIVE assignment is created. Assigning the already-active manager returns 409.
+      x-requirements: [REQ-FUNC-016, REQ-FUNC-017, REQ-FUNC-018, REQ-FUNC-022]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAssignmentRequest' }
+      responses:
+        '201':
+          description: New ACTIVE assignment (and, if applicable, the superseded one).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssignmentResult' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`ASSIGNMENT_UNCHANGED` (same manager already active) or `CONFLICT` (concurrent reassignment).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422':
+          description: '`INVALID_ASSIGNMENT_PARTY` — recruit is not an ACTIVE NEW_RECRUIT or manager is not an ACTIVE MANAGER.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # ---------------------------------------------------------------- Tasks
+  /tasks:
+    get:
+      tags: [Tasks]
+      operationId: listTasks
+      summary: List task entries (own, or for a recruit via recruitId)
+      x-requirements: [REQ-FUNC-031, REQ-FUNC-032, REQ-FUNC-036, REQ-FUNC-091]
+      parameters:
+        - $ref: '#/components/parameters/RecruitId'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: category
+          in: query
+          schema: { $ref: '#/components/schemas/TaskCategory' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/TaskStatus' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Task page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageTask' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+    post:
+      tags: [Tasks]
+      operationId: createTask
+      summary: Create a task entry (recruit)
+      x-requirements: [REQ-FUNC-030]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskCreateRequest' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /tasks/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Tasks]
+      operationId: getTask
+      summary: Get a task entry
+      x-requirements: [REQ-FUNC-033, REQ-FUNC-036]
+      responses:
+        '200':
+          description: Task.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Tasks]
+      operationId: updateTask
+      summary: Update own task entry (recruit)
+      x-requirements: [REQ-FUNC-034]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskUpdateRequest' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/InvalidStateTransition' }
+    delete:
+      tags: [Tasks]
+      operationId: deleteTask
+      summary: Delete a task entry (owner or admin)
+      x-requirements: [REQ-FUNC-035]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Issues
+  /issues:
+    get:
+      tags: [Issues]
+      operationId: listIssues
+      summary: List issue entries
+      x-requirements: [REQ-FUNC-041, REQ-FUNC-042, REQ-FUNC-046, REQ-FUNC-091]
+      parameters:
+        - $ref: '#/components/parameters/RecruitId'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/IssueStatus' }
+        - name: severity
+          in: query
+          schema: { $ref: '#/components/schemas/IssueSeverity' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Issue page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageIssue' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+    post:
+      tags: [Issues]
+      operationId: createIssue
+      summary: Log an issue (recruit)
+      x-requirements: [REQ-FUNC-040]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueCreateRequest' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Issue' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ResolutionNotesRequired' }
+
+  /issues/{issueId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Issues]
+      operationId: getIssue
+      summary: Get an issue entry
+      x-requirements: [REQ-FUNC-043, REQ-FUNC-046]
+      responses:
+        '200':
+          description: Issue.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Issue' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Issues]
+      operationId: updateIssue
+      summary: Update own issue entry (recruit)
+      x-requirements: [REQ-FUNC-044]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueUpdateRequest' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Issue' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: '`INVALID_STATE_TRANSITION` or `RESOLUTION_NOTES_REQUIRED`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Issues]
+      operationId: deleteIssue
+      summary: Delete an issue entry (owner or admin)
+      x-requirements: [REQ-FUNC-045]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Feedback
+  /feedback:
+    get:
+      tags: [Feedback]
+      operationId: listFeedback
+      summary: List feedback notes (owner, admin, or currently assigned manager)
+      x-requirements: [REQ-FUNC-051, REQ-FUNC-053, REQ-FUNC-054, REQ-FUNC-091]
+      parameters:
+        - $ref: '#/components/parameters/RecruitId'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/FeedbackType' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Feedback page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageFeedback' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+    post:
+      tags: [Feedback]
+      operationId: createFeedback
+      summary: Submit feedback (recruit)
+      x-requirements: [REQ-FUNC-050]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeedbackCreateRequest' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feedback' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /feedback/{feedbackId}:
+    parameters:
+      - name: feedbackId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Feedback]
+      operationId: getFeedback
+      summary: Get a feedback note (owner, admin, or currently assigned manager; otherwise 404)
+      x-requirements: [REQ-FUNC-052, REQ-FUNC-053, REQ-FUNC-054]
+      responses:
+        '200':
+          description: Feedback note.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feedback' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Feedback]
+      operationId: updateFeedback
+      summary: Update own feedback note (recruit)
+      x-requirements: [REQ-FUNC-052]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeedbackCreateRequest' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feedback' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Feedback]
+      operationId: deleteFeedback
+      summary: Delete a feedback note (owner or admin)
+      x-requirements: [REQ-FUNC-052]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Notes
+  /notes:
+    get:
+      tags: [Notes]
+      operationId: listNotes
+      summary: List additional notes
+      x-requirements: [REQ-FUNC-061, REQ-FUNC-063, REQ-FUNC-091]
+      parameters:
+        - $ref: '#/components/parameters/RecruitId'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: tag
+          in: query
+          description: Exact match on one normalized tag.
+          schema: { $ref: '#/components/schemas/Tag' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Notes page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageNote' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+    post:
+      tags: [Notes]
+      operationId: createNote
+      summary: Create a note (recruit)
+      x-requirements: [REQ-FUNC-060]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NoteCreateRequest' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Note' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /notes/{noteId}:
+    parameters:
+      - name: noteId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Notes]
+      operationId: getNote
+      summary: Get a note
+      x-requirements: [REQ-FUNC-062, REQ-FUNC-063]
+      responses:
+        '200':
+          description: Note.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Note' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Notes]
+      operationId: updateNote
+      summary: Update own note (recruit)
+      x-requirements: [REQ-FUNC-062]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NoteCreateRequest' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Note' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Notes]
+      operationId: deleteNote
+      summary: Delete a note (owner or admin)
+      x-requirements: [REQ-FUNC-062]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Dashboard
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboard
+      summary: Dashboard summary for self, or for a recruit via recruitId
+      description: |
+        `feedback` is present only when the caller satisfies the feedback visibility rule
+        (owner, admin, or currently assigned manager); otherwise it is omitted.
+      x-requirements: [REQ-FUNC-070, REQ-FUNC-071, REQ-FUNC-072, REQ-FUNC-073, REQ-FUNC-074]
+      parameters:
+        - $ref: '#/components/parameters/RecruitId'
+      responses:
+        '200':
+          description: Dashboard summary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardSummary' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Reports
+  /reports:
+    get:
+      tags: [Reports]
+      operationId: generateReport
+      summary: Generate and download a report (PDF or CSV) for a date range
+      description: |
+        Synchronous generation. Response body is the file; `Content-Disposition` carries the
+        filename `onboarding-report-<recruitId>-<from>_<to>.<pdf|csv>`.
+        `type=FEEDBACK` requires feedback visibility (403 otherwise); `type=COMBINED` omits
+        feedback and sets `X-Report-Omitted: feedback` when visibility is not granted.
+        A range with no entries yields a document stating "No entries in range".
+      x-requirements: [REQ-FUNC-080, REQ-FUNC-081, REQ-FUNC-082, REQ-FUNC-083, REQ-FUNC-084, REQ-FUNC-085, REQ-FUNC-086]
+      parameters:
+        - $ref: '#/components/parameters/RecruitId'
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          description: Inclusive; must be >= from and within 366 days of from.
+          schema: { type: string, format: date }
+        - name: type
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/ReportType' }
+        - name: format
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/ReportFormat' }
+      responses:
+        '200':
+          description: Report file.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              example: attachment; filename="onboarding-report-3f2b-2026-01-01_2026-03-31.pdf"
+            X-Report-Omitted:
+              description: Present when a COMBINED report omitted a section for authorization reasons.
+              schema: { type: string, enum: [feedback] }
+          content:
+            application/pdf:
+              schema: { type: string, contentEncoding: binary }
+            text/csv:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/ForbiddenOrNotAssigned' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- Health
+  /health:
+    servers:
+      - url: /
+    get:
+      tags: [Health]
+      operationId: health
+      summary: Actuator health (served at /health, outside /api/v1)
+      x-requirements: [REQ-FUNC-092]
+      security: []
+      responses:
+        '200':
+          description: UP.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [UP, DOWN] }
+        '503':
+          description: DOWN (e.g. database unreachable).
+
+# ====================================================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token returned by `POST /auth/login` / `POST /auth/signup`. Sent as
+        `Authorization: Bearer <token>`. Claims: sub (userId), email, role, iat, exp.
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Zero-based page index.
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Sort:
+      name: sort
+      in: query
+      description: >-
+        `field,asc|desc`; fields are whitelisted per resource. Defaults: entries
+        (tasks, issues, feedback, notes) `entryDate,desc`; users `fullName,asc`;
+        assignments `assignedAt,desc`; `/me/recruits` `fullName,asc`.
+      schema: { type: string, pattern: '^[A-Za-z]+,(asc|desc)$' }
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RecruitId:
+      name: recruitId
+      in: query
+      description: |
+        Target recruit. Omitted or equal to self for recruits. Required for managers/admins.
+        Managers may only pass recruits with an ACTIVE assignment to them (403 NOT_ASSIGNED otherwise).
+      schema: { type: string, format: uuid }
+    From:
+      name: from
+      in: query
+      description: Inclusive lower bound on entryDate.
+      schema: { type: string, format: date }
+    To:
+      name: to
+      in: query
+      description: Inclusive upper bound on entryDate; must be >= from.
+      schema: { type: string, format: date }
+
+  responses:
+    ValidationFailed:
+      description: Field-level validation failed or malformed request.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: VALIDATION_FAILED
+            message: Request validation failed
+            details:
+              - field: email
+                code: INVALID_FORMAT
+                message: must be a valid email address
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/auth/signup
+    Unauthenticated:
+      description: Missing, invalid or expired token, or deactivated user.
+      headers:
+        WWW-Authenticate: { schema: { type: string, const: Bearer } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: UNAUTHENTICATED
+            message: Authentication required
+            details: []
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/me
+    Forbidden:
+      description: Role not permitted.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: FORBIDDEN
+            message: You are not allowed to perform this action
+            details: []
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/users
+    ForbiddenOrNotAssigned:
+      description: '`FORBIDDEN` (role / recruit scoping) or `NOT_ASSIGNED` (manager has no ACTIVE assignment to the recruit).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: NOT_ASSIGNED
+            message: You are not assigned to this recruit
+            details: []
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/tasks
+    NotFound:
+      description: Resource does not exist or is not visible to the caller.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: NOT_FOUND
+            message: Resource not found
+            details: []
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/tasks/1c2d
+    InvalidStateTransition:
+      description: Status transition not allowed by the entity lifecycle.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: INVALID_STATE_TRANSITION
+            message: Cannot move task from DONE to BLOCKED
+            details: [{ field: status, code: INVALID_TRANSITION, message: 'DONE -> BLOCKED not allowed' }]
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/tasks/1c2d
+    ResolutionNotesRequired:
+      description: RESOLVED / CLOSED issues require resolutionNotes.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: RESOLUTION_NOTES_REQUIRED
+            message: Resolution notes are required to resolve an issue
+            details: [{ field: resolutionNotes, code: REQUIRED, message: must not be blank }]
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/issues/9a1e
+    InternalError:
+      description: Unexpected server error (no internals leaked).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: INTERNAL_ERROR
+            message: An unexpected error occurred
+            details: []
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/reports
+
+  schemas:
+    # ---------------- common
+    ErrorResponse:
+      type: object
+      description: Consistent error envelope for every non-2xx response (REQ-FUNC-090).
+      required: [code, message, details, timestamp, path]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_FAILED
+            - MALFORMED_REQUEST
+            - INVALID_CURRENT_PASSWORD
+            - UNAUTHENTICATED
+            - INVALID_CREDENTIALS
+            - FORBIDDEN
+            - NOT_ASSIGNED
+            - NOT_FOUND
+            - EMAIL_ALREADY_EXISTS
+            - ASSIGNMENT_UNCHANGED
+            - CONFLICT
+            - INVALID_STATE_TRANSITION
+            - RESOLUTION_NOTES_REQUIRED
+            - INVALID_ASSIGNMENT_PARTY
+            - ROLE_CHANGE_BLOCKED_BY_ASSIGNMENT
+            - CANNOT_DEACTIVATE_SELF
+            - INTERNAL_ERROR
+        message: { type: string }
+        details:
+          type: array
+          items: { $ref: '#/components/schemas/ErrorDetail' }
+        timestamp: { type: string, format: date-time }
+        path: { type: string }
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        field: { type: string, description: JSON pointer-ish field name; absent for non-field errors. }
+        code: { type: string, examples: [REQUIRED, INVALID_FORMAT, TOO_LONG, OUT_OF_RANGE, INVALID_ENUM, INVALID_TRANSITION] }
+        message: { type: string }
+    PageMeta:
+      type: object
+      required: [page, size, totalItems, totalPages]
+      properties:
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1 }
+        totalItems: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+
+    # ---------------- enums / value objects
+    Role:
+      type: string
+      enum: [NEW_RECRUIT, MANAGER, ADMIN]
+    UserStatus:
+      type: string
+      enum: [ACTIVE, DEACTIVATED]
+    AssignmentStatus:
+      type: string
+      enum: [ACTIVE, REASSIGNED]
+    TaskCategory:
+      type: string
+      enum: [TRAINING, SETUP, DEVELOPMENT, MEETING, DOCUMENTATION, OTHER]
+    TaskStatus:
+      type: string
+      enum: [TODO, IN_PROGRESS, BLOCKED, DONE]
+    TaskPriority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH]
+    IssueSeverity:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, CRITICAL]
+    IssueStatus:
+      type: string
+      enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED]
+    FeedbackType:
+      type: string
+      enum: [POSITIVE, SUGGESTION, CONCERN]
+    ReportType:
+      type: string
+      enum: [TASKS, ISSUES, FEEDBACK, COMBINED]
+    ReportFormat:
+      type: string
+      enum: [PDF, CSV]
+    Email:
+      type: string
+      format: email
+      maxLength: 254
+      description: Normalized (trimmed, lowercase) RFC-5322-style address; unique per user (REQ-FUNC-002/003).
+      examples: [jane.doe@example.com]
+    Password:
+      type: string
+      format: password
+      minLength: 10
+      maxLength: 128
+      description: At least one letter and one digit (REQ-FUNC-004). Hashed backend-only.
+    EntryDate:
+      type: string
+      format: date
+      description: Calendar date of the entry; not in the future (INV-09).
+    Tag:
+      type: string
+      pattern: '^[a-z0-9][a-z0-9-]{0,29}$'
+      description: Normalized (trimmed, lowercase) tag.
+
+    # ---------------- auth
+    SignupRequest:
+      type: object
+      required: [email, password, fullName]
+      properties:
+        email: { $ref: '#/components/schemas/Email' }
+        password: { $ref: '#/components/schemas/Password' }
+        fullName: { type: string, minLength: 1, maxLength: 100 }
+        department: { type: string, maxLength: 100 }
+        startDate: { type: string, format: date }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { $ref: '#/components/schemas/Email' }
+        password: { type: string, format: password }
+    AuthResponse:
+      type: object
+      required: [token, expiresAt, user]
+      properties:
+        token: { type: string, description: JWT bearer token. }
+        expiresAt: { type: string, format: date-time }
+        user: { $ref: '#/components/schemas/UserProfile' }
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, format: password }
+        newPassword: { $ref: '#/components/schemas/Password' }
+
+    # ---------------- users / profile
+    UserSummary:
+      type: object
+      required: [id, email, fullName, role, status]
+      properties:
+        id: { type: string, format: uuid }
+        email: { $ref: '#/components/schemas/Email' }
+        fullName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        department: { type: [string, 'null'] }
+        startDate: { type: [string, 'null'], format: date }
+    UserProfile:
+      allOf:
+        - $ref: '#/components/schemas/UserSummary'
+        - type: object
+          required: [createdAt]
+          properties:
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    UserDetail:
+      allOf:
+        - $ref: '#/components/schemas/UserProfile'
+        - type: object
+          properties:
+            currentAssignment:
+              description: ACTIVE assignment when the user is a recruit; null otherwise.
+              oneOf:
+                - $ref: '#/components/schemas/Assignment'
+                - type: 'null'
+            activeRecruitCount:
+              type: [integer, 'null']
+              description: For managers, number of ACTIVE assignments.
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 100 }
+        department: { type: [string, 'null'], maxLength: 100 }
+        startDate: { type: [string, 'null'], format: date }
+    CreateUserRequest:
+      allOf:
+        - $ref: '#/components/schemas/SignupRequest'
+        - type: object
+          required: [role]
+          properties:
+            role: { $ref: '#/components/schemas/Role' }
+    AdminUserUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/ProfileUpdateRequest'
+        - type: object
+          properties:
+            role: { $ref: '#/components/schemas/Role' }
+
+    # ---------------- assignments
+    Assignment:
+      type: object
+      required: [id, recruit, manager, assignedBy, status, assignedAt, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        recruit: { $ref: '#/components/schemas/UserSummary' }
+        manager: { $ref: '#/components/schemas/UserSummary' }
+        assignedBy: { $ref: '#/components/schemas/UserSummary' }
+        status: { $ref: '#/components/schemas/AssignmentStatus' }
+        assignedAt: { type: string, format: date-time }
+        endedAt: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'], maxLength: 500 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateAssignmentRequest:
+      type: object
+      required: [recruitId, managerId]
+      properties:
+        recruitId: { type: string, format: uuid }
+        managerId: { type: string, format: uuid }
+        note: { type: string, maxLength: 500 }
+    AssignmentResult:
+      type: object
+      required: [assignment]
+      properties:
+        assignment: { $ref: '#/components/schemas/Assignment' }
+        superseded:
+          description: The previous assignment now marked REASSIGNED, if any.
+          oneOf:
+            - $ref: '#/components/schemas/Assignment'
+            - type: 'null'
+    MyManagerResponse:
+      type: object
+      required: [assignment]
+      properties:
+        assignment:
+          oneOf:
+            - $ref: '#/components/schemas/Assignment'
+            - type: 'null'
+    AssignedRecruit:
+      type: object
+      required: [recruit, assignedAt, openIssueCount]
+      properties:
+        recruit: { $ref: '#/components/schemas/UserSummary' }
+        assignedAt: { type: string, format: date-time }
+        openIssueCount: { type: integer, minimum: 0 }
+
+    # ---------------- entries: common
+    EntryBase:
+      type: object
+      required: [id, recruitId, entryDate, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        recruitId: { type: string, format: uuid }
+        entryDate: { $ref: '#/components/schemas/EntryDate' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    # ---------------- tasks
+    TaskFields:
+      type: object
+      required: [entryDate, title, category]
+      properties:
+        entryDate: { $ref: '#/components/schemas/EntryDate' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        category: { $ref: '#/components/schemas/TaskCategory' }
+        status: { $ref: '#/components/schemas/TaskStatus', default: TODO }
+        priority: { $ref: '#/components/schemas/TaskPriority', default: MEDIUM }
+    TaskCreateRequest:
+      $ref: '#/components/schemas/TaskFields'
+    TaskUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/TaskFields'
+        - type: object
+          required: [status, priority]
+    Task:
+      allOf:
+        - $ref: '#/components/schemas/EntryBase'
+        - $ref: '#/components/schemas/TaskFields'
+        - type: object
+          required: [status, priority]
+
+    # ---------------- issues
+    IssueFields:
+      type: object
+      required: [entryDate, title, severity]
+      properties:
+        entryDate: { $ref: '#/components/schemas/EntryDate' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        severity: { $ref: '#/components/schemas/IssueSeverity' }
+        status: { $ref: '#/components/schemas/IssueStatus', default: OPEN }
+        resolutionNotes:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Required (non-blank) when status is RESOLVED or CLOSED (INV-07).
+    IssueCreateRequest:
+      $ref: '#/components/schemas/IssueFields'
+    IssueUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/IssueFields'
+        - type: object
+          required: [status]
+    Issue:
+      allOf:
+        - $ref: '#/components/schemas/EntryBase'
+        - $ref: '#/components/schemas/IssueFields'
+        - type: object
+          required: [status]
+
+    # ---------------- feedback
+    FeedbackCreateRequest:
+      type: object
+      required: [entryDate, subject, type, details]
+      properties:
+        entryDate: { $ref: '#/components/schemas/EntryDate' }
+        subject: { type: string, minLength: 1, maxLength: 200 }
+        type: { $ref: '#/components/schemas/FeedbackType' }
+        details: { type: string, minLength: 1, maxLength: 4000 }
+    Feedback:
+      allOf:
+        - $ref: '#/components/schemas/EntryBase'
+        - $ref: '#/components/schemas/FeedbackCreateRequest'
+
+    # ---------------- notes
+    NoteCreateRequest:
+      type: object
+      required: [entryDate, title, content]
+      properties:
+        entryDate: { $ref: '#/components/schemas/EntryDate' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        content: { type: string, minLength: 1, maxLength: 10000 }
+        tags:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          default: []
+          items: { $ref: '#/components/schemas/Tag' }
+    Note:
+      allOf:
+        - $ref: '#/components/schemas/EntryBase'
+        - $ref: '#/components/schemas/NoteCreateRequest'
+        - type: object
+          required: [tags]
+
+    # ---------------- dashboard
+    DashboardSummary:
+      type: object
+      required: [recruitId, tasks, issues, notes, recentEntries]
+      properties:
+        recruitId: { type: string, format: uuid }
+        tasks:
+          type: object
+          required: [total, byStatus, completionPercent]
+          properties:
+            total: { type: integer, minimum: 0 }
+            byStatus:
+              type: object
+              additionalProperties: { type: integer, minimum: 0 }
+              description: Keys are TaskStatus values.
+            completionPercent: { type: number, minimum: 0, maximum: 100 }
+        issues:
+          type: object
+          required: [total, open, byStatus, bySeverity, recentOpen]
+          properties:
+            total: { type: integer, minimum: 0 }
+            open: { type: integer, minimum: 0, description: 'OPEN + IN_PROGRESS' }
+            byStatus:
+              type: object
+              additionalProperties: { type: integer, minimum: 0 }
+            bySeverity:
+              type: object
+              additionalProperties: { type: integer, minimum: 0 }
+            recentOpen:
+              type: array
+              maxItems: 5
+              items: { $ref: '#/components/schemas/Issue' }
+        feedback:
+          description: Omitted when the caller lacks feedback visibility (D3).
+          type: object
+          required: [total, byType]
+          properties:
+            total: { type: integer, minimum: 0 }
+            byType:
+              type: object
+              additionalProperties: { type: integer, minimum: 0 }
+        notes:
+          type: object
+          required: [total]
+          properties:
+            total: { type: integer, minimum: 0 }
+        recentEntries:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/RecentEntry' }
+    RecentEntry:
+      type: object
+      required: [kind, id, entryDate, title, createdAt]
+      properties:
+        kind: { type: string, enum: [TASK, ISSUE, FEEDBACK, NOTE] }
+        id: { type: string, format: uuid }
+        entryDate: { type: string, format: date }
+        title: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    # ---------------- pages
+    PageUserSummary:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/UserSummary' }
+    PageAssignment:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Assignment' }
+    PageAssignedRecruit:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AssignedRecruit' }
+    PageTask:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Task' }
+    PageIssue:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Issue' }
+    PageFeedback:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Feedback' }
+    PageNote:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Note' }

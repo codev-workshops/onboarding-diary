@@ -12,7 +12,7 @@ help both the recruit and their mentors track progress during the first weeks.
 |-------------|----------------------------------------------------|-------------------------|
 | `backend/`  | Kotlin / Spring Boot REST + SSE API, Postgres       | `backend/AGENTS.md`     |
 | `frontend/` | Next.js web client with MobX state management       | `frontend/AGENTS.md`    |
-| `docs/`     | Requirements and design documents                   | `docs/requirements.md`  |
+| `docs/`     | Requirements and design documents                   | `docs/requirements.md`, `docs/detailed-requirements.md` |
 
 Read the module-level `AGENTS.md` before changing code in that module. Reusable
 conventions with code snippets live under `.agents/skills/`.
@@ -35,7 +35,9 @@ conventions with code snippets live under `.agents/skills/`.
 
 ## Authentication
 
-- Username / password authentication.
+- Email / password authentication. The email is the login identifier and is
+  treated as a restricted username: RFC-5322-style format validation,
+  uniqueness, and normalization (trim + lowercase) are required.
 - Passwords are never stored in plain text: store only a salted hash produced by
   a modern password hashing algorithm (BCrypt or Argon2).
 - The frontend never handles password hashing; hashing happens exclusively in

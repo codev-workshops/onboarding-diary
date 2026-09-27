@@ -96,7 +96,7 @@ fun events(@PathVariable id: Long): Flow<DiaryEvent> = eventService.stream(id)
 
 ## Authentication
 
-- Username / password login.
+- Email / password login (email normalized to trimmed lowercase, unique).
 - Store only salted, hashed passwords using BCrypt or Argon2 (Spring Security
   `PasswordEncoder`). Never log or return password material.
 
