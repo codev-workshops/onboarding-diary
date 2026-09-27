@@ -2,6 +2,7 @@ import type { ApiTransport, Page, PageQuery, RequestOptions } from "@/lib/api/co
 import { toQuery } from "@/lib/api/core";
 import { TasksApi } from "@/lib/api/tasks";
 import { IssuesApi } from "@/lib/api/issues";
+import { FeedbackApi } from "@/lib/api/feedback";
 
 // Shared envelope/paging/entry types and every per-resource module are re-exported
 // so callers keep importing contract types from "@/lib/apiClient".
@@ -10,6 +11,7 @@ export { toQuery } from "@/lib/api/core";
 // ---- resource modules (S3+): one `export *` line per slice, appended below ----
 export * from "@/lib/api/tasks";
 export * from "@/lib/api/issues";
+export * from "@/lib/api/feedback";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -234,6 +236,8 @@ export class ApiClient implements ApiTransport {
   readonly tasks = new TasksApi(this);
   /** S4 — `/issues` (see src/lib/api/issues.ts). */
   readonly issues = new IssuesApi(this);
+  /** S5 — `/feedback` (see src/lib/api/feedback.ts). */
+  readonly feedback = new FeedbackApi(this);
 
   constructor(
     private readonly baseUrl: string = API_BASE_URL,

@@ -120,6 +120,23 @@ fun events(@PathVariable id: Long): Flow<DiaryEvent> = eventService.stream(id)
   exists (idempotent). Signup never creates users; it completes an `INVITED`
   row.
 
+### Shared authorization helpers (S2/S3/S5 — reuse, do not fork)
+
+- `AssignmentGuard.isActivelyAssigned(managerId, recruitId)` (S2): live lookup
+  of the current ACTIVE assignment on every call; never cache across requests.
+- `RecruitScopeResolver.resolveTargetRecruit(principal, recruitId?)` (S3): for
+  list endpoints — recruit → self, manager → assigned recruit or 403
+  `NOT_ASSIGNED`, admin → any.
+- `FeedbackVisibility.canRead(principal, recruitId)` (S5,
+  `com.onboardingdiary.feedback.FeedbackVisibility`): decision D3 =
+  owner ∨ ADMIN ∨ (MANAGER ∧ `isActivelyAssigned`). Use it wherever feedback
+  content may surface — S5 detail endpoints (`requireCanRead` → 404
+  `NOT_FOUND`, never 403, so non-visible notes are indistinguishable from
+  missing ones), S7 timeline (omit the feedback block when `false`) and S8
+  reports (omit feedback or reject the report type when `false`). Because it
+  delegates to the live guard, a reassignment flips the answer on the very
+  next request.
+
 ## Errors (REQ-FUNC-090)
 
 - Every error body is the `ErrorResponse` envelope
