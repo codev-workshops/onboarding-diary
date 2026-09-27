@@ -5,28 +5,11 @@ import Link from "next/link";
 import { observer } from "mobx-react-lite";
 import { usePathname, useRouter } from "next/navigation";
 import type { Role } from "@/lib/apiClient";
+import { navItemsFor } from "@/lib/registry";
 import { useStores } from "@/stores/StoreProvider";
 import styles from "./AppShell.module.css";
 
-interface NavItem {
-  href: string;
-  label: string;
-  roles?: Role[];
-}
-
-/** Items without `roles` are visible to every signed-in user. */
-export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Home" },
-  { href: "/profile", label: "My profile" },
-  { href: "/recruits", label: "Recruits", roles: ["MANAGER", "ADMIN"] },
-  { href: "/admin/users", label: "Users", roles: ["ADMIN"] },
-  { href: "/admin/assignments", label: "Assignments", roles: ["ADMIN"] },
-];
-
-export function navItemsFor(role: Role | null): NavItem[] {
-  if (!role) return [];
-  return NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
-}
+export { navItemsFor };
 
 const ROLE_LABELS: Record<Role, string> = {
   NEW_RECRUIT: "New recruit",

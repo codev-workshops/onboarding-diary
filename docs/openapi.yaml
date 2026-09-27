@@ -539,6 +539,8 @@ paths:
       operationId: updateTask
       summary: Update own task entry (recruit)
       x-requirements: [REQ-FUNC-034]
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         required: true
         content:
@@ -546,7 +548,9 @@ paths:
             schema: { $ref: '#/components/schemas/TaskUpdateRequest' }
       responses:
         '200':
-          description: Updated.
+          description: Updated. `ETag` carries the new version.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Task' }
@@ -554,6 +558,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidStateTransition' }
     delete:
       tags: [Tasks]
@@ -975,7 +980,19 @@ components:
         Token returned by `POST /auth/login` / `POST /auth/signup`. Sent as
         `Authorization: Bearer <token>`. Claims: sub (userId), email, role, iat, exp.
 
+  headers:
+    ETag:
+      description: Quoted entry `version`, e.g. `"3"`. Send it back as `If-Match` on PUT.
+      schema: { type: string }
   parameters:
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: >-
+        Optimistic lock. The ETag from the last GET/PUT (`"<version>"`, weak `W/"<version>"` accepted;
+        `*` or omitted = no precondition). A stale value is rejected with 409 CONFLICT.
+      schema: { type: string }
     Page:
       name: page
       in: query
@@ -1086,6 +1103,17 @@ components:
             code: INVALID_STATE_TRANSITION
             message: Cannot move task from DONE to BLOCKED
             details: [{ field: status, code: INVALID_TRANSITION, message: 'DONE -> BLOCKED not allowed' }]
+            timestamp: '2026-09-27T06:00:00Z'
+            path: /api/v1/tasks/1c2d
+    StaleVersion:
+      description: The `If-Match` ETag (entry `version`) no longer matches; reload and retry.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: CONFLICT
+            message: The request conflicts with a concurrent change.
+            details: []
             timestamp: '2026-09-27T06:00:00Z'
             path: /api/v1/tasks/1c2d
     ResolutionNotesRequired:
@@ -1406,7 +1434,13 @@ components:
         - $ref: '#/components/schemas/EntryBase'
         - $ref: '#/components/schemas/TaskFields'
         - type: object
-          required: [status, priority]
+          required: [status, priority, version]
+          properties:
+            version:
+              type: integer
+              format: int64
+              minimum: 1
+              description: Optimistic-lock counter, bumped on every update; also returned as the `ETag`.
 
     # ---------------- issues
     IssueFields:

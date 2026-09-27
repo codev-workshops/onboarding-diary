@@ -81,6 +81,9 @@ export class AssignmentStore {
   myRecruitsLoading = false;
   myRecruitsError: string | null = null;
 
+  /** Recruits resolved for /recruits/{id} headers, keyed by recruit id (any page of `/me/recruits`). */
+  myRecruitById: Record<string, UserSummary> = {};
+
   myManager: Assignment | null = null;
   myManagerLoaded = false;
   myManagerError: string | null = null;
@@ -280,6 +283,29 @@ export class AssignmentStore {
     }
   }
 
+  /**
+   * Resolves one assigned recruit's identity for a manager, walking every page of
+   * `GET /me/recruits` until the id is found. The result is cached in
+   * `myRecruitById` for instant rendering, but every call revalidates against the
+   * live assignment and evicts the cache when the recruit is no longer assigned.
+   */
+  async findMyRecruit(recruitId: string): Promise<UserSummary | null> {
+    const size = 100;
+    for (let page = 0, totalPages = 1; page < totalPages; page++) {
+      const res = await this.api.listMyRecruits({ page, size, sort: "fullName,asc" });
+      totalPages = res.totalPages;
+      const hit = res.items.find((r) => r.recruit.id === recruitId)?.recruit;
+      if (hit) {
+        runInAction(() => (this.myRecruitById[recruitId] = hit));
+        return hit;
+      }
+    }
+    runInAction(() => {
+      delete this.myRecruitById[recruitId];
+    });
+    return null;
+  }
+
   async loadMyManager() {
     this.myManagerError = null;
     try {
@@ -304,6 +330,7 @@ export class AssignmentStore {
     this.historyRecruitId = null;
     this.managers = [];
     this.myRecruits = null;
+    this.myRecruitById = {};
     this.myManager = null;
     this.myManagerLoaded = false;
     this.assignError = null;

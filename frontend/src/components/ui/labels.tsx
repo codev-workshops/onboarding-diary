@@ -33,3 +33,11 @@ export function formatDateTime(iso: string | null | undefined) {
 export function formatDate(iso: string | null | undefined) {
   return iso ? new Date(iso).toLocaleDateString() : "—";
 }
+
+/** Formats a date-only `YYYY-MM-DD` value without timezone shifting. */
+export function formatDateOnly(date: string | null | undefined) {
+  if (!date) return "—";
+  const [y, m, d] = date.split("-").map(Number);
+  if (!y || !m || !d) return date;
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}

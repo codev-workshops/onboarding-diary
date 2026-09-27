@@ -51,9 +51,55 @@ See `.agents/skills/frontend-mobx-conventions/SKILL.md` for snippets.
 - Route guards: wrap page content in `RequireAuth` or
   `RequireRole roles={[...]}` (`src/components/auth/`). They wait for
   `auth.hydrated`, then redirect to `/login?next=` or `/403`. Role-based nav is
-  driven by `NAV_ITEMS` in `AppShell.tsx`.
+  driven by the nav-item registry (see below), not by editing `AppShell.tsx`.
 - API responses are written into the relevant MobX store inside an action;
   components react to store changes rather than holding fetched data locally.
+
+## Additive extension points (frozen in S3 — append, never refactor)
+
+Slices S4/S5/S6 (questions, issues, reflections, ...) are built in parallel.
+Every shared touch point is a registry you **append one line to**; do not edit
+shared components, stores or the client class. Copy the S3 task slice
+(`src/features/tasks/`, `src/lib/api/tasks.ts`, `src/stores/TaskStore.ts`,
+`src/app/tasks/`) as the reference.
+
+| Touch point | Where to append (one line per slice) | What the line imports |
+|-------------|--------------------------------------|-----------------------|
+| API resource | `src/lib/apiClient.ts`: `export * from "@/lib/api/<res>";` **and** `readonly <res> = new <Res>Api(this);` | `src/lib/api/<res>.ts` — types + a class implementing `EntryApi<T, C, U, Q>` over the `ApiTransport` |
+| Store | `src/stores/RootStore.ts`: `this.<res> = this.register(new <Res>Store(api));` (+ the `readonly` field) | `src/stores/<Res>Store.ts` extending `EntryStore<T, C, U, F, Q>` |
+| Nav item | `src/lib/registry/index.ts`: `registerNavItems(<RES>_NAV_ITEM);` | `src/features/<res>/registry.tsx` |
+| `/recruits/{id}` tab | `src/lib/registry/index.ts`: `registerRecruitTabs(<RES>_RECRUIT_TAB);` | same file; the tab component receives `{ recruitId }` |
+
+Rules:
+
+- `EntryStore<T>` (`src/stores/EntryStore.ts`) owns list/filters/page/sort/
+  `recruitId`, `current`, optimistic create/update/remove and `clear()`.
+  Subclasses only implement `filterQuery(filters)` (slice enums → query) and
+  optionally `errorMessage(e)` and `matchesFilters(entry, filters)` (so an
+  optimistic create is only inserted when it belongs in the loaded list; the
+  base checks the date range). Views must render `store.currentList`, not
+  `store.list`: it is `null` until a page loaded for the *current*
+  filters/page/sort/recruit exists, so stale pages never flash or leak into
+  the URL. Optimistic patches only apply when the entry still matches the
+  filters and the default sort keeps its position; otherwise the list is
+  dropped and reloaded. `update(id, body, ifMatch?)` forwards the entry's
+  ETag (`"<version>"`) so a stale edit fails with 409 `CONFLICT` instead of
+  overwriting. Do not add slice fields to `EntryStore`.
+- `RootStore.register(store)` enrols the store in the per-user reset; anything
+  registered is cleared on login/logout. Stores must expose `clear()`.
+- Generic UI lives in `src/components/entries/` (`FilterBar`, `EntryList`,
+  `EntryForm`, `ConfirmDialog`) and `src/hooks/useUrlFilters.ts`. Configure
+  them with field definitions; do not fork them. If a slice genuinely needs a
+  new capability, add an optional prop with a default that keeps S3 behaviour.
+- `useUrlFilters` maps filter keys 1:1 to query keys, `page` is 1-based in
+  the URL / 0-based in the store, default values are omitted, and unmanaged
+  keys (e.g. `?tab=`) are preserved — so several tabs can share one URL.
+- Registries ignore duplicate `href` / `id`, sort by `order` and filter by
+  `roles`; pick an `order` in your slice's hundreds (S3 = 100, S4 = 200, ...).
+- Nav items for recruit-owned entries are recruit-only; managers/admins reach
+  the same data read-only through the recruit tab.
+
+See `.agents/skills/frontend-entry-slice/SKILL.md` for a copy-paste checklist.
 
 ### Testing
 

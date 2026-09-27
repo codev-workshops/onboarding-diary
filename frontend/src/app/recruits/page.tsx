@@ -61,7 +61,9 @@ const MyRecruits = observer(function MyRecruits() {
         <ul className={styles.cards} data-testid="recruit-cards" style={{ listStyle: "none" }}>
           {data.items.map((r) => (
             <li key={r.recruit.id} className={styles.recruitCard} data-testid="recruit-card">
-              <span className={styles.recruitName}>{r.recruit.fullName}</span>
+              <Link href={`/recruits/${r.recruit.id}`} className={`${styles.recruitName} ${styles.rowLink}`}>
+                {r.recruit.fullName}
+              </Link>
               <span className={styles.muted}>{r.recruit.email}</span>
               <span className={styles.muted}>
                 {r.recruit.department ?? "No department"} · starts {r.recruit.startDate ? formatDate(r.recruit.startDate) : "—"}
@@ -131,10 +133,15 @@ const AllRecruits = observer(function AllRecruits() {
             {data?.items.map((a) => (
               <tr key={a.id}>
                 <td>
-                  <Link href={`/admin/users/${a.recruit.id}`} className={styles.rowLink}>
+                  <Link href={`/recruits/${a.recruit.id}`} className={styles.rowLink}>
                     {a.recruit.fullName}
                   </Link>
-                  <div className={styles.muted}>{a.recruit.email}</div>
+                  <div className={styles.muted}>
+                    {a.recruit.email} ·{" "}
+                    <Link href={`/admin/users/${a.recruit.id}`} className={styles.rowLink}>
+                      manage
+                    </Link>
+                  </div>
                 </td>
                 <td>
                   <Link href={`/admin/users/${a.manager.id}`} className={styles.rowLink}>
