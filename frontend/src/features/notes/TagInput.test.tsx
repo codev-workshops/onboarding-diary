@@ -4,11 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { TagInput } from "@/features/notes/TagInput";
 
-function Harness({ initial = [], max, error }: { initial?: string[]; max?: number; error?: string }) {
+function Harness({ initial = [], max, error, onDraftChange }: { initial?: string[]; max?: number; error?: string; onDraftChange?: (d: string) => void }) {
   const [tags, setTags] = useState<string[]>(initial);
   return (
     <>
-      <TagInput id="tags" label="Tags" value={tags} onChange={setTags} max={max} error={error} />
+      <TagInput id="tags" label="Tags" value={tags} onChange={setTags} max={max} error={error} onDraftChange={onDraftChange} />
       <output data-testid="value">{JSON.stringify(tags)}</output>
     </>
   );
@@ -50,6 +50,18 @@ describe("TagInput", () => {
     expect(input().getAttribute("aria-invalid")).toBe("true");
     fireEvent.change(input(), { target: { value: "bad-tag" } });
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("reports the uncommitted draft via onDraftChange (rejected draft stays pending, committed draft clears)", () => {
+    const onDraftChange = vi.fn();
+    render(<Harness onDraftChange={onDraftChange} />);
+    fireEvent.change(input(), { target: { value: "bad tag!" } });
+    fireEvent.blur(input());
+    expect(onDraftChange).toHaveBeenLastCalledWith("bad tag!");
+    fireEvent.change(input(), { target: { value: "kotlin" } });
+    fireEvent.blur(input());
+    expect(onDraftChange).toHaveBeenLastCalledWith("");
+    expect(value()).toEqual(["kotlin"]);
   });
 
   it("refuses the 11th tag with a max message", () => {

@@ -12,6 +12,8 @@ interface TagInputProps {
   label: string;
   value: readonly string[];
   onChange: (tags: string[]) => void;
+  /** Reports the uncommitted draft so the form can refuse to submit with a pending tag. */
+  onDraftChange?: (draft: string) => void;
   /** Field-level error from the form / backend (e.g. `tags must not exceed 10`). */
   error?: string;
   hint?: string;
@@ -25,8 +27,12 @@ interface TagInputProps {
  * Backspace on an empty draft removes the last chip. Invalid drafts are rejected
  * with an inline message — the same rule the backend applies (§7.7).
  */
-export function TagInput({ id, label, value, onChange, error, hint, disabled, max = MAX_TAGS_PER_NOTE }: TagInputProps) {
-  const [draft, setDraft] = useState("");
+export function TagInput({ id, label, value, onChange, onDraftChange, error, hint, disabled, max = MAX_TAGS_PER_NOTE }: TagInputProps) {
+  const [draft, setDraftState] = useState("");
+  const setDraft = (next: string) => {
+    setDraftState(next);
+    onDraftChange?.(next);
+  };
   const [draftError, setDraftError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 

@@ -24,6 +24,7 @@ const NoteDetail = observer(function NoteDetail({ note, backHref, tagHref }: { n
   const [editing, setEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
 
   const isOwner = auth.role === "NEW_RECRUIT" && auth.user?.id === note.recruitId;
   const canDelete = isOwner || auth.role === "ADMIN";
@@ -42,22 +43,35 @@ const NoteDetail = observer(function NoteDetail({ note, backHref, tagHref }: { n
     return (
       <>
         <h1 className={formStyles.title}>Edit note</h1>
+        {conflictMessage && (
+          <div className={formStyles.formError} role="alert" data-testid="note-conflict">
+            {conflictMessage}
+          </div>
+        )}
         <NoteForm
+          // Keyed by version: after a 409 the note is reloaded and the form re-seeds
+          // from the server state instead of retrying a stale draft over newer edits.
+          key={note.version}
           idPrefix="note"
           initialValues={noteToFormValues(note)}
           submitLabel="Save changes"
           busy={notes.mutating}
-          onCancel={() => setEditing(false)}
+          onCancel={() => {
+            setConflictMessage(null);
+            setEditing(false);
+          }}
           onSubmit={async (values) => {
             try {
               await notes.update(note.id, toUpdateRequest(values), noteEtag(note));
             } catch (e) {
               if (e instanceof ApiError && e.code === "CONFLICT") {
-                void notes.loadOne(note.id);
-                throw new Error(noteErrorMessage(e));
+                await notes.loadOne(note.id);
+                setConflictMessage(`${noteErrorMessage(e)} The latest version has been loaded — re-apply your changes and save again.`);
+                return;
               }
               throw e;
             }
+            setConflictMessage(null);
             setEditing(false);
           }}
         />

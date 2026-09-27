@@ -28,6 +28,7 @@ export function NoteForm({ initialValues, onSubmit, onCancel, submitLabel, busy,
   const [values, setValues] = useState<NoteFormValues>(initialValues);
   const [errors, setErrors] = useState<FormErrors>(EMPTY_ERRORS);
   const [submitting, setSubmitting] = useState(false);
+  const [tagDraft, setTagDraft] = useState("");
 
   const set = <K extends keyof NoteFormValues>(key: K, value: NoteFormValues[K]) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -43,6 +44,9 @@ export function NoteForm({ initialValues, onSubmit, onCancel, submitLabel, busy,
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const clientErrors = validateNote(values);
+    if (tagDraft.trim()) {
+      clientErrors.tags = `Press Enter to add “${tagDraft.trim()}” as a tag, or clear it before saving.`;
+    }
     if (Object.keys(clientErrors).length > 0) {
       setErrors({ fields: clientErrors });
       return;
@@ -97,6 +101,10 @@ export function NoteForm({ initialValues, onSubmit, onCancel, submitLabel, busy,
         label="Tags"
         value={values.tags}
         onChange={(tags) => set("tags", tags)}
+        onDraftChange={(draft) => {
+          setTagDraft(draft);
+          if (errors.fields.tags) set("tags", values.tags); // clears the pending-draft error
+        }}
         error={tagsError}
         hint={`Up to ${MAX_TAGS_PER_NOTE} tags: lowercase letters, digits and hyphens. Press Enter or comma to add.`}
         disabled={disabled}
