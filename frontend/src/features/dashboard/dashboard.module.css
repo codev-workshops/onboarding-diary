@@ -1,12 +1,14 @@
 .stack {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
+  min-width: 0;
 }
 
 .cards {
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (min-width: 480px) {
@@ -110,6 +112,7 @@
 
 .columns {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
@@ -133,6 +136,7 @@
 .list {
   list-style: none;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 
@@ -160,6 +164,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+}
+
+@media (max-width: 479px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .rowTitle {
+    flex-basis: 100%;
+    order: -1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 .rowDate {
