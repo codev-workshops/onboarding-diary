@@ -49,6 +49,30 @@ export const EntryList = observer(() => {
 });
 ```
 
+## Calling the API from a store (S1 pattern)
+
+```ts
+// 1. add a typed method to src/lib/apiClient.ts (one per openapi operationId)
+listTasks(): Promise<Task[]> { return this.request<Task[]>("GET", "/tasks"); }
+
+// 2. call it from a store action; the client already attaches the bearer
+//    token from AuthStore and clears/redirects on 401
+async load() {
+  this.loading = true;
+  try {
+    const tasks = await this.api.listTasks();
+    runInAction(() => { this.tasks = tasks; });
+  } catch (e) {
+    runInAction(() => { this.errors = toFormErrors(e); }); // ApiError -> { form?, fields }
+  } finally {
+    runInAction(() => { this.loading = false; });
+  }
+}
+```
+
+Guard pages with `<RequireAuth>` / `<RequireRole roles={["ADMIN"]}>`; read the
+current user via `useStores().auth.user` — never from the token.
+
 ## SSE into a store
 
 ```ts

@@ -33,12 +33,33 @@ See `.agents/skills/frontend-mobx-conventions/SKILL.md` for snippets.
 - On a `401` response the API client clears `AuthStore` and redirects to the
   login page.
 
-### REST API
+### REST API (shared layer frozen in S1)
 
-- All backend calls go through a single typed API client module; components
-  never call `fetch` directly.
+- All backend calls go through `src/lib/apiClient.ts` (`ApiClient`); add one
+  typed method per `operationId` in `docs/openapi.yaml`. Components never call
+  `fetch` directly.
+- Contract types (`UserProfile`, `ErrorResponse`, `ErrorCode` — the full §5.2
+  catalog, ...) live in `apiClient.ts`; import them, do not redeclare.
+- `ApiError` carries `status`, `code`, `details[]`; `error.toFormErrors()` (or
+  `toFormErrors(e)` from `src/lib/formErrors.ts`) yields
+  `{ form?, fields: Record<field, message> }` for forms.
+- `AuthStore` registers `getToken` / `onUnauthorized` with the client. Any
+  `401` on an authenticated call clears the store (memory + `sessionStorage`
+  key `onboarding-diary.auth`) and navigates to `/login` via the router
+  callback wired in `StoreProvider`. Public calls (`login`, `signup`) never
+  trigger that redirect.
+- Route guards: wrap page content in `RequireAuth` or
+  `RequireRole roles={[...]}` (`src/components/auth/`). They wait for
+  `auth.hydrated`, then redirect to `/login?next=` or `/403`. Role-based nav is
+  driven by `NAV_ITEMS` in `AppShell.tsx`.
 - API responses are written into the relevant MobX store inside an action;
   components react to store changes rather than holding fetched data locally.
+
+### Testing
+
+- Unit tests use Vitest (`npm test`, `src/**/*.test.ts`, node environment).
+  Inject a fake `fetch` into `new ApiClient(baseUrl, fetchImpl)` and an
+  in-memory storage into `new AuthStore(api, { storage, redirectToLogin })`.
 
 ### SSE streams
 

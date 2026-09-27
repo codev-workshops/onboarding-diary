@@ -1,0 +1,157 @@
+.card {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.wide {
+  max-width: 720px;
+}
+
+.title {
+  font-size: 1.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-bottom: 1rem;
+}
+
+.form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.label {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.input {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.input:focus-visible {
+  outline: 2px solid #3b6ef5;
+  outline-offset: 1px;
+}
+
+.inputInvalid {
+  border-color: #d93025;
+}
+
+.fieldError {
+  font-size: 0.82rem;
+  color: #d93025;
+}
+
+.formError {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #d93025;
+  border-radius: 8px;
+  background: rgba(217, 48, 37, 0.08);
+  color: #b3261e;
+  font-size: 0.9rem;
+}
+
+.formSuccess {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #1e8e3e;
+  border-radius: 8px;
+  background: rgba(30, 142, 62, 0.08);
+  color: #137333;
+  font-size: 0.9rem;
+}
+
+.button {
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: #3b6ef5;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.buttonSecondary {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.footerText {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.footerText a {
+  color: #3b6ef5;
+  text-decoration: underline;
+}
+
+.row {
+  display: grid;
+  gap: 0.9rem;
+}
+
+@media (min-width: 640px) {
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.stack {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  font-size: 0.92rem;
+}
+
+.dl dt {
+  color: var(--muted);
+}
+
+.dl dd {
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

@@ -1,16 +1,24 @@
-import { ApiClient, apiClient } from "@/lib/apiClient";
+import { ApiClient } from "@/lib/apiClient";
+import { AuthStore } from "@/stores/AuthStore";
 import { HealthStore } from "@/stores/HealthStore";
 
 /**
- * Single root store. Slice stores (AuthStore, DiaryStore, ...) are added here
- * as they are introduced; components reach them through `useStores()`.
+ * Single root store. Slice stores (DiaryStore, ...) are added here as they are
+ * introduced; components reach them through `useStores()`.
+ *
+ * Each RootStore owns its own ApiClient: AuthStore registers token/401 handlers
+ * on it, so sharing a module-level client between RootStore instances (React
+ * StrictMode double-invokes the useState initializer) would leave the live
+ * store's handlers overwritten by a discarded one.
  */
 export class RootStore {
   readonly api: ApiClient;
+  readonly auth: AuthStore;
   readonly health: HealthStore;
 
-  constructor(api: ApiClient = apiClient) {
+  constructor(api: ApiClient = new ApiClient()) {
     this.api = api;
+    this.auth = new AuthStore(api);
     this.health = new HealthStore(api);
   }
 }
