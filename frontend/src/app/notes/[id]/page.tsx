@@ -25,6 +25,7 @@ const NoteDetail = observer(function NoteDetail({ note, backHref, tagHref }: { n
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
+  const [formGeneration, setFormGeneration] = useState(0);
 
   const isOwner = auth.role === "NEW_RECRUIT" && auth.user?.id === note.recruitId;
   const canDelete = isOwner || auth.role === "ADMIN";
@@ -49,9 +50,9 @@ const NoteDetail = observer(function NoteDetail({ note, backHref, tagHref }: { n
           </div>
         )}
         <NoteForm
-          // Keyed by version: after a 409 the note is reloaded and the form re-seeds
-          // from the server state instead of retrying a stale draft over newer edits.
-          key={note.version}
+          // Bumped only after a 409: the note is reloaded and the form re-seeds from
+          // the server state instead of retrying a stale draft over newer edits.
+          key={formGeneration}
           idPrefix="note"
           initialValues={noteToFormValues(note)}
           submitLabel="Save changes"
@@ -66,6 +67,7 @@ const NoteDetail = observer(function NoteDetail({ note, backHref, tagHref }: { n
             } catch (e) {
               if (e instanceof ApiError && e.code === "CONFLICT") {
                 await notes.loadOne(note.id);
+                setFormGeneration((g) => g + 1);
                 setConflictMessage(`${noteErrorMessage(e)} The latest version has been loaded — re-apply your changes and save again.`);
                 return;
               }
