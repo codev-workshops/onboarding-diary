@@ -94,18 +94,66 @@ fun events(@PathVariable id: Long): Flow<DiaryEvent> = eventService.stream(id)
 - PostgreSQL is the only supported database.
 - Data access may use blocking JDBC (offloaded per the conventions above).
 
-## Authentication
+## Authentication & authorization (frozen in S1)
 
 - Email / password login (email normalized to trimmed lowercase, unique).
-- Store only salted, hashed passwords using BCrypt or Argon2 (Spring Security
-  `PasswordEncoder`). Never log or return password material.
+  `EmailNormalizer.normalize()` before every lookup/persist; `@ValidEmail`,
+  `@ValidPassword` (10–128 chars, letter + digit) and `@ValidStartDate` live in
+  `com.onboardingdiary.validation`.
+- Store only salted, hashed passwords using the `PasswordEncoder` bean
+  (`SecurityConfig`): BCrypt strength 12 by default, Argon2id via
+  `APP_PASSWORD_ENCODER=argon2`. Never log or return password material —
+  `User.toString()` and every DTO omit `passwordHash`; DTOs are built
+  field-by-field (`UserProfile.from`), never by serializing the entity.
+- JWT: `JwtService` issues/verifies HS256 tokens (claims `sub`, `email`,
+  `role`, `iat`, `exp`; TTL `APP_JWT_TTL`, default 60m; secret
+  `APP_JWT_SECRET` ≥ 32 bytes). The `role` claim is informational only.
+- Principal: `JwtAuthenticationManager` loads the user from the DB on **every**
+  request and only authenticates `ACTIVE` users; controllers receive
+  `@AuthenticationPrincipal principal: AuthenticatedUser` with the DB role.
+- `SecurityWebFilterChain` (`SecurityConfig`): public = `GET /health`,
+  `POST /api/v1/auth/signup`, `POST /api/v1/auth/login`, `OPTIONS *`;
+  everything else requires a bearer token. Add role checks per endpoint with
+  the principal's role (later slices), never from the JWT claim.
+- Bootstrap admin: `BootstrapAdminRunner` seeds one ACTIVE `ADMIN` from
+  `APP_BOOTSTRAP_ADMIN_EMAIL` / `APP_BOOTSTRAP_ADMIN_PASSWORD` when no ADMIN
+  exists (idempotent). Signup never creates users; it completes an `INVITED`
+  row.
+
+## Errors (REQ-FUNC-090)
+
+- Every error body is the `ErrorResponse` envelope
+  `{ code, message, details[], timestamp, path }` written by
+  `ErrorResponseWriter`; `GlobalErrorHandler` (order -2) maps all exceptions,
+  including Spring Security entry point / access denied.
+- `ErrorCode` (`api/error/ErrorCode.kt`) is the **complete** catalog from
+  `docs/detailed-requirements.md` §5.2 with its HTTP status. Later slices only
+  reference codes; do not add ad-hoc strings. Throw an `ApiException` subclass
+  (`NotInvitedException`, `NotFoundException`, ...) from services.
+- Bean Validation failures become `400 VALIDATION_FAILED` with one
+  `details[]` entry per field (`code` ∈ `DetailCode`: REQUIRED, INVALID_FORMAT,
+  TOO_LONG, OUT_OF_RANGE, INVALID_ENUM, INVALID_TRANSITION). Request DTO
+  fields are nullable so a missing field yields `REQUIRED`, not
+  `MALFORMED_REQUEST`.
+- Uniform `401 INVALID_CREDENTIALS` for unknown email / wrong password /
+  INVITED / DEACTIVATED on login; `401 UNAUTHENTICATED` for missing, invalid,
+  expired tokens and for deactivated users with a valid token.
+
+## Request logging
+
+- `RequestLoggingFilter` logs `method path -> status (ms)` only. Never log
+  headers, bodies, tokens, passwords or hashes; request DTOs override
+  `toString()` to drop secrets.
 
 ## Configuration & profiles
 
 - Profiles: `dev`, `qa` (identical to dev), `prod`. `SPRING_PROFILES_ACTIVE`
   is mandatory — `ProfileGuard` aborts startup when no profile is active.
 - Environment-driven settings: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`,
-  `APP_CORS_ALLOWED_ORIGINS` (required in `prod`, comma-separated, no `*`).
+  `APP_CORS_ALLOWED_ORIGINS` (required in `prod`, comma-separated, no `*`),
+  `APP_JWT_SECRET` (required, ≥ 32 bytes), `APP_JWT_TTL` (default `60m`),
+  `APP_PASSWORD_ENCODER` (`bcrypt` | `argon2`), `APP_BOOTSTRAP_ADMIN_EMAIL`,
+  `APP_BOOTSTRAP_ADMIN_PASSWORD`, `APP_BOOTSTRAP_ADMIN_FULL_NAME`.
 - CORS is a profile-scoped `CorsConfigurationSource` bean in `CorsConfig`;
   dev/qa are permissive without credentials, prod is an explicit allow-list.
 - Schema changes go through Flyway migrations in
@@ -117,7 +165,15 @@ fun events(@PathVariable id: Long): Flow<DiaryEvent> = eventService.stream(id)
 
 - JUnit 5 for unit and integration tests.
 - Integration tests that touch the database use Testcontainers to start a real
-  Postgres instance; do not use H2 or other substitutes.
+  Postgres instance; do not use H2 or other substitutes. Extend
+  `AbstractIntegrationTest` (sets datasource, JWT secret and bootstrap admin
+  `admin@example.com` / `AdminPass123!`); create fixtures through
+  `UserRepository.insert(...)` and obtain tokens via `POST /api/v1/auth/login`
+  as `AuthIT` does.
+- If Maven Central rate-limits (HTTP 429) locally, drop a Gradle init script
+  in `~/.gradle/init.d/` that puts
+  `https://maven-central.storage-download.googleapis.com/maven2/` first; the
+  Dockerfile accepts the same script as the `gradle-init` build secret.
 
 ## Logging
 
