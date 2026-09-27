@@ -8,6 +8,7 @@ import { TaskStore } from "@/stores/TaskStore";
 import { IssueStore } from "@/stores/IssueStore";
 import { FeedbackStore } from "@/stores/FeedbackStore";
 import { NoteStore } from "@/stores/NoteStore";
+import { DashboardStore } from "@/stores/DashboardStore";
 
 /** Anything holding server-derived data for the signed-in user. */
 interface UserScopedStore {
@@ -38,6 +39,7 @@ export class RootStore {
   readonly issues: IssueStore;
   readonly feedback: FeedbackStore;
   readonly notes: NoteStore;
+  readonly dashboard: DashboardStore;
 
   private readonly userScoped: UserScopedStore[] = [];
 
@@ -52,6 +54,7 @@ export class RootStore {
     this.issues = this.register(new IssueStore(api));
     this.feedback = this.register(new FeedbackStore(api));
     this.notes = this.register(new NoteStore(api));
+    this.dashboard = this.register(new DashboardStore(api));
 
     // Server-derived data must not survive a sign-out or user switch.
     reaction(
