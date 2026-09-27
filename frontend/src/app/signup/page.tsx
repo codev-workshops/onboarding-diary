@@ -16,9 +16,8 @@ const SignupPage = observer(function SignupPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [department, setDepartment] = useState("");
-  const [startDate, setStartDate] = useState("");
   const [errors, setErrors] = useState<FormErrors>(EMPTY_ERRORS);
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,16 +27,14 @@ const SignupPage = observer(function SignupPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setErrors(EMPTY_ERRORS);
+    if (password !== confirmPassword) {
+      setErrors({ fields: { confirmPassword: "Passwords do not match." } });
+      return;
+    }
+    setSubmitting(true);
     try {
-      await auth.signup({
-        email,
-        password,
-        fullName: fullName.trim() || undefined,
-        department: department.trim() || undefined,
-        startDate: startDate || undefined,
-      });
+      await auth.signup({ email, password, fullName: fullName.trim() || undefined });
       router.replace("/profile");
     } catch (err) {
       setErrors(toFormErrors(err));
@@ -71,6 +68,16 @@ const SignupPage = observer(function SignupPage() {
           required
         />
         <FormField
+          id="fullName"
+          label="Full name"
+          hint="Leave blank to keep the name your administrator entered."
+          autoComplete="name"
+          maxLength={100}
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          error={errors.fields.fullName}
+        />
+        <FormField
           id="password"
           label="Password"
           type="password"
@@ -82,33 +89,15 @@ const SignupPage = observer(function SignupPage() {
           required
         />
         <FormField
-          id="fullName"
-          label="Full name (optional)"
-          autoComplete="name"
-          maxLength={100}
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          error={errors.fields.fullName}
+          id="confirmPassword"
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          error={errors.fields.confirmPassword}
+          required
         />
-        <div className={styles.row}>
-          <FormField
-            id="department"
-            label="Department (optional)"
-            autoComplete="organization-title"
-            maxLength={100}
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            error={errors.fields.department}
-          />
-          <FormField
-            id="startDate"
-            label="Start date (optional)"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            error={errors.fields.startDate}
-          />
-        </div>
         <button type="submit" className={styles.button} disabled={submitting}>
           {submitting ? "Activating…" : "Activate account"}
         </button>

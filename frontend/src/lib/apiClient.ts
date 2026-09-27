@@ -42,8 +42,6 @@ export interface SignupRequest {
   email: string;
   password: string;
   fullName?: string;
-  department?: string | null;
-  startDate?: string | null;
 }
 
 export interface LoginRequest {
@@ -51,10 +49,9 @@ export interface LoginRequest {
   password: string;
 }
 
+/** Only `fullName` is self-editable; department/startDate are Admin-assigned. */
 export interface ProfileUpdateRequest {
   fullName?: string;
-  department?: string | null;
-  startDate?: string | null;
 }
 
 export interface ChangePasswordRequest {

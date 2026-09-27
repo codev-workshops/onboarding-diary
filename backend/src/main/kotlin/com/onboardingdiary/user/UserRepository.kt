@@ -49,13 +49,7 @@ class UserRepository(private val jdbc: JdbcTemplate) {
         return findById(id)!!
     }
 
-    fun activate(
-        id: UUID,
-        passwordHash: String,
-        fullName: String?,
-        department: String?,
-        startDate: LocalDate?,
-    ): User? {
+    fun activate(id: UUID, passwordHash: String, fullName: String?): User? {
         val rows = jdbc.update(
             """
             UPDATE users
@@ -63,21 +57,16 @@ class UserRepository(private val jdbc: JdbcTemplate) {
                    status = 'ACTIVE',
                    activated_at = now(),
                    full_name = COALESCE(?, full_name),
-                   department = COALESCE(?, department),
-                   start_date = COALESCE(?, start_date),
                    updated_at = now()
              WHERE id = ? AND status = 'INVITED'
             """.trimIndent(),
-            passwordHash, fullName, department, startDate, id,
+            passwordHash, fullName, id,
         )
         return if (rows == 1) findById(id) else null
     }
 
-    fun updateProfile(id: UUID, fullName: String, department: String?, startDate: LocalDate?): User {
-        jdbc.update(
-            "UPDATE users SET full_name = ?, department = ?, start_date = ?, updated_at = now() WHERE id = ?",
-            fullName, department, startDate, id,
-        )
+    fun updateFullName(id: UUID, fullName: String): User {
+        jdbc.update("UPDATE users SET full_name = ?, updated_at = now() WHERE id = ?", fullName, id)
         return findById(id)!!
     }
 

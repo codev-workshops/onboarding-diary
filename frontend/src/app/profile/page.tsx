@@ -46,8 +46,6 @@ const ProfileDetails = observer(function ProfileDetails({ user }: { user: UserPr
 const EditProfileForm = observer(function EditProfileForm({ user }: { user: UserProfile }) {
   const { auth } = useStores();
   const [fullName, setFullName] = useState(user.fullName);
-  const [department, setDepartment] = useState(user.department ?? "");
-  const [startDate, setStartDate] = useState(user.startDate ?? "");
   const [errors, setErrors] = useState<FormErrors>(EMPTY_ERRORS);
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -58,11 +56,7 @@ const EditProfileForm = observer(function EditProfileForm({ user }: { user: User
     setSaved(false);
     setErrors(EMPTY_ERRORS);
     try {
-      await auth.updateProfile({
-        fullName: fullName.trim(),
-        department: department.trim() || null,
-        startDate: startDate || null,
-      });
+      await auth.updateProfile({ fullName: fullName.trim() });
       setSaved(true);
     } catch (err) {
       setErrors(toFormErrors(err));
@@ -76,6 +70,9 @@ const EditProfileForm = observer(function EditProfileForm({ user }: { user: User
       <h2 id="edit-title" className={styles.title}>
         Edit profile
       </h2>
+      <p className={styles.subtitle}>
+        Department and start date are set by your administrator.
+      </p>
       <form className={styles.form} onSubmit={(e) => void onSubmit(e)} noValidate>
         {errors.form && (
           <div className={styles.formError} role="alert">
@@ -96,24 +93,6 @@ const EditProfileForm = observer(function EditProfileForm({ user }: { user: User
           error={errors.fields.fullName}
           required
         />
-        <div className={styles.row}>
-          <FormField
-            id="edit-department"
-            label="Department"
-            maxLength={100}
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            error={errors.fields.department}
-          />
-          <FormField
-            id="edit-startDate"
-            label="Start date"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            error={errors.fields.startDate}
-          />
-        </div>
         <div className={styles.actions}>
           <button type="submit" className={styles.button} disabled={submitting}>
             {submitting ? "Saving…" : "Save changes"}

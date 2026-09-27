@@ -22,7 +22,8 @@ view entries and generate downloadable reports.
 ### Authentication
 
 - Sign up / login with email and password
-- User profile (name, role, department, start date)
+- User profile (name, role, department, start date); users edit only their name — role, department and start date are assigned by an Admin
+- Users only see the navigation and content their role permits
 
 ### Task Log
 

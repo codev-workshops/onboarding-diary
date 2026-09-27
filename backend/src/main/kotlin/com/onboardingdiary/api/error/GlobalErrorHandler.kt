@@ -16,6 +16,7 @@ import org.springframework.web.server.ServerWebInputException
 import org.springframework.web.server.WebExceptionHandler
 import org.springframework.web.bind.support.WebExchangeBindException
 import reactor.core.publisher.Mono
+import tools.jackson.databind.exc.UnrecognizedPropertyException
 
 /**
  * Maps every exception escaping a handler to the [ErrorResponse] envelope
@@ -41,7 +42,15 @@ class GlobalErrorHandler(private val writer: ErrorResponseWriter) : WebException
                 exchange, ErrorCode.VALIDATION_FAILED, details = ex.constraintViolations.map { it.toDetail() },
             )
 
-            is ServerWebInputException -> writer.write(exchange, ErrorCode.MALFORMED_REQUEST)
+            is ServerWebInputException -> when (val unknown = ex.findCause<UnrecognizedPropertyException>()) {
+                null -> writer.write(exchange, ErrorCode.MALFORMED_REQUEST)
+                else -> writer.write(
+                    exchange, ErrorCode.VALIDATION_FAILED,
+                    details = listOf(
+                        ErrorDetail(unknown.propertyName, DetailCode.NOT_ALLOWED, "is not an editable field"),
+                    ),
+                )
+            }
 
             is AuthenticationException -> writer.write(exchange, ErrorCode.UNAUTHENTICATED)
             is AccessDeniedException -> writer.write(exchange, ErrorCode.FORBIDDEN)
@@ -64,6 +73,9 @@ class GlobalErrorHandler(private val writer: ErrorResponseWriter) : WebException
         log.error("Unhandled error on {} {}", exchange.request.method, path, ex)
         return writer.write(exchange, ErrorCode.INTERNAL_ERROR)
     }
+
+    private inline fun <reified T : Throwable> Throwable.findCause(): T? =
+        generateSequence(this) { it.cause?.takeIf { c -> c !== it } }.filterIsInstance<T>().firstOrNull()
 
     private fun FieldError.toDetail() = ErrorDetail(
         field = field,

@@ -41,10 +41,10 @@ class AuthIT : AbstractIntegrationTest() {
     private fun unique(prefix: String) = "$prefix.${UUID.randomUUID().toString().take(8)}@example.com"
 
     private fun invited(email: String = unique("invited"), role: Role = Role.NEW_RECRUIT): User =
-        users.insert(email, null, role, UserStatus.INVITED, "Invited Person", "Engineering", null, adminId(), null)
+        users.insert(email, null, role, UserStatus.INVITED, "Invited Person", "Engineering", LocalDate.of(2026, 10, 1), adminId(), null)
 
     private fun active(email: String = unique("active"), role: Role = Role.NEW_RECRUIT, pwd: String = password): User =
-        users.insert(email, passwordEncoder.encode(pwd), role, UserStatus.ACTIVE, "Active Person", null, null, adminId(), Instant.now())
+        users.insert(email, passwordEncoder.encode(pwd), role, UserStatus.ACTIVE, "Active Person", "Payments", LocalDate.of(2026, 9, 1), adminId(), Instant.now())
 
     private fun deactivated(email: String = unique("gone")): User =
         users.insert(email, passwordEncoder.encode(password), Role.NEW_RECRUIT, UserStatus.DEACTIVATED, "Gone Person", null, null, adminId(), Instant.now())
@@ -76,7 +76,7 @@ class AuthIT : AbstractIntegrationTest() {
     @Test
     fun `signup activates an INVITED user, stores a bcrypt hash and returns a token`() {
         val user = invited()
-        val body = post("/api/v1/auth/signup", mapOf("email" to user.email, "password" to password, "fullName" to "Jane Doe", "startDate" to "2026-10-01"))
+        val body = post("/api/v1/auth/signup", mapOf("email" to user.email, "password" to password, "fullName" to "Jane Doe"))
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.token").isNotEmpty
@@ -84,8 +84,8 @@ class AuthIT : AbstractIntegrationTest() {
             .jsonPath("$.user.id").isEqualTo(user.id.toString())
             .jsonPath("$.user.status").isEqualTo("ACTIVE")
             .jsonPath("$.user.fullName").isEqualTo("Jane Doe")
-            .jsonPath("$.user.department").isEqualTo("Engineering")
-            .jsonPath("$.user.startDate").isEqualTo("2026-10-01")
+            .jsonPath("$.user.department").isEqualTo(user.department!!)
+            .jsonPath("$.user.startDate").isEqualTo(user.startDate!!.toString())
             .jsonPath("$.user.activatedAt").isNotEmpty
             .jsonPath("$.user.createdBy.email").isEqualTo(ADMIN_EMAIL)
             .jsonPath("$.user.passwordHash").doesNotExist()
@@ -132,12 +132,26 @@ class AuthIT : AbstractIntegrationTest() {
     }
 
     @Test
-    fun `signup with missing fields reports REQUIRED and a far-future start date is OUT_OF_RANGE`() {
-        post("/api/v1/auth/signup", mapOf("startDate" to LocalDate.now().plusYears(2).toString()))
+    fun `signup with missing fields reports REQUIRED`() {
+        post("/api/v1/auth/signup", mapOf("fullName" to "Jane"))
             .expectError(400, "VALIDATION_FAILED", "/api/v1/auth/signup")
             .jsonPath("$.details[?(@.field == 'email')].code").isEqualTo("REQUIRED")
             .jsonPath("$.details[?(@.field == 'password')].code").isEqualTo("REQUIRED")
-            .jsonPath("$.details[?(@.field == 'startDate')].code").isEqualTo("OUT_OF_RANGE")
+    }
+
+    @Test
+    fun `signup rejects admin-owned department and startDate and leaves the invite untouched`() {
+        val user = invited()
+        post("/api/v1/auth/signup", mapOf("email" to user.email, "password" to password, "department" to "Sales"))
+            .expectError(400, "VALIDATION_FAILED", "/api/v1/auth/signup")
+            .jsonPath("$.details[?(@.field == 'department')].code").isEqualTo("NOT_ALLOWED")
+        post("/api/v1/auth/signup", mapOf("email" to user.email, "password" to password, "startDate" to "2026-10-01"))
+            .expectError(400, "VALIDATION_FAILED", "/api/v1/auth/signup")
+            .jsonPath("$.details[?(@.field == 'startDate')].code").isEqualTo("NOT_ALLOWED")
+        val reloaded = users.findById(user.id)!!
+        assertEquals(UserStatus.INVITED, reloaded.status)
+        assertEquals(user.department, reloaded.department)
+        assertEquals(user.startDate, reloaded.startDate)
     }
 
     @Test
@@ -262,63 +276,63 @@ class AuthIT : AbstractIntegrationTest() {
     }
 
     @Test
-    fun `patch me updates fullName department and startDate`() {
-        val token = login(active().email)
+    fun `patch me updates fullName and leaves admin-owned department and startDate untouched`() {
+        val user = active()
+        val token = login(user.email)
         client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .bodyValue(mapOf("fullName" to "New Name", "department" to "Sales", "startDate" to "2026-11-02"))
+            .bodyValue(mapOf("fullName" to "  New Name "))
             .exchange()
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.fullName").isEqualTo("New Name")
-            .jsonPath("$.department").isEqualTo("Sales")
-            .jsonPath("$.startDate").isEqualTo("2026-11-02")
+            .jsonPath("$.department").isEqualTo(user.department!!)
+            .jsonPath("$.startDate").isEqualTo(user.startDate!!.toString())
     }
 
     @Test
-    fun `patch me with only fullName leaves department and startDate untouched`() {
-        val token = login(active().email)
+    fun `patch me with an empty body is a no-op`() {
+        val user = active()
+        val token = login(user.email)
         client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .bodyValue(mapOf("department" to "Sales", "startDate" to "2026-11-02")).exchange().expectStatus().isOk
-        client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .bodyValue(mapOf("fullName" to "Only Name"))
+            .bodyValue(emptyMap<String, String>())
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.fullName").isEqualTo("Only Name")
-            .jsonPath("$.department").isEqualTo("Sales")
-            .jsonPath("$.startDate").isEqualTo("2026-11-02")
+            .jsonPath("$.fullName").isEqualTo(user.fullName)
     }
 
     @Test
-    fun `patch me with explicit nulls clears department and startDate`() {
-        val token = login(active().email)
-        client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .bodyValue(mapOf("department" to "Sales", "startDate" to "2026-11-02")).exchange().expectStatus().isOk
-        client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("""{"department": null, "startDate": null}""")
-            .exchange()
-            .expectStatus().isOk
-            .expectBody()
-            .jsonPath("$.department").isEqualTo(null)
-            .jsonPath("$.startDate").isEqualTo(null)
+    fun `patch me rejects department startDate email and role as NOT_ALLOWED`() {
+        val user = active()
+        val token = login(user.email)
+        for ((field, value) in listOf("department" to "Sales", "startDate" to "2026-11-02", "email" to "x@y.com", "role" to "ADMIN")) {
+            client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+                .bodyValue(mapOf("fullName" to "Hijack", field to value))
+                .exchange()
+                .expectError(400, "VALIDATION_FAILED", "/api/v1/me")
+                .jsonPath("$.details[?(@.field == '$field')].code").isEqualTo("NOT_ALLOWED")
+        }
+        val reloaded = users.findById(user.id)!!
+        assertEquals(user.fullName, reloaded.fullName)
+        assertEquals(user.department, reloaded.department)
+        assertEquals(user.startDate, reloaded.startDate)
+        assertEquals(user.role, reloaded.role)
     }
 
     @Test
-    fun `patch me rejects blank fullName and too-long department`() {
+    fun `patch me rejects blank fullName`() {
         val token = login(active().email)
         client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .bodyValue(mapOf("fullName" to " \u2003 ", "department" to "d".repeat(101)))
+            .bodyValue(mapOf("fullName" to " \u2003 "))
             .exchange()
             .expectError(400, "VALIDATION_FAILED", "/api/v1/me")
             .jsonPath("$.details[?(@.field == 'fullName')].code").isEqualTo("INVALID_FORMAT")
-            .jsonPath("$.details[?(@.field == 'department')].code").isEqualTo("TOO_LONG")
     }
 
     @Test
     fun `activate is a no-op once the account is no longer INVITED`() {
         val user = active()
-        val result = users.activate(user.id, "\$2a\$12\$otherhash", "Hijacker", null, null)
+        val result = users.activate(user.id, "\$2a\$12\$otherhash", "Hijacker")
         assertNull(result)
         val reloaded = users.findById(user.id)!!
         assertEquals(user.passwordHash, reloaded.passwordHash)
@@ -326,14 +340,13 @@ class AuthIT : AbstractIntegrationTest() {
     }
 
     @Test
-    fun `patch me rejects too-long name and far-future start date with field details`() {
+    fun `patch me rejects too-long name with field details`() {
         val token = login(active().email)
         client.patch().uri("/api/v1/me").header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .bodyValue(mapOf("fullName" to "x".repeat(101), "startDate" to LocalDate.now().plusYears(1).plusDays(1).toString()))
+            .bodyValue(mapOf("fullName" to "x".repeat(101)))
             .exchange()
             .expectError(400, "VALIDATION_FAILED", "/api/v1/me")
             .jsonPath("$.details[?(@.field == 'fullName')].code").isEqualTo("TOO_LONG")
-            .jsonPath("$.details[?(@.field == 'startDate')].code").isEqualTo("OUT_OF_RANGE")
     }
 
     @Test

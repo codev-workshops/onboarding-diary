@@ -294,7 +294,7 @@ IDs are stable and referenced from `openapi.yaml` (via `x-requirements`) and
 
 | ID | Requirement |
 |----|-------------|
-| REQ-FUNC-001 | A visitor whose account has been pre-provisioned by an Admin (status `INVITED`) can complete signup with `email` + `password` (optionally overriding `fullName`, `department`, `startDate`). Signup sets the password hash, `status = ACTIVE`, `activatedAt = now` and returns a token. Signup never creates a new user; the role is whatever the Admin set. |
+| REQ-FUNC-001 | A visitor whose account has been pre-provisioned by an Admin (status `INVITED`) can complete signup with `email` + `password` (+ confirmation in the UI) and optionally `fullName` (overriding what the Admin entered). `department` and `startDate` are **not** accepted at signup — they are owned by the Admin (REQ-FUNC-012/014). Signup sets the password hash, `status = ACTIVE`, `activatedAt = now` and returns a token. Signup never creates a new user; the role is whatever the Admin set. |
 | REQ-FUNC-001a | Signup with an email that does not match any user → `403 NOT_INVITED` ("No invitation found for this email. Ask your administrator to create your account."). Signup with an email whose user is `ACTIVE` or `DEACTIVATED` → `409 ACCOUNT_ALREADY_ACTIVATED` ("This account is already set up. Log in instead."). Both responses reveal only what the message says; timing is constant-ish (no enumeration beyond the invited/not-invited distinction, which is accepted per A1). |
 | REQ-FUNC-002 | Email is validated with RFC-5322-style syntax (local part, single `@`, domain with at least one dot, no spaces; max 254 chars). Invalid emails are rejected with `400 VALIDATION_FAILED`. |
 | REQ-FUNC-003 | Email is normalized (trim, lowercase) before validation, storage and lookup. Admin user creation with an email that already exists (after normalization) is rejected with `409 EMAIL_ALREADY_EXISTS`. |
@@ -303,7 +303,7 @@ IDs are stable and referenced from `openapi.yaml` (via `x-requirements`) and
 | REQ-FUNC-006 | Every non-public endpoint requires `Authorization: Bearer <token>`. Missing/invalid/expired tokens return `401 UNAUTHENTICATED`. The frontend API client attaches the token from `AuthStore` and, on 401, clears `AuthStore` and redirects to `/login`. |
 | REQ-FUNC-007 | A user can log out; the frontend discards the token. `POST /auth/logout` exists for symmetry and returns `204` (stateless server). |
 | REQ-FUNC-008 | An authenticated user can view their own profile: `id`, `email`, `fullName`, `role`, `department`, `startDate`, `createdAt`. |
-| REQ-FUNC-009 | An authenticated user can update `fullName`, `department`, `startDate` of their own profile. `email` and `role` are not self-editable. |
+| REQ-FUNC-009 | An authenticated user can update `fullName` of their own profile. `email`, `role`, `department` and `startDate` are not self-editable (Admin-owned, REQ-FUNC-014). |
 | REQ-FUNC-010 | An authenticated user can change their own password by supplying the current password and a new password meeting REQ-FUNC-004. |
 
 ### 2.2 Identity & Access — Admin user management
@@ -434,7 +434,7 @@ Legend: **C** create · **R** read · **U** update · **D** delete · **–** no
 |----------|-------------|---------|-------|
 | Signup (`POST /auth/signup`) | public | public | public |
 | Login / logout | public / self | public / self | public / self |
-| Own profile (`/me`) | R U (name, dept, startDate), change password | R U, change password | R U, change password |
+| Own profile (`/me`) | R U (name only), change password | R U (name only), change password | R U (name only), change password |
 | Users (`/users`) | – | R (only recruits *assigned*, via `/me/recruits`) | C R U (incl. role), deactivate/reactivate |
 | Assignments | R (own current manager via `/me/manager`) | R (own active assignments via `/me/recruits`) | C R (history, list) |
 | Task entries | C R U D *own* | R *assigned* | R *any*, D *any* |
@@ -485,6 +485,8 @@ including failure/deviation paths.
 - **Given** I enter `  Jane.Doe@Example.COM ` **When** I submit **Then** the account email is stored as `jane.doe@example.com` and the profile shows the normalized value.
 - **Given** I enter `jane@` or `jane doe@example.com` **When** I submit **Then** the API returns `400 VALIDATION_FAILED` with `details[{field:"email"}]` and the form shows an inline error on the email field; nothing is created.
 - **Given** a password `short1` **When** I submit **Then** `400 VALIDATION_FAILED` on `password` and the UI shows the policy.
+- **Given** the confirmation does not match the password **When** I submit **Then** the form shows an inline error on the confirmation field and no request is sent.
+- **Given** the `/signup` form **Then** it offers only email, full name, password and confirmation; department and start date are never shown or sent (Admin-owned). A crafted request containing `department` or `startDate` → `400 VALIDATION_FAILED` with `details[{field, code:"NOT_ALLOWED"}]` and the invite is left untouched.
 - **Given** the backend is unreachable **When** I submit **Then** the UI shows a non-field error "Could not reach the server, try again" and keeps my input.
 
 ### US-02 Log in with email (REQ-FUNC-005..007)
@@ -497,9 +499,10 @@ including failure/deviation paths.
 
 ### US-03 View and edit profile (REQ-FUNC-008..010)
 
-- **Given** I am logged in **When** I open `/profile` **Then** I see email, full name, role, department, start date; email and role are read-only.
-- **When** I change full name / department / start date and save **Then** `200` and the header shows the new name.
-- **Given** a start date in the future by more than 1 year or malformed **Then** `400 VALIDATION_FAILED` on `startDate`.
+- **Given** I am logged in **When** I open `/profile` **Then** I see email, full name, role, department, start date; only full name is editable — email, role, department and start date are read-only (department/start date are set by an Admin).
+- **When** I change full name and save **Then** `200` and the header shows the new name.
+- **Given** a blank full name or one over 100 chars **Then** `400 VALIDATION_FAILED` on `fullName`.
+- **Given** a `PATCH /me` body containing `department`, `startDate`, `email` or `role` **Then** `400 VALIDATION_FAILED` (unknown property); nothing changes.
 - **Given** I change password with a wrong current password **Then** `400 INVALID_CURRENT_PASSWORD`; with a valid one **Then** `204` and I stay logged in.
 
 ### US-04 Admin manages users (REQ-FUNC-011..015)
@@ -739,7 +742,7 @@ Tier 1 = field-level (`400 VALIDATION_FAILED`), Tier 2 = business rule
 |------|------|
 | 1 | `email`: required, trimmed+lowercased, RFC-5322-style regex `^[A-Za-z0-9!#$%&'*+/=?^_\`{|}~.-]+@[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$` (domain labels may not start or end with `-`), no consecutive dots, local part not starting/ending with `.`, ≤ 254 chars (REQ-FUNC-002/003). |
 | 1 | `password`: required, 10–128 chars, ≥1 letter and ≥1 digit (REQ-FUNC-004). |
-| 1 | `fullName`: required, 1–100 chars, trimmed. `department`: optional ≤ 100. `startDate`: optional ISO date, not more than 1 year in the future, not before 1970-01-01. |
+| 1 | `fullName`: 1–100 chars, trimmed, non-blank (optional at signup, defaults to the Admin-entered value). `department` / `startDate` are rejected on signup and `PATCH /me` (`400 VALIDATION_FAILED`, unknown property); their rules (`department` ≤ 100; `startDate` ISO date, ≤ 1 year in the future, ≥ 1970-01-01) apply to the Admin endpoints (§7.2). |
 | 2 | Signup target must exist and be `INVITED` → else `403 NOT_INVITED` / `409 ACCOUNT_ALREADY_ACTIVATED` (INV-02b). |
 | 2 | Change password: `currentPassword` must verify → else `400 INVALID_CURRENT_PASSWORD`; new ≠ current. |
 | 3 | Login of `DEACTIVATED` user → `401 INVALID_CREDENTIALS`. `/me` requires valid token. |
@@ -901,6 +904,7 @@ Manager nav:  [My Recruits] [Reports]            Admin nav: [Users] [Assignments
 |  Email      [___________________]|
 |   ! No invitation found for this |
 |     email. Ask your administrator|
+|  Full name  [___________________]|
 |  Password   [___________________]|
 |  Confirm    [___________________]|
 |   10+ chars, letter and digit    |
@@ -1026,8 +1030,8 @@ Form: Date* [____] Title* [__________] Tags [kotlin ×][setup ×][+]
 | Email       jane.doe@example.com   (read-only)                   |
 | Role        New Recruit            (read-only)                   |
 | Full name   [Jane Doe__________]                                 |
-| Department  [Payments__________]                                 |
-| Start date  [2026-09-01]                                         |
+| Department  Payments               (read-only, set by admin)     |
+| Start date  2026-09-01             (read-only, set by admin)     |
 | Manager     Sam Lee <sam.lee@example.com>  (or "No manager       |
 |             assigned yet")                                       |
 |                                                 [Save changes]   |

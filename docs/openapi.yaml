@@ -67,7 +67,8 @@ paths:
       description: >-
         Does not create a user. The email must match an existing user with status
         INVITED (created by an Admin via POST /users). Sets the password, moves the
-        user to ACTIVE and issues a token.
+        user to ACTIVE and issues a token. Only fullName may be overridden; department
+        and startDate are Admin-owned and rejected with 400 VALIDATION_FAILED if present.
       x-requirements: [REQ-FUNC-001, REQ-FUNC-001a, REQ-FUNC-002, REQ-FUNC-003, REQ-FUNC-004]
       security: []
       requestBody:
@@ -167,7 +168,11 @@ paths:
     patch:
       tags: [Me]
       operationId: updateMyProfile
-      summary: Update own profile (fullName, department, startDate)
+      summary: Update own profile (fullName only)
+      description: >-
+        Only fullName is self-editable. department, startDate, email and role are
+        Admin-owned (PATCH /users/{id}); sending any of them yields 400 VALIDATION_FAILED
+        with a NOT_ALLOWED detail for that field.
       x-requirements: [REQ-FUNC-009]
       requestBody:
         required: true
@@ -1217,14 +1222,17 @@ components:
     # ---------------- auth
     SignupRequest:
       type: object
-      description: Completes an INVITED account. Profile fields are optional overrides of what the Admin entered.
+      description: >-
+        Completes an INVITED account. fullName optionally overrides what the Admin
+        entered; department and startDate are Admin-owned and not accepted here
+        (unknown property -> 400 VALIDATION_FAILED). Password confirmation is a
+        client-side check and is not sent.
       required: [email, password]
+      additionalProperties: false
       properties:
         email: { $ref: '#/components/schemas/Email' }
         password: { $ref: '#/components/schemas/Password' }
         fullName: { type: string, minLength: 1, maxLength: 100 }
-        department: { type: string, maxLength: 100 }
-        startDate: { type: string, format: date }
     LoginRequest:
       type: object
       required: [email, password]
@@ -1287,10 +1295,10 @@ components:
               description: For managers, number of ACTIVE assignments.
     ProfileUpdateRequest:
       type: object
+      description: Self-service profile update; only fullName is editable (REQ-FUNC-009). Unknown properties -> 400 VALIDATION_FAILED.
+      additionalProperties: false
       properties:
         fullName: { type: string, minLength: 1, maxLength: 100 }
-        department: { type: [string, 'null'], maxLength: 100 }
-        startDate: { type: [string, 'null'], format: date }
     CreateUserRequest:
       type: object
       description: Creates an INVITED user without a password; the user sets it via POST /auth/signup.

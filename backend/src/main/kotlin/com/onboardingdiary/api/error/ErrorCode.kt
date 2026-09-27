@@ -53,4 +53,5 @@ object DetailCode {
     const val OUT_OF_RANGE = "OUT_OF_RANGE"
     const val INVALID_ENUM = "INVALID_ENUM"
     const val INVALID_TRANSITION = "INVALID_TRANSITION"
+    const val NOT_ALLOWED = "NOT_ALLOWED"
 }
