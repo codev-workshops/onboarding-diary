@@ -68,16 +68,18 @@ can be built with real data in S3.
 
 ### S0 — Project scaffolding, DB migration, health
 
-- **Satisfies**: REQ-FUNC-092, REQ-FUNC-093 (audit columns convention), REQ-FUNC-094 (responsive layout shell).
+- **Satisfies**: REQ-FUNC-092, REQ-FUNC-093 (audit columns convention), REQ-FUNC-094 (responsive layout shell), REQ-FUNC-095..098 (Docker image, Spring profiles, CORS, compose-based dev).
 - **Touched**
-  - Backend: Gradle Kotlin DSL project, Spring Boot 4.x starters (webflux, security, validation, jdbc, actuator), Flyway, PostgreSQL driver; `application.yaml` with env-driven datasource; `V1__init.sql` (extensions, `users` table only as placeholder for S1 or empty baseline); Actuator `/health` exposing DB status.
+  - Backend: Gradle Kotlin DSL project, Spring Boot 4.x starters (webflux, security, validation, jdbc, actuator), Flyway, PostgreSQL driver; `application.yaml` (common, env-driven datasource) + `application-dev.yaml`, `application-qa.yaml` (identical to dev), `application-prod.yaml`; startup fails if `SPRING_PROFILES_ACTIVE` is unset; `CorsConfig` exposing a `CorsConfigurationSource` bean — `@Profile("dev", "qa")` variant allows all origins/methods/headers (`allowCredentials=false`), `@Profile("prod")` variant reads `APP_CORS_ALLOWED_ORIGINS`; `backend/Dockerfile` (multi-stage: Gradle build on a JDK 24 image → `bootJar` on a JRE 24 runtime image, non-root user, `SPRING_PROFILES_ACTIVE` passed as env); `V1__init.sql` (extensions, `users` table only as placeholder for S1 or empty baseline); Actuator `/health` exposing DB status.
   - Frontend: Next.js app (TypeScript, App Router), MobX, `RootStore` + `StoreProvider` skeleton, base layout (header/nav placeholder), responsive CSS baseline, `.env` with `NEXT_PUBLIC_API_BASE_URL`.
-  - Infra: `docker-compose.yml` (Postgres 16), GitHub Actions workflow running backend tests (Testcontainers) and frontend lint/build.
+  - Infra: `docker-compose.yml` (Postgres 16 + backend built from `backend/Dockerfile`, `SPRING_PROFILES_ACTIVE=dev`, dev-only `APP_JWT_SECRET` / bootstrap-admin env, `depends_on` with healthcheck); frontend is *not* containerized — `npm run dev` on the host against `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`. GitHub Actions workflow running backend tests (Testcontainers), `docker build` of the backend image, and frontend lint/build.
 - **Acceptance criteria**
-  - `./gradlew bootRun` starts against Compose Postgres; `GET /health` → `{"status":"UP"}`; migrations applied on boot.
-  - `npm run dev` renders the layout shell; `npm run build` passes.
+  - `docker compose up` starts Postgres + backend (`dev`); `GET /health` → `{"status":"UP"}`; migrations applied on boot. `./gradlew bootRun --args='--spring.profiles.active=dev'` also works against Compose Postgres alone.
+  - Backend started without an active profile exits with a clear error; started with `prod` and no `APP_CORS_ALLOWED_ORIGINS` exits with a clear error.
+  - With `dev`, a preflight `OPTIONS /api/v1/auth/login` from `http://localhost:3000` returns `Access-Control-Allow-Origin: *`; with `prod`, an origin outside the allow-list gets no CORS headers (browser blocks it).
+  - `npm run dev` renders the layout shell and can call the containerized backend cross-origin; `npm run build` passes.
   - CI is green on an empty PR.
-- **Tests**: `HealthIT` (Testcontainers Postgres, `WebTestClient`) asserting `UP`; Flyway migration validation test (`flyway.validate()` on container).
+- **Tests**: `HealthIT` (Testcontainers Postgres, `WebTestClient`) asserting `UP`; Flyway migration validation test (`flyway.validate()` on container); `CorsDevIT` (`@ActiveProfiles("dev")`: preflight from any origin allowed) and `CorsProdIT` (`@ActiveProfiles("prod")` with `APP_CORS_ALLOWED_ORIGINS` set: listed origin allowed, other origin rejected); `ProfileGuardTest` (context fails to start with no active profile). CI builds the Docker image to keep the `Dockerfile` honest.
 
 ### S1 — Identity: bootstrap admin, invited-account signup, login, profile
 
