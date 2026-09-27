@@ -17,3 +17,8 @@
   color: var(--muted);
   max-width: 60ch;
 }
+
+.lead a {
+  color: #3b6ef5;
+  text-decoration: underline;
+}

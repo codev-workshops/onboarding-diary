@@ -55,13 +55,55 @@
 .headerActions {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 }
 
-.userPlaceholder {
+.signIn,
+.logout {
   padding: 0.4rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   font-size: 0.85rem;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.signIn:hover,
+.logout:hover {
+  background: var(--surface-hover);
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 45vw;
+  font-size: 0.85rem;
+}
+
+.userName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roleBadge {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.navLink[aria-current="page"] {
+  background: var(--surface-hover);
+  color: var(--foreground);
+  font-weight: 600;
 }
 
 .main {
