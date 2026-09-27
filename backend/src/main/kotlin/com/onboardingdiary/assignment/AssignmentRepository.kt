@@ -76,6 +76,17 @@ class AssignmentRepository(private val jdbc: JdbcTemplate) {
         return if (rows == 1) findById(id) else null
     }
 
+    /** Ends every ACTIVE assignment the user takes part in (as recruit or manager); returns the number ended. */
+    fun endAllActiveForParty(userId: UUID): Int =
+        jdbc.update(
+            """
+            UPDATE assignments
+               SET status = 'ENDED', ended_at = now(), updated_at = now()
+             WHERE (recruit_id = ? OR manager_id = ?) AND status = 'ACTIVE'
+            """.trimIndent(),
+            userId, userId,
+        )
+
     fun search(recruitId: UUID?, managerId: UUID?, status: AssignmentStatus?, page: PageRequest): Page<Assignment> {
         val where = mutableListOf<String>()
         val args = mutableListOf<Any>()

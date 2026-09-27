@@ -10,6 +10,7 @@ import com.onboardingdiary.assignment.AssignmentPolicy
 import com.onboardingdiary.assignment.AssignmentRepository
 import com.onboardingdiary.assignment.AssignmentStatus
 import com.onboardingdiary.assignment.AssignmentTransition
+import com.onboardingdiary.user.LockMode
 import com.onboardingdiary.user.User
 import com.onboardingdiary.user.UserRepository
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +34,8 @@ class AssignmentService(
      * ending the previous row and inserting the new one all run inside ONE
      * `transactionTemplate.execute` on a single connection, inside one
      * `withContext(Dispatchers.IO)`; the partial unique index turns a lost
-     * race into `409 CONFLICT`.
+     * race into `409 CONFLICT`. Both parties are locked `FOR SHARE` so a concurrent admin
+     * role change / deactivation (`FOR UPDATE`) cannot interleave with the party checks.
      */
     suspend fun assign(adminId: UUID, request: CreateAssignmentRequest): AssignmentResult {
         val recruitId = request.recruitId!!
@@ -43,8 +45,8 @@ class AssignmentService(
         val (created, superseded) = withContext(Dispatchers.IO) {
             try {
                 transactionTemplate.execute {
-                    val recruit = users.findById(recruitId) ?: throw NotFoundException()
-                    val manager = users.findById(managerId) ?: throw NotFoundException()
+                    val recruit = users.lockById(recruitId, LockMode.SHARE) ?: throw NotFoundException()
+                    val manager = users.lockById(managerId, LockMode.SHARE) ?: throw NotFoundException()
                     AssignmentPolicy.validateParties(recruit, manager)
 
                     val previous = when (val t = AssignmentPolicy.transition(assignments.findActiveByRecruit(recruitId), managerId)) {

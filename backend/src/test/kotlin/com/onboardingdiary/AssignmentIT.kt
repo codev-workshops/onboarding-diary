@@ -292,4 +292,49 @@ class AssignmentIT : AbstractAuthenticatedIntegrationTest() {
         get("/api/v1/me/recruits?sort=email,desc", token).expectStatus().isOk
         get("/api/v1/me/recruits?sort=note,asc", token).expectError(400, "VALIDATION_FAILED")
     }
+
+    // ---- deactivation ends assignments -------------------------------------
+
+    @Test
+    fun `deactivating a manager ends their ACTIVE assignments and reactivation does not restore them`() {
+        val admin = adminToken()
+        val manager = active(Role.MANAGER)
+        val r1 = active(Role.NEW_RECRUIT)
+        val r2 = active(Role.NEW_RECRUIT)
+        listOf(r1, r2).forEach { assign(it.id, manager.id, admin).expectStatus().isCreated }
+        assertTrue(runBlocking { guard.isActivelyAssigned(manager.id, r1.id) })
+
+        post("/api/v1/users/${manager.id}/deactivate", null, admin).expectStatus().isOk
+        assertEquals(0, activeRows(r1.id))
+        assertEquals(0, activeRows(r2.id))
+        assertFalse(runBlocking { guard.isActivelyAssigned(manager.id, r1.id) })
+        get("/api/v1/users/${r1.id}/assignments", admin).expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.items[0].status").isEqualTo("ENDED")
+            .jsonPath("$.items[0].endedAt").isNotEmpty
+        get("/api/v1/me/manager", login(r1.email)).expectStatus().isOk.expectBody().jsonPath("$.assignment").isEqualTo(null)
+
+        post("/api/v1/users/${manager.id}/reactivate", null, admin).expectStatus().isOk
+        assertFalse(runBlocking { guard.isActivelyAssigned(manager.id, r1.id) })
+        get("/api/v1/me/recruits", login(manager.email)).expectStatus().isOk.expectBody().jsonPath("$.totalItems").isEqualTo(0)
+        get("/api/v1/assignments?status=ENDED&managerId=${manager.id}", admin).expectStatus().isOk
+            .expectBody().jsonPath("$.totalItems").isEqualTo(2)
+    }
+
+    @Test
+    fun `deactivating a recruit ends their ACTIVE assignment and frees the manager`() {
+        val admin = adminToken()
+        val manager = active(Role.MANAGER)
+        val recruit = active(Role.NEW_RECRUIT)
+        assign(recruit.id, manager.id, admin).expectStatus().isCreated
+
+        post("/api/v1/users/${recruit.id}/deactivate", null, admin).expectStatus().isOk
+        assertEquals(0, activeRows(recruit.id))
+        get("/api/v1/users/${recruit.id}", admin).expectStatus().isOk
+            .expectBody().jsonPath("$.currentAssignment").isEqualTo(null)
+        get("/api/v1/me/recruits", login(manager.email)).expectStatus().isOk.expectBody().jsonPath("$.totalItems").isEqualTo(0)
+
+        // the manager's role can now be changed: no ACTIVE assignment blocks it
+        patch("/api/v1/users/${manager.id}", mapOf("role" to "ADMIN"), admin).expectStatus().isOk
+    }
 }

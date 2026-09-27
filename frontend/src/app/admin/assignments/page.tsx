@@ -50,6 +50,7 @@ const AssignmentsList = observer(function AssignmentsList() {
             <option value="">All</option>
             <option value="ACTIVE">ACTIVE</option>
             <option value="REASSIGNED">REASSIGNED</option>
+            <option value="ENDED">ENDED</option>
           </select>
         </div>
         <div className={formStyles.field}>

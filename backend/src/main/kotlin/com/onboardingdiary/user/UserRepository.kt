@@ -14,6 +14,8 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
+enum class LockMode(val sql: String) { UPDATE("FOR UPDATE"), SHARE("FOR SHARE") }
+
 /**
  * Blocking JDBC access to `users`. Callers offload via
  * `withContext(Dispatchers.IO)` (see backend/AGENTS.md).
@@ -23,6 +25,10 @@ class UserRepository(private val jdbc: JdbcTemplate) {
 
     fun findById(id: UUID): User? =
         jdbc.query("$SELECT WHERE id = ?", MAPPER, id).firstOrNull()
+
+    /** Row-locks the user for the current transaction so status/role checks and the following write are consistent. */
+    fun lockById(id: UUID, mode: LockMode): User? =
+        jdbc.query("$SELECT WHERE id = ? ${mode.sql}", MAPPER, id).firstOrNull()
 
     fun findByEmail(normalizedEmail: String): User? =
         jdbc.query("$SELECT WHERE email = ?", MAPPER, normalizedEmail).firstOrNull()

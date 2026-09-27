@@ -15,6 +15,7 @@ const STATUS_CLASS: Record<UserStatus | AssignmentStatus, string> = {
   ACTIVE: styles.badgeActive,
   DEACTIVATED: styles.badgeDeactivated,
   REASSIGNED: styles.badgeReassigned,
+  ENDED: styles.badgeReassigned,
 };
 
 export function StatusBadge({ status }: { status: UserStatus | AssignmentStatus }) {

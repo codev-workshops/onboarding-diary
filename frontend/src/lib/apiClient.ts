@@ -34,7 +34,7 @@ export interface UserProfile extends UserSummary {
 
 // ---- S2: users (admin) & assignments -----------------------------------------
 
-export type AssignmentStatus = "ACTIVE" | "REASSIGNED";
+export type AssignmentStatus = "ACTIVE" | "REASSIGNED" | "ENDED";
 
 /** `{ items, page, size, totalItems, totalPages }` — frozen envelope for every list endpoint. */
 export interface Page<T> {

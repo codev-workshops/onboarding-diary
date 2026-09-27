@@ -10,6 +10,7 @@ import com.onboardingdiary.api.error.RoleChangeBlockedByAssignmentException
 import com.onboardingdiary.api.paging.Page
 import com.onboardingdiary.api.paging.PageRequest
 import com.onboardingdiary.assignment.AssignmentRepository
+import com.onboardingdiary.user.LockMode
 import com.onboardingdiary.user.Role
 import com.onboardingdiary.user.User
 import com.onboardingdiary.user.UserRepository
@@ -20,6 +21,7 @@ import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import java.util.UUID
 
 @Service
@@ -27,6 +29,7 @@ class UserAdminService(
     private val users: UserRepository,
     private val assignments: AssignmentRepository,
     private val assignmentService: AssignmentService,
+    private val transactionTemplate: TransactionTemplate,
 ) {
     private val log = LoggerFactory.getLogger(UserAdminService::class.java)
 
@@ -63,11 +66,15 @@ class UserAdminService(
         toDetail(user)
     }
 
-    /** REQ-FUNC-014 / 012a: email only while INVITED; role change blocked by an ACTIVE assignment (INV-11). */
+    /**
+     * REQ-FUNC-014 / 012a: email only while INVITED; role change blocked by an ACTIVE assignment (INV-11).
+     * The user row is locked `FOR UPDATE` for the whole check-then-write, so a concurrent signup
+     * (which updates the row) or `assign` (which locks the parties `FOR SHARE`) is serialised against it.
+     */
     suspend fun update(userId: UUID, request: AdminUserUpdateRequest): UserDetail {
         val newEmail = request.email?.let { EmailNormalizer.normalize(it)!! }
-        val updated = withContext(Dispatchers.IO) {
-            val user = users.findById(userId) ?: throw NotFoundException()
+        val updated = withContext(Dispatchers.IO) { transactionTemplate.execute {
+            val user = users.lockById(userId, LockMode.UPDATE) ?: throw NotFoundException()
 
             val email = when {
                 newEmail == null || newEmail == user.email -> user.email
@@ -90,19 +97,25 @@ class UserAdminService(
             } catch (e: DuplicateKeyException) {
                 throw EmailAlreadyExistsException()
             }
-        }
+        }!! }
         log.info("User {} updated by admin", updated.id)
         return detail(updated.id)
     }
 
-    /** REQ-FUNC-015: an INVITED user is revoked, an ACTIVE one loses access on the next request. */
+    /**
+     * REQ-FUNC-015: an INVITED user is revoked, an ACTIVE one loses access on the next request.
+     * Any ACTIVE assignment the user takes part in is closed as ENDED in the same transaction, so a
+     * deactivated manager does not keep (or regain on reactivation) access to recruits, and a
+     * deactivated recruit is no longer listed under a manager.
+     */
     suspend fun deactivate(adminId: UUID, userId: UUID): UserDetail {
         if (adminId == userId) throw CannotDeactivateSelfException()
-        val updated = withContext(Dispatchers.IO) {
-            val user = users.findById(userId) ?: throw NotFoundException()
-            if (user.status == UserStatus.DEACTIVATED) user else users.updateStatus(user.id, UserStatus.DEACTIVATED)
-        }
-        log.info("User {} deactivated by admin {}", updated.id, adminId)
+        val (updated, ended) = withContext(Dispatchers.IO) { transactionTemplate.execute {
+            val user = users.lockById(userId, LockMode.UPDATE) ?: throw NotFoundException()
+            if (user.status == UserStatus.DEACTIVATED) user to 0
+            else users.updateStatus(user.id, UserStatus.DEACTIVATED) to assignments.endAllActiveForParty(user.id)
+        }!! }
+        log.info("User {} deactivated by admin {} ({} assignment(s) ended)", updated.id, adminId, ended)
         return detail(updated.id)
     }
 

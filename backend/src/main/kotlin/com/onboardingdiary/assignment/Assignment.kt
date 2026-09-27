@@ -3,7 +3,7 @@ package com.onboardingdiary.assignment
 import java.time.Instant
 import java.util.UUID
 
-enum class AssignmentStatus { ACTIVE, REASSIGNED }
+enum class AssignmentStatus { ACTIVE, REASSIGNED, ENDED }
 
 data class Assignment(
     val id: UUID,
