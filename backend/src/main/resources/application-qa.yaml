@@ -2,3 +2,9 @@ logging:
   level:
     com.onboardingdiary: DEBUG
     org.springframework.web: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
