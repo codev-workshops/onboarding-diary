@@ -285,14 +285,11 @@ export class AssignmentStore {
 
   /**
    * Resolves one assigned recruit's identity for a manager, walking every page of
-   * `GET /me/recruits` until the id is found. Results are cached per id.
+   * `GET /me/recruits` until the id is found. The result is cached in
+   * `myRecruitById` for instant rendering, but every call revalidates against the
+   * live assignment and evicts the cache when the recruit is no longer assigned.
    */
   async findMyRecruit(recruitId: string): Promise<UserSummary | null> {
-    const cached = this.myRecruitById[recruitId] ?? this.myRecruits?.items.find((r) => r.recruit.id === recruitId)?.recruit;
-    if (cached) {
-      if (!this.myRecruitById[recruitId]) runInAction(() => (this.myRecruitById[recruitId] = cached));
-      return cached;
-    }
     const size = 100;
     for (let page = 0, totalPages = 1; page < totalPages; page++) {
       const res = await this.api.listMyRecruits({ page, size, sort: "fullName,asc" });
@@ -303,6 +300,9 @@ export class AssignmentStore {
         return hit;
       }
     }
+    runInAction(() => {
+      delete this.myRecruitById[recruitId];
+    });
     return null;
   }
 

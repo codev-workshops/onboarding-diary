@@ -68,11 +68,18 @@ export const TaskListView = observer(function TaskListView({ recruitId = null, h
     void tasks.load();
   }, [tasks, recruitId, state]);
 
+  // Only a page loaded for the *current* store query is shown: after a filter,
+  // sort or recruit change the previous results are hidden until the new ones
+  // arrive (never flash another recruit's tasks).
+  const list = tasks.recruitId === recruitId ? tasks.currentList : null;
+
   // The store clamps an out-of-range page to the last one; mirror that in the URL.
-  const loadedPage = tasks.list?.page;
+  // Read live store state so a page from the previous query is never written back.
+  const loadedPage = list?.page;
   useEffect(() => {
-    if (!tasks.listLoading && loadedPage !== undefined && loadedPage !== state.page) set({ page: loadedPage });
-  }, [tasks.listLoading, loadedPage, state.page, set]);
+    const current = tasks.recruitId === recruitId ? tasks.currentList : null;
+    if (!tasks.listLoading && current && current.page !== state.page) set({ page: current.page });
+  }, [tasks, recruitId, tasks.listLoading, loadedPage, state.page, set]);
 
   const onPageChange = useCallback((page: number) => set({ page }), [set]);
   const linkFor = hrefFor ?? ((id: string) => `/tasks/${id}`);
@@ -85,7 +92,7 @@ export const TaskListView = observer(function TaskListView({ recruitId = null, h
         onChange={(patch) => set({ filters: patch })}
         onReset={reset}
         hasActiveFilters={tasks.hasActiveFilters}
-        disabled={tasks.listLoading && !tasks.list}
+        disabled={tasks.listLoading && !list}
         idPrefix="tasks"
       >
         <div className={formStyles.field}>
@@ -102,8 +109,8 @@ export const TaskListView = observer(function TaskListView({ recruitId = null, h
         </div>
       </FilterBar>
       <EntryList
-        page={tasks.list}
-        loading={tasks.listLoading}
+        page={list}
+        loading={tasks.listLoading || (!list && !tasks.listError)}
         error={tasks.listError}
         renderItem={(task) => <TaskCard task={task} />}
         hrefFor={(task) => linkFor(task.id)}

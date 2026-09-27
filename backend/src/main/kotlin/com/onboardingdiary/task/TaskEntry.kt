@@ -33,6 +33,8 @@ data class TaskEntry(
     val category: TaskCategory,
     val status: TaskStatus,
     val priority: TaskPriority,
+    /** Optimistic-lock counter, bumped on every update; surfaced as the ETag. */
+    val version: Long,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

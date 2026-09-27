@@ -26,7 +26,12 @@ export interface Task extends EntryBase {
   category: TaskCategory;
   status: TaskStatus;
   priority: TaskPriority;
+  /** Optimistic-lock counter; send it back as `If-Match: "<version>"` on PUT. */
+  version: number;
 }
+
+/** ETag value for `If-Match` from a task's `version`. */
+export const taskEtag = (task: Pick<Task, "version">): string => `"${task.version}"`;
 
 export interface TaskCreateRequest {
   entryDate: string;
@@ -71,8 +76,8 @@ export class TasksApi implements EntryApi<Task, TaskCreateRequest, TaskUpdateReq
   }
 
   /** operationId: updateTask */
-  update(taskId: string, body: TaskUpdateRequest): Promise<Task> {
-    return this.http.request<Task>("PUT", `/tasks/${taskId}`, { body });
+  update(taskId: string, body: TaskUpdateRequest, ifMatch?: string): Promise<Task> {
+    return this.http.request<Task>("PUT", `/tasks/${taskId}`, { body, headers: ifMatch ? { "If-Match": ifMatch } : undefined });
   }
 
   /** operationId: deleteTask */

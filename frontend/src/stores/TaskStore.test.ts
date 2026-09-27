@@ -15,6 +15,7 @@ function task(id: string, patch: Partial<Task> = {}): Task {
     category: "TRAINING",
     status: "TODO",
     priority: "MEDIUM",
+    version: 1,
     createdAt: "2026-09-20T10:00:00Z",
     updatedAt: "2026-09-20T10:00:00Z",
     ...patch,
@@ -131,6 +132,24 @@ describe("TaskStore", () => {
       expect(store.current?.id).toBe("t3");
     });
 
+    it("create drops the list instead of prepending an entry that would break the sort order", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(201, task("old", { entryDate: "2026-09-01" })));
+      await store.create({ entryDate: "2026-09-01", title: "Older", category: "TRAINING" });
+      expect(store.list).toBeNull();
+      expect(store.current?.id).toBe("old");
+    });
+
+    it("create never patches a list loaded under a non-default sort", async () => {
+      store.setSort("title,asc");
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, page([task("a", { title: "A" }), task("c", { title: "C" })], 2)));
+      await store.load();
+      fetchMock.mockResolvedValueOnce(jsonResponse(201, task("b", { title: "B" })));
+
+      await store.create({ entryDate: "2026-09-20", title: "B", category: "TRAINING" });
+
+      expect(store.list).toBeNull();
+    });
+
     it("create keeps the first page within its size", async () => {
       store.size = 2;
       fetchMock.mockResolvedValueOnce(jsonResponse(200, page([task("t1"), task("t2")], 5, 2)));
@@ -164,6 +183,38 @@ describe("TaskStore", () => {
       expect(store.list?.totalItems).toBe(2);
     });
 
+    it("update sends If-Match when given the entry's ETag", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, task("t2", { version: 2 })));
+      await store.update("t2", { entryDate: "2026-09-20", title: "x", category: "TRAINING", status: "TODO", priority: "LOW" }, '"1"');
+      expect((requestInit(1).headers as Record<string, string>)["If-Match"]).toBe('"1"');
+      expect(store.list?.items[1]?.version).toBe(2);
+    });
+
+    it("update removes an entry that no longer matches the active filters", async () => {
+      store.setFilters({ status: "TODO" });
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, page([task("t1"), task("t2")], 2)));
+      await store.load();
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, task("t2", { status: "DONE" })));
+
+      await store.update("t2", { entryDate: "2026-09-20", title: "x", category: "TRAINING", status: "DONE", priority: "LOW" });
+
+      expect(store.list?.items.map((t) => t.id)).toEqual(["t1"]);
+      expect(store.list?.totalItems).toBe(1);
+    });
+
+    it("update drops the list when the entry's sort position may have moved", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, task("t2", { entryDate: "2026-09-25" })));
+      await store.update("t2", { entryDate: "2026-09-25", title: "x", category: "TRAINING", status: "TODO", priority: "LOW" });
+      expect(store.list).toBeNull();
+    });
+
+    it("currentList hides a page loaded for a previous query", () => {
+      expect(store.currentList?.items).toHaveLength(2);
+      store.setFilters({ status: "DONE" });
+      expect(store.list).not.toBeNull();
+      expect(store.currentList).toBeNull();
+    });
+
     it("remove drops the entry immediately and keeps it gone on 204", async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(204));
       const pending = store.remove("t1");
@@ -178,6 +229,19 @@ describe("TaskStore", () => {
       await expect(store.remove("t1")).rejects.toBeInstanceOf(ApiError);
       expect(store.list?.items.map((t) => t.id)).toEqual(["t1", "t2"]);
       expect(store.list?.totalItems).toBe(2);
+      expect(store.mutating).toBe(false);
+    });
+
+    it("a delete that fails after the filters changed does not restore the old query's page", async () => {
+      let reject: (e: unknown) => void = () => undefined;
+      fetchMock.mockReturnValueOnce(new Promise((_, r) => (reject = r)));
+      const pending = store.remove("t1");
+      store.setFilters({ status: "DONE" });
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, page([task("d1", { status: "DONE" })], 1)));
+      await store.load();
+      reject(new ApiError(403, "FORBIDDEN", "read-only"));
+      await expect(pending).rejects.toBeInstanceOf(ApiError);
+      expect(store.list?.items.map((t) => t.id)).toEqual(["d1"]);
       expect(store.mutating).toBe(false);
     });
 

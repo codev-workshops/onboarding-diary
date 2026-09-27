@@ -73,15 +73,16 @@ class TaskRepository(private val jdbc: JdbcTemplate) {
         category: TaskCategory,
         status: TaskStatus,
         priority: TaskPriority,
-        expectedStatus: TaskStatus,
+        expectedVersion: Long,
     ): Boolean {
         val rows = jdbc.update(
             """
             UPDATE task_entries
-               SET entry_date = ?, title = ?, description = ?, category = ?, status = ?, priority = ?, updated_at = now()
-             WHERE id = ? AND status = ?
+               SET entry_date = ?, title = ?, description = ?, category = ?, status = ?, priority = ?,
+                   version = version + 1, updated_at = now()
+             WHERE id = ? AND version = ?
             """.trimIndent(),
-            entryDate, title, description, category.name, status.name, priority.name, id, expectedStatus.name,
+            entryDate, title, description, category.name, status.name, priority.name, id, expectedVersion,
         )
         return rows == 1
     }
@@ -102,7 +103,7 @@ class TaskRepository(private val jdbc: JdbcTemplate) {
         )
 
         private const val SELECT = """
-            SELECT id, recruit_id, entry_date, title, description, category, status, priority, created_at, updated_at
+            SELECT id, recruit_id, entry_date, title, description, category, status, priority, version, created_at, updated_at
               FROM task_entries
         """
 
@@ -116,6 +117,7 @@ class TaskRepository(private val jdbc: JdbcTemplate) {
                 category = TaskCategory.valueOf(rs.getString("category")),
                 status = TaskStatus.valueOf(rs.getString("status")),
                 priority = TaskPriority.valueOf(rs.getString("priority")),
+                version = rs.getLong("version"),
                 createdAt = rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
                 updatedAt = rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
             )

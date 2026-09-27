@@ -1,5 +1,6 @@
 package com.onboardingdiary.api.task
 
+import com.onboardingdiary.api.error.ConflictException
 import com.onboardingdiary.api.error.InvalidStateTransitionException
 import com.onboardingdiary.api.error.NotFoundException
 import com.onboardingdiary.api.paging.Page
@@ -57,10 +58,17 @@ class TaskService(
     suspend fun get(principal: AuthenticatedUser, id: UUID): TaskResponse =
         TaskResponse.from(findVisible(principal, id))
 
-    suspend fun update(principal: AuthenticatedUser, id: UUID, req: UpdateTaskRequest): TaskResponse {
+    /**
+     * Full replacement guarded by the row `version`. With [expectedVersion]
+     * (from `If-Match`) a stale client gets 409 CONFLICT instead of silently
+     * overwriting a concurrent edit; without it, a lost CAS race is retried
+     * against the fresh row so the state machine is still enforced.
+     */
+    suspend fun update(principal: AuthenticatedUser, id: UUID, req: UpdateTaskRequest, expectedVersion: Long? = null): TaskResponse {
         principal.requireRole(Role.NEW_RECRUIT)
         repeat(MAX_UPDATE_ATTEMPTS) {
             val existing = findVisible(principal, id)
+            if (expectedVersion != null && expectedVersion != existing.version) throw ConflictException()
             TaskStateMachine.INSTANCE.requireTransition(existing.status, req.status!!)
             val applied = withContext(Dispatchers.IO) {
                 tasks.update(
@@ -71,12 +79,15 @@ class TaskService(
                     category = req.category!!,
                     status = req.status,
                     priority = req.priority!!,
-                    expectedStatus = existing.status,
+                    expectedVersion = existing.version,
                 )
             }
             if (applied) return TaskResponse.from(findVisible(principal, id))
+            if (expectedVersion != null) throw ConflictException()
         }
-        throw InvalidStateTransitionException(findVisible(principal, id).status.name, req.status!!.name)
+        val latest = findVisible(principal, id)
+        if (TaskStateMachine.INSTANCE.canTransition(latest.status, req.status!!)) throw ConflictException()
+        throw InvalidStateTransitionException(latest.status.name, req.status.name)
     }
 
     suspend fun delete(principal: AuthenticatedUser, id: UUID) {

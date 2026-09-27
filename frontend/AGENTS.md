@@ -77,7 +77,14 @@ Rules:
   Subclasses only implement `filterQuery(filters)` (slice enums → query) and
   optionally `errorMessage(e)` and `matchesFilters(entry, filters)` (so an
   optimistic create is only inserted when it belongs in the loaded list; the
-  base checks the date range). Do not add slice fields to `EntryStore`.
+  base checks the date range). Views must render `store.currentList`, not
+  `store.list`: it is `null` until a page loaded for the *current*
+  filters/page/sort/recruit exists, so stale pages never flash or leak into
+  the URL. Optimistic patches only apply when the entry still matches the
+  filters and the default sort keeps its position; otherwise the list is
+  dropped and reloaded. `update(id, body, ifMatch?)` forwards the entry's
+  ETag (`"<version>"`) so a stale edit fails with 409 `CONFLICT` instead of
+  overwriting. Do not add slice fields to `EntryStore`.
 - `RootStore.register(store)` enrols the store in the per-user reset; anything
   registered is cleared on login/logout. Stores must expose `clear()`.
 - Generic UI lives in `src/components/entries/` (`FilterBar`, `EntryList`,

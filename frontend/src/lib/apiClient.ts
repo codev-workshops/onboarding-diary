@@ -351,7 +351,7 @@ export class ApiClient implements ApiTransport {
   /** Authenticated JSON call used by every method here and by the resource modules. */
   async request<T>(method: string, path: string, opts: RequestOptions = {}): Promise<T> {
     const { body, auth = true } = opts;
-    const headers: Record<string, string> = { Accept: "application/json" };
+    const headers: Record<string, string> = { Accept: "application/json", ...opts.headers };
     if (body !== undefined) headers["Content-Type"] = "application/json";
     const token = auth ? this.authHandlers?.getToken() ?? null : null;
     if (token) headers.Authorization = `Bearer ${token}`;

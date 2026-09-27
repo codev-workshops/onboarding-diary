@@ -14,9 +14,14 @@ export interface EntryFilters {
  *   the API query (empty strings are dropped) and pages/screens sync it to the URL.
  * - `recruitId` is set by the manager/admin read-only view; recruits leave it null.
  * - `create` / `update` / `remove` are optimistic: the list page is patched
- *   immediately and the server response (or the next `load`) reconciles it. A
- *   created entry is only inserted when it matches the active filters on the
- *   first page; `clear()` (logout) invalidates in-flight loads and mutations.
+ *   immediately and the server response (or the next `load`) reconciles it. The
+ *   patch is only applied when it keeps the page consistent with the active
+ *   filters and sort (see `matchesFilters` / `orderPreserved`); otherwise the
+ *   list is dropped and the next screen reloads it. `clear()` (logout)
+ *   invalidates in-flight loads and mutations.
+ * - `list` is tagged with the query that produced it; `currentList` is `null`
+ *   until the loaded page matches `query`, so screens never render results for a
+ *   previous filter/page/recruit.
  * - Filter keys are the URL query keys, so `useUrlFilters` can round-trip them.
  *
  * Subclasses pass their `EntryApi`, default filters and default sort; MobX
@@ -24,6 +29,8 @@ export interface EntryFilters {
  */
 export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilters, Q extends EntryListQuery> {
   list: Page<T> | null = null;
+  /** `JSON.stringify(query)` at the time `list` was loaded. */
+  private listKey: string | null = null;
   filters: F;
   page = 0;
   size = 20;
@@ -49,8 +56,9 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
   ) {
     this.filters = { ...defaultFilters };
     this.sort = defaultSort;
-    makeObservable<EntryStore<T, C, U, F, Q>, "applyToList">(this, {
+    makeObservable<EntryStore<T, C, U, F, Q>, "applyToList" | "listKey" | "dropList">(this, {
       list: observable,
+      listKey: observable,
       filters: observable,
       page: observable,
       size: observable,
@@ -63,6 +71,8 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
       currentError: observable,
       mutating: observable,
       query: computed,
+      queryKey: computed,
+      currentList: computed,
       hasActiveFilters: computed,
       setFilters: action,
       resetFilters: action,
@@ -77,6 +87,7 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
       clearCurrent: action,
       clear: action,
       applyToList: action,
+      dropList: action,
     });
   }
 
@@ -96,6 +107,17 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
     const from = filters.from.trim();
     const to = filters.to.trim();
     return (!from || entry.entryDate >= from) && (!to || entry.entryDate <= to);
+  }
+
+  /**
+   * Whether an in-place patch keeps the loaded page ordered. Only the default
+   * sort is modelled generically (newest `entryDate` first, ties newest-created
+   * first); under any other sort the list is reloaded instead.
+   */
+  protected orderPreserved(before: T | null, after: T, items: T[]): boolean {
+    if (this.sort !== this.defaultSort) return false;
+    if (before) return before.entryDate === after.entryDate;
+    return items.length === 0 || after.entryDate >= items[0].entryDate;
   }
 
   // ---- list state ---------------------------------------------------------------
@@ -144,19 +166,34 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
     } as Q;
   }
 
+  /** Identity of the list the current state asks for; compare with the loaded one. */
+  get queryKey(): string {
+    return JSON.stringify(this.query);
+  }
+
+  /** The loaded page, or `null` when it was produced by a different query than the current state. */
+  get currentList(): Page<T> | null {
+    return this.list && this.listKey === this.queryKey ? this.list : null;
+  }
+
   async load() {
     const seq = ++this.listSeq;
+    const key = this.queryKey;
+    const query = this.query;
     this.listLoading = true;
     this.listError = null;
     try {
-      const res = await this.api.list(this.query);
+      const res = await this.api.list(query);
       if (seq !== this.listSeq) return;
       if (res.totalPages > 0 && res.page >= res.totalPages) {
         runInAction(() => (this.page = res.totalPages - 1));
         await this.load();
         return;
       }
-      runInAction(() => (this.list = res));
+      runInAction(() => {
+        this.list = res;
+        this.listKey = key;
+      });
     } catch (e) {
       if (seq !== this.listSeq) return;
       runInAction(() => (this.listError = this.errorMessage(e)));
@@ -197,10 +234,10 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
   // ---- mutations (optimistic) ----------------------------------------------------------
 
   /**
-   * Creates the entry. When the loaded list is on its first page and the entry
-   * matches the active filters it is prepended (default sort is newest first)
-   * and the page is trimmed to `size`; otherwise the list is dropped so the next
-   * screen reloads it. Errors propagate.
+   * Creates the entry. It is prepended to the loaded first page only when it
+   * matches the active filters and the sort keeps it at the top (see
+   * `orderPreserved`); otherwise the list is dropped so the next screen reloads
+   * it. Errors propagate.
    */
   async create(body: C): Promise<T> {
     const session = this.session;
@@ -208,10 +245,16 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
     try {
       const created = await this.api.create(body);
       if (session !== this.session) return created;
-      if (this.page === 0 && this.matchesFilters(created, this.filters)) {
+      const items = this.currentList?.items ?? [];
+      if (
+        this.currentList &&
+        this.page === 0 &&
+        this.matchesFilters(created, this.filters) &&
+        this.orderPreserved(null, created, items)
+      ) {
         this.applyToList((items) => [created, ...items.filter((t) => t.id !== created.id)].slice(0, this.size), +1);
       } else {
-        runInAction(() => (this.list = null));
+        this.dropList();
       }
       runInAction(() => (this.current = created));
       return created;
@@ -220,14 +263,30 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
     }
   }
 
-  /** Replaces the entry in the list and in `current` with the server response. Errors propagate. */
-  async update(id: string, body: U): Promise<T> {
+  /**
+   * Replaces the entry with the server response. In the loaded list it is
+   * swapped in place while it still matches the filters and keeps its position,
+   * removed when it no longer matches, and the list is dropped when its sort
+   * position may have changed. `ifMatch` (the ETag the edit was based on) makes
+   * the server reject a stale write with 409 CONFLICT. Errors propagate.
+   */
+  async update(id: string, body: U, ifMatch?: string): Promise<T> {
     const session = this.session;
     this.mutating = true;
     try {
-      const updated = await this.api.update(id, body);
+      const updated = await this.api.update(id, body, ifMatch);
       if (session !== this.session) return updated;
-      this.applyToList((items) => items.map((t) => (t.id === id ? updated : t)), 0);
+      const before = this.currentList?.items.find((t) => t.id === id) ?? null;
+      if (!this.currentList || !before) {
+        // Not on the loaded page: totals/membership may have changed elsewhere.
+        if (this.list) this.dropList();
+      } else if (!this.matchesFilters(updated, this.filters)) {
+        this.applyToList((items) => items.filter((t) => t.id !== id), -1);
+      } else if (this.orderPreserved(before, updated, this.currentList.items)) {
+        this.applyToList((items) => items.map((t) => (t.id === id ? updated : t)), 0);
+      } else {
+        this.dropList();
+      }
       runInAction(() => {
         if (this.current?.id === id) this.current = updated;
       });
@@ -237,12 +296,18 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
     }
   }
 
-  /** Optimistically drops the entry from the list; restores it if the server rejects the delete. */
+  /**
+   * Optimistically drops the entry from the loaded list; if the server rejects
+   * the delete the page is restored, but only while the list still belongs to
+   * the same query (no load ran since) — a newer query's page is left alone.
+   */
   async remove(id: string): Promise<void> {
     const session = this.session;
-    const snapshot = this.list;
+    const snapshot = this.currentList;
+    const snapshotSeq = this.listSeq;
     this.mutating = true;
-    this.applyToList((items) => items.filter((t) => t.id !== id), -1);
+    if (snapshot) this.applyToList((items) => items.filter((t) => t.id !== id), -1);
+    else if (this.list) this.dropList();
     try {
       await this.api.remove(id);
       if (session !== this.session) return;
@@ -250,7 +315,10 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
         if (this.current?.id === id) this.current = null;
       });
     } catch (e) {
-      if (session === this.session) runInAction(() => (this.list = snapshot));
+      // Restore only if no other load has run since (same query, same page).
+      if (session === this.session && snapshot && this.listSeq === snapshotSeq) {
+        runInAction(() => (this.list = snapshot));
+      }
       throw e;
     } finally {
       if (session === this.session) runInAction(() => (this.mutating = false));
@@ -265,11 +333,18 @@ export abstract class EntryStore<T extends EntryBase, C, U, F extends EntryFilte
     this.list = { ...this.list, items, totalItems, totalPages };
   }
 
+  /** Forget the loaded page so the next screen reloads it. */
+  private dropList() {
+    this.list = null;
+    this.listKey = null;
+  }
+
   clear() {
     this.listSeq++;
     this.currentSeq++;
     this.session++;
     this.list = null;
+    this.listKey = null;
     this.filters = { ...this.defaultFilters };
     this.page = 0;
     this.sort = this.defaultSort;

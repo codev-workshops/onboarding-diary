@@ -41,6 +41,7 @@ data class TaskResponse(
     val category: TaskCategory,
     val status: TaskStatus,
     val priority: TaskPriority,
+    val version: Long,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
@@ -54,6 +55,7 @@ data class TaskResponse(
             category = t.category,
             status = t.status,
             priority = t.priority,
+            version = t.version,
             createdAt = t.createdAt,
             updatedAt = t.updatedAt,
         )

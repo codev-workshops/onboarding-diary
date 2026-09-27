@@ -10,7 +10,8 @@ import { EntryForm } from "@/components/entries/EntryForm";
 import { formatDateOnly, formatDateTime } from "@/components/ui/labels";
 import { TASK_CATEGORY_LABELS, TaskPriorityTag, TaskStatusTag } from "@/features/tasks/labels";
 import { taskFields, taskToFormValues, toUpdateRequest, validateTask } from "@/features/tasks/taskForm";
-import type { Task } from "@/lib/apiClient";
+import { ApiError, type Task } from "@/lib/apiClient";
+import { taskEtag } from "@/lib/api/tasks";
 import { useStores } from "@/stores/StoreProvider";
 import { taskErrorMessage } from "@/stores/TaskStore";
 import entryStyles from "@/components/entries/entries.module.css";
@@ -50,7 +51,15 @@ const TaskDetail = observer(function TaskDetail({ task, backHref }: { task: Task
           busy={tasks.mutating}
           onCancel={() => setEditing(false)}
           onSubmit={async (values) => {
-            await tasks.update(task.id, toUpdateRequest(values));
+            try {
+              await tasks.update(task.id, toUpdateRequest(values), taskEtag(task));
+            } catch (e) {
+              if (e instanceof ApiError && e.code === "CONFLICT") {
+                void tasks.loadOne(task.id);
+                throw new Error(taskErrorMessage(e));
+              }
+              throw e;
+            }
             setEditing(false);
           }}
         />

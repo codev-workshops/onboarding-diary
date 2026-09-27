@@ -41,6 +41,8 @@ export interface RequestOptions {
   body?: unknown;
   /** Attach the bearer token (default true). */
   auth?: boolean;
+  /** Extra request headers (e.g. `If-Match`). */
+  headers?: Record<string, string>;
 }
 
 /** The single authenticated HTTP entry point that resource modules build on. */
@@ -56,7 +58,8 @@ export interface EntryApi<T extends EntryBase, C, U, Q extends EntryListQuery> {
   list(query?: Q): Promise<Page<T>>;
   get(id: string): Promise<T>;
   create(body: C): Promise<T>;
-  update(id: string, body: U): Promise<T>;
+  /** `ifMatch` is the ETag of the representation being edited (optimistic lock; stale = 409 CONFLICT). */
+  update(id: string, body: U, ifMatch?: string): Promise<T>;
   remove(id: string): Promise<void>;
 }
 

@@ -257,6 +257,20 @@ describe("AssignmentStore", () => {
     expect(store.currentAssignment).toBeNull();
     expect(store.managers).toEqual([]);
   });
+
+  it("findMyRecruit revalidates the live assignment and evicts a recruit that was reassigned", async () => {
+    const assigned = { recruit, assignedAt: "2026-01-01T00:00:00Z", openIssueCount: 0 };
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, page([assigned])));
+    expect(await store.findMyRecruit(recruit.id)).toEqual(recruit);
+    expect(store.myRecruitById[recruit.id]).toEqual(recruit);
+
+    // Reassigned away: the server no longer lists the recruit, so the cache must not serve it.
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, page([])));
+    expect(await store.findMyRecruit(recruit.id)).toBeNull();
+    expect(store.myRecruitById[recruit.id]).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(requestUrl(1)).toContain("/me/recruits");
+  });
 });
 
 describe("assignmentErrorMessage", () => {

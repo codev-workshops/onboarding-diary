@@ -57,8 +57,8 @@ abstract class AbstractAuthenticatedIntegrationTest : AbstractIntegrationTest() 
     protected fun patch(path: String, body: Any, token: String?): ResponseSpec =
         client.patch().uri(path).bodyValue(body).bearer(token)
 
-    protected fun put(path: String, body: Any, token: String?): ResponseSpec =
-        client.put().uri(path).bodyValue(body).bearer(token)
+    protected fun put(path: String, body: Any, token: String?, ifMatch: String? = null): ResponseSpec =
+        client.put().uri(path).let { if (ifMatch != null) it.header(HttpHeaders.IF_MATCH, ifMatch) else it }.bodyValue(body).bearer(token)
 
     protected fun delete(path: String, token: String?): ResponseSpec = client.delete().uri(path).bearer(token)
 

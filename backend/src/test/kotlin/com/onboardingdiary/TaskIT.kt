@@ -218,10 +218,10 @@ class TaskIT : AbstractAuthenticatedIntegrationTest() {
     }
 
     @Test
-    fun `update is a compare-and-set on the status read, so a concurrent edit cannot bypass the state machine`() {
+    fun `update is a compare-and-set on the row version, so a concurrent edit cannot bypass the state machine`() {
         val token = login(active(Role.NEW_RECRUIT).email)
         val id = create(token)
-        // Another request moves the task to DONE after this one read it as TODO.
+        // Another request moves the task to DONE (version 1 -> 2) after this one read version 1.
         put("/api/v1/tasks/$id", body(status = "DONE", priority = "MEDIUM"), token).expectStatus().isOk
 
         val applied = taskRepository.update(
@@ -232,11 +232,54 @@ class TaskIT : AbstractAuthenticatedIntegrationTest() {
             category = TaskCategory.TRAINING,
             status = TaskStatus.BLOCKED,
             priority = TaskPriority.MEDIUM,
-            expectedStatus = TaskStatus.TODO,
+            expectedVersion = 1,
         )
 
         assertFalse(applied)
-        assertEquals(TaskStatus.DONE, taskRepository.findById(id)!!.status)
+        val latest = taskRepository.findById(id)!!
+        assertEquals(TaskStatus.DONE, latest.status)
+        assertEquals(2, latest.version)
+    }
+
+    @Test
+    fun `responses carry version and ETag, and each update bumps them`() {
+        val token = login(active(Role.NEW_RECRUIT).email)
+        val id = create(token)
+        get("/api/v1/tasks/$id", token).expectStatus().isOk
+            .expectHeader().valueEquals("ETag", "\"1\"")
+            .expectBody().jsonPath("$.version").isEqualTo(1)
+        put("/api/v1/tasks/$id", body(title = "edited", status = "TODO", priority = "LOW"), token).expectStatus().isOk
+            .expectHeader().valueEquals("ETag", "\"2\"")
+            .expectBody().jsonPath("$.version").isEqualTo(2)
+    }
+
+    @Test
+    fun `stale If-Match is 409 CONFLICT even when both edits keep the same status`() {
+        val token = login(active(Role.NEW_RECRUIT).email)
+        val id = create(token)
+        // Two editors both loaded version 1 and keep status TODO.
+        put("/api/v1/tasks/$id", body(title = "first editor", status = "TODO", priority = "LOW"), token, ifMatch = "\"1\"")
+            .expectStatus().isOk
+        put("/api/v1/tasks/$id", body(title = "second editor", status = "TODO", priority = "HIGH"), token, ifMatch = "\"1\"")
+            .expectError(409, "CONFLICT")
+
+        val latest = taskRepository.findById(id)!!
+        assertEquals("first editor", latest.title)
+        assertEquals(TaskPriority.LOW, latest.priority)
+        assertEquals(2, latest.version)
+
+        // Fresh ETag (weak form accepted) succeeds.
+        put("/api/v1/tasks/$id", body(title = "second editor", status = "TODO", priority = "HIGH"), token, ifMatch = "W/\"2\"")
+            .expectStatus().isOk.expectBody().jsonPath("$.version").isEqualTo(3)
+    }
+
+    @Test
+    fun `malformed If-Match is 400 with a field detail`() {
+        val token = login(active(Role.NEW_RECRUIT).email)
+        val id = create(token)
+        put("/api/v1/tasks/$id", body(status = "TODO", priority = "LOW"), token, ifMatch = "abc")
+            .expectError(400, "VALIDATION_FAILED")
+            .jsonPath("$.details[0].field").isEqualTo("If-Match")
     }
 
     // ---- ownership & roles -------------------------------------------------

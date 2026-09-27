@@ -26,6 +26,8 @@ export function taskErrorMessage(e: unknown): string {
         return e.details[0]?.message ? `Status ${e.details[0].message}.` : "That status change is not allowed.";
       case "NOT_FOUND":
         return "This task does not exist or you cannot access it.";
+      case "CONFLICT":
+        return "This task was changed by someone else. Review the latest version and try again.";
       case "NOT_ASSIGNED":
         return "You are not assigned to this recruit.";
       case "FORBIDDEN":
