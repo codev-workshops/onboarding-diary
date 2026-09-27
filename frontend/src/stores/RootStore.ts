@@ -7,6 +7,7 @@ import { HealthStore } from "@/stores/HealthStore";
 import { TaskStore } from "@/stores/TaskStore";
 import { IssueStore } from "@/stores/IssueStore";
 import { FeedbackStore } from "@/stores/FeedbackStore";
+import { NoteStore } from "@/stores/NoteStore";
 
 /** Anything holding server-derived data for the signed-in user. */
 interface UserScopedStore {
@@ -36,6 +37,7 @@ export class RootStore {
   readonly tasks: TaskStore;
   readonly issues: IssueStore;
   readonly feedback: FeedbackStore;
+  readonly notes: NoteStore;
 
   private readonly userScoped: UserScopedStore[] = [];
 
@@ -49,6 +51,7 @@ export class RootStore {
     this.tasks = this.register(new TaskStore(api));
     this.issues = this.register(new IssueStore(api));
     this.feedback = this.register(new FeedbackStore(api));
+    this.notes = this.register(new NoteStore(api));
 
     // Server-derived data must not survive a sign-out or user switch.
     reaction(
