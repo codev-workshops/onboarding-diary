@@ -16,6 +16,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer
 abstract class AbstractIntegrationTest {
 
     companion object {
+        const val JWT_SECRET = "integration-test-jwt-secret-0123456789abcdef"
+        const val ADMIN_EMAIL = "admin@example.com"
+        const val ADMIN_PASSWORD = "AdminPass123!"
+
         val postgres: PostgreSQLContainer = PostgreSQLContainer("postgres:16-alpine")
             .withDatabaseName("onboarding_diary")
             .withUsername("onboarding")
@@ -28,6 +32,9 @@ abstract class AbstractIntegrationTest {
             registry.add("spring.datasource.url") { postgres.jdbcUrl }
             registry.add("spring.datasource.username") { postgres.username }
             registry.add("spring.datasource.password") { postgres.password }
+            registry.add("app.jwt.secret") { JWT_SECRET }
+            registry.add("app.bootstrap-admin.email") { ADMIN_EMAIL }
+            registry.add("app.bootstrap-admin.password") { ADMIN_PASSWORD }
         }
     }
 }
