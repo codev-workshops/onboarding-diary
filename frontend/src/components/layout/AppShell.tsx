@@ -18,8 +18,9 @@ interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Home" },
   { href: "/profile", label: "My profile" },
-  { href: "/team", label: "Team", roles: ["MANAGER", "ADMIN"] },
+  { href: "/recruits", label: "Recruits", roles: ["MANAGER", "ADMIN"] },
   { href: "/admin/users", label: "Users", roles: ["ADMIN"] },
+  { href: "/admin/assignments", label: "Assignments", roles: ["ADMIN"] },
 ];
 
 export function navItemsFor(role: Role | null): NavItem[] {
@@ -57,7 +58,7 @@ export const AppShell = observer(function AppShell({ children }: { children: Rea
                 key={item.href}
                 href={item.href}
                 className={styles.navLink}
-                aria-current={pathname === item.href ? "page" : undefined}
+                aria-current={pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`)) ? "page" : undefined}
               >
                 {item.label}
               </Link>

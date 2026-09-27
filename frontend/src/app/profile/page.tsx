@@ -15,6 +15,31 @@ function formatDate(iso: string | null) {
   return iso ? new Date(iso).toLocaleString() : "—";
 }
 
+/** Recruit-only line: current manager from `GET /me/manager` (REQ-FUNC-021). */
+const ManagerLine = observer(function ManagerLine() {
+  const { assignments } = useStores();
+
+  useEffect(() => {
+    void assignments.loadMyManager();
+  }, [assignments]);
+
+  const a = assignments.myManager;
+  return (
+    <>
+      <dt>Manager</dt>
+      <dd data-testid="profile-manager">
+        {!assignments.myManagerLoaded
+          ? "…"
+          : assignments.myManagerError
+            ? assignments.myManagerError
+            : a
+              ? `${a.manager.fullName} (${a.manager.email})${a.manager.department ? `, ${a.manager.department}` : ""} — since ${formatDate(a.assignedAt)}`
+              : "Not assigned yet"}
+      </dd>
+    </>
+  );
+});
+
 const ProfileDetails = observer(function ProfileDetails({ user }: { user: UserProfile }) {
   return (
     <section className={`${styles.card} ${styles.wide}`} aria-labelledby="profile-title">
@@ -31,6 +56,7 @@ const ProfileDetails = observer(function ProfileDetails({ user }: { user: UserPr
         <dd data-testid="profile-department">{user.department ?? "—"}</dd>
         <dt>Start date</dt>
         <dd data-testid="profile-start-date">{user.startDate ?? "—"}</dd>
+        {user.role === "NEW_RECRUIT" && <ManagerLine />}
         <dt>Invited</dt>
         <dd>
           {formatDate(user.invitedAt)}

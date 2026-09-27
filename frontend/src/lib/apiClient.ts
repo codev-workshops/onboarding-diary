@@ -32,6 +32,94 @@ export interface UserProfile extends UserSummary {
   updatedAt: string;
 }
 
+// ---- S2: users (admin) & assignments -----------------------------------------
+
+export type AssignmentStatus = "ACTIVE" | "REASSIGNED" | "ENDED";
+
+/** `{ items, page, size, totalItems, totalPages }` — frozen envelope for every list endpoint. */
+export interface Page<T> {
+  items: T[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface PageQuery {
+  page?: number;
+  size?: number;
+  /** `field,asc|desc`; fields whitelisted per resource by the backend. */
+  sort?: string;
+}
+
+export interface Assignment {
+  id: string;
+  recruit: UserSummary;
+  manager: UserSummary;
+  assignedBy: UserSummary;
+  status: AssignmentStatus;
+  assignedAt: string;
+  endedAt: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserDetail extends UserProfile {
+  currentAssignment: Assignment | null;
+  activeRecruitCount: number | null;
+}
+
+export interface CreateUserRequest {
+  email: string;
+  fullName: string;
+  role: Role;
+  department?: string;
+  startDate?: string;
+}
+
+/** Absent = unchanged; explicit `null` clears department / startDate. Email only while INVITED. */
+export interface AdminUserUpdateRequest {
+  fullName?: string;
+  department?: string | null;
+  startDate?: string | null;
+  role?: Role;
+  email?: string;
+}
+
+export interface ListUsersQuery extends PageQuery {
+  role?: Role;
+  status?: UserStatus;
+  q?: string;
+}
+
+export interface ListAssignmentsQuery extends PageQuery {
+  recruitId?: string;
+  managerId?: string;
+  status?: AssignmentStatus;
+}
+
+export interface CreateAssignmentRequest {
+  recruitId: string;
+  managerId: string;
+  note?: string;
+}
+
+export interface AssignmentResult {
+  assignment: Assignment;
+  superseded: Assignment | null;
+}
+
+export interface MyManagerResponse {
+  assignment: Assignment | null;
+}
+
+export interface AssignedRecruit {
+  recruit: UserSummary;
+  assignedAt: string;
+  openIssueCount: number;
+}
+
 export interface AuthResponse {
   token: string;
   expiresAt: string;
@@ -200,6 +288,65 @@ export class ApiClient {
     return this.request<void>("POST", "/me/password", { body });
   }
 
+  /** operationId: listMyRecruits — manager */
+  listMyRecruits(query: PageQuery = {}): Promise<Page<AssignedRecruit>> {
+    return this.request<Page<AssignedRecruit>>("GET", `/me/recruits${toQuery(query)}`);
+  }
+
+  /** operationId: getMyManager — recruit */
+  getMyManager(): Promise<MyManagerResponse> {
+    return this.request<MyManagerResponse>("GET", "/me/manager");
+  }
+
+  // ---- users (admin) --------------------------------------------------------
+
+  /** operationId: listUsers */
+  listUsers(query: ListUsersQuery = {}): Promise<Page<UserSummary>> {
+    return this.request<Page<UserSummary>>("GET", `/users${toQuery(query)}`);
+  }
+
+  /** operationId: createUser */
+  createUser(body: CreateUserRequest): Promise<UserDetail> {
+    return this.request<UserDetail>("POST", "/users", { body });
+  }
+
+  /** operationId: getUser */
+  getUser(userId: string): Promise<UserDetail> {
+    return this.request<UserDetail>("GET", `/users/${encodeURIComponent(userId)}`);
+  }
+
+  /** operationId: updateUser */
+  updateUser(userId: string, body: AdminUserUpdateRequest): Promise<UserDetail> {
+    return this.request<UserDetail>("PATCH", `/users/${encodeURIComponent(userId)}`, { body });
+  }
+
+  /** operationId: deactivateUser */
+  deactivateUser(userId: string): Promise<UserDetail> {
+    return this.request<UserDetail>("POST", `/users/${encodeURIComponent(userId)}/deactivate`);
+  }
+
+  /** operationId: reactivateUser */
+  reactivateUser(userId: string): Promise<UserDetail> {
+    return this.request<UserDetail>("POST", `/users/${encodeURIComponent(userId)}/reactivate`);
+  }
+
+  // ---- assignments (admin) ---------------------------------------------------
+
+  /** operationId: listAssignmentHistory — newest first */
+  listAssignmentHistory(userId: string, query: PageQuery = {}): Promise<Page<Assignment>> {
+    return this.request<Page<Assignment>>("GET", `/users/${encodeURIComponent(userId)}/assignments${toQuery(query)}`);
+  }
+
+  /** operationId: listAssignments */
+  listAssignments(query: ListAssignmentsQuery = {}): Promise<Page<Assignment>> {
+    return this.request<Page<Assignment>>("GET", `/assignments${toQuery(query)}`);
+  }
+
+  /** operationId: assignManager — assign or atomically reassign */
+  assignManager(body: CreateAssignmentRequest): Promise<AssignmentResult> {
+    return this.request<AssignmentResult>("POST", "/assignments", { body });
+  }
+
   // ---- core ------------------------------------------------------------------
 
   private async request<T>(
@@ -249,6 +396,17 @@ export class ApiClient {
     const message = parsed?.message ?? `Request to ${path} failed with HTTP ${res.status}`;
     return new ApiError(res.status, code, message, parsed?.details ?? []);
   }
+}
+
+/** Serialises defined, non-empty query values; `?`-prefixed or empty string. */
+export function toQuery(query: object): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query) as [string, string | number | undefined][]) {
+    if (value === undefined || value === "") continue;
+    params.set(key, String(value));
+  }
+  const s = params.toString();
+  return s ? `?${s}` : "";
 }
 
 export const apiClient = new ApiClient();

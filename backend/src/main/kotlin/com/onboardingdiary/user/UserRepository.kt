@@ -1,5 +1,10 @@
 package com.onboardingdiary.user
 
+import com.onboardingdiary.api.paging.Page
+import com.onboardingdiary.api.paging.PageRequest
+import com.onboardingdiary.api.paging.Sort
+import com.onboardingdiary.api.paging.SortDirection
+import com.onboardingdiary.api.paging.SortWhitelist
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.stereotype.Repository
@@ -8,6 +13,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
+
+enum class LockMode(val sql: String) { UPDATE("FOR UPDATE"), SHARE("FOR SHARE") }
 
 /**
  * Blocking JDBC access to `users`. Callers offload via
@@ -19,11 +26,43 @@ class UserRepository(private val jdbc: JdbcTemplate) {
     fun findById(id: UUID): User? =
         jdbc.query("$SELECT WHERE id = ?", MAPPER, id).firstOrNull()
 
+    /** Row-locks the user for the current transaction so status/role checks and the following write are consistent. */
+    fun lockById(id: UUID, mode: LockMode): User? =
+        jdbc.query("$SELECT WHERE id = ? ${mode.sql}", MAPPER, id).firstOrNull()
+
     fun findByEmail(normalizedEmail: String): User? =
         jdbc.query("$SELECT WHERE email = ?", MAPPER, normalizedEmail).firstOrNull()
 
+    fun findByIds(ids: Collection<UUID>): Map<UUID, User> {
+        if (ids.isEmpty()) return emptyMap()
+        val distinct = ids.toSet()
+        val placeholders = distinct.joinToString(",") { "?" }
+        return jdbc.query("$SELECT WHERE id IN ($placeholders)", MAPPER, *distinct.toTypedArray()).associateBy { it.id }
+    }
+
     fun countByRole(role: Role): Long =
         jdbc.queryForObject("SELECT count(*) FROM users WHERE role = ?", Long::class.java, role.name) ?: 0L
+
+    /** Admin listing (REQ-FUNC-011): optional role/status filters and a case-insensitive `q` on email / full name. */
+    fun search(role: Role?, status: UserStatus?, q: String?, page: PageRequest): Page<User> {
+        val where = mutableListOf<String>()
+        val args = mutableListOf<Any>()
+        if (role != null) { where += "role = ?"; args += role.name }
+        if (status != null) { where += "status = ?"; args += status.name }
+        val term = q?.trim()?.takeIf { it.isNotEmpty() }
+        if (term != null) {
+            where += "(email ILIKE ? OR full_name ILIKE ?)"
+            val like = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            args += like; args += like
+        }
+        val clause = if (where.isEmpty()) "" else " WHERE " + where.joinToString(" AND ")
+        val total = jdbc.queryForObject("SELECT count(*) FROM users$clause", Long::class.java, *args.toTypedArray()) ?: 0L
+        val items = jdbc.query(
+            "$SELECT$clause ORDER BY ${page.orderBy}, id ASC LIMIT ? OFFSET ?",
+            MAPPER, *args.toTypedArray(), page.size, page.offset,
+        )
+        return Page(items, page.page, page.size, total)
+    }
 
     fun insert(
         email: String,
@@ -74,14 +113,49 @@ class UserRepository(private val jdbc: JdbcTemplate) {
         jdbc.update("UPDATE users SET password_hash = ?, updated_at = now() WHERE id = ?", passwordHash, id)
     }
 
-    companion object {
-        private const val SELECT = """
-            SELECT id, email, password_hash, role, status, full_name, department, start_date,
-                   created_by_id, invited_at, activated_at, created_at, updated_at
-              FROM users
-        """
+    /** Admin update (REQ-FUNC-014 / 012a). Every column is written; the service resolves "absent = unchanged". */
+    fun updateAdminFields(
+        id: UUID,
+        email: String,
+        fullName: String,
+        department: String?,
+        startDate: LocalDate?,
+        role: Role,
+    ): User {
+        jdbc.update(
+            """
+            UPDATE users
+               SET email = ?, full_name = ?, department = ?, start_date = ?, role = ?, updated_at = now()
+             WHERE id = ?
+            """.trimIndent(),
+            email, fullName, department, startDate, role.name, id,
+        )
+        return findById(id)!!
+    }
 
-        private val MAPPER = RowMapper<User> { rs: ResultSet, _ ->
+    fun updateStatus(id: UUID, status: UserStatus): User {
+        jdbc.update("UPDATE users SET status = ?, updated_at = now() WHERE id = ?", status.name, id)
+        return findById(id)!!
+    }
+
+    companion object {
+        val USER_SORT = SortWhitelist(
+            mapOf(
+                "fullName" to "full_name", "email" to "email", "role" to "role", "status" to "status",
+                "department" to "department", "startDate" to "start_date", "invitedAt" to "invited_at",
+                "createdAt" to "created_at",
+            ),
+            Sort("fullName", SortDirection.ASC),
+        )
+
+        val COLUMNS = listOf(
+            "id", "email", "password_hash", "role", "status", "full_name", "department", "start_date",
+            "created_by_id", "invited_at", "activated_at", "created_at", "updated_at",
+        )
+
+        private val SELECT = "SELECT ${COLUMNS.joinToString(", ")} FROM users"
+
+        val MAPPER = RowMapper<User> { rs: ResultSet, _ ->
             User(
                 id = rs.getObject("id", UUID::class.java),
                 email = rs.getString("email"),

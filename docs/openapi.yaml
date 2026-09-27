@@ -1173,7 +1173,8 @@ components:
       description: INVITED = created by an Admin, no password yet, cannot log in.
     AssignmentStatus:
       type: string
-      enum: [ACTIVE, REASSIGNED]
+      enum: [ACTIVE, REASSIGNED, ENDED]
+      description: ENDED = closed because the recruit or manager was deactivated.
     TaskCategory:
       type: string
       enum: [TRAINING, SETUP, DEVELOPMENT, MEETING, DOCUMENTATION, OTHER]
