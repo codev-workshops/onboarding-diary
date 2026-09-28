@@ -143,6 +143,15 @@ describe("ReportStore", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
+  it("drops a preselected recruit that is not in the scoped options", async () => {
+    fetchImpl.mockResolvedValueOnce(jsonResponse(200, page([])));
+    store.init("MANAGER", RECRUIT_ID);
+    expect(store.form.recruitId).toBe(RECRUIT_ID);
+    await vi.waitFor(() => expect(store.recruitsLoading).toBe(false));
+    expect(store.recruits).toEqual([]);
+    expect(store.form.recruitId).toBe("");
+  });
+
   it("shows inline errors only after touch or submit and blocks generate", async () => {
     store.init("NEW_RECRUIT");
     store.setField("from", "");

@@ -116,7 +116,7 @@ class PdfRenderer : ReportRenderer {
             val out = mutableListOf<String>()
             for (paragraph in text.split('\n')) {
                 var current = StringBuilder()
-                for (word in paragraph.split(' ')) {
+                for (word in paragraph.split(' ').flatMap { breakLongWord(it, font, size, maxWidth) }) {
                     val candidate = if (current.isEmpty()) word else "$current $word"
                     if (width(candidate, font, size) <= maxWidth || current.isEmpty()) {
                         current = StringBuilder(candidate)
@@ -128,6 +128,22 @@ class PdfRenderer : ReportRenderer {
                 out += current.toString()
             }
             return out
+        }
+
+        /** Splits a single word wider than the line into fitting pieces so nothing runs off the page. */
+        private fun breakLongWord(word: String, font: PDFont, size: Float, maxWidth: Float): List<String> {
+            if (width(word, font, size) <= maxWidth) return listOf(word)
+            val pieces = mutableListOf<String>()
+            var piece = StringBuilder()
+            for (ch in word) {
+                if (piece.isNotEmpty() && width("$piece$ch", font, size) > maxWidth) {
+                    pieces += piece.toString()
+                    piece = StringBuilder()
+                }
+                piece.append(ch)
+            }
+            if (piece.isNotEmpty()) pieces += piece.toString()
+            return pieces
         }
 
         private fun width(s: String, font: PDFont, size: Float) = font.getStringWidth(s) / 1000 * size

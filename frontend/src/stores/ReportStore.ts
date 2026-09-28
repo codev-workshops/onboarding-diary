@@ -64,11 +64,17 @@ export function reportErrorMessage(e: unknown): string {
   return "Report could not be generated. Please try again.";
 }
 
+function localIsoDate(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Last 30 days up to today in the user's local calendar. */
 function defaultRange(): { from: string; to: string } {
   const to = new Date();
   const from = new Date(to);
-  from.setUTCDate(from.getUTCDate() - 30);
-  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+  from.setDate(from.getDate() - 30);
+  return { from: localIsoDate(from), to: localIsoDate(to) };
 }
 
 /**
@@ -177,9 +183,7 @@ export class ReportStore {
       runInAction(() => {
         this.recruits = options;
         this.recruitsLoading = false;
-        if (this.form.recruitId && !options.some((r) => r.id === this.form.recruitId)) {
-          this.recruits = [...options, { id: this.form.recruitId, fullName: "Selected recruit", email: this.form.recruitId }];
-        }
+        if (this.form.recruitId && !options.some((r) => r.id === this.form.recruitId)) this.form.recruitId = "";
       });
     } catch (e) {
       if (seq !== this.recruitsSeq) return;

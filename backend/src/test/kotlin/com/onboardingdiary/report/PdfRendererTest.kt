@@ -57,6 +57,16 @@ class PdfRendererTest {
     }
 
     @Test
+    fun `unbroken words wider than the page are split instead of clipped`() {
+        val long = "x".repeat(400)
+        val (_, text) = text(renderer.render(document(ReportType.TASKS, tasks = listOf(task("Long", long)))))
+        val lines = text.lines().filter { it.isNotBlank() && it.all { c -> c == 'x' } }
+        assertTrue(lines.size > 1)
+        assertTrue(lines.all { it.length < 200 })
+        assertTrue(lines.sumOf { it.length } == 400)
+    }
+
+    @Test
     fun `omitted feedback is noted and unencodable characters do not crash`() {
         val doc = document(ReportType.COMBINED, feedback = null, feedbackOmitted = true, tasks = listOf(task("Emoji 🎉\ttab")))
         val (_, text) = text(renderer.render(doc))
