@@ -152,6 +152,14 @@ describe("ReportStore", () => {
     expect(store.form.recruitId).toBe("");
   });
 
+  it("keeps a preselected recruit for admins even when not in the active list", async () => {
+    fetchImpl.mockResolvedValueOnce(jsonResponse(200, page([])));
+    store.init("ADMIN", RECRUIT_ID);
+    await vi.waitFor(() => expect(store.recruitsLoading).toBe(false));
+    expect(store.form.recruitId).toBe(RECRUIT_ID);
+    expect(store.recruits.map((r) => r.id)).toEqual([RECRUIT_ID]);
+  });
+
   it("shows inline errors only after touch or submit and blocks generate", async () => {
     store.init("NEW_RECRUIT");
     store.setField("from", "");

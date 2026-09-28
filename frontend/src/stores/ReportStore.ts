@@ -183,7 +183,12 @@ export class ReportStore {
       runInAction(() => {
         this.recruits = options;
         this.recruitsLoading = false;
-        if (this.form.recruitId && !options.some((r) => r.id === this.form.recruitId)) this.form.recruitId = "";
+        const preselected = this.form.recruitId;
+        if (preselected && !options.some((r) => r.id === preselected)) {
+          // Admins may report on deactivated recruits (not in the active-only list); managers only on assigned ones.
+          if (role === "ADMIN") this.recruits = [...options, { id: preselected, fullName: "Selected recruit", email: preselected }];
+          else this.form.recruitId = "";
+        }
       });
     } catch (e) {
       if (seq !== this.recruitsSeq) return;
