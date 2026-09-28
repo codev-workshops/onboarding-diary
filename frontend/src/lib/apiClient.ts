@@ -4,6 +4,7 @@ import { TasksApi } from "@/lib/api/tasks";
 import { IssuesApi } from "@/lib/api/issues";
 import { FeedbackApi } from "@/lib/api/feedback";
 import { NotesApi } from "@/lib/api/notes";
+import { DashboardApi } from "@/lib/api/dashboard";
 
 // Shared envelope/paging/entry types and every per-resource module are re-exported
 // so callers keep importing contract types from "@/lib/apiClient".
@@ -14,6 +15,7 @@ export * from "@/lib/api/tasks";
 export * from "@/lib/api/issues";
 export * from "@/lib/api/feedback";
 export * from "@/lib/api/notes";
+export * from "@/lib/api/dashboard";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -242,6 +244,8 @@ export class ApiClient implements ApiTransport {
   readonly feedback = new FeedbackApi(this);
   /** S6 — `/notes` (see src/lib/api/notes.ts). */
   readonly notes = new NotesApi(this);
+  /** S7 — `/dashboard` (see src/lib/api/dashboard.ts). */
+  readonly dashboard = new DashboardApi(this);
 
   constructor(
     private readonly baseUrl: string = API_BASE_URL,
