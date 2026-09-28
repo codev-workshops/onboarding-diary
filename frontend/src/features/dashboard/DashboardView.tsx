@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import type { RecentEntryKind } from "@/lib/apiClient";
 import { formatDateOnly } from "@/components/ui/labels";
 import { TASK_STATUS_LABELS } from "@/features/tasks/labels";
-import { ISSUE_SEVERITY_LABELS, IssueSeverityTag, IssueStatusTag } from "@/features/issues/labels";
+import { ISSUE_SEVERITY_LABELS, ISSUE_STATUS_LABELS, IssueSeverityTag, IssueStatusTag } from "@/features/issues/labels";
 import { FEEDBACK_TYPE_LABELS } from "@/features/feedback/labels";
 import { entryHref, type DashboardView as DashboardViewModel } from "@/stores/DashboardStore";
 import { useStores } from "@/stores/StoreProvider";
@@ -83,6 +83,14 @@ export function DashboardSummaryView({ view, canCreate, recruitId }: SummaryProp
                 {issues.bySeverity.map((r) => (
                   <li key={r.key} data-testid={`dashboard-issue-${r.key}`}>
                     <span>{ISSUE_SEVERITY_LABELS[r.key]}</span>
+                    <span className={styles.breakdownCount}>{r.count}</span>
+                  </li>
+                ))}
+              </ul>
+              <ul className={styles.breakdown} aria-label="Issues by status">
+                {issues.byStatus.map((r) => (
+                  <li key={r.key} data-testid={`dashboard-issue-status-${r.key}`}>
+                    <span>{ISSUE_STATUS_LABELS[r.key]}</span>
                     <span className={styles.breakdownCount}>{r.count}</span>
                   </li>
                 ))}

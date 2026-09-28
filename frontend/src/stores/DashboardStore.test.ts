@@ -65,6 +65,12 @@ describe("toDashboardView", () => {
       { key: "HIGH", count: 2 },
       { key: "CRITICAL", count: 0 },
     ]);
+    expect(view.issues.byStatus).toEqual([
+      { key: "OPEN", count: 1 },
+      { key: "IN_PROGRESS", count: 1 },
+      { key: "RESOLVED", count: 1 },
+      { key: "CLOSED", count: 0 },
+    ]);
     expect(view.issues.recentOpen).toEqual([issue]);
     expect(view.feedback).toEqual({
       total: 4,
@@ -160,6 +166,18 @@ describe("DashboardStore", () => {
     expect(requestUrl(1).searchParams.get("recruitId")).toBe(RECRUIT_ID);
     expect(store.error).toBeNull();
     expect(store.view?.issues.open).toBe(2);
+  });
+
+  it("drops the previous summary when a reload fails", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, summary()));
+    await store.load(RECRUIT_ID);
+    expect(store.view?.tasks.total).toBe(7);
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(500, errorBody("INTERNAL_ERROR", "boom")));
+    await store.retry();
+    expect(store.error).toBe("The dashboard could not be loaded right now. Please try again.");
+    expect(store.summary).toBeNull();
+    expect(store.view).toBeNull();
   });
 
   it("maps 403 NOT_ASSIGNED to a non-retryable message", async () => {

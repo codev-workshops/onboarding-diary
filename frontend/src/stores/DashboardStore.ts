@@ -1,6 +1,6 @@
 import { action, computed, makeObservable, observable, runInAction } from "mobx";
-import type { ApiClient, DashboardSummary, FeedbackType, IssueSeverity, RecentEntryKind, TaskStatus } from "@/lib/apiClient";
-import { ApiError, FEEDBACK_TYPES, ISSUE_SEVERITIES, TASK_STATUSES } from "@/lib/apiClient";
+import type { ApiClient, DashboardSummary, FeedbackType, IssueSeverity, IssueStatus, RecentEntryKind, TaskStatus } from "@/lib/apiClient";
+import { ApiError, FEEDBACK_TYPES, ISSUE_SEVERITIES, ISSUE_STATUSES, TASK_STATUSES } from "@/lib/apiClient";
 
 export interface CountRow<K extends string> {
   key: K;
@@ -20,7 +20,13 @@ export interface RecentEntryView {
 export interface DashboardView {
   recruitId: string;
   tasks: { total: number; byStatus: CountRow<TaskStatus>[]; completionPercent: number };
-  issues: { total: number; open: number; bySeverity: CountRow<IssueSeverity>[]; recentOpen: DashboardSummary["issues"]["recentOpen"] };
+  issues: {
+    total: number;
+    open: number;
+    byStatus: CountRow<IssueStatus>[];
+    bySeverity: CountRow<IssueSeverity>[];
+    recentOpen: DashboardSummary["issues"]["recentOpen"];
+  };
   /** `null` when the API omitted the block (caller lacks feedback visibility, D3). */
   feedback: { total: number; byType: CountRow<FeedbackType>[] } | null;
   notes: { total: number };
@@ -58,6 +64,7 @@ export function toDashboardView(summary: DashboardSummary, recruitId?: string | 
     issues: {
       total: summary.issues.total,
       open: summary.issues.open,
+      byStatus: rows(ISSUE_STATUSES, summary.issues.byStatus),
       bySeverity: rows(ISSUE_SEVERITIES, summary.issues.bySeverity),
       recentOpen: summary.issues.recentOpen,
     },
@@ -153,6 +160,8 @@ export class DashboardStore {
     } catch (e) {
       if (seq !== this.seq) return;
       runInAction(() => {
+        this.summary = null;
+        this.summaryKey = null;
         this.error = dashboardErrorMessage(e);
         this.retryable = isRetryable(e);
         this.loading = false;

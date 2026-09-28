@@ -23,7 +23,13 @@ const DashboardHeader = observer(function DashboardHeader() {
           Welcome back{auth.user ? `, ${auth.user.fullName}` : ""}
         </h1>
         <p className={formStyles.subtitle} style={{ marginBottom: 0 }} data-testid="dashboard-manager">
-          {!assignments.myManagerLoaded ? "\u00a0" : manager ? `Manager: ${manager.fullName}` : "Manager: none yet"}
+          {!assignments.myManagerLoaded
+            ? "\u00a0"
+            : assignments.myManagerError
+              ? `Manager: ${assignments.myManagerError}`
+              : manager
+                ? `Manager: ${manager.fullName}`
+                : "Manager: none yet"}
         </p>
       </div>
     </div>
