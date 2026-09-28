@@ -45,9 +45,20 @@ export interface RequestOptions {
   headers?: Record<string, string>;
 }
 
+/** A binary (non-JSON) success response, e.g. a generated report. */
+export interface DownloadedFile {
+  blob: Blob;
+  /** From `Content-Disposition: attachment; filename="..."`, or `fallbackFilename`. */
+  filename: string;
+  contentType: string;
+  headers: Headers;
+}
+
 /** The single authenticated HTTP entry point that resource modules build on. */
 export interface ApiTransport {
   request<T>(method: string, path: string, opts?: RequestOptions): Promise<T>;
+  /** Authenticated GET of a binary body (bearer attached); errors still map to `ApiError`. */
+  download(path: string, fallbackFilename: string): Promise<DownloadedFile>;
 }
 
 /**

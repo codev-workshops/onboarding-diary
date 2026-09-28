@@ -22,6 +22,7 @@ class CorsConfig {
             addAllowedOrigin(CorsConfiguration.ALL)
             addAllowedMethod(CorsConfiguration.ALL)
             addAllowedHeader(CorsConfiguration.ALL)
+            EXPOSED_HEADERS.forEach(::addExposedHeader)
             allowCredentials = false
             maxAge = 3600
         }
@@ -38,6 +39,7 @@ class CorsConfig {
             allowedOrigins = origins
             addAllowedMethod(CorsConfiguration.ALL)
             addAllowedHeader(CorsConfiguration.ALL)
+            EXPOSED_HEADERS.forEach(::addExposedHeader)
             allowCredentials = false
             maxAge = 3600
         }
@@ -45,6 +47,9 @@ class CorsConfig {
     }
 
     companion object {
+        /** Non-safelisted response headers the browser client reads (S8 report downloads). */
+        val EXPOSED_HEADERS = listOf("Content-Disposition", "X-Report-Omitted")
+
         const val MISSING_ORIGINS_MESSAGE =
             "APP_CORS_ALLOWED_ORIGINS must be set to a comma-separated list of allowed origins when the 'prod' profile is active."
         const val WILDCARD_MESSAGE = "APP_CORS_ALLOWED_ORIGINS must not contain a wildcard ('*') origin."

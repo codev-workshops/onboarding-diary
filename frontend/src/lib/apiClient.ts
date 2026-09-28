@@ -1,14 +1,15 @@
-import type { ApiTransport, Page, PageQuery, RequestOptions } from "@/lib/api/core";
+import type { ApiTransport, DownloadedFile, Page, PageQuery, RequestOptions } from "@/lib/api/core";
 import { toQuery } from "@/lib/api/core";
 import { TasksApi } from "@/lib/api/tasks";
 import { IssuesApi } from "@/lib/api/issues";
 import { FeedbackApi } from "@/lib/api/feedback";
 import { NotesApi } from "@/lib/api/notes";
 import { DashboardApi } from "@/lib/api/dashboard";
+import { ReportsApi } from "@/lib/api/reports";
 
 // Shared envelope/paging/entry types and every per-resource module are re-exported
 // so callers keep importing contract types from "@/lib/apiClient".
-export type { ApiTransport, EntryApi, EntryBase, EntryListQuery, Page, PageQuery, RequestOptions } from "@/lib/api/core";
+export type { ApiTransport, DownloadedFile, EntryApi, EntryBase, EntryListQuery, Page, PageQuery, RequestOptions } from "@/lib/api/core";
 export { toQuery } from "@/lib/api/core";
 // ---- resource modules (S3+): one `export *` line per slice, appended below ----
 export * from "@/lib/api/tasks";
@@ -16,6 +17,7 @@ export * from "@/lib/api/issues";
 export * from "@/lib/api/feedback";
 export * from "@/lib/api/notes";
 export * from "@/lib/api/dashboard";
+export * from "@/lib/api/reports";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -246,6 +248,8 @@ export class ApiClient implements ApiTransport {
   readonly notes = new NotesApi(this);
   /** S7 — `/dashboard` (see src/lib/api/dashboard.ts). */
   readonly dashboard = new DashboardApi(this);
+  /** S8 — `/reports` (see src/lib/api/reports.ts). */
+  readonly reports = new ReportsApi(this);
 
   constructor(
     private readonly baseUrl: string = API_BASE_URL,
@@ -369,26 +373,39 @@ export class ApiClient implements ApiTransport {
     const { body, auth = true } = opts;
     const headers: Record<string, string> = { Accept: "application/json", ...opts.headers };
     if (body !== undefined) headers["Content-Type"] = "application/json";
+    const res = await this.send(method, path, headers, body === undefined ? undefined : JSON.stringify(body), auth);
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
+  }
+
+  /**
+   * Authenticated binary GET (S8 reports). The bearer token is attached like any
+   * other call, so the file is fetched into a `Blob`; the caller saves it via
+   * `saveDownloadedFile`. Nothing is saved when the response is an error.
+   */
+  async download(path: string, fallbackFilename: string): Promise<DownloadedFile> {
+    const res = await this.send("GET", path, { Accept: "*/*" }, undefined, true);
+    return {
+      blob: await res.blob(),
+      filename: filenameFromDisposition(res.headers.get("Content-Disposition")) ?? fallbackFilename,
+      contentType: res.headers.get("Content-Type") ?? "application/octet-stream",
+      headers: res.headers,
+    };
+  }
+
+  /** Performs the fetch, maps network/HTTP failures to `ApiError` and fires `onUnauthorized` on 401. */
+  private async send(method: string, path: string, headers: Record<string, string>, body: string | undefined, auth: boolean): Promise<Response> {
     const token = auth ? this.authHandlers?.getToken() ?? null : null;
     if (token) headers.Authorization = `Bearer ${token}`;
 
     let res: Response;
     try {
-      res = await this.fetchImpl(`${this.baseUrl}${API_PREFIX}${path}`, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-        cache: "no-store",
-      });
+      res = await this.fetchImpl(`${this.baseUrl}${API_PREFIX}${path}`, { method, headers, body, cache: "no-store" });
     } catch (e) {
       throw new ApiError(0, "NETWORK_ERROR", e instanceof Error ? e.message : "Network error");
     }
 
-    if (res.status === 204) return undefined as T;
-
-    if (res.ok) {
-      return (await res.json()) as T;
-    }
+    if (res.ok) return res;
 
     const error = await this.toApiError(res, path);
     if (res.status === 401 && auth && this.authHandlers?.getToken() === token) {
@@ -408,6 +425,36 @@ export class ApiClient implements ApiTransport {
     const message = parsed?.message ?? `Request to ${path} failed with HTTP ${res.status}`;
     return new ApiError(res.status, code, message, parsed?.details ?? []);
   }
+}
+
+/** `attachment; filename="x.pdf"` or RFC 5987 `filename*=UTF-8''x.pdf` → `x.pdf`. */
+export function filenameFromDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(header);
+  if (star) {
+    try {
+      return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ""));
+    } catch {
+      /* fall through to plain filename */
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  return plain ? plain[1].trim() : null;
+}
+
+/** fetch → blob → anchor click. Browser-only; a no-op outside the DOM. */
+export function saveDownloadedFile(file: DownloadedFile): void {
+  if (typeof document === "undefined" || typeof URL.createObjectURL !== "function") return;
+  const url = URL.createObjectURL(file.blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = file.filename;
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export const apiClient = new ApiClient();
