@@ -14,6 +14,7 @@ import { ISSUES_NAV_ITEM, ISSUES_RECRUIT_TAB } from "@/features/issues/registry"
 import { FEEDBACK_NAV_ITEM, FEEDBACK_RECRUIT_TAB } from "@/features/feedback/registry";
 import { NOTES_NAV_ITEM, NOTES_RECRUIT_TAB } from "@/features/notes/registry";
 import { DASHBOARD_NAV_ITEM, DASHBOARD_RECRUIT_TAB } from "@/features/dashboard/registry";
+import { REPORTS_NAV_ITEM, REPORTS_RECRUIT_TAB } from "@/features/reports/registry";
 
 export * from "@/lib/registry/nav";
 export * from "@/lib/registry/recruitTabs";
@@ -38,3 +39,5 @@ registerNavItems(NOTES_NAV_ITEM); // S6
 registerRecruitTabs(NOTES_RECRUIT_TAB); // S6
 registerNavItems(DASHBOARD_NAV_ITEM); // S7
 registerRecruitTabs(DASHBOARD_RECRUIT_TAB); // S7
+registerNavItems(REPORTS_NAV_ITEM); // S8
+registerRecruitTabs(REPORTS_RECRUIT_TAB); // S8
