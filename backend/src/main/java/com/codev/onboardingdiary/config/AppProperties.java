@@ -37,7 +37,12 @@ public record AppProperties(
 
   /** JWT signing and token lifetime settings. */
   public record Jwt(
-      @NotNull @Size(min = 32, message = "app.jwt.secret must be at least 32 characters (256 bits)")
+      @NotNull
+          @Size(
+              min = 32,
+              message =
+                  "app.jwt.secret must be at least 32 characters (256 bits): set APP_JWT_SECRET,"
+                      + " or activate the dev profile for local development")
           String secret,
       @NotNull Duration accessTokenTtl,
       @NotNull Duration refreshTokenTtl) {}

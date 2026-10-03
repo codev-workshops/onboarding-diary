@@ -1,5 +1,6 @@
 package com.codev.onboardingdiary.auth;
 
+import java.time.Instant;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,4 +15,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
   @Query(
       "update RefreshToken t set t.revoked = true where t.user.id = :userId and t.revoked = false")
   int revokeAllForUser(@Param("userId") Long userId);
+
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("delete from RefreshToken t where t.expiresAt < :cutoff")
+  int deleteExpiredBefore(@Param("cutoff") Instant cutoff);
 }

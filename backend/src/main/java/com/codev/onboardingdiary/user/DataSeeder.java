@@ -2,6 +2,7 @@ package com.codev.onboardingdiary.user;
 
 import com.codev.onboardingdiary.config.AppProperties;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,8 +50,21 @@ public class DataSeeder implements ApplicationRunner {
       log.warn("APP_ADMIN_EMAIL/APP_ADMIN_PASSWORD not set; skipping admin bootstrap");
       return;
     }
-    createIfMissing(
-        admin.email(),
+    String email = UserAccountService.normalizeEmail(admin.email());
+    Optional<User> existing = userRepository.findByEmail(email);
+    if (existing.isPresent()) {
+      if (!existing.get().getRoles().contains(Role.ADMIN)) {
+        throw new IllegalStateException(
+            "Configured admin email "
+                + email
+                + " belongs to an existing non-admin account. Set APP_ADMIN_EMAIL to a"
+                + " different address or grant that account the ADMIN role.");
+      }
+      return;
+    }
+    log.info("Seeding admin {}", email);
+    userAccountService.createAccount(
+        email,
         admin.password(),
         Set.of(Role.ADMIN),
         new ProfileDetails("System Administrator", null, "IT", LocalDate.now()));

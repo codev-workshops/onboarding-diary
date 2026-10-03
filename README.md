@@ -25,7 +25,7 @@ Prerequisites: JDK 17 and Node.js 20.
 ```bash
 # Terminal 1 – API on http://localhost:8080 (dev profile, file-based H2 in backend/data/)
 cd backend
-./mvnw spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 # Terminal 2 – UI on http://localhost:5173 (proxies /api to the backend)
 cd frontend
@@ -59,7 +59,7 @@ The UI is then available at http://localhost:8081.
 | `APP_ADMIN_EMAIL` / `APP_ADMIN_PASSWORD` | Bootstrap admin created on first start | `admin@example.com` / `Admin@12345` in `dev` |
 | `APP_CORS_ORIGINS` | Comma-separated allowed browser origins | `http://localhost:5173` |
 | `APP_ALLOWED_EMAIL_DOMAINS` | Comma-separated domains allowed to sign up (empty = any) | empty |
-| `SPRING_PROFILES_ACTIVE` | `dev` (H2) or `prod` (PostgreSQL via `SPRING_DATASOURCE_*`) | `dev` |
+| `SPRING_PROFILES_ACTIVE` | `dev` (H2, demo data) or `prod` (PostgreSQL via `SPRING_DATASOURCE_*`). There is no default: without a profile, startup fails unless `APP_JWT_SECRET` is set | none |
 
 ## Quality checks
 

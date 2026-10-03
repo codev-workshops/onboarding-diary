@@ -12,6 +12,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RefreshTokenService {
 
   private static final int TOKEN_BYTES = 32;
+  private static final Logger log = LoggerFactory.getLogger(RefreshTokenService.class);
 
   private final RefreshTokenRepository repository;
   private final Duration ttl;
@@ -76,6 +80,17 @@ public class RefreshTokenService {
   @Transactional
   public void revokeAll(User user) {
     repository.revokeAllForUser(user.getId());
+  }
+
+  /** Deletes expired tokens; revoked but unexpired tokens are kept so reuse is still detected. */
+  @Scheduled(cron = "${app.refresh-token-cleanup-cron:0 0 3 * * *}", zone = "UTC")
+  @Transactional
+  public int purgeExpired() {
+    int deleted = repository.deleteExpiredBefore(clock.instant());
+    if (deleted > 0) {
+      log.info("Purged {} expired refresh tokens", deleted);
+    }
+    return deleted;
   }
 
   private static String hash(String rawToken) {

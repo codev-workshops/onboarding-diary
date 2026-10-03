@@ -1,8 +1,6 @@
 spring:
   application:
     name: onboarding-diary
-  profiles:
-    default: dev
   jpa:
     open-in-view: false
     hibernate:

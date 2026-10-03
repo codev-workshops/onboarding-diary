@@ -47,14 +47,16 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+const NO_REFRESH_PATHS = ['/auth/login', '/auth/signup', '/auth/refresh', '/auth/logout'];
+
 type RetriableConfig = InternalAxiosRequestConfig & { retried?: boolean };
 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const config = error.config as RetriableConfig | undefined;
-    const isAuthEndpoint = config?.url?.startsWith('/auth/');
-    if (error.response?.status !== 401 || !config || config.retried || isAuthEndpoint) {
+    const skipRefresh = NO_REFRESH_PATHS.some((path) => config?.url?.startsWith(path));
+    if (error.response?.status !== 401 || !config || config.retried || skipRefresh) {
       return Promise.reject(error);
     }
     config.retried = true;
