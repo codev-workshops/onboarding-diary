@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codev.onboardingdiary.user.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
@@ -35,6 +36,7 @@ class AuthControllerIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
+  @Autowired private UserRepository userRepository;
 
   @Test
   void signupCreatesRecruitAndReturnsTokens() throws Exception {
@@ -121,6 +123,19 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.status").value(401));
     mockMvc
         .perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer not-a-jwt"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void disabledUserIsRejectedWithStillValidAccessToken() throws Exception {
+    String email = uniqueEmail();
+    String token = accessToken(signupResult(email));
+    var user = userRepository.findByEmail(email).orElseThrow();
+    user.setEnabled(false);
+    userRepository.save(user);
+
+    mockMvc
+        .perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, bearer(token)))
         .andExpect(status().isUnauthorized());
   }
 

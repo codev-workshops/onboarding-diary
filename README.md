@@ -49,7 +49,7 @@ Useful URLs in dev: Swagger UI at http://localhost:8080/swagger-ui.html and the 
 APP_JWT_SECRET=$(openssl rand -base64 48) APP_ADMIN_PASSWORD='Change-me-123' docker compose up --build
 ```
 
-The UI is then available at http://localhost:8081.
+The UI is then available at http://localhost:8081. The refresh cookie is `Secure` by default; browsers accept that on `http://localhost`, but if you reach the stack over plain HTTP on another host, set `APP_REFRESH_COOKIE_SECURE=false`.
 
 ## Configuration
 

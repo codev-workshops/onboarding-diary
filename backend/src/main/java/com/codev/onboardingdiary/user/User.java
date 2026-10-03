@@ -101,6 +101,10 @@ public class User extends AuditableEntity {
     return enabled;
   }
 
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
+
   public boolean isMustChangePassword() {
     return mustChangePassword;
   }

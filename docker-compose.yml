@@ -23,7 +23,7 @@ services:
       APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-admin@example.com}
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:?Set APP_ADMIN_PASSWORD}
       APP_CORS_ORIGINS: http://localhost:8081
-      APP_REFRESHCOOKIESECURE: "false"
+      APP_REFRESHCOOKIESECURE: ${APP_REFRESH_COOKIE_SECURE:-true}
     depends_on:
       postgres:
         condition: service_healthy

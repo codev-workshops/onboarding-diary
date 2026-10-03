@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DataSeeder implements ApplicationRunner {
 
   static final String DEMO_PASSWORD = "Password1";
+  static final String DEMO_MANAGER_EMAIL = "manager@example.com";
 
   private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
@@ -71,13 +72,21 @@ public class DataSeeder implements ApplicationRunner {
   }
 
   private void seedDemoUsers() {
-    Profile manager =
-        createIfMissing(
-            "manager@example.com",
-            DEMO_PASSWORD,
-            Set.of(Role.MANAGER),
-            new ProfileDetails(
-                "Maria Manager", "Engineering Manager", "Engineering", LocalDate.of(2020, 1, 6)));
+    User manager =
+        userRepository
+            .findByEmail(DEMO_MANAGER_EMAIL)
+            .orElseGet(
+                () ->
+                    createIfMissing(
+                            DEMO_MANAGER_EMAIL,
+                            DEMO_PASSWORD,
+                            Set.of(Role.MANAGER),
+                            new ProfileDetails(
+                                "Maria Manager",
+                                "Engineering Manager",
+                                "Engineering",
+                                LocalDate.of(2020, 1, 6)))
+                        .getUser());
     LocalDate recentStart = LocalDate.now().minusDays(14);
     for (String[] recruit :
         new String[][] {
@@ -90,8 +99,8 @@ public class DataSeeder implements ApplicationRunner {
               DEMO_PASSWORD,
               Set.of(Role.RECRUIT),
               new ProfileDetails(recruit[1], recruit[2], "Engineering", recentStart));
-      if (profile != null && manager != null) {
-        profile.setManager(manager.getUser());
+      if (profile != null) {
+        profile.setManager(manager);
       }
     }
   }

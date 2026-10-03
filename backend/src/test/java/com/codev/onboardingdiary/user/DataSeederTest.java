@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,11 +22,11 @@ class DataSeederTest {
 
   private final UserRepository userRepository = mock(UserRepository.class);
   private final UserAccountService userAccountService = mock(UserAccountService.class);
+  private final AppProperties properties = mock(AppProperties.class);
   private DataSeeder seeder;
 
   @BeforeEach
   void setUp() {
-    AppProperties properties = mock(AppProperties.class);
     AppProperties.Admin admin = mock(AppProperties.Admin.class);
     when(admin.email()).thenReturn(ADMIN_EMAIL);
     when(admin.password()).thenReturn("Admin@12345");
@@ -62,6 +63,26 @@ class DataSeederTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("non-admin account");
     verify(userAccountService, never()).createAccount(anyString(), anyString(), any(), any());
+  }
+
+  @Test
+  void assignsExistingDemoManagerToNewlySeededRecruits() {
+    when(properties.seedDemoData()).thenReturn(true);
+    User admin = userWith(Role.ADMIN);
+    when(userRepository.findByEmail(ADMIN_EMAIL)).thenReturn(Optional.of(admin));
+    User manager = userWith(Role.MANAGER);
+    when(userRepository.findByEmail(DataSeeder.DEMO_MANAGER_EMAIL))
+        .thenReturn(Optional.of(manager));
+    Profile recruitProfile = mock(Profile.class);
+    when(userAccountService.createAccount(
+            anyString(), anyString(), eq(Set.of(Role.RECRUIT)), any()))
+        .thenReturn(recruitProfile);
+
+    seeder.run(null);
+
+    verify(userAccountService, never())
+        .createAccount(anyString(), anyString(), eq(Set.of(Role.MANAGER)), any());
+    verify(recruitProfile, times(2)).setManager(manager);
   }
 
   private static User userWith(Role role) {
