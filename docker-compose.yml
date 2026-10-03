@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: onboarding_diary
+      POSTGRES_USER: diary
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-diary}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U diary -d onboarding_diary"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/onboarding_diary
+      SPRING_DATASOURCE_USERNAME: diary
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-diary}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?Set APP_JWT_SECRET (at least 32 characters)}
+      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-admin@example.com}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:?Set APP_ADMIN_PASSWORD}
+      APP_CORS_ORIGINS: http://localhost:8081
+      APP_REFRESHCOOKIESECURE: ${APP_REFRESH_COOKIE_SECURE:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
