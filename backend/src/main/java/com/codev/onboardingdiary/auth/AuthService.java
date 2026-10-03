@@ -121,7 +121,7 @@ public class AuthService {
 
   @Transactional(readOnly = true)
   public UserDto currentUser(Long userId) {
-    return UserDto.from(findUser(userId), findProfile(userId));
+    return profileRepository.toUserDto(findUser(userId), findProfile(userId));
   }
 
   public long accessTokenTtlSeconds() {
@@ -132,7 +132,7 @@ public class AuthService {
     return new AuthResult(
         jwtService.createAccessToken(user),
         refreshTokenService.issue(user),
-        UserDto.from(user, profile));
+        profileRepository.toUserDto(user, profile));
   }
 
   private void requireAllowedDomain(String email) {

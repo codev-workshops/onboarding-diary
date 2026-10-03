@@ -7,13 +7,13 @@ import java.util.Set;
 public record UserDto(
     Long id, String email, Set<Role> roles, boolean mustChangePassword, ProfileDto profile) {
 
-  public static UserDto from(User user, Profile profile) {
+  public static UserDto from(User user, Profile profile, String managerName) {
     return new UserDto(
         user.getId(),
         user.getEmail(),
         user.getRoles(),
         user.isMustChangePassword(),
-        ProfileDto.from(profile));
+        ProfileDto.from(profile, managerName));
   }
 
   /** Profile fields exposed to the client. */
@@ -23,9 +23,10 @@ public record UserDto(
       String department,
       LocalDate startDate,
       Long managerId,
-      String managerEmail) {
+      String managerEmail,
+      String managerName) {
 
-    static ProfileDto from(Profile profile) {
+    static ProfileDto from(Profile profile, String managerName) {
       User manager = profile.getManager();
       return new ProfileDto(
           profile.getFullName(),
@@ -33,7 +34,8 @@ public record UserDto(
           profile.getDepartment(),
           profile.getStartDate(),
           manager == null ? null : manager.getId(),
-          manager == null ? null : manager.getEmail());
+          manager == null ? null : manager.getEmail(),
+          managerName);
     }
   }
 }

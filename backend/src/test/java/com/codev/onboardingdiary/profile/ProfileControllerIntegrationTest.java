@@ -94,6 +94,20 @@ class ProfileControllerIntegrationTest {
   }
 
   @Test
+  void updateRejectsMalformedDateWithFieldError() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/profile")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"fullName\":\"Pat\",\"department\":\"Ops\",\"startDate\":\"202611-09-01\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.detail").value("startDate: Must be a valid date (YYYY-MM-DD)"))
+        .andExpect(jsonPath("$.errors[0].field").value("startDate"));
+  }
+
+  @Test
   void profileRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/api/profile")).andExpect(status().isUnauthorized());
   }

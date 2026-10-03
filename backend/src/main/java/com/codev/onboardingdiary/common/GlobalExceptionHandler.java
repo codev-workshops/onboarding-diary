@@ -1,7 +1,11 @@
 package com.codev.onboardingdiary.common;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -9,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -68,6 +73,32 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "One or more fields are invalid");
     problem.setTitle("Validation failed");
     problem.setProperty("errors", errors);
+    return ResponseEntity.badRequest().body(problem);
+  }
+
+  @Override
+  protected ResponseEntity<Object> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex,
+      HttpHeaders headers,
+      HttpStatusCode status,
+      WebRequest request) {
+    if (!(ex.getCause() instanceof InvalidFormatException invalid)) {
+      return super.handleHttpMessageNotReadable(ex, headers, status, request);
+    }
+    String field =
+        invalid.getPath().stream()
+            .map(JsonMappingException.Reference::getFieldName)
+            .filter(Objects::nonNull)
+            .reduce((parent, child) -> parent + "." + child)
+            .orElse("body");
+    String message =
+        invalid.getTargetType() == LocalDate.class
+            ? "Must be a valid date (YYYY-MM-DD)"
+            : "Has an invalid value";
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, field + ": " + message);
+    problem.setTitle("Validation failed");
+    problem.setProperty("errors", List.of(Map.of("field", field, "message", message)));
     return ResponseEntity.badRequest().body(problem);
   }
 }

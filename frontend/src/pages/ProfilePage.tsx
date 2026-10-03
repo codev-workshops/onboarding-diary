@@ -76,7 +76,7 @@ export function ProfilePage() {
           </Stack>
           {user.profile.managerEmail && (
             <Typography variant="body2" color="text.secondary">
-              Manager: {user.profile.managerEmail}
+              Manager: {user.profile.managerName ?? user.profile.managerEmail}
             </Typography>
           )}
           <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} mt={1}>

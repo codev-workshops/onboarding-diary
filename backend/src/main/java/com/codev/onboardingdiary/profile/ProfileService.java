@@ -19,14 +19,14 @@ public class ProfileService {
   @Transactional(readOnly = true)
   public UserDto get(Long userId) {
     Profile profile = find(userId);
-    return UserDto.from(profile.getUser(), profile);
+    return profileRepository.toUserDto(profile.getUser(), profile);
   }
 
   @Transactional
   public UserDto update(Long userId, UpdateProfileRequest request) {
     Profile profile = find(userId);
     profile.update(request.toProfileDetails());
-    return UserDto.from(profile.getUser(), profile);
+    return profileRepository.toUserDto(profile.getUser(), profile);
   }
 
   private Profile find(Long userId) {

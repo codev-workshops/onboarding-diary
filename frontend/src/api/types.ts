@@ -7,6 +7,7 @@ export interface Profile {
   startDate: string;
   managerId: number | null;
   managerEmail: string | null;
+  managerName: string | null;
 }
 
 export interface User {

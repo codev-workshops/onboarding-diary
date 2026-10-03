@@ -16,6 +16,7 @@ const recruit: User = {
     startDate: '2026-09-21',
     managerId: null,
     managerEmail: null,
+    managerName: null,
   },
 };
 

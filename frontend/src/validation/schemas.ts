@@ -7,6 +7,12 @@ export const passwordSchema = z
   .string()
   .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,72}$/, PASSWORD_RULE_MESSAGE);
 
+function isIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+}
+
 const emailSchema = z.string().trim().min(1, 'Email is required').email('Enter a valid email');
 
 export const loginSchema = z.object({
@@ -18,7 +24,10 @@ const profileFields = {
   fullName: z.string().trim().min(1, 'Full name is required').max(120),
   jobTitle: z.string().trim().max(120).optional(),
   department: z.string().trim().min(1, 'Department is required').max(120),
-  startDate: z.string().min(1, 'Start date is required'),
+  startDate: z
+    .string()
+    .min(1, 'Start date is required')
+    .refine(isIsoDate, 'Enter a valid date (YYYY-MM-DD)'),
 };
 
 export const profileSchema = z.object(profileFields);

@@ -27,6 +27,12 @@ describe('signupSchema', () => {
     expect(signupSchema.safeParse(valid).success).toBe(true);
   });
 
+  it.each(['202611-09-01', '2026-02-30', '26-09-01'])('rejects start date %s', (startDate) => {
+    const result = signupSchema.safeParse({ ...valid, startDate });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toEqual(['startDate']);
+  });
+
   it('flags mismatched confirmation', () => {
     const result = signupSchema.safeParse({ ...valid, confirmPassword: 'Other1234' });
     expect(result.success).toBe(false);
