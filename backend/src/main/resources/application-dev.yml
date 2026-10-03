@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/onboarding-diary;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+
+app:
+  jwt:
+    # Development-only secret. Production must supply APP_JWT_SECRET.
+    secret: ${APP_JWT_SECRET:dev-only-secret-change-me-0123456789abcdef0123456789}
+  refresh-cookie-secure: false
+  seed-demo-data: true
+  admin:
+    email: ${APP_ADMIN_EMAIL:admin@example.com}
+    password: ${APP_ADMIN_PASSWORD:Admin@12345}
