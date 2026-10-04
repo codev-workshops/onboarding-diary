@@ -8,10 +8,10 @@ The approved specification is in [requirements_elaboration.md](requirements_elab
 |---|---|---|
 | 1 | Project scaffold, CI, Docker, database baseline, authentication, profile | Done |
 | 2 | Task, Issue, Feedback and Notes logs | Done |
-| 3 | Recruit dashboard | Planned |
-| 4 | Manager views, admin user management, audit log | Planned |
-| 5 | Reports (PDF / CSV) | Planned |
-| 6 | Hardening (rate limiting, E2E tests) | Planned |
+| 3 | Recruit dashboard | Done |
+| 4 | Manager views, admin user management, audit log | Done |
+| 5 | Reports (PDF / CSV) | Done |
+| 6 | Hardening (rate limiting, E2E tests) | Deferred |
 
 ## Tech stack
 
@@ -59,6 +59,7 @@ The UI is then available at http://localhost:8081. The refresh cookie is `Secure
 | `APP_ADMIN_EMAIL` / `APP_ADMIN_PASSWORD` | Bootstrap admin created on first start | `admin@example.com` / `Admin@12345` in `dev` |
 | `APP_CORS_ORIGINS` | Comma-separated allowed browser origins | `http://localhost:5173` |
 | `APP_ALLOWED_EMAIL_DOMAINS` | Comma-separated domains allowed to sign up (empty = any) | empty |
+| `APP_REPORT_ORGANIZATION` | Organisation name printed at the top of PDF reports | `Onboarding Diary` |
 | `SPRING_PROFILES_ACTIVE` | `dev` (H2, demo data) or `prod` (PostgreSQL via `SPRING_DATASOURCE_*`). There is no default: without a profile, startup fails unless `APP_JWT_SECRET` is set | none |
 
 ## Quality checks

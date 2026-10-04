@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import FeedbackIcon from '@mui/icons-material/Feedback';
 import GroupsIcon from '@mui/icons-material/Groups';
 import HistoryIcon from '@mui/icons-material/History';
@@ -48,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Issues', path: '/issues', icon: <ReportProblemIcon /> },
   { label: 'Feedback', path: '/feedback', icon: <FeedbackIcon /> },
   { label: 'Notes', path: '/notes', icon: <NotesIcon /> },
+  { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
   { label: 'Team', path: '/team', icon: <GroupsIcon />, roles: ['MANAGER', 'ADMIN'] },
   { label: 'Users', path: '/admin/users', icon: <ManageAccountsIcon />, roles: ['ADMIN'] },
   { label: 'Audit log', path: '/admin/audit-log', icon: <HistoryIcon />, roles: ['ADMIN'] },
