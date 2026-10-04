@@ -5,6 +5,7 @@ import { AuditLogPage } from './pages/admin/AuditLogPage';
 import { RecruitDetailPage } from './pages/manager/RecruitDetailPage';
 import { TeamPage } from './pages/manager/TeamPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { SearchPage } from './pages/SearchPage';
 import { AppShell } from './components/AppShell';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -33,6 +34,7 @@ export function App() {
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route element={<ProtectedRoute roles={['MANAGER', 'ADMIN']} />}>
             <Route path="/team" element={<TeamPage />} />

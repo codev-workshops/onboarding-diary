@@ -21,6 +21,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import FeedbackIcon from '@mui/icons-material/Feedback';
+import { SearchBox } from './SearchBox';
 import GroupsIcon from '@mui/icons-material/Groups';
 import HistoryIcon from '@mui/icons-material/History';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
@@ -123,6 +124,7 @@ export function AppShell() {
               <MenuIcon />
             </IconButton>
           )}
+          <SearchBox />
           <Box flexGrow={1} />
           <Tooltip title="Account">
             <IconButton aria-label="Account menu" onClick={(e) => setMenuAnchor(e.currentTarget)}>

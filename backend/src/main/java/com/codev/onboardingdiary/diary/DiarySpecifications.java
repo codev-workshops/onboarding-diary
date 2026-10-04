@@ -46,12 +46,17 @@ public final class DiarySpecifications {
       if (text == null || text.isBlank()) {
         return null;
       }
-      String pattern = "%" + escapeLike(text.trim().toLowerCase(Locale.ROOT)) + "%";
+      String pattern = likePattern(text);
       return cb.or(
           Arrays.stream(attributes)
               .map(attribute -> cb.like(cb.lower(root.get(attribute)), pattern, '\\'))
               .toArray(Predicate[]::new));
     };
+  }
+
+  /** Case-insensitive "contains" pattern for {@code like} with {@code \\} as escape character. */
+  public static String likePattern(String text) {
+    return "%" + escapeLike(text.trim().toLowerCase(Locale.ROOT)) + "%";
   }
 
   private static String escapeLike(String value) {
