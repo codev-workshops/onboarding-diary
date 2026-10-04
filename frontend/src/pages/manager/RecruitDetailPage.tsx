@@ -27,10 +27,11 @@ import { DashboardView } from '../../components/dashboard/DashboardView';
 import type { Column } from '../../components/diary/EntryList';
 import { EnumChip } from '../../components/diary/EnumChip';
 import { enumLabel, formatDate } from '../../utils/labels';
+import { RecruitChecklists } from './RecruitChecklists';
 import { RecruitLog } from './RecruitLog';
 import { RecruitStatusChip } from './RecruitStatusChip';
 
-const TABS = ['overview', 'tasks', 'issues', 'feedback', 'notes'] as const;
+const TABS = ['overview', 'checklists', 'tasks', 'issues', 'feedback', 'notes'] as const;
 type TabKey = (typeof TABS)[number];
 const TAB_LABELS: Record<TabKey, string> = {
   overview: 'Overview',
@@ -38,6 +39,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   issues: 'Issues',
   feedback: 'Feedback',
   notes: 'Shared notes',
+  checklists: 'Checklists',
 };
 
 const date = { header: 'Date', width: 120 };
@@ -203,6 +205,7 @@ export function RecruitDetailPage() {
           notesLabel="Shared notes"
         />
       )}
+      {tab === 'checklists' && <RecruitChecklists recruitId={recruitId} />}
       {tab === 'tasks' && (
         <RecruitLog<Task>
           key="tasks"

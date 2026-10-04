@@ -157,6 +157,7 @@ export function TeamPage() {
                 <TableCell sx={HIDE_ON_PHONE}>Start date</TableCell>
                 <TableCell width={180}>Completion</TableCell>
                 <TableCell align="right">Open issues</TableCell>
+                <TableCell sx={HIDE_ON_PHONE}>Checklist</TableCell>
                 <TableCell sx={HIDE_ON_PHONE}>Last activity</TableCell>
                 <TableCell>Status</TableCell>
               </TableRow>
@@ -164,7 +165,7 @@ export function TeamPage() {
             <TableBody>
               {visible.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={7}>
                     <Typography color="text.secondary">No recruits are at risk.</Typography>
                   </TableCell>
                 </TableRow>
@@ -194,6 +195,11 @@ export function TeamPage() {
                     </Stack>
                   </TableCell>
                   <TableCell align="right">{recruit.openIssues}</TableCell>
+                  <TableCell sx={HIDE_ON_PHONE}>
+                    {recruit.checklistItems > 0
+                      ? `${recruit.checklistItemsCompleted}/${recruit.checklistItems} done`
+                      : '—'}
+                  </TableCell>
                   <TableCell sx={HIDE_ON_PHONE}>{formatDateTime(recruit.lastActivityAt)}</TableCell>
                   <TableCell>
                     <RecruitStatusChip recruit={recruit} />

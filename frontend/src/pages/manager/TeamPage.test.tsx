@@ -28,6 +28,8 @@ function summary(overrides: Partial<RecruitSummary> = {}): RecruitSummary {
     completionPct: 50,
     openIssues: 1,
     highSeverityOpenIssues: 0,
+    checklistItems: 4,
+    checklistItemsCompleted: 1,
     lastActivityAt: '2026-01-07T10:00:00Z',
     inactive: false,
     atRisk: false,

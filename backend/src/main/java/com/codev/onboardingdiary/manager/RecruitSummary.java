@@ -19,4 +19,6 @@ public record RecruitSummary(
     long highSeverityOpenIssues,
     Instant lastActivityAt,
     boolean inactive,
-    boolean atRisk) {}
+    boolean atRisk,
+    long checklistItems,
+    long checklistItemsCompleted) {}

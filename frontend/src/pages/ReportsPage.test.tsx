@@ -97,6 +97,8 @@ describe('ReportsPage', () => {
         completionPct: 0,
         openIssues: 0,
         highSeverityOpenIssues: 0,
+        checklistItems: 4,
+        checklistItemsCompleted: 1,
         lastActivityAt: null,
         inactive: false,
         atRisk: false,

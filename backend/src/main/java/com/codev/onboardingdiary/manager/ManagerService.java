@@ -1,6 +1,7 @@
 package com.codev.onboardingdiary.manager;
 
 import com.codev.onboardingdiary.auth.AuthenticatedUser;
+import com.codev.onboardingdiary.checklist.ChecklistItemRepository;
 import com.codev.onboardingdiary.dashboard.DashboardService;
 import com.codev.onboardingdiary.dashboard.DashboardSummary;
 import com.codev.onboardingdiary.dashboard.DashboardSummary.WeeklyCount;
@@ -33,11 +34,15 @@ public class ManagerService {
   private final RecruitAccess recruitAccess;
   private final Clock clock;
 
+  private final ChecklistItemRepository checklistItemRepository;
+
   public ManagerService(
+      ChecklistItemRepository checklistItemRepository,
       ProfileRepository profileRepository,
       DashboardService dashboardService,
       RecruitAccess recruitAccess,
       Clock clock) {
+    this.checklistItemRepository = checklistItemRepository;
     this.profileRepository = profileRepository;
     this.dashboardService = dashboardService;
     this.recruitAccess = recruitAccess;
@@ -124,7 +129,9 @@ public class ManagerService {
         urgentIssues,
         lastActivity,
         inactive,
-        inactive || urgentIssues > 0);
+        inactive || urgentIssues > 0,
+        checklistItemRepository.countByAssignment_RecruitId(id),
+        checklistItemRepository.countByAssignment_RecruitIdAndCompletedAtIsNotNull(id));
   }
 
   /** The date {@code days} working days (Mon-Fri) back, counting today if it is a working day. */

@@ -6,6 +6,8 @@ import { RecruitDetailPage } from './pages/manager/RecruitDetailPage';
 import { TeamPage } from './pages/manager/TeamPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SearchPage } from './pages/SearchPage';
+import { ChecklistsPage } from './pages/ChecklistsPage';
+import { ChecklistTemplatesPage } from './pages/admin/ChecklistTemplatesPage';
 import { AppShell } from './components/AppShell';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -35,6 +37,7 @@ export function App() {
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/checklists" element={<ChecklistsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route element={<ProtectedRoute roles={['MANAGER', 'ADMIN']} />}>
             <Route path="/team" element={<TeamPage />} />
@@ -44,6 +47,7 @@ export function App() {
           <Route element={<ProtectedRoute roles={['ADMIN']} />}>
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/audit-log" element={<AuditLogPage />} />
+            <Route path="/admin/checklists" element={<ChecklistTemplatesPage />} />
           </Route>
           <Route path="/forbidden" element={<ForbiddenPage />} />
           <Route path="*" element={<NotFoundPage />} />

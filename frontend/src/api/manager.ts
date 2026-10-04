@@ -19,6 +19,8 @@ export interface RecruitSummary {
   lastActivityAt: string | null;
   inactive: boolean;
   atRisk: boolean;
+  checklistItems: number;
+  checklistItemsCompleted: number;
 }
 
 export interface TeamSummary {

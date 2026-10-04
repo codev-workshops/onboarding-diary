@@ -11,6 +11,7 @@ The approved specification is in [requirements_elaboration.md](requirements_elab
 | 3 | Recruit dashboard | Done |
 | 4 | Manager views, admin user management, audit log | Done |
 | 5 | Reports (PDF / CSV) | Done |
+| + | Charts, team trend and at-risk filter, search, onboarding checklists | Done |
 | 6 | Hardening (rate limiting, E2E tests) | Deferred |
 
 ## Tech stack
