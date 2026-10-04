@@ -54,8 +54,8 @@ export function DashboardPage() {
         ))}
       </Grid>
       <Alert severity="info" sx={{ mt: 3 }}>
-        Task, issue, feedback and notes logs arrive in the next release. Your dashboard will then
-        show progress and recent activity here.
+        Summary counts and recent activity arrive in the next release. Until then, use the Tasks,
+        Issues, Feedback and Notes pages in the menu to keep your diary.
       </Alert>
     </Box>
   );

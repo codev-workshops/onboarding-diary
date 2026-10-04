@@ -7,7 +7,7 @@ The approved specification is in [requirements_elaboration.md](requirements_elab
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Project scaffold, CI, Docker, database baseline, authentication, profile | Done |
-| 2 | Task, Issue, Feedback and Notes logs | Planned |
+| 2 | Task, Issue, Feedback and Notes logs | Done |
 | 3 | Recruit dashboard | Planned |
 | 4 | Manager views, admin user management, audit log | Planned |
 | 5 | Reports (PDF / CSV) | Planned |

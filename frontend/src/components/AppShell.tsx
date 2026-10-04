@@ -17,10 +17,14 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import FeedbackIcon from '@mui/icons-material/Feedback';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonIcon from '@mui/icons-material/Person';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import NotesIcon from '@mui/icons-material/StickyNote2';
 import { useState, type ReactElement } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import type { Role } from '../api/types';
@@ -37,6 +41,10 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
+  { label: 'Tasks', path: '/tasks', icon: <AssignmentIcon /> },
+  { label: 'Issues', path: '/issues', icon: <ReportProblemIcon /> },
+  { label: 'Feedback', path: '/feedback', icon: <FeedbackIcon /> },
+  { label: 'Notes', path: '/notes', icon: <NotesIcon /> },
   { label: 'Profile', path: '/profile', icon: <PersonIcon /> },
 ];
 
