@@ -1,0 +1,15 @@
+# Backend
+backend/target/
+backend/data/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Environment / IDE
+.env
+.idea/
+.vscode/
+*.iml
+.DS_Store

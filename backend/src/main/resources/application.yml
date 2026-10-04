@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: onboarding-diary
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+
+server:
+  error:
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:}
+    access-token-ttl: 15m
+    refresh-token-ttl: 7d
+  cors-origins: ${APP_CORS_ORIGINS:http://localhost:5173}
+  allowed-email-domains: ${APP_ALLOWED_EMAIL_DOMAINS:}
+  refresh-cookie-secure: true
+  max-failed-logins: 5
+  lockout-duration: 15m
+  seed-demo-data: false
+  admin:
+    email: ${APP_ADMIN_EMAIL:}
+    password: ${APP_ADMIN_PASSWORD:}
