@@ -1,15 +1,8 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  CircularProgress,
-  Stack,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import { Box, Card, CardContent, CircularProgress, Stack, Typography } from '@mui/material';
 import type { DashboardSummary } from '../../api/dashboard';
 import { TASK_STATUSES } from '../../api/diaryTypes';
-import { enumLabel, formatDate } from '../../utils/labels';
+import { enumLabel } from '../../utils/labels';
+import { WeeklyTrendChart } from '../charts/WeeklyTrendChart';
 import { EnumChip } from '../diary/EnumChip';
 
 interface Props {
@@ -18,7 +11,6 @@ interface Props {
 }
 
 export function TaskProgressCard({ tasks, trend }: Props) {
-  const maxWeek = Math.max(1, ...trend.map((week) => week.completed));
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
@@ -71,23 +63,7 @@ export function TaskProgressCard({ tasks, trend }: Props) {
         <Typography variant="subtitle2" mt={3} mb={1}>
           Completed per week
         </Typography>
-        <Stack direction="row" spacing={0.75} alignItems="flex-end" height={80}>
-          {trend.map((week) => (
-            <Tooltip
-              key={week.weekStart}
-              title={`Week of ${formatDate(week.weekStart)}: ${week.completed} completed`}
-            >
-              <Box
-                flex={1}
-                minHeight={4}
-                height={`${(week.completed / maxWeek) * 100}%`}
-                bgcolor={week.completed > 0 ? 'primary.main' : 'grey.300'}
-                borderRadius={0.5}
-                data-testid="trend-bar"
-              />
-            </Tooltip>
-          ))}
-        </Stack>
+        <WeeklyTrendChart trend={trend} />
       </CardContent>
     </Card>
   );

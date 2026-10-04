@@ -95,6 +95,7 @@ class ManagerApiIntegrationTest extends ApiTestSupport {
         .andExpect(jsonPath("$.recruitCount").value(1))
         .andExpect(jsonPath("$.openIssues").value(2))
         .andExpect(jsonPath("$.atRiskCount").value(1))
+        .andExpect(jsonPath("$.weeklyCompletedTrend", hasSize(8)))
         .andExpect(jsonPath("$.highSeverityIssues", hasSize(1)))
         .andExpect(jsonPath("$.highSeverityIssues[0].issue.title").value("No VPN"))
         .andExpect(jsonPath("$.highSeverityIssues[0].recruitId").value(recruitId));

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { DashboardSource } from './dashboard';
+import type { DashboardSource, WeeklyCount } from './dashboard';
 import { toQuery, type ListParams } from './diary';
 import type { DiaryResource, Issue, Page } from './diaryTypes';
 
@@ -26,6 +26,7 @@ export interface TeamSummary {
   averageCompletionPct: number;
   openIssues: number;
   atRiskCount: number;
+  weeklyCompletedTrend: WeeklyCount[];
   recruits: RecruitSummary[];
   highSeverityIssues: { recruitId: number; recruitName: string; issue: Issue }[];
 }

@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import * as managerApi from '../../api/manager';
 import type { RecruitSummary } from '../../api/manager';
 import { fakeAuth, renderWithProviders } from '../../test/renderWithProviders';
@@ -53,6 +54,10 @@ describe('TeamPage', () => {
       averageCompletionPct: 37.5,
       openIssues: 3,
       atRiskCount: 1,
+      weeklyCompletedTrend: [
+        { weekStart: '2026-01-05', completed: 2 },
+        { weekStart: '2026-01-12', completed: 0 },
+      ],
       recruits: [
         summary(),
         summary({ id: 8, fullName: 'Ida Idle', inactive: true, atRisk: true, completionPct: 25 }),
@@ -88,6 +93,11 @@ describe('TeamPage', () => {
     expect(screen.getByText('On track')).toBeInTheDocument();
     expect(screen.getByText('38%')).toBeInTheDocument();
     expect(screen.getByText('No VPN')).toBeInTheDocument();
+    expect(screen.getAllByTestId('trend-bar')).toHaveLength(2);
+
+    await userEvent.click(screen.getByLabelText(/at-risk only/i));
+    expect(screen.queryByRole('link', { name: 'Ravi Recruit' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ida Idle' })).toBeInTheDocument();
   });
 
   it('explains when no recruits are assigned', async () => {
@@ -96,6 +106,7 @@ describe('TeamPage', () => {
       averageCompletionPct: 0,
       openIssues: 0,
       atRiskCount: 0,
+      weeklyCompletedTrend: [],
       recruits: [],
       highSeverityIssues: [],
     });

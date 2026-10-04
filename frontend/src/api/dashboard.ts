@@ -1,6 +1,11 @@
 import { apiClient } from './client';
 import type { FeedbackType, Issue, IssueSeverity, TaskStatus } from './diaryTypes';
 
+export interface WeeklyCount {
+  weekStart: string;
+  completed: number;
+}
+
 export interface DashboardSummary {
   startDate: string;
   daysSinceStart: number;
@@ -8,7 +13,7 @@ export interface DashboardSummary {
   issues: { open: number; openBySeverity: Record<IssueSeverity, number> };
   feedback: { total: number; byType: Record<FeedbackType, number> };
   notes: { total: number };
-  weeklyCompletedTrend: { weekStart: string; completed: number }[];
+  weeklyCompletedTrend: WeeklyCount[];
   topOpenIssues: Issue[];
 }
 

@@ -3,6 +3,7 @@ package com.codev.onboardingdiary.manager;
 import com.codev.onboardingdiary.auth.AuthenticatedUser;
 import com.codev.onboardingdiary.dashboard.DashboardService;
 import com.codev.onboardingdiary.dashboard.DashboardSummary;
+import com.codev.onboardingdiary.dashboard.DashboardSummary.WeeklyCount;
 import com.codev.onboardingdiary.issue.IssueSeverity;
 import com.codev.onboardingdiary.manager.TeamSummary.TeamIssue;
 import com.codev.onboardingdiary.task.TaskStatus;
@@ -16,6 +17,8 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,9 +66,13 @@ public class ManagerService {
   public TeamSummary team(AuthenticatedUser viewer) {
     List<RecruitSummary> recruits = new ArrayList<>();
     List<TeamIssue> urgent = new ArrayList<>();
+    Map<LocalDate, Long> trend = new TreeMap<>();
     for (Profile profile : visibleRecruits(viewer)) {
       DashboardSummary summary = dashboardService.summary(profile.getUserId(), false);
       recruits.add(summarize(profile, summary));
+      summary
+          .weeklyCompletedTrend()
+          .forEach(week -> trend.merge(week.weekStart(), week.completed(), Long::sum));
       summary.topOpenIssues().stream()
           .filter(issue -> issue.severity().compareTo(IssueSeverity.HIGH) >= 0)
           .forEach(
@@ -79,6 +86,9 @@ public class ManagerService {
         Math.round(averageCompletion * 10) / 10.0,
         recruits.stream().mapToLong(RecruitSummary::openIssues).sum(),
         recruits.stream().filter(RecruitSummary::atRisk).count(),
+        trend.entrySet().stream()
+            .map(week -> new WeeklyCount(week.getKey(), week.getValue()))
+            .toList(),
         recruits,
         urgent);
   }

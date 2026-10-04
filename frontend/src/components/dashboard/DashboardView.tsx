@@ -10,6 +10,7 @@ import {
   type DashboardSource,
 } from '../../api/dashboard';
 import { getErrorMessage } from '../../api/errors';
+import { BreakdownCard } from './BreakdownCard';
 import { OpenIssuesCard } from './OpenIssuesCard';
 import { RecentActivityCard } from './RecentActivityCard';
 import { StatCard } from './StatCard';
@@ -100,6 +101,9 @@ export function DashboardView({ source, cacheKey, linkBase, notesLabel = 'Notes'
           topOpenIssues={data.topOpenIssues}
           issuesLink={`${linkBase}/issues`}
         />
+      </Grid>
+      <Grid item xs={12}>
+        <BreakdownCard issues={data.issues} feedback={data.feedback} />
       </Grid>
       <Grid item xs={12}>
         <RecentActivityCard entries={recent.data} linkBase={linkBase} />

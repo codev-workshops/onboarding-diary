@@ -4,6 +4,7 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  FormControlLabel,
   Grid,
   LinearProgress,
   Link,
@@ -12,6 +13,7 @@ import {
   ListItemText,
   Paper,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -25,10 +27,13 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningIcon from '@mui/icons-material/Warning';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { getErrorMessage } from '../../api/errors';
 import { fetchTeam } from '../../api/manager';
 import { useAuth } from '../../auth/useAuth';
+import { BarList } from '../../components/charts/BarList';
+import { WeeklyTrendChart } from '../../components/charts/WeeklyTrendChart';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { EnumChip } from '../../components/diary/EnumChip';
 import { formatDate, formatDateTime } from '../../utils/labels';
@@ -39,6 +44,7 @@ const HIDE_ON_PHONE = { display: { xs: 'none', md: 'table-cell' } };
 export function TeamPage() {
   const { hasRole } = useAuth();
   const { data, isLoading, error } = useQuery({ queryKey: ['team'], queryFn: fetchTeam });
+  const [atRiskOnly, setAtRiskOnly] = useState(false);
   const title = hasRole('ADMIN') ? 'All recruits' : 'My team';
 
   if (isLoading) {
@@ -52,6 +58,7 @@ export function TeamPage() {
     return <Alert severity="error">{getErrorMessage(error, 'Could not load the team')}</Alert>;
   }
 
+  const visible = atRiskOnly ? data.recruits.filter((r) => r.atRisk) : data.recruits;
   return (
     <Box>
       <Typography variant="h5" component="h1" fontWeight={600} mb={2}>
@@ -89,6 +96,52 @@ export function TeamPage() {
         </Grid>
       </Grid>
 
+      {data.recruits.length > 0 && (
+        <Grid container spacing={2} mb={2}>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent>
+                <Typography variant="h6" component="h2" gutterBottom>
+                  Completion by recruit
+                </Typography>
+                <BarList
+                  max={100}
+                  items={[...data.recruits]
+                    .sort((a, b) => b.completionPct - a.completionPct)
+                    .map((recruit) => ({
+                      key: recruit.id,
+                      label: recruit.fullName,
+                      value: recruit.completionPct,
+                      display: `${Math.round(recruit.completionPct)}%`,
+                      color: recruit.atRisk ? 'warning.main' : 'success.main',
+                    }))}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent>
+                <Typography variant="h6" component="h2" gutterBottom>
+                  Team tasks completed per week
+                </Typography>
+                <WeeklyTrendChart trend={data.weeklyCompletedTrend} height={120} />
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {data.recruits.length > 0 && (
+        <FormControlLabel
+          sx={{ mb: 1 }}
+          control={
+            <Switch checked={atRiskOnly} onChange={(e) => setAtRiskOnly(e.target.checked)} />
+          }
+          label={`At-risk only (${data.atRiskCount})`}
+        />
+      )}
+
       {data.recruits.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
@@ -109,7 +162,14 @@ export function TeamPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.recruits.map((recruit) => (
+              {visible.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6}>
+                    <Typography color="text.secondary">No recruits are at risk.</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+              {visible.map((recruit) => (
                 <TableRow key={recruit.id} hover>
                   <TableCell>
                     <Link component={RouterLink} to={`/team/${recruit.id}`} fontWeight={500}>
