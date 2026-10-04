@@ -1,19 +1,29 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { deleteEntry, listEntries } from '../api/diary';
 import type { DiaryResource } from '../api/diaryTypes';
+import { useAuth } from '../auth/useAuth';
 import { getErrorMessage } from '../api/errors';
 import { useUrlFilters } from './useUrlFilters';
 
 /** List query, editor/delete dialog state and notifications shared by the diary log pages. */
 export function useDiaryList<T extends { id: number }>(resource: DiaryResource, noun: string) {
   const filters = useUrlFilters();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: [resource, filters.apiParams],
+    queryKey: [resource, user?.id, filters.apiParams],
     queryFn: () => listEntries<T>(resource, filters.apiParams),
     placeholderData: keepPreviousData,
   });
+
+  const totalPages = query.data?.totalPages;
+  const { page, setPage } = filters;
+  useEffect(() => {
+    if (totalPages !== undefined && page > Math.max(totalPages, 1)) {
+      setPage(Math.max(totalPages, 1));
+    }
+  }, [totalPages, page, setPage]);
 
   // undefined = closed, null = creating, T = editing
   const [editing, setEditing] = useState<T | null | undefined>(undefined);

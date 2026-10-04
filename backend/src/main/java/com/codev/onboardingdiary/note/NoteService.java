@@ -77,12 +77,18 @@ public class NoteService {
 
   private void apply(Note note, NoteRequest request) {
     entryDatePolicy.validate(note.getOwnerId(), request.entryDate());
+    Set<String> tags = NoteTags.normalize(request.tags());
+    // Lower-casing can lengthen a tag (e.g. "\u0130" becomes two characters).
+    if (tags.stream().anyMatch(tag -> tag.length() > NoteTags.MAX_LENGTH)) {
+      throw ApiException.invalidField(
+          "tags", "Tags can be at most " + NoteTags.MAX_LENGTH + " characters");
+    }
     note.update(
         request.entryDate(),
         request.title().trim(),
         request.content().trim(),
         Boolean.TRUE.equals(request.shared()),
-        NoteTags.normalize(request.tags()));
+        tags);
   }
 
   private Note find(Long ownerId, Long id) {

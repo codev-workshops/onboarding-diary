@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as authApi from '../api/auth';
 import { refreshAccessToken, setAccessToken, setSessionExpiredHandler } from '../api/client';
@@ -7,12 +8,14 @@ import { AuthContext, type AuthStatus } from './authContextValue';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUserState] = useState<User | null>(null);
+  const queryClient = useQueryClient();
 
   const clearSession = useCallback(() => {
     setAccessToken(null);
+    queryClient.clear();
     setUserState(null);
     setStatus('anonymous');
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     setSessionExpiredHandler(clearSession);
@@ -32,12 +35,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [clearSession]);
 
-  const startSession = useCallback((accessToken: string, sessionUser: User) => {
-    setAccessToken(accessToken);
-    setUserState(sessionUser);
-    setStatus('authenticated');
-    return sessionUser;
-  }, []);
+  const startSession = useCallback(
+    (accessToken: string, sessionUser: User) => {
+      setAccessToken(accessToken);
+      queryClient.clear();
+      setUserState(sessionUser);
+      setStatus('authenticated');
+      return sessionUser;
+    },
+    [queryClient],
+  );
 
   const login = useCallback(
     async (email: string, password: string) => {

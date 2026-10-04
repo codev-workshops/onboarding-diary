@@ -78,6 +78,9 @@ class FeedbackAndNoteApiIntegrationTest extends ApiTestSupport {
         .andExpect(jsonPath("$.errors[0].field").value("tags"));
     postJson(token, "/api/notes", note("Long", List.of("x".repeat(41))))
         .andExpect(status().isBadRequest());
+    postJson(token, "/api/notes", note("Expands", List.of("\u0130".repeat(40))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[0].field").value("tags"));
   }
 
   @Test

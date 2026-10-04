@@ -29,6 +29,8 @@ const FIELDS = [
   'relatedTaskId',
 ];
 
+const TASK_OPTION_LIMIT = 20;
+
 interface TaskOption {
   id: number;
   title: string;
@@ -68,23 +70,37 @@ export function IssueFormDialog({ open, issue, onClose, onSaved, onConflict }: P
     formState: { errors, isSubmitting },
   } = useForm<IssueValues>({ resolver: zodResolver(schema), defaultValues: toValues(issue) });
 
+  const [taskSearch, setTaskSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedTask, setSelectedTask] = useState<TaskOption | null>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(taskSearch.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [taskSearch]);
   const tasks = useQuery({
-    queryKey: ['tasks', 'options'],
-    queryFn: () => listEntries<Task>('tasks', { size: 100 }),
+    queryKey: ['tasks', 'options', debouncedSearch],
+    queryFn: () =>
+      listEntries<Task>('tasks', { size: TASK_OPTION_LIMIT, q: debouncedSearch || undefined }),
     enabled: open,
   });
   const taskOptions = useMemo<TaskOption[]>(() => {
     const options = (tasks.data?.content ?? []).map(({ id, title }) => ({ id, title }));
-    if (issue?.relatedTaskId && !options.some((option) => option.id === issue.relatedTaskId)) {
-      options.unshift({ id: issue.relatedTaskId, title: issue.relatedTaskTitle ?? 'Linked task' });
+    if (selectedTask && !options.some((option) => option.id === selectedTask.id)) {
+      options.unshift(selectedTask);
     }
     return options;
-  }, [tasks.data, issue]);
+  }, [tasks.data, selectedTask]);
 
   useEffect(() => {
     if (open) {
       reset(toValues(issue));
       setServerError(null);
+      setTaskSearch('');
+      setSelectedTask(
+        issue?.relatedTaskId
+          ? { id: issue.relatedTaskId, title: issue.relatedTaskTitle ?? 'Linked task' }
+          : null,
+      );
     }
   }, [open, issue, reset]);
 
@@ -174,15 +190,25 @@ export function IssueFormDialog({ open, issue, onClose, onSaved, onConflict }: P
         render={({ field, fieldState }) => (
           <Autocomplete
             options={taskOptions}
-            loading={tasks.isLoading}
+            loading={tasks.isFetching}
+            filterOptions={(options) => options}
             value={taskOptions.find((option) => option.id === field.value) ?? null}
-            onChange={(_, option) => field.onChange(option?.id ?? null)}
+            onChange={(_, option) => {
+              setSelectedTask(option);
+              field.onChange(option?.id ?? null);
+            }}
+            onInputChange={(_, value, reason) => {
+              if (reason === 'input') setTaskSearch(value);
+              if (reason === 'clear') setTaskSearch('');
+            }}
+            noOptionsText={taskSearch ? 'No matching tasks' : 'No tasks yet'}
             getOptionLabel={(option) => option.title}
             isOptionEqualToValue={(option, value) => option.id === value.id}
             renderInput={(params) => (
               <TextField
                 {...params}
                 label="Related task"
+                placeholder="Type to search your tasks"
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />

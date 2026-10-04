@@ -9,6 +9,8 @@ import java.util.Set;
 /** Tags are trimmed, lower-cased and de-duplicated before they are stored or queried. */
 final class NoteTags {
 
+  static final int MAX_LENGTH = 40;
+
   private NoteTags() {}
 
   static Set<String> normalize(Collection<String> tags) {

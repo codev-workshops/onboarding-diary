@@ -72,6 +72,37 @@ describe('IssuesPage', () => {
   });
 });
 
+describe('IssueFormDialog related task picker', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('searches all tasks on the server as you type', async () => {
+    api.listEntries.mockImplementation(async (resource, params) =>
+      resource === 'tasks' && params.q === 'vpn'
+        ? page([{ id: 150, title: 'Request VPN access' }])
+        : page([]),
+    );
+    api.createEntry.mockResolvedValue({});
+    renderWithProviders(<IssuesPage />, { auth: auth(), route: '/issues', path: '/issues' });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'New issue' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText(/Title/), 'No VPN');
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /Severity/ }));
+    await userEvent.click(await screen.findByRole('option', { name: 'High' }));
+    await userEvent.type(within(dialog).getByRole('combobox', { name: 'Related task' }), 'vpn');
+
+    await userEvent.click(await screen.findByRole('option', { name: 'Request VPN access' }));
+    expect(api.listEntries).toHaveBeenCalledWith('tasks', { size: 20, q: 'vpn' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(api.createEntry).toHaveBeenCalledWith(
+        'issues',
+        expect.objectContaining({ relatedTaskId: 150 }),
+      ),
+    );
+  });
+});
+
 describe('NotesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();

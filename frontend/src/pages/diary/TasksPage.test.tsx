@@ -70,6 +70,16 @@ describe('TasksPage', () => {
     });
   });
 
+  it('moves back to the last page when the URL points past the end', async () => {
+    api.listEntries.mockImplementation(async (_resource, params) =>
+      params.page === 1 ? { ...page([task()], 2), page: 1 } : { ...page([], 2), page: 4 },
+    );
+    renderPage('/tasks?page=5');
+
+    expect(await screen.findByText('Set up laptop')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('?page=2');
+  });
+
   it('shows a helpful empty state', async () => {
     api.listEntries.mockResolvedValue(page([]));
     renderPage();
