@@ -1,5 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './auth/ProtectedRoute';
+import { AdminUsersPage } from './pages/admin/AdminUsersPage';
+import { AuditLogPage } from './pages/admin/AuditLogPage';
+import { RecruitDetailPage } from './pages/manager/RecruitDetailPage';
+import { TeamPage } from './pages/manager/TeamPage';
 import { AppShell } from './components/AppShell';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -28,6 +32,15 @@ export function App() {
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route element={<ProtectedRoute roles={['MANAGER', 'ADMIN']} />}>
+            <Route path="/team" element={<TeamPage />} />
+            <Route path="/team/:recruitId" element={<RecruitDetailPage />} />
+            <Route path="/team/:recruitId/:tab" element={<RecruitDetailPage />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['ADMIN']} />}>
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/audit-log" element={<AuditLogPage />} />
+          </Route>
           <Route path="/forbidden" element={<ForbiddenPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

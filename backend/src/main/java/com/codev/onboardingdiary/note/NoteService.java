@@ -36,8 +36,22 @@ public class NoteService {
   @Transactional(readOnly = true)
   public PageResponse<NoteResponse> list(
       Long ownerId, LocalDate from, LocalDate to, List<String> tags, String q, Pageable pageable) {
+    return list(ownerId, from, to, tags, q, false, pageable);
+  }
+
+  /** Lists notes; {@code sharedOnly} restricts the result to notes shared with the manager. */
+  @Transactional(readOnly = true)
+  public PageResponse<NoteResponse> list(
+      Long ownerId,
+      LocalDate from,
+      LocalDate to,
+      List<String> tags,
+      String q,
+      boolean sharedOnly,
+      Pageable pageable) {
     Specification<Note> spec =
         Specification.<Note>where(ownedBy(ownerId))
+            .and(sharedOnly ? (root, query, cb) -> cb.isTrue(root.get("shared")) : null)
             .and(entryDateBetween(from, to))
             .and(taggedWithAny(NoteTags.normalizeToList(tags)))
             .and(containsText(q, "title", "content"));

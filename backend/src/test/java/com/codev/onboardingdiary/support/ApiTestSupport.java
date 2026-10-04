@@ -7,9 +7,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codev.onboardingdiary.user.Role;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +26,9 @@ public abstract class ApiTestSupport {
 
   protected static final LocalDate TODAY = LocalDate.now();
   protected static final LocalDate START_DATE = TODAY.minusDays(10);
+  protected static final String ADMIN_EMAIL = "admin@example.com";
+  protected static final String ADMIN_PASSWORD = "Admin@12345";
+  protected static final String TEMP_PASSWORD = "Temporary1";
 
   @Autowired protected MockMvc mockMvc;
   @Autowired protected ObjectMapper objectMapper;
@@ -46,6 +52,46 @@ public abstract class ApiTestSupport {
             .getResponse()
             .getContentAsString();
     return objectMapper.readTree(response).get("accessToken").asText();
+  }
+
+  protected String login(String email, String password) throws Exception {
+    String response =
+        mockMvc
+            .perform(
+                post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        objectMapper.writeValueAsString(
+                            Map.of("email", email, "password", password))))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    return objectMapper.readTree(response).get("accessToken").asText();
+  }
+
+  protected String adminToken() throws Exception {
+    return login(ADMIN_EMAIL, ADMIN_PASSWORD);
+  }
+
+  protected long userId(String token) throws Exception {
+    return body(getJson(token, "/api/auth/me").andExpect(status().isOk())).get("id").asLong();
+  }
+
+  /** Creates a user through the admin API and returns their id. */
+  protected long createUser(String adminToken, String email, Role... roles) throws Exception {
+    Map<String, Object> body = new HashMap<>();
+    body.put("email", email);
+    body.put("temporaryPassword", TEMP_PASSWORD);
+    body.put("fullName", "User " + email.substring(0, email.indexOf('@')));
+    body.put("department", "Engineering");
+    body.put("startDate", START_DATE.toString());
+    body.put("roles", List.of(roles));
+    return createdId(postJson(adminToken, "/api/admin/users", body));
+  }
+
+  protected static String randomEmail(String prefix) {
+    return prefix + "-" + UUID.randomUUID() + "@example.com";
   }
 
   protected ResultActions getJson(String token, String url) throws Exception {

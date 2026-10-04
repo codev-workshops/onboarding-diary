@@ -36,3 +36,14 @@ export function formatDate(isoDate: string): string {
     year: 'numeric',
   });
 }
+
+export function formatDateTime(isoInstant: string | null): string {
+  if (!isoInstant) return '—';
+  return new Date(isoInstant).toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}

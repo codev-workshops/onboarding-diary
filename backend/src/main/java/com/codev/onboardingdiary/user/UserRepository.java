@@ -2,6 +2,8 @@ package com.codev.onboardingdiary.user;
 
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -9,5 +11,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   boolean existsByEmail(String email);
 
-  boolean existsByIdAndEnabledTrue(Long id);
+  @Query("select count(u) from User u join u.roles r where r = :role and u.enabled = true")
+  long countEnabledWithRole(@Param("role") Role role);
 }

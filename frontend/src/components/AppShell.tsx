@@ -20,6 +20,9 @@ import {
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FeedbackIcon from '@mui/icons-material/Feedback';
+import GroupsIcon from '@mui/icons-material/Groups';
+import HistoryIcon from '@mui/icons-material/History';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonIcon from '@mui/icons-material/Person';
@@ -45,6 +48,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Issues', path: '/issues', icon: <ReportProblemIcon /> },
   { label: 'Feedback', path: '/feedback', icon: <FeedbackIcon /> },
   { label: 'Notes', path: '/notes', icon: <NotesIcon /> },
+  { label: 'Team', path: '/team', icon: <GroupsIcon />, roles: ['MANAGER', 'ADMIN'] },
+  { label: 'Users', path: '/admin/users', icon: <ManageAccountsIcon />, roles: ['ADMIN'] },
+  { label: 'Audit log', path: '/admin/audit-log', icon: <HistoryIcon />, roles: ['ADMIN'] },
   { label: 'Profile', path: '/profile', icon: <PersonIcon /> },
 ];
 

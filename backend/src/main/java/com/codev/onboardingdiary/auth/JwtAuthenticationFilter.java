@@ -1,5 +1,6 @@
 package com.codev.onboardingdiary.auth;
 
+import com.codev.onboardingdiary.user.User;
 import com.codev.onboardingdiary.user.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -38,7 +39,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     if (header != null && header.startsWith(BEARER_PREFIX)) {
       jwtService
           .parse(header.substring(BEARER_PREFIX.length()))
-          .filter(user -> userRepository.existsByIdAndEnabledTrue(user.id()))
+          .flatMap(token -> userRepository.findById(token.id()))
+          .filter(User::isEnabled)
+          .map(
+              account ->
+                  new AuthenticatedUser(account.getId(), account.getEmail(), account.getRoles()))
           .ifPresent(
               user -> {
                 var authorities =

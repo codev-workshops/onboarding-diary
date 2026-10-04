@@ -6,7 +6,7 @@ export const PAGE_SIZE = 20;
 /** Query values; arrays are sent comma-separated, which Spring binds to multi-valued params. */
 export type ListParams = Record<string, string | number | string[] | undefined>;
 
-function toQuery(params: ListParams): Record<string, string | number> {
+export function toQuery(params: ListParams): Record<string, string | number> {
   const query: Record<string, string | number> = {};
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === '') continue;

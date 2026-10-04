@@ -26,7 +26,7 @@ public record UserDto(
       String managerEmail,
       String managerName) {
 
-    static ProfileDto from(Profile profile, String managerName) {
+    public static ProfileDto from(Profile profile, String managerName) {
       User manager = profile.getManager();
       return new ProfileDto(
           profile.getFullName(),

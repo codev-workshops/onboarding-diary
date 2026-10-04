@@ -80,6 +80,14 @@ public class User extends AuditableEntity {
     lastLoginAt = now;
   }
 
+  /** Sets an admin-issued temporary password, which must be changed at the next login. */
+  public void resetPassword(String temporaryPasswordHash) {
+    passwordHash = temporaryPasswordHash;
+    mustChangePassword = true;
+    failedLoginAttempts = 0;
+    lockedUntil = null;
+  }
+
   public void changePassword(String newPasswordHash) {
     passwordHash = newPasswordHash;
     mustChangePassword = false;
@@ -119,5 +127,14 @@ public class User extends AuditableEntity {
 
   public Set<Role> getRoles() {
     return Set.copyOf(roles);
+  }
+
+  public void setRoles(Set<Role> roles) {
+    this.roles.clear();
+    this.roles.addAll(roles);
+  }
+
+  public Instant getLastLoginAt() {
+    return lastLoginAt;
   }
 }
