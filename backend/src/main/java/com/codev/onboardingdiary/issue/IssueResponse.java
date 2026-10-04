@@ -19,7 +19,7 @@ public record IssueResponse(
     Instant updatedAt,
     int version) {
 
-  static IssueResponse from(Issue issue) {
+  public static IssueResponse from(Issue issue) {
     Task task = issue.getRelatedTask();
     return new IssueResponse(
         issue.getId(),

@@ -80,6 +80,14 @@ describe('TasksPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('?page=2');
   });
 
+  it('opens the new-task dialog from a quick-add link and clears the flag', async () => {
+    renderPage('/tasks?new=1');
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^$/));
+    expect(api.listEntries).toHaveBeenLastCalledWith('tasks', { page: 0, size: 20 });
+  });
+
   it('shows a helpful empty state', async () => {
     api.listEntries.mockResolvedValue(page([]));
     renderPage();

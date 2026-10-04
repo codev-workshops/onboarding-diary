@@ -2,6 +2,9 @@ import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PAGE_SIZE, type ListParams } from '../api/diary';
 
+/** Query keys that steer the page rather than filter the list (`new=1` opens the editor). */
+const CONTROL_KEYS = new Set(['page', 'new']);
+
 export type FilterChanges = Record<string, string | string[] | null | undefined>;
 
 /**
@@ -45,12 +48,12 @@ export function useUrlFilters() {
   const apiParams = useMemo<ListParams>(() => {
     const result: ListParams = {};
     params.forEach((paramValue, key) => {
-      if (key !== 'page') result[key] = paramValue;
+      if (!CONTROL_KEYS.has(key)) result[key] = paramValue;
     });
     return { ...result, page: page - 1, size: PAGE_SIZE };
   }, [params, page]);
 
-  const hasFilters = [...params.keys()].some((key) => key !== 'page');
+  const hasFilters = [...params.keys()].some((key) => !CONTROL_KEYS.has(key));
 
   return { value, values, page, update, setPage, apiParams, hasFilters };
 }

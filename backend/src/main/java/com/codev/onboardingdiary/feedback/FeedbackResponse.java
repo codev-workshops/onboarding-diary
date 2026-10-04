@@ -13,7 +13,7 @@ public record FeedbackResponse(
     Instant updatedAt,
     int version) {
 
-  static FeedbackResponse from(Feedback feedback) {
+  public static FeedbackResponse from(Feedback feedback) {
     return new FeedbackResponse(
         feedback.getId(),
         feedback.getEntryDate(),

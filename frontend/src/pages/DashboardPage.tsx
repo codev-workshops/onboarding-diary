@@ -1,22 +1,16 @@
-import { Alert, Box, Card, CardContent, Grid, Typography } from '@mui/material';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import ReportProblemIcon from '@mui/icons-material/ReportProblem';
-import FeedbackIcon from '@mui/icons-material/Feedback';
-import NotesIcon from '@mui/icons-material/StickyNote2';
-import type { ReactElement } from 'react';
+import { Box, Button, Stack, Typography } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import { Link as RouterLink } from 'react-router-dom';
+import { OWN_DASHBOARD } from '../api/dashboard';
 import { useAuth } from '../auth/useAuth';
+import { DashboardView } from '../components/dashboard/DashboardView';
 import { onboardingDay } from '../utils/dates';
 
-interface PlaceholderStat {
-  label: string;
-  icon: ReactElement;
-}
-
-const STATS: PlaceholderStat[] = [
-  { label: 'Tasks', icon: <AssignmentIcon color="primary" /> },
-  { label: 'Open issues', icon: <ReportProblemIcon color="warning" /> },
-  { label: 'Feedback', icon: <FeedbackIcon color="secondary" /> },
-  { label: 'Notes', icon: <NotesIcon color="action" /> },
+const QUICK_ADD = [
+  { label: 'Task', path: '/tasks' },
+  { label: 'Issue', path: '/issues' },
+  { label: 'Feedback', path: '/feedback' },
+  { label: 'Note', path: '/notes' },
 ];
 
 export function DashboardPage() {
@@ -26,37 +20,39 @@ export function DashboardPage() {
 
   return (
     <Box>
-      <Typography variant="h5" component="h1" fontWeight={600}>
-        Welcome, {user.profile.fullName.split(' ')[0]}
-      </Typography>
-      <Typography color="text.secondary" mb={3}>
-        {day > 0
-          ? `Day ${day} of onboarding`
-          : `Your onboarding starts in ${1 - day} day${day === 0 ? '' : 's'}`}
-      </Typography>
-      <Grid container spacing={2}>
-        {STATS.map((stat) => (
-          <Grid item xs={6} md={3} key={stat.label}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={1}>
-                  {stat.icon}
-                  <Typography variant="body2" color="text.secondary">
-                    {stat.label}
-                  </Typography>
-                </Box>
-                <Typography variant="h4" fontWeight={600} mt={1}>
-                  0
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-      <Alert severity="info" sx={{ mt: 3 }}>
-        Summary counts and recent activity arrive in the next release. Until then, use the Tasks,
-        Issues, Feedback and Notes pages in the menu to keep your diary.
-      </Alert>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ md: 'flex-end' }}
+        gap={2}
+        mb={3}
+      >
+        <Box>
+          <Typography variant="h5" component="h1" fontWeight={600}>
+            Welcome, {user.profile.fullName.split(' ')[0]}
+          </Typography>
+          <Typography color="text.secondary">
+            {day > 0
+              ? `Day ${day} of onboarding`
+              : `Your onboarding starts in ${1 - day} day${day === 0 ? '' : 's'}`}
+          </Typography>
+        </Box>
+        <Stack direction="row" gap={1} flexWrap="wrap" aria-label="Quick add">
+          {QUICK_ADD.map((item) => (
+            <Button
+              key={item.path}
+              size="small"
+              variant="outlined"
+              startIcon={<AddIcon />}
+              component={RouterLink}
+              to={`${item.path}?new=1`}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </Stack>
+      </Stack>
+      <DashboardView source={OWN_DASHBOARD} cacheKey={[user.id]} linkBase="" />
     </Box>
   );
 }

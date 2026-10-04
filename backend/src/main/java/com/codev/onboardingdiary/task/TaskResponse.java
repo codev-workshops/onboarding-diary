@@ -16,7 +16,7 @@ public record TaskResponse(
     Instant updatedAt,
     int version) {
 
-  static TaskResponse from(Task task) {
+  public static TaskResponse from(Task task) {
     return new TaskResponse(
         task.getId(),
         task.getEntryDate(),

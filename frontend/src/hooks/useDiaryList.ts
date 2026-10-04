@@ -27,6 +27,15 @@ export function useDiaryList<T extends { id: number }>(resource: DiaryResource, 
 
   // undefined = closed, null = creating, T = editing
   const [editing, setEditing] = useState<T | null | undefined>(undefined);
+
+  const openNewRequested = filters.value('new') === '1';
+  const { update } = filters;
+  useEffect(() => {
+    if (openNewRequested) {
+      setEditing(null);
+      update({ new: null }, false);
+    }
+  }, [openNewRequested, update]);
   const [deleting, setDeleting] = useState<T | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);

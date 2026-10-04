@@ -15,7 +15,7 @@ public record NoteResponse(
     Instant updatedAt,
     int version) {
 
-  static NoteResponse from(Note note) {
+  public static NoteResponse from(Note note) {
     return new NoteResponse(
         note.getId(),
         note.getEntryDate(),
