@@ -19,6 +19,7 @@ import UserFormPage from './pages/admin/UserFormPage';
 import UsersPage from './pages/admin/UsersPage';
 import RecruitDetailPage from './pages/recruits/RecruitDetailPage';
 import RecruitsPage from './pages/recruits/RecruitsPage';
+import ReportsPage from './pages/reports/ReportsPage';
 
 const RECRUIT_PAGES: [string, JSX.Element][] = [
   ['dashboard', <DashboardPage />],
@@ -83,6 +84,7 @@ export default function App() {
           path="recruits/:id"
           element={<RequireAuth roles={['MANAGER', 'ADMIN']}><RecruitDetailPage /></RequireAuth>}
         />
+        <Route path="reports" element={<ReportsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
