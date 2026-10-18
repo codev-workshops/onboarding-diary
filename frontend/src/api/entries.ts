@@ -96,3 +96,35 @@ export const FEEDBACK_TYPES: Record<FeedbackType, string> = {
 export function isIssueOpen(status: IssueStatus): boolean {
   return status === 'OPEN' || status === 'IN_PROGRESS';
 }
+
+export type EntryType = 'TASK' | 'ISSUE' | 'FEEDBACK' | 'NOTE';
+
+export const ENTRY_TYPES: Record<EntryType, string> = {
+  TASK: 'Task',
+  ISSUE: 'Issue',
+  FEEDBACK: 'Feedback',
+  NOTE: 'Note',
+};
+
+export const ENTRY_PATHS: Record<EntryType, string> = {
+  TASK: 'tasks',
+  ISSUE: 'issues',
+  FEEDBACK: 'feedback',
+  NOTE: 'notes',
+};
+
+export interface Dashboard {
+  counts: { tasks: number; issues: number; feedback: number; notes: number };
+  taskProgress: {
+    done: number;
+    total: number;
+    percent: number | null;
+    byStatus: Record<TaskStatus, number>;
+  };
+  openIssues: {
+    count: number;
+    bySeverity: Record<IssueSeverity, number>;
+    top: { id: number; title: string; severity: IssueSeverity; entryDate: string }[];
+  };
+  recent: { type: EntryType; id: number; title: string; entryDate: string; createdAt: string }[];
+}

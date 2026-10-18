@@ -541,3 +541,97 @@ textarea:focus {
 .push-right {
   margin-left: auto;
 }
+
+/* Dashboard */
+.dashboard {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard .card,
+.dashboard .grid-2 {
+  margin: 0;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--c-primary);
+}
+
+.stat-label {
+  color: var(--c-muted);
+  font-size: 0.9rem;
+}
+
+.progress {
+  height: 14px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--c-success);
+  transition: width 0.3s;
+}
+
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.type-pill {
+  display: inline-block;
+  min-width: 4.8rem;
+  text-align: center;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.type-task {
+  background: var(--c-primary);
+}
+
+.type-issue {
+  background: var(--c-danger);
+}
+
+.type-feedback {
+  background: var(--c-success);
+}
+
+.type-note {
+  background: #6b4fa0;
+}
+
+.quick-add {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 800px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
