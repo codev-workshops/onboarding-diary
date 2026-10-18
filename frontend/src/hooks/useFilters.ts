@@ -21,5 +21,9 @@ export function useFilters() {
     setParams(new URLSearchParams(), { replace: true });
   }
 
-  return { params, get: (name: string) => params.get(name) ?? '', setFilter, clear };
+  function replaceAll(values: Record<string, string>) {
+    setParams(new URLSearchParams(values), { replace: true });
+  }
+
+  return { params, get: (name: string) => params.get(name) ?? '', setFilter, clear, replaceAll };
 }

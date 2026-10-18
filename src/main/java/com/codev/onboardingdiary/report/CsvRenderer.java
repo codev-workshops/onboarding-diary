@@ -21,11 +21,20 @@ public class CsvRenderer {
     csv.append("\r\n");
   }
 
+  /** True when a spreadsheet could treat the value as a formula, even after leading spaces. */
+  static boolean startsLikeFormula(String value) {
+    if ("\t\r".indexOf(value.charAt(0)) >= 0) {
+      return true;
+    }
+    String trimmed = value.stripLeading();
+    return !trimmed.isEmpty() && "=+-@".indexOf(trimmed.charAt(0)) >= 0;
+  }
+
   static String escape(String value) {
     if (value == null || value.isEmpty()) {
       return "";
     }
-    String safe = "=+-@\t\r".indexOf(value.charAt(0)) >= 0 ? "'" + value : value;
+    String safe = startsLikeFormula(value) ? "'" + value : value;
     if (safe.contains(",") || safe.contains("\"") || safe.contains("\n") || safe.contains("\r")) {
       return "\"" + safe.replace("\"", "\"\"") + "\"";
     }

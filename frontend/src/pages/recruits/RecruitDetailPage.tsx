@@ -38,17 +38,20 @@ export default function RecruitDetailPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let current = true;
+    setRecruit(null);
+    setError('');
     api
       .get<User>(`/api/recruits/${id}`)
-      .then(setRecruit)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Could not load recruit'));
+      .then((loaded) => current && setRecruit(loaded))
+      .catch((err: unknown) => current && setError(err instanceof Error ? err.message : 'Could not load recruit'));
+    return () => {
+      current = false;
+    };
   }, [id]);
 
   function selectTab(next: Tab) {
-    filters.clear();
-    if (next !== 'dashboard') {
-      filters.setFilter('tab', next);
-    }
+    filters.replaceAll(next === 'dashboard' ? {} : { tab: next });
   }
 
   if (error) {
@@ -85,9 +88,9 @@ export default function RecruitDetailPage() {
           </button>
         ))}
       </nav>
-      {tab === 'dashboard' && <RecruitDashboard id={recruit.id} />}
-      {tab === 'checklists' && <RecruitChecklists recruitId={recruit.id} />}
-      {tab !== 'dashboard' && tab !== 'checklists' && <EntryTab key={tab} id={recruit.id} tab={tab} />}
+      {tab === 'dashboard' && <RecruitDashboard key={recruit.id} id={recruit.id} />}
+      {tab === 'checklists' && <RecruitChecklists key={recruit.id} recruitId={recruit.id} />}
+      {tab !== 'dashboard' && tab !== 'checklists' && <EntryTab key={`${recruit.id}-${tab}`} id={recruit.id} tab={tab} />}
     </>
   );
 }

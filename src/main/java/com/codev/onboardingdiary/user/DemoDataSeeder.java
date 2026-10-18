@@ -110,7 +110,8 @@ public class DemoDataSeeder implements ApplicationRunner {
         "I did not know where to be on day two.");
     note(priya, today.minusDays(4), "Useful links", "Wiki, HR portal, team calendar.",
         List.of("links"));
-    log.info("Seeded demo manager and recruits (demo-data enabled)");
+    log.warn(
+        "Seeded demo accounts with published passwords; set APP_DEMO_DATA=false outside demos");
   }
 
   private User user(String email, String name, Role role, User manager, LocalDate start,

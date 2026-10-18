@@ -76,7 +76,7 @@ public class AdminUserService {
       throw ApiException.conflict("You cannot deactivate your own account");
     }
     boolean losesAdmin = user.hasRole(Role.ADMIN) && (request.role() != Role.ADMIN || !active);
-    if (losesAdmin && user.isActive() && users.countByRoleAndActiveTrue(Role.ADMIN) <= 1) {
+    if (losesAdmin && user.isActive() && users.lockActiveByRole(Role.ADMIN).size() <= 1) {
       throw ApiException.conflict("At least one active admin is required");
     }
     boolean losesManager =

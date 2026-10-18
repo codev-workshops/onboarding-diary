@@ -22,6 +22,17 @@ function filenameFrom(disposition: string | null, fallback: string): string {
   return match ? match[1] : fallback;
 }
 
+async function loadAllRecruits(): Promise<RecruitOption[]> {
+  const all: RecruitOption[] = [];
+  for (let page = 0; ; page++) {
+    const result = await api.get<Page<RecruitOption>>(`/api/recruits?size=100&page=${page}`);
+    all.push(...result.content);
+    if (page + 1 >= result.totalPages) {
+      return all;
+    }
+  }
+}
+
 export default function ReportsPage() {
   const { user } = useAuth();
   const [params] = useSearchParams();
@@ -37,9 +48,8 @@ export default function ReportsPage() {
 
   useEffect(() => {
     if (!isRecruit) {
-      api
-        .get<Page<RecruitOption>>('/api/recruits?size=100')
-        .then((page) => setRecruits(page.content))
+      loadAllRecruits()
+        .then(setRecruits)
         .catch(() => setRecruits([]));
     }
   }, [isRecruit]);

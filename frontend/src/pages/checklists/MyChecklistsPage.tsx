@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
-import type { Checklist } from '../../api/checklists';
+import type { Checklist, ChecklistItem } from '../../api/checklists';
 import Alert from '../../components/Alert';
 import ChecklistCard from '../../components/ChecklistCard';
+
+/** Applies one saved item so concurrent toggles never overwrite each other's results. */
+function withItem(checklist: Checklist, saved: ChecklistItem): Checklist {
+  const items = checklist.items.map((item) => (item.id === saved.id ? saved : item));
+  return { ...checklist, items, done: items.filter((item) => item.done).length };
+}
 
 export default function MyChecklistsPage() {
   const [checklists, setChecklists] = useState<Checklist[] | null>(null);
@@ -15,7 +21,8 @@ export default function MyChecklistsPage() {
   async function toggle(checklistId: number, itemId: number, done: boolean) {
     try {
       const updated = await api.put<Checklist>(`/api/checklists/${checklistId}/items/${itemId}`, { done });
-      setChecklists((current) => current?.map((c) => (c.id === updated.id ? updated : c)) ?? null);
+      const savedItem = updated.items.find((item) => item.id === itemId);
+      setChecklists((current) => current?.map((c) => (c.id === checklistId && savedItem ? withItem(c, savedItem) : c)) ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update item');
     }
