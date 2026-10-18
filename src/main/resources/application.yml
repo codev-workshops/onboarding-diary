@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: onboarding-diary
+  datasource:
+    url: jdbc:h2:file:./data/onboarding-diary
+    username: sa
+    password: ""
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  jackson:
+    default-property-inclusion: always
+    deserialization:
+      fail-on-unknown-properties: false
+  servlet:
+    multipart:
+      enabled: false
+
+server:
+  port: ${PORT:8080}
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        http-only: true
+        same-site: lax
+  error:
+    include-message: always
+
+app:
+  seed:
+    admin-email: ${APP_ADMIN_EMAIL:admin@demo.local}
+    admin-password: ${APP_ADMIN_PASSWORD:Admin1234}
+    demo-data: ${APP_DEMO_DATA:true}

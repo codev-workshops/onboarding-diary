@@ -1,0 +1,12 @@
+target/
+data/
+*.log
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+frontend/node/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
