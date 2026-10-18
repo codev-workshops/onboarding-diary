@@ -43,7 +43,12 @@ export default function EntryListShell<T extends { id: number }>({
       <div className="card filter-bar">{filters}</div>
       <Alert>{error}</Alert>
       {loading && !data && <p className="muted">Loading…</p>}
-      {data && data.content.length === 0 && <p className="empty-page">{emptyText}</p>}
+      {data && data.content.length === 0 && (
+        <>
+          <p className="empty-page">{emptyText}</p>
+          <Pagination page={data} onChange={onPage} />
+        </>
+      )}
       {data && data.content.length > 0 && (
         <>
           <p className="muted result-count">

@@ -41,7 +41,10 @@ export default function RecruitsPage() {
       <Alert>{error}</Alert>
       {loading && !data && <p className="muted">Loading…</p>}
       {data && data.content.length === 0 && (
-        <p className="empty-page">No recruits are assigned to you yet.</p>
+        <>
+          <p className="empty-page">No recruits are assigned to you yet.</p>
+          <Pagination page={data} onChange={(page) => filters.setFilter('page', String(page))} />
+        </>
       )}
       {data && data.content.length > 0 && (
         <>

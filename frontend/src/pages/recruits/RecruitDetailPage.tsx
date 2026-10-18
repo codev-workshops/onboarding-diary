@@ -126,7 +126,12 @@ function EntryTab({ id, tab }: { id: number; tab: Exclude<Tab, 'dashboard' | 'ch
       </div>
       <Alert>{error}</Alert>
       {loading && !data && <p className="muted">Loading…</p>}
-      {data && data.content.length === 0 && <p className="empty-page">No entries.</p>}
+      {data && data.content.length === 0 && (
+        <>
+          <p className="empty-page">No entries.</p>
+          <Pagination page={data} onChange={(page) => filters.setFilter('page', String(page))} />
+        </>
+      )}
       {data && data.content.length > 0 && (
         <>
           <ul className="entry-list">
