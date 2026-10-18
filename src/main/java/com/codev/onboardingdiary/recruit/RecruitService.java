@@ -12,8 +12,10 @@ import com.codev.onboardingdiary.user.User;
 import com.codev.onboardingdiary.user.UserDto;
 import com.codev.onboardingdiary.user.UserRef;
 import com.codev.onboardingdiary.user.UserRepository;
+import java.util.List;
 import java.util.Locale;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,6 +66,16 @@ public class RecruitService {
             .and(matches(query))
             .and(active == null ? null : (root, q, cb) -> cb.equal(root.get("active"), active));
     return PageResponse.of(users.findAll(spec, pageable), this::summarize);
+  }
+
+  /** Active recruits the viewer can see: assigned ones for managers, all for admins. */
+  @Transactional(readOnly = true)
+  public List<User> activeVisibleRecruits(User viewer) {
+    Specification<User> spec =
+        Specification.where(isRecruit())
+            .and(viewer.hasRole(Role.MANAGER) ? managedBy(viewer) : null)
+            .and((root, q, cb) -> cb.isTrue(root.get("active")));
+    return users.findAll(spec, Sort.by("name", "id"));
   }
 
   private RecruitSummaryDto summarize(User recruit) {

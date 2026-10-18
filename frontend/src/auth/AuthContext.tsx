@@ -94,7 +94,7 @@ export function homePathFor(user: User): string {
     case 'ADMIN':
       return '/admin/users';
     case 'MANAGER':
-      return '/recruits';
+      return '/team';
     default:
       return '/dashboard';
   }

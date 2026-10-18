@@ -82,7 +82,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")
-                    .requestMatchers("/api/recruits/**", "/api/checklist-templates/**")
+                    .requestMatchers(
+                        "/api/recruits/**", "/api/checklist-templates/**", "/api/team-dashboard")
                     .hasAnyRole("MANAGER", "ADMIN")
                     .requestMatchers(
                         "/api/tasks/**",

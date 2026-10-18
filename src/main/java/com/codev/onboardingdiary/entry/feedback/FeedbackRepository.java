@@ -1,6 +1,7 @@
 package com.codev.onboardingdiary.entry.feedback;
 
 import com.codev.onboardingdiary.user.User;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,4 +16,7 @@ public interface FeedbackRepository
   long countByOwner(User owner);
 
   List<FeedbackEntry> findTop10ByOwnerOrderByCreatedAtDesc(User owner);
+
+  List<FeedbackEntry> findTop5ByOwnerInAndTypeOrderByCreatedAtDesc(
+      Collection<User> owners, FeedbackType type);
 }
