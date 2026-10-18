@@ -87,7 +87,7 @@ export default function RecruitDetailPage() {
       </nav>
       {tab === 'dashboard' && <RecruitDashboard id={recruit.id} />}
       {tab === 'checklists' && <RecruitChecklists recruitId={recruit.id} />}
-      {tab !== 'dashboard' && tab !== 'checklists' && <EntryTab id={recruit.id} tab={tab} />}
+      {tab !== 'dashboard' && tab !== 'checklists' && <EntryTab key={tab} id={recruit.id} tab={tab} />}
     </>
   );
 }
