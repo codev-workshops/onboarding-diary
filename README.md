@@ -45,4 +45,22 @@ An admin is created on first start:
 |---|---|
 | `admin@demo.local` | `Admin1234` |
 
-Override with `APP_ADMIN_EMAIL` / `APP_ADMIN_PASSWORD`. Sign-up always creates a Recruit; Admins create Managers and assign recruits to them.
+Demo data (on by default, disable with `APP_DEMO_DATA=false`) adds a manager with two recruits and sample entries:
+
+| Role | Email | Password |
+|---|---|---|
+| Manager | `manager@demo.local` | `Manager123` |
+| Recruit | `alex@demo.local` | `Recruit123` |
+| Recruit | `priya@demo.local` | `Recruit123` |
+
+These are demo-only credentials. Override the admin with `APP_ADMIN_EMAIL` / `APP_ADMIN_PASSWORD`. Sign-up always creates a Recruit; Admins create Managers and assign recruits to them.
+
+## Features
+
+| Role | Can do |
+|---|---|
+| Recruit | Log tasks, issues, feedback and notes (create/edit/delete own); dashboard; own reports |
+| Manager | Read-only view of assigned recruits (dashboard + entries); reports for assigned recruits |
+| Admin | Manage users (create, change role, assign manager, deactivate, reset password); view all recruits; reports for any recruit |
+
+Reports: tasks, issues, feedback or combined, for an inclusive date range of up to 366 days, as CSV or PDF.
