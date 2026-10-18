@@ -15,6 +15,8 @@ import NoteFormPage from './pages/notes/NoteFormPage';
 import NotesPage from './pages/notes/NotesPage';
 import TaskFormPage from './pages/tasks/TaskFormPage';
 import TasksPage from './pages/tasks/TasksPage';
+import UserFormPage from './pages/admin/UserFormPage';
+import UsersPage from './pages/admin/UsersPage';
 
 const RECRUIT_PAGES: [string, JSX.Element][] = [
   ['dashboard', <DashboardPage />],
@@ -30,6 +32,12 @@ const RECRUIT_PAGES: [string, JSX.Element][] = [
   ['notes', <NotesPage />],
   ['notes/new', <NoteFormPage />],
   ['notes/:id/edit', <NoteFormPage />],
+];
+
+const ADMIN_PAGES: [string, JSX.Element][] = [
+  ['admin/users', <UsersPage />],
+  ['admin/users/new', <UserFormPage />],
+  ['admin/users/:id', <UserFormPage />],
 ];
 
 function HomeRedirect() {
@@ -56,6 +64,13 @@ export default function App() {
             key={path}
             path={path}
             element={<RequireAuth roles={['RECRUIT']}>{page}</RequireAuth>}
+          />
+        ))}
+        {ADMIN_PAGES.map(([path, page]) => (
+          <Route
+            key={path}
+            path={path}
+            element={<RequireAuth roles={['ADMIN']}>{page}</RequireAuth>}
           />
         ))}
         <Route path="*" element={<NotFoundPage />} />

@@ -1,3 +1,4 @@
+import { PASSWORD_HINT } from '../auth/passwordPolicy';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -8,7 +9,6 @@ import Alert from '../components/Alert';
 import Field from '../components/Field';
 import { today } from '../dates';
 
-const PASSWORD_HINT = 'At least 8 characters, including a letter and a digit.';
 
 export default function SignupPage() {
   const { user, signup } = useAuth();

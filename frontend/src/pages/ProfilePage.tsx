@@ -1,3 +1,4 @@
+import { PASSWORD_HINT } from '../auth/passwordPolicy';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiError } from '../api/client';
@@ -136,7 +137,7 @@ export default function ProfilePage() {
             label="New password"
             htmlFor="newPassword"
             error={pwErrors.newPassword}
-            hint="At least 8 characters, including a letter and a digit."
+            hint={PASSWORD_HINT}
             required
           >
             <input
