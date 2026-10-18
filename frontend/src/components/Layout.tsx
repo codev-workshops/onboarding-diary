@@ -16,15 +16,18 @@ const NAV: Record<Role, NavItem[]> = {
     { to: '/issues', label: 'Issues' },
     { to: '/feedback', label: 'Feedback' },
     { to: '/notes', label: 'Notes' },
+    { to: '/checklists', label: 'Checklists' },
     { to: '/reports', label: 'Reports' },
   ],
   MANAGER: [
     { to: '/recruits', label: 'My Recruits' },
+    { to: '/checklist-templates', label: 'Checklists' },
     { to: '/reports', label: 'Reports' },
   ],
   ADMIN: [
     { to: '/admin/users', label: 'Users' },
     { to: '/recruits', label: 'Recruits' },
+    { to: '/checklist-templates', label: 'Checklists' },
     { to: '/reports', label: 'Reports' },
   ],
 };

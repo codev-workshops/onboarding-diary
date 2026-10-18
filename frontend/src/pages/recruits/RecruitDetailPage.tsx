@@ -18,6 +18,7 @@ import type { User } from '../../api/types';
 import Alert from '../../components/Alert';
 import Badge from '../../components/Badge';
 import DashboardView from '../../components/DashboardView';
+import RecruitChecklists from '../../components/RecruitChecklists';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import OptionSelect from '../../components/OptionSelect';
 import Pagination from '../../components/Pagination';
@@ -25,7 +26,7 @@ import { formatDate, formatDateTime } from '../../dates';
 import { useFilters } from '../../hooks/useFilters';
 import { usePaged } from '../../hooks/usePaged';
 
-const TABS = { dashboard: 'Dashboard', tasks: 'Tasks', issues: 'Issues', feedback: 'Feedback', notes: 'Notes' };
+const TABS = { dashboard: 'Dashboard', tasks: 'Tasks', issues: 'Issues', feedback: 'Feedback', notes: 'Notes', checklists: 'Checklists' };
 type Tab = keyof typeof TABS;
 
 /** Read-only view of one recruit for their manager or an admin. */
@@ -84,7 +85,9 @@ export default function RecruitDetailPage() {
           </button>
         ))}
       </nav>
-      {tab === 'dashboard' ? <RecruitDashboard id={recruit.id} /> : <EntryTab id={recruit.id} tab={tab} />}
+      {tab === 'dashboard' && <RecruitDashboard id={recruit.id} />}
+      {tab === 'checklists' && <RecruitChecklists recruitId={recruit.id} />}
+      {tab !== 'dashboard' && tab !== 'checklists' && <EntryTab id={recruit.id} tab={tab} />}
     </>
   );
 }
@@ -99,7 +102,7 @@ function RecruitDashboard({ id }: { id: number }) {
 
 type AnyEntry = Task | Issue | Feedback | Note;
 
-function EntryTab({ id, tab }: { id: number; tab: Exclude<Tab, 'dashboard'> }) {
+function EntryTab({ id, tab }: { id: number; tab: Exclude<Tab, 'dashboard' | 'checklists'> }) {
   const filters = useFilters();
   const query = new URLSearchParams(filters.params);
   query.delete('tab');
@@ -140,7 +143,7 @@ function EntryTab({ id, tab }: { id: number; tab: Exclude<Tab, 'dashboard'> }) {
   );
 }
 
-function EntryItem({ tab, entry }: { tab: Exclude<Tab, 'dashboard'>; entry: AnyEntry }) {
+function EntryItem({ tab, entry }: { tab: Exclude<Tab, 'dashboard' | 'checklists'>; entry: AnyEntry }) {
   const head = (title: string) => (
     <div className="entry-head">
       <span className="entry-title">{title}</span>

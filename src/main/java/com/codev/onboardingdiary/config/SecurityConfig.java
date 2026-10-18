@@ -82,14 +82,15 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")
-                    .requestMatchers("/api/recruits/**")
+                    .requestMatchers("/api/recruits/**", "/api/checklist-templates/**")
                     .hasAnyRole("MANAGER", "ADMIN")
                     .requestMatchers(
                         "/api/tasks/**",
                         "/api/issues/**",
                         "/api/feedback/**",
                         "/api/notes/**",
-                        "/api/dashboard/**")
+                        "/api/dashboard/**",
+                        "/api/checklists/**")
                     .hasRole("RECRUIT")
                     .requestMatchers("/api/**")
                     .authenticated()

@@ -19,6 +19,8 @@ import UserFormPage from './pages/admin/UserFormPage';
 import UsersPage from './pages/admin/UsersPage';
 import RecruitDetailPage from './pages/recruits/RecruitDetailPage';
 import RecruitsPage from './pages/recruits/RecruitsPage';
+import MyChecklistsPage from './pages/checklists/MyChecklistsPage';
+import TemplatesPage from './pages/checklists/TemplatesPage';
 import ReportsPage from './pages/reports/ReportsPage';
 
 const RECRUIT_PAGES: [string, JSX.Element][] = [
@@ -85,6 +87,14 @@ export default function App() {
           element={<RequireAuth roles={['MANAGER', 'ADMIN']}><RecruitDetailPage /></RequireAuth>}
         />
         <Route path="reports" element={<ReportsPage />} />
+        <Route
+          path="checklists"
+          element={<RequireAuth roles={['RECRUIT']}><MyChecklistsPage /></RequireAuth>}
+        />
+        <Route
+          path="checklist-templates"
+          element={<RequireAuth roles={['MANAGER', 'ADMIN']}><TemplatesPage /></RequireAuth>}
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
