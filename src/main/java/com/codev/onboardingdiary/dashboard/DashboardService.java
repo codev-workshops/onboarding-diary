@@ -34,7 +34,7 @@ public class DashboardService {
   static final int TOP_OPEN_ISSUES = 5;
   static final int RECENT_ENTRIES = 10;
 
-  private static final List<IssueStatus> OPEN_STATUSES =
+  public static final List<IssueStatus> OPEN_STATUSES =
       List.of(IssueStatus.OPEN, IssueStatus.IN_PROGRESS);
   private static final Comparator<IssueEntry> MOST_SEVERE_OLDEST_FIRST =
       Comparator.comparing(IssueEntry::getSeverity)

@@ -15,6 +15,8 @@ public interface IssueRepository
 
   long countByOwner(User owner);
 
+  long countByOwnerAndStatusIn(User owner, Collection<IssueStatus> statuses);
+
   List<IssueEntry> findByOwnerAndStatusIn(User owner, Collection<IssueStatus> statuses);
 
   List<IssueEntry> findTop10ByOwnerOrderByCreatedAtDesc(User owner);

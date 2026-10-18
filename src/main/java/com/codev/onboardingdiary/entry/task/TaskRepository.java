@@ -16,6 +16,8 @@ public interface TaskRepository
 
   long countByOwner(User owner);
 
+  long countByOwnerAndStatus(User owner, TaskStatus status);
+
   @Query("select t.status, count(t) from TaskEntry t where t.owner = :owner group by t.status")
   List<Object[]> countByStatus(@Param("owner") User owner);
 

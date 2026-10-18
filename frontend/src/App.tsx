@@ -17,6 +17,8 @@ import TaskFormPage from './pages/tasks/TaskFormPage';
 import TasksPage from './pages/tasks/TasksPage';
 import UserFormPage from './pages/admin/UserFormPage';
 import UsersPage from './pages/admin/UsersPage';
+import RecruitDetailPage from './pages/recruits/RecruitDetailPage';
+import RecruitsPage from './pages/recruits/RecruitsPage';
 
 const RECRUIT_PAGES: [string, JSX.Element][] = [
   ['dashboard', <DashboardPage />],
@@ -73,6 +75,14 @@ export default function App() {
             element={<RequireAuth roles={['ADMIN']}>{page}</RequireAuth>}
           />
         ))}
+        <Route
+          path="recruits"
+          element={<RequireAuth roles={['MANAGER', 'ADMIN']}><RecruitsPage /></RequireAuth>}
+        />
+        <Route
+          path="recruits/:id"
+          element={<RequireAuth roles={['MANAGER', 'ADMIN']}><RecruitDetailPage /></RequireAuth>}
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
