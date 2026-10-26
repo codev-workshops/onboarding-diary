@@ -31,6 +31,13 @@ def test_production_requires_secret_key(monkeypatch):
         create_app(ProductionConfig, SQLALCHEMY_DATABASE_URI="sqlite://")
 
 
+@pytest.mark.parametrize("key", ["change-me", "dev-insecure-secret-key"])
+def test_production_rejects_weak_secret_key(monkeypatch, key):
+    monkeypatch.setattr(ProductionConfig, "SECRET_KEY", key)
+    with pytest.raises(RuntimeError, match="32 characters"):
+        create_app(ProductionConfig, SQLALCHEMY_DATABASE_URI="sqlite://")
+
+
 def test_production_cookie_flags(monkeypatch):
     monkeypatch.setattr(ProductionConfig, "SECRET_KEY", "x" * 32)
     app = create_app(ProductionConfig, SQLALCHEMY_DATABASE_URI="sqlite://")

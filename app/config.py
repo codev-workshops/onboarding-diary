@@ -1,5 +1,7 @@
 import os
 
+DEV_SECRET_KEY = "dev-insecure-secret-key"
+
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY")
@@ -18,7 +20,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-insecure-secret-key"
+    SECRET_KEY = os.environ.get("SECRET_KEY") or DEV_SECRET_KEY
 
 
 class TestConfig(Config):

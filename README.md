@@ -27,7 +27,7 @@ ruff check . && ruff format --check .
 | Variable | Default | Notes |
 |---|---|---|
 | `APP_CONFIG` | `development` | `development`, `testing` or `production` |
-| `SECRET_KEY` | dev-only fallback | **Required in production** — `create_app` raises `RuntimeError` if unset |
+| `SECRET_KEY` | dev-only fallback | **Required in production**: `create_app` raises `RuntimeError` if it is unset, shorter than 32 chars, or the dev fallback |
 | `DATABASE_URL` | `sqlite:///<instance>/onboarding.db` | Any SQLAlchemy URL |
 | `FLASK_APP` | `app` (from `.flaskenv`) | |
 
