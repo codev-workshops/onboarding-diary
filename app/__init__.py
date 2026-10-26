@@ -24,8 +24,10 @@ def create_app(config=None, **overrides):
 
     if not app.config.get("SECRET_KEY"):
         raise RuntimeError("SECRET_KEY must be set (env var SECRET_KEY).")
-    if config is ProductionConfig and (
-        len(app.config["SECRET_KEY"]) < 32 or app.config["SECRET_KEY"] == DEV_SECRET_KEY
+    if (
+        isinstance(config, type)
+        and issubclass(config, ProductionConfig)
+        and (len(app.config["SECRET_KEY"]) < 32 or app.config["SECRET_KEY"] == DEV_SECRET_KEY)
     ):
         raise RuntimeError("SECRET_KEY must be a random value of at least 32 characters.")
     if app.config["SECRET_KEY"] == DEV_SECRET_KEY:
