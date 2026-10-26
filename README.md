@@ -57,6 +57,8 @@ tests/             conftest.py fixtures + tests
 **The schema is frozen. Feature tasks add routes, forms, templates and logic only — never models
 or migrations.** If a task seems to need a schema change, stop and raise it instead.
 
+- Branch from `feature/onboarding-diary` and open your PR against it, not `main`. Only the final
+  integration PR goes from `feature/onboarding-diary` to `main`.
 - Import `db` from `app.extensions`; register routes on the existing blueprint for your feature
   (see the endpoint names in each `routes.py` docstring — `base.html` shows nav links for them
   automatically once they exist).
