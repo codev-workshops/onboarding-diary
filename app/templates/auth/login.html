@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "auth/_field.html" import render_field %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+  <h1>Log in</h1>
+  {# No action attribute: posts back to the current URL so ?next= is preserved. #}
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ render_field(form.email, autocomplete="email") }}
+    {{ render_field(form.password, autocomplete="current-password") }}
+    {{ form.submit() }}
+  </form>
+  <p>New here? <a href="{{ url_for('auth.register') }}">Register</a></p>
+{% endblock %}
