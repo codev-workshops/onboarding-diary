@@ -7,3 +7,4 @@ main { max-width: 960px; margin: 1.5rem auto; padding: 0 1.5rem; }
 .flash { padding: .5rem .75rem; border-radius: 4px; margin-bottom: .75rem; background: #e8f0fe; }
 .flash.error, .flash.danger { background: #fde8e8; }
 .flash.success { background: #e6f6ea; }
+.field-error { color: #b00020; font-size: .9em; }

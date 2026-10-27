@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "auth/_field.html" import render_field %}
+{% block title %}Register{% endblock %}
+{% block content %}
+  <h1>Register</h1>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name, autocomplete="name") }}
+    {{ render_field(form.email, autocomplete="email") }}
+    {{ render_field(form.password, autocomplete="new-password") }}
+    {{ render_field(form.confirm_password, autocomplete="new-password") }}
+    {{ render_field(form.start_date) }}
+    {{ form.submit() }}
+  </form>
+  <p>Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+{% endblock %}
