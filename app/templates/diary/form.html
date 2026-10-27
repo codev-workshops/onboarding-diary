@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "auth/_field.html" import render_field %}
+{% block title %}{{ 'Edit entry' if entry else 'New entry' }}{% endblock %}
+{% block content %}
+  <h1>{{ 'Edit entry' if entry else 'New entry' }}</h1>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ render_field(form.title, maxlength=200) }}
+    {{ render_field(form.body, rows=10, cols=60) }}
+    {{ render_field(form.mood) }}
+    {{ form.submit() }}
+  </form>
+  <p>
+    {% if entry %}<a href="{{ url_for('diary.view_entry', entry_id=entry.id) }}">Cancel</a>
+    {% else %}<a href="{{ url_for('diary.list_entries') }}">Cancel</a>{% endif %}
+  </p>
+{% endblock %}
