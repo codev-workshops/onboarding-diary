@@ -128,12 +128,12 @@ def index():
 
 
 def _name_taken(name, exclude_id=None):
-    query = db.select(Tag.id).where(
-        Tag.user_id == current_user.id, db.func.lower(Tag.name) == name.lower()
-    )
+    # Compared in Python: SQLite's lower() only folds ASCII, so "École" != "école" there.
+    query = db.select(Tag.name).where(Tag.user_id == current_user.id)
     if exclude_id is not None:
         query = query.where(Tag.id != exclude_id)
-    return db.session.scalar(query) is not None
+    folded = name.casefold()
+    return any(existing.casefold() == folded for existing in db.session.scalars(query))
 
 
 def _save_tag(tag, form):

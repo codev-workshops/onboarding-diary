@@ -468,3 +468,11 @@ def test_non_ascii_or_non_integer_tag_shows_unknown_tag(recruit_client, recruit,
     assert resp.status_code == 200
     assert b"Unknown tag." in resp.data
     assert _titles(resp) == []
+
+
+def test_duplicate_check_folds_non_ascii_case(recruit_client, recruit):
+    _tag(recruit, "École")
+    resp = recruit_client.post("/search/tags", data={"name": "école"})
+    assert resp.status_code == 200
+    assert b"already have a tag" in resp.data
+    assert _tag_names(recruit) == ["École"]
