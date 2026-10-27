@@ -19,6 +19,7 @@ class EntryForm(FlaskForm):
         "Mood",
         choices=[(NO_MOOD, "No mood"), *MOOD_CHOICES],
         validate_choice=False,
+        filters=[strip],
         validators=[Optional(), AnyOf(MOOD_VALUES, message="Not a valid mood.")],
     )
     submit = SubmitField("Save")

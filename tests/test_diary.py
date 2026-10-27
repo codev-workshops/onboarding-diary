@@ -82,8 +82,9 @@ def test_create_entry_ignores_submitted_user_id(recruit_client, recruit, other_r
     assert DiaryEntry.query.one().user_id == recruit.id
 
 
-def test_create_entry_without_mood_stores_null(recruit_client):
-    recruit_client.post("/entries/new", data=_entry_form(mood=""))
+@pytest.mark.parametrize("mood", ["", "   "])
+def test_create_entry_without_mood_stores_null(recruit_client, mood):
+    recruit_client.post("/entries/new", data=_entry_form(mood=mood))
     assert DiaryEntry.query.one().mood is None
 
 
