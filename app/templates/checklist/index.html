@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Onboarding checklist{% endblock %}
+{% block content %}
+  <h1>Onboarding checklist</h1>
+  <p class="checklist-progress">
+    Progress: <strong>{{ progress }}%</strong> ({{ completed_count }} of {{ total_count }} done)
+    <progress max="100" value="{{ progress }}">{{ progress }}%</progress>
+  </p>
+  {% if pagination.items %}
+    <ul class="checklist">
+      {% for item in pagination.items %}
+        <li class="checklist-item{% if item.completed %} completed{% endif %}">
+          <form method="post" action="{{ url_for('checklist.toggle_item', item_id=item.id, page=pagination.page if pagination.page > 1 else None) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" aria-pressed="{{ 'true' if item.completed else 'false' }}">
+              {{ 'Mark as not done' if item.completed else 'Mark as done' }}
+            </button>
+          </form>
+          <strong>{% if item.completed %}<s>{{ item.title }}</s>{% else %}{{ item.title }}{% endif %}</strong>
+          {% if item.description %}<br><span>{{ item.description }}</span>{% endif %}
+          <br>
+          {% if item.due_date %}<small>Due {{ item.due_date.isoformat() }}{% if is_overdue(item) %} — <span class="field-error">overdue</span>{% endif %}</small>{% endif %}
+          {% if item.completed and item.completed_at %}<small> · Completed {{ item.completed_at.strftime('%Y-%m-%d %H:%M') }} UTC</small>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    {% if pagination.pages > 1 %}
+      <p class="pagination">
+        {% if pagination.has_prev %}<a href="{{ url_for('checklist.index', page=pagination.prev_num) }}">&larr; Previous</a>{% endif %}
+        Page {{ pagination.page }} of {{ pagination.pages }}
+        {% if pagination.has_next %}<a href="{{ url_for('checklist.index', page=pagination.next_num) }}">Next &rarr;</a>{% endif %}
+      </p>
+    {% endif %}
+  {% else %}
+    <p>You have no checklist items.</p>
+  {% endif %}
+{% endblock %}
