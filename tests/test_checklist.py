@@ -191,6 +191,13 @@ def test_index_paginates(recruit_client, recruit):
     assert f'action="/checklist/items/{_items_of(recruit)[-1].id}/toggle?page=2"' in second
 
 
+def test_index_out_of_range_page_is_not_empty_state(recruit_client, recruit):
+    _add_items(recruit, False)
+    body = recruit_client.get("/checklist/?page=5").get_data(as_text=True)
+    assert "You have no checklist items." not in body
+    assert "No items on this page." in body
+
+
 def test_nav_shows_checklist_link(recruit_client):
     assert b'href="/checklist/"' in recruit_client.get("/").data
 
