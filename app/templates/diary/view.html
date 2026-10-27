@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ entry.title }}{% endblock %}
+{% block content %}
+  <h1>{{ entry.title }}</h1>
+  <p>
+    <small>Created {{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}
+    {% if entry.updated_at and entry.updated_at != entry.created_at %} · Updated {{ entry.updated_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</small>
+  </p>
+  <p>Mood: {{ mood_labels.get(entry.mood, entry.mood) if entry.mood else 'No mood' }}</p>
+  <div class="entry-body" style="white-space: pre-wrap">{{ entry.body }}</div>
+  <p>
+    <a href="{{ url_for('diary.edit_entry', entry_id=entry.id) }}">Edit</a>
+    <a href="{{ url_for('diary.list_entries') }}">Back to diary</a>
+  </p>
+  <form method="post" action="{{ url_for('diary.delete_entry', entry_id=entry.id) }}"
+        onsubmit="return confirm('Delete this entry?');">
+    {{ delete_form.hidden_tag() }}
+    {{ delete_form.submit() }}
+  </form>
+{% endblock %}
