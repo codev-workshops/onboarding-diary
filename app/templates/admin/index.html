@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Admin — users{% endblock %}
+{% block content %}
+  <h1>Users</h1>
+  <p><a href="{{ url_for('admin.create_user') }}">Create user</a></p>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Email</th><th>Role</th><th>Start date</th><th>Manager</th></tr>
+    </thead>
+    <tbody>
+      {% for user, assign_form, start_form in rows %}
+        <tr>
+          <td>{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.role }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.set_start_date', user_id=user.id, page=users.page) }}">
+              {{ start_form.hidden_tag() }}
+              {{ start_form.start_date(id="start_date-%d" % user.id, **{"aria-label": "Start date"}) }}
+              {{ start_form.submit(id="start_date-submit-%d" % user.id) }}
+            </form>
+          </td>
+          <td>
+            {% if assign_form %}
+              <form method="post" action="{{ url_for('admin.assign_manager', user_id=user.id, page=users.page) }}">
+                {{ assign_form.hidden_tag() }}
+                {{ assign_form.manager_id(id="manager_id-%d" % user.id, **{"aria-label": "Manager"}) }}
+                {{ assign_form.submit(id="manager-submit-%d" % user.id) }}
+              </form>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5">No users yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if users.pages > 1 %}
+    <p>
+      {% if users.has_prev %}<a href="{{ url_for('admin.index', page=users.prev_num) }}">&laquo; Previous</a>{% endif %}
+      Page {{ users.page }} of {{ users.pages }}
+      {% if users.has_next %}<a href="{{ url_for('admin.index', page=users.next_num) }}">Next &raquo;</a>{% endif %}
+    </p>
+  {% endif %}
+{% endblock %}

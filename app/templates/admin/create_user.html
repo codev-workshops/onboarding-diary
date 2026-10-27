@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "auth/_field.html" import render_field %}
+{% block title %}Admin — create user{% endblock %}
+{% block content %}
+  <h1>Create user</h1>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.email, autocomplete="off") }}
+    {{ render_field(form.role) }}
+    {{ render_field(form.password, autocomplete="new-password") }}
+    {{ render_field(form.confirm_password, autocomplete="new-password") }}
+    {{ render_field(form.start_date) }}
+    {{ form.submit() }}
+  </form>
+  <p><a href="{{ url_for('admin.index') }}">Back to users</a></p>
+{% endblock %}
