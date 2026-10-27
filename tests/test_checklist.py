@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
@@ -204,39 +204,88 @@ def test_nav_shows_checklist_link(recruit_client):
 
 # --- toggle -------------------------------------------------------------------------------
 
+DONE = {"completed": "1"}
+NOT_DONE = {"completed": "0"}
+
+
+def _state(item):
+    db.session.expire_all()
+    return item.completed, item.completed_at
+
+
+def test_index_buttons_post_desired_state(recruit_client, recruit):
+    todo, done = _add_items(recruit, False, True)
+    body = recruit_client.get("/checklist/").get_data(as_text=True)
+    form_todo = body.split(f'action="{_toggle_url(todo)}"')[1].split("</form>")[0]
+    form_done = body.split(f'action="{_toggle_url(done)}"')[1].split("</form>")[0]
+    assert 'name="completed" value="1"' in form_todo and "Mark as done" in form_todo
+    assert 'name="completed" value="0"' in form_done and "Mark as not done" in form_done
+
 
 def test_toggle_completes_and_uncompletes(recruit_client, recruit):
     (item,) = _add_items(recruit, False)
 
-    resp = recruit_client.post(_toggle_url(item))
+    resp = recruit_client.post(_toggle_url(item), data=DONE)
     assert resp.status_code == 302
     assert resp.headers["Location"] == "/checklist/"
-    db.session.expire_all()
-    assert item.completed is True
-    assert item.completed_at is not None
+    completed, completed_at = _state(item)
+    assert completed is True
+    assert completed_at is not None
     assert checklist_progress(recruit) == 100
 
-    recruit_client.post(_toggle_url(item))
-    db.session.expire_all()
-    assert item.completed is False
-    assert item.completed_at is None
+    assert recruit_client.post(_toggle_url(item), data=NOT_DONE).status_code == 302
+    assert _state(item) == (False, None)
     assert checklist_progress(recruit) == 0
+
+
+def test_mark_done_twice_is_idempotent(recruit_client, recruit):
+    (item,) = _add_items(recruit, False)
+    recruit_client.post(_toggle_url(item), data=DONE)
+    first = _state(item)
+    assert first[0] is True and first[1] is not None
+
+    assert recruit_client.post(_toggle_url(item), data=DONE).status_code == 302
+    assert _state(item) == first  # still done, original completed_at kept
+
+
+def test_mark_done_keeps_existing_completed_at(recruit_client, recruit):
+    original = datetime(2026, 1, 2, 3, 4, 5)
+    item = ChecklistItem(user=recruit, title="Done", completed=True, completed_at=original)
+    db.session.add(item)
+    db.session.commit()
+    recruit_client.post(_toggle_url(item), data=DONE)
+    assert _state(item) == (True, original)
+
+
+def test_mark_not_done_twice_is_idempotent(recruit_client, recruit):
+    (item,) = _add_items(recruit, True)
+    recruit_client.post(_toggle_url(item), data=NOT_DONE)
+    assert _state(item) == (False, None)
+    assert recruit_client.post(_toggle_url(item), data=NOT_DONE).status_code == 302
+    assert _state(item) == (False, None)
+
+
+@pytest.mark.parametrize(
+    "data", [{}, {"completed": ""}, {"completed": "2"}, {"completed": "true"}, {"completed": "on"}]
+)
+@pytest.mark.parametrize("initially_completed", [False, True])
+def test_toggle_invalid_or_missing_state_is_400_and_unchanged(
+    recruit_client, recruit, data, initially_completed
+):
+    original = datetime(2026, 1, 2, 3, 4, 5) if initially_completed else None
+    item = ChecklistItem(
+        user=recruit, title="Item", completed=initially_completed, completed_at=original
+    )
+    db.session.add(item)
+    db.session.commit()
+    assert recruit_client.post(_toggle_url(item), data=data).status_code == 400
+    assert _state(item) == (initially_completed, original)
 
 
 def test_toggle_preserves_page(recruit_client, recruit):
     (item,) = _add_items(recruit, False)
-    resp = recruit_client.post(_toggle_url(item) + "?page=2")
+    resp = recruit_client.post(_toggle_url(item) + "?page=2", data=DONE)
     assert resp.headers["Location"] == "/checklist/?page=2"
-
-
-@pytest.mark.parametrize("client_fixture", ["other_client", "manager_client", "admin_client"])
-def test_toggle_by_non_owner_is_404_and_unchanged(request, recruit, client_fixture):
-    (item,) = _add_items(recruit, False)
-    client = request.getfixturevalue(client_fixture)
-    assert client.post(_toggle_url(item)).status_code == 404
-    db.session.expire_all()
-    assert item.completed is False
-    assert item.completed_at is None
 
 
 @pytest.fixture
@@ -244,24 +293,30 @@ def other_client(app, other_recruit):
     return login(app.test_client(), other_recruit)
 
 
+@pytest.mark.parametrize("client_fixture", ["other_client", "manager_client", "admin_client"])
+def test_toggle_by_non_owner_is_404_and_unchanged(request, recruit, client_fixture):
+    (item,) = _add_items(recruit, False)
+    client = request.getfixturevalue(client_fixture)
+    assert client.post(_toggle_url(item), data=DONE).status_code == 404
+    assert _state(item) == (False, None)
+
+
 def test_toggle_missing_item_is_404(recruit_client):
-    assert recruit_client.post("/checklist/items/9999/toggle").status_code == 404
+    assert recruit_client.post("/checklist/items/9999/toggle", data=DONE).status_code == 404
 
 
 def test_toggle_get_is_405(recruit_client, recruit):
     (item,) = _add_items(recruit, False)
-    assert recruit_client.get(_toggle_url(item)).status_code == 405
-    db.session.expire_all()
-    assert item.completed is False
+    assert recruit_client.get(_toggle_url(item), query_string=DONE).status_code == 405
+    assert _state(item) == (False, None)
 
 
 def test_toggle_requires_login(client, recruit):
     (item,) = _add_items(recruit, False)
-    resp = client.post(_toggle_url(item))
+    resp = client.post(_toggle_url(item), data=DONE)
     assert resp.status_code == 302
     assert resp.headers["Location"].startswith("/auth/login?next=")
-    db.session.expire_all()
-    assert item.completed is False
+    assert _state(item) == (False, None)
 
 
 def test_toggle_requires_csrf_token(csrf_client):
@@ -273,12 +328,19 @@ def test_toggle_requires_csrf_token(csrf_client):
     client = login(csrf_client, user)
     page = client.get("/checklist/")  # establish a CSRF session so the failure is the token
 
-    assert client.post(_toggle_url(item)).status_code == 400
-    db.session.expire_all()
-    assert item.completed is False
-    assert item.completed_at is None
+    assert client.post(_toggle_url(item), data=DONE).status_code == 400
+    assert _state(item) == (False, None)
 
-    resp = client.post(_toggle_url(item), data={"csrf_token": csrf_token_from(page)})
+    resp = client.post(_toggle_url(item), data={**DONE, "csrf_token": csrf_token_from(page)})
     assert resp.status_code == 302
-    db.session.expire_all()
-    assert item.completed is True
+    assert _state(item)[0] is True
+
+
+# --- other callers of on_user_registered -------------------------------------------------
+
+
+def test_seed_demo_seeds_checklists_for_recruits_only(app):
+    assert app.test_cli_runner().invoke(args=["seed-demo"]).exit_code == 0
+    for user in User.query.all():
+        expected = len(DEFAULT_CHECKLIST) if user.role == ROLE_RECRUIT else 0
+        assert len(_items_of(user)) == expected, user.email

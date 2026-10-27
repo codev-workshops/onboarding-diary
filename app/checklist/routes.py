@@ -1,6 +1,6 @@
 """T3: onboarding checklist. Endpoints: checklist.index, checklist.toggle_item (POST)."""
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.checklist import bp
@@ -35,12 +35,23 @@ def index():
     )
 
 
+# Form value of the ``completed`` field -> desired state. Posting the target state (instead of
+# flipping) makes double-clicks and browser resubmits harmless.
+COMPLETED_VALUES = {"1": True, "0": False}
+
+
 @bp.post("/items/<int:item_id>/toggle")
 @login_required
 def toggle_item(item_id):
     item = get_owned_or_404(ChecklistItem, item_id)
-    item.completed = not item.completed
-    item.completed_at = utcnow() if item.completed else None
+    completed = COMPLETED_VALUES.get(request.form.get("completed"))
+    if completed is None:
+        abort(400)
+    if completed and not item.completed:
+        item.completed_at = utcnow()
+    elif not completed:
+        item.completed_at = None
+    item.completed = completed
     db.session.commit()
     state = "completed" if item.completed else "marked as not done"
     flash(f"“{item.title}” {state}.", "success")

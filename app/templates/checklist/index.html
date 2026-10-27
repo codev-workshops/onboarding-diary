@@ -12,6 +12,7 @@
         <li class="checklist-item{% if item.completed %} completed{% endif %}">
           <form method="post" action="{{ url_for('checklist.toggle_item', item_id=item.id, page=pagination.page if pagination.page > 1 else None) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="completed" value="{{ '0' if item.completed else '1' }}">
             <button type="submit" aria-pressed="{{ 'true' if item.completed else 'false' }}">
               {{ 'Mark as not done' if item.completed else 'Mark as done' }}
             </button>
