@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "auth/_field.html" import render_field %}
+{% block title %}Rename tag{% endblock %}
+{% block content %}
+  <h1>Rename tag</h1>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name, maxlength=50) }}
+    {{ form.submit(value='Rename') }}
+  </form>
+  <p><a href="{{ url_for('search.tags') }}">Cancel</a></p>
+{% endblock %}
