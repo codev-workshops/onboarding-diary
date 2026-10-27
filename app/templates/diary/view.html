@@ -8,6 +8,40 @@
   </p>
   <p>Mood: {{ mood_labels.get(entry.mood, entry.mood) if entry.mood else 'No mood' }}</p>
   <div class="entry-body" style="white-space: pre-wrap">{{ entry.body }}</div>
+  {% if has_endpoint('search.tag_entry') %}
+    <section class="entry-tags">
+      <h2>Tags</h2>
+      {% set current_tags = entry.tags|sort(attribute='name') %}
+      {% if current_tags %}
+        <ul>
+          {% for tag in current_tags %}
+            <li>
+              <a href="{{ url_for('search.index', tag=tag.id) }}">#{{ tag.name }}</a>
+              <form method="post" style="display: inline"
+                    action="{{ url_for('search.untag_entry', entry_id=entry.id, tag_id=tag.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Remove</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No tags.</p>
+      {% endif %}
+      {% set available_tags = user_tags()|reject('in', entry.tags)|list %}
+      {% if available_tags %}
+        <form method="post" action="{{ url_for('search.tag_entry', entry_id=entry.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="tag_id">Add tag</label>
+          <select id="tag_id" name="tag_id">
+            {% for tag in available_tags %}<option value="{{ tag.id }}">{{ tag.name }}</option>{% endfor %}
+          </select>
+          <button type="submit">Add tag</button>
+        </form>
+      {% endif %}
+      <p><a href="{{ url_for('search.tags') }}">Manage tags</a></p>
+    </section>
+  {% endif %}
   <p>
     <a href="{{ url_for('diary.edit_entry', entry_id=entry.id) }}">Edit</a>
     <a href="{{ url_for('diary.list_entries') }}">Back to diary</a>

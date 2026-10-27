@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "auth/_field.html" import render_field %}
+{% block title %}My tags{% endblock %}
+{% block content %}
+  <h1>My tags</h1>
+  <form method="post" action="{{ url_for('search.create_tag') }}" novalidate>
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name, maxlength=50) }}
+    {{ form.submit(value='Create tag') }}
+  </form>
+  {% if pagination.items %}
+    <ul class="tags">
+      {% for tag in pagination.items %}
+        <li>
+          <a href="{{ url_for('search.index', tag=tag.id) }}">{{ tag.name }}</a>
+          <a href="{{ url_for('search.edit_tag', tag_id=tag.id) }}">Rename</a>
+          <form method="post" action="{{ url_for('search.delete_tag', tag_id=tag.id) }}" style="display: inline"
+                onsubmit="return confirm('Delete this tag? Entries are kept.');">
+            {{ delete_form.hidden_tag() }}
+            {{ delete_form.submit(value='Delete') }}
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+    {% if pagination.pages > 1 %}
+      <nav class="pagination" aria-label="Pages">
+        {% if pagination.has_prev %}<a href="{{ url_for('search.tags', page=pagination.prev_num) }}">&laquo; Previous</a>{% endif %}
+        <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}<a href="{{ url_for('search.tags', page=pagination.next_num) }}">Next &raquo;</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <p>No tags yet.</p>
+  {% endif %}
+  <p><a href="{{ url_for('search.index') }}">Back to search</a></p>
+{% endblock %}
