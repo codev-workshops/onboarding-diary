@@ -22,6 +22,21 @@ pytest --cov=app
 ruff check . && ruff format --check .
 ```
 
+## Admin bootstrap
+
+```bash
+# Production-safe: creates one admin and nothing else. The password comes from ADMIN_PASSWORD
+# or a hidden, confirmed prompt (never a CLI argument). Min 8 chars; fails if the email exists.
+flask create-admin --email ops@example.com --name "Ops Admin"
+
+# NON-PRODUCTION demo data (admin, managers, recruits, assignments, checklists, sample
+# entries). Refuses under ProductionConfig or when users already exist; prints the logins.
+flask seed-demo
+```
+
+Admins then provision managers/recruits, assign recruits to managers and set start dates at
+`/admin/`. Admin access is provisioning only: it never shows diary content.
+
 ## Environment variables
 
 | Variable | Default | Notes |
