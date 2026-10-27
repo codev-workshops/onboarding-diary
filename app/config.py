@@ -17,6 +17,9 @@ class Config:
 
     WTF_CSRF_ENABLED = True
 
+    # `flask seed-demo` refuses to run when this is True.
+    IS_PRODUCTION = False
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -32,6 +35,7 @@ class TestConfig(Config):
 
 
 class ProductionConfig(Config):
+    IS_PRODUCTION = True
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
 
