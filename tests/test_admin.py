@@ -87,16 +87,16 @@ def test_admin_nav_link_only_for_admin(admin_client, recruit_client):
 
 
 def test_index_lists_users_without_diary_content(admin_client, recruit, manager, admin):
-    db.session.add(
-        DiaryEntry(user=recruit, title="TOP-SECRET-TITLE", body="TOP-SECRET-BODY", mood="great")
-    )
+    entry = DiaryEntry(user=recruit, title="TOP-SECRET-TITLE", body="TOP-SECRET-BODY", mood="great")
+    db.session.add(entry)
     db.session.commit()
     resp = admin_client.get("/admin/")
     assert resp.status_code == 200
     for user in (recruit, manager, admin):
         assert user.email.encode() in resp.data
     assert b"TOP-SECRET" not in resp.data
-    assert b"/entries" not in resp.data
+    # The nav's own "My diary" link is fine; links to another user's entry are not.
+    assert f"/entries/{entry.id}".encode() not in resp.data
 
 
 def test_index_paginates(admin_client, make_user):
