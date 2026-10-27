@@ -65,7 +65,7 @@ def _parse_filters(args, errors):
     filters = {name: args.get(name, "").strip() for name in FILTER_PARAMS}
     tag = None
     if filters["tag"]:
-        if not filters["tag"].isdigit():
+        if not (filters["tag"].isascii() and filters["tag"].isdigit()):
             errors.append("Unknown tag.")
         else:
             tag = get_owned_or_404(Tag, int(filters["tag"]))
@@ -92,7 +92,7 @@ def _search_query(q, tag, date_from, date_to):
         )
     if date_from:
         query = query.where(DiaryEntry.created_at >= datetime.combine(date_from, time.min))
-    if date_to:
+    if date_to and date_to < date.max:
         # Inclusive: everything before the start of the following day.
         next_day = datetime.combine(date_to + timedelta(days=1), time.min)
         query = query.where(DiaryEntry.created_at < next_day)

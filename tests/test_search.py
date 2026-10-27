@@ -454,3 +454,17 @@ def test_tag_untag_and_tag_crud_require_csrf_token(csrf_client):
     )
     assert resp.status_code == 302
     assert _tag_ids(entry.id) == {untagged.id}
+
+
+def test_max_to_date_does_not_overflow(recruit_client, recruit):
+    _entry(recruit, title="Mine", created_at=datetime(2026, 3, 10))
+    assert _titles(recruit_client.get("/search/?from=2026-03-10&to=9999-12-31")) == [b"Mine"]
+
+
+@pytest.mark.parametrize("value", ["\u00b2", "\u0661", "-1", "1.5"])
+def test_non_ascii_or_non_integer_tag_shows_unknown_tag(recruit_client, recruit, value):
+    _entry(recruit, title="Mine")
+    resp = recruit_client.get("/search/", query_string={"tag": value})
+    assert resp.status_code == 200
+    assert b"Unknown tag." in resp.data
+    assert _titles(resp) == []
