@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}My team{% endblock %}
+{% block content %}
+  <h1>My team</h1>
+  <p>Aggregate onboarding progress for your assigned recruits. Diary content is private to each recruit.</p>
+  {% if rows %}
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Start date</th><th>Diary entries</th><th>Checklist</th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td>{{ row.email }}</td>
+            <td>{{ row.start_date.isoformat() if row.start_date else "—" }}</td>
+            <td>{{ row.entry_count }}</td>
+            <td>{{ row.checklist_percent }}% <progress max="100" value="{{ row.checklist_percent }}">{{ row.checklist_percent }}%</progress></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if pagination.pages > 1 %}
+      <p class="pagination">
+        {% if pagination.has_prev %}<a href="{{ url_for('manager.dashboard', page=pagination.prev_num) }}">&laquo; Previous</a>{% endif %}
+        Page {{ pagination.page }} of {{ pagination.pages }}
+        {% if pagination.has_next %}<a href="{{ url_for('manager.dashboard', page=pagination.next_num) }}">Next &raquo;</a>{% endif %}
+      </p>
+    {% endif %}
+  {% else %}
+    <p class="empty">No recruits are assigned to you yet.</p>
+  {% endif %}
+{% endblock %}
